@@ -100,11 +100,13 @@ struct dsp_pidval yawspv;
 float thrust = 0.0;
 float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
-float p = 1.7, i = 0.0000, d = 0.02;
-float sp = 0.9, si = 0.0000, sd = 0.0;
-float ysp = 0.7, ysi = 0.0000, ysd = 0.0;
-float ax0 = -0.088, ay0 = 0.0, az0 = 0.065;
+
+// PID settings and accelerometer correction
+float ax0 = -0.047, ay0 = -0.026, az0 = 0.065;
 int speedpid = 0;
+float p = 1.7,		i = 0.0000,	d = 0.02;
+float sp = 0.9,		si = 0.0000,	sd = 0.0;
+float ysp = 0.7,	ysi = 0.0000,	ysd = 0.0;
 
 uint32_t getadcv(ADC_HandleTypeDef *hadc)
 {
