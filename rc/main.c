@@ -147,17 +147,17 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 	}
 	else if (event->type == SDL_CONTROLLERAXISMOTION) {
 		if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
-			sendcmd(lsfd, rsi, "yt s %f\n", event->caxis.value / 32767.0 * M_PI / 5.0);
+			sendcmd(lsfd, rsi, "yt s %f\n", event->caxis.value / 32767.0 * M_PI / 2.5);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
-			sendcmd(lsfd, rsi, "yt s %f\n", -event->caxis.value / 32767.0 * M_PI / 5.0);
+			sendcmd(lsfd, rsi, "yt s %f\n", -event->caxis.value / 32767.0 * M_PI / 2.5);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
-			sendcmd(lsfd, rsi, "pt s %f\n", -event->caxis.value / 32767.0 / 5.0);
+			sendcmd(lsfd, rsi, "pt s %f\n", -event->caxis.value / 32767.0 / 2.5);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
-			sendcmd(lsfd, rsi, "rt s %f\n", event->caxis.value / 32767.0 / 5.0);
-		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX)
-			printf("right x %f\n", event->caxis.value / 32767.0);
-		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY)
-			printf("right y %f\n", event->caxis.value / 32767.0);
+			sendcmd(lsfd, rsi, "rt s %f\n", event->caxis.value / 32767.0 / 2.5);
+		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX) {
+		
+		} else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY)
+			sendcmd(lsfd, rsi, "t s %f\n", -event->caxis.value / 32767.0);
 	}
 
 	return 0;
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "cannot create window\n");
 		exit(1);
 	}
-
+			
 	while (1) {
 		SDL_Event event;
 		char buf[BUFSZ];

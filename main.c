@@ -28,7 +28,7 @@
 
 // DSP settings
 #define LPF_COEF 0.05
-#define COMP_COEF 0.998
+#define COMP_COEF 0.98
 #define TSTEP 0.01
 #define PTSTEP 0.1
 #define RTSTEP 0.1
@@ -104,9 +104,11 @@ float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 // PID settings and accelerometer correction
 float ax0 = -0.047, ay0 = -0.026, az0 = 0.065;
 int speedpid = 0;
-float p = 1.7,		i = 0.0000,	d = 0.02;
-float sp = 0.9,		si = 0.0000,	sd = 0.0;
-float ysp = 0.7,	ysi = 0.0000,	ysd = 0.0;
+float p = 0.0,		i = 0.0000,	d = 0.0;
+float sp = 0.0,		si = 0.0000,	sd = 0.0;
+float ysp = 0.0,	ysi = 0.0000,	ysd = 0.0;
+
+int loopscount = 0;
 
 uint32_t getadcv(ADC_HandleTypeDef *hadc)
 {
@@ -211,6 +213,8 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 		axt += md.afx;
 		ayt += md.afy;
 		azt += md.afz;
+
+		HAL_Delay(10);
 	}
 
 	*gx = gxt / 100.0;
@@ -240,9 +244,9 @@ int initstabilize(float alt)
 	dsp_initpidval(&pitchpv, p, i, d, 0.0);
 	dsp_initpidval(&rollpv, p, i, d, 0.0);
 
-	dsp_initpidval(&pitchspv, sp, 0, 0, 0.0);
-	dsp_initpidval(&rollspv, sp, 0, 0, 0.0);
-	dsp_initpidval(&yawspv, ysp, 0, 0, 0.0);
+	dsp_initpidval(&pitchspv, sp, si, sd, 0.0);
+	dsp_initpidval(&rollspv, sp, si, sd, 0.0);
+	dsp_initpidval(&yawspv, ysp, ysi, ysd, 0.0);
 
 	dsp_initlpf(&presslpf, LPF_COEF);
 
@@ -258,7 +262,7 @@ int stabilize(float dt)
 	float rollcor, pitchcor, yawcor;
 	float asy, asx, asz;
 
-	dt = (dt < 0.001) ? 0.001 : dt;
+	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 /*
 	dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
@@ -269,20 +273,24 @@ int stabilize(float dt)
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 		sizeof(struct mpu_data));
 
-	asy = deg2rad((md.gfy - gy0)) * dt;
-	asx = deg2rad((md.gfx - gx0)) * dt;
-	asz = deg2rad((md.gfz - gz0)) * dt;
+	asy = deg2rad((md.gfy - gy0));
+	asx = deg2rad((md.gfx - gx0));
+	asz = deg2rad((md.gfz - gz0));
 
-	roll = dsp_updatecompl(&rollcompl, asy,
+	roll = dsp_updatecompl(&rollcompl, asy * dt,
 		-atanf((md.afx - ax0) / (md.afz - az0)));
 
-	pitch = dsp_updatecompl(&pitchcompl, asx,
+	pitch = dsp_updatecompl(&pitchcompl, asx * dt,
 		atanf((md.afy - ay0) / (md.afz - az0)));
 
-	rollcor = dsp_pid(&rollpv, rolltarget, roll, dt);
-	pitchcor = dsp_pid(&pitchpv, pitchtarget, pitch, dt);
-
 	if (speedpid) {
+		rollcor = dsp_pid(&rollspv, rolltarget, asy, dt);
+		pitchcor = dsp_pid(&pitchspv, pitchtarget, asx, dt);
+	}
+	else {
+		rollcor = dsp_pid(&rollpv, rolltarget, roll, dt);
+		pitchcor = dsp_pid(&pitchpv, pitchtarget, pitch, dt);
+
 		rollcor = dsp_pid(&rollspv, rollcor, asy, dt);
 		pitchcor = dsp_pid(&pitchspv, pitchcor, asx, dt);
 	}
@@ -425,9 +433,9 @@ int controlcmd(char *cmd)
 			(double) (md.afz - az0));
 		sprintf(s + strlen(s),
 			"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
-			"gyro: ", (double) (md.gfx - gx0),
-			(double) (md.gfy - gy0),
-			(double) (md.gfz - gz0));
+			"gyro: ", (double) deg2rad(md.gfx - gx0),
+			(double) deg2rad(md.gfy - gy0),
+			(double) deg2rad(md.gfz - gz0));
 	
 		sprintf(s + strlen(s),
 			"roll: %0.3f; pitch: %0.3f\n\r",
@@ -464,6 +472,9 @@ int controlcmd(char *cmd)
 			"lb: %.1f; rb: %.1f; lt: %.1f; rt: %.1f\r\n",
 			(double) lbw, (double) rbw,
 			(double) ltw, (double) rtw);
+		
+		sprintf(s + strlen(s), "loops count: %d\r\n",
+			loopscount);
 
 		esp_send(&espdev, s);
 		
@@ -484,7 +495,7 @@ int controlcmd(char *cmd)
 			(double) ysp, (double) ysi, (double) ysd);
 
 		sprintf(s + strlen(s), "%s mode\r\n",
-			speedpid ? "dual" : "single");
+			speedpid ? "single" : "dual");
 
 		esp_send(&espdev, s);
 		
@@ -657,7 +668,7 @@ int main(void)
 	int ms;
 	int loops;
 	int mss;
-	
+
 	HAL_Init();
 
 	systemclock_config();
@@ -697,16 +708,23 @@ int main(void)
 		if (esp_poll(&espdev, cmd) >= 0)
 			controlcmd(cmd);
 
-		if (ms > TICKSPERSEC/150) {
-			stabilize((float) ms / (float) TICKSPERSEC);
-			++loops;
+		if (ms > TICKSPERSEC/250) {
+			double dt;
 
+			dt = (float) ms / (float) TICKSPERSEC;
+			
 			ms = 0;
+
+			stabilize(dt);
+			++loops;
 		}
 	
 
 		if (mss > TICKSPERSEC/1) {
 		//	uartprintf("loops performed: %d\r\n", loops);
+
+			loopscount = loops;
+
 			mss = loops = 0;
 		}
 

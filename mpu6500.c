@@ -12,6 +12,7 @@ enum MPU_REGISTER {
 	MPU_USERCONTROL		= 106,
 	MPU_GYROCONF		= 27,
 	MPU_ACCELCONF		= 28,
+	MPU_ACCELCONF2		= 29,
 	MPU_ACCELMEASURE	= 59,
 };
 
@@ -88,8 +89,9 @@ int mpu_init(struct mpu_device *dev)
 	if (check != 0x70)
 		return (-1);
 
-	mpu_write(dev, MPU_POWERMANAGEMENT, 0x0);
+	mpu_write(dev, MPU_POWERMANAGEMENT, 0x1);
 	mpu_write(dev, MPU_ACCELCONF, dev->accelscale);
+	mpu_write(dev, MPU_ACCELCONF2, 0x6);
 	mpu_write(dev, MPU_GYROCONF, dev->gyroscale);
 
 	return 0;
