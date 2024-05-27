@@ -24,7 +24,7 @@
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
-#define PWM_MAXCOUNT 65535
+#define PWM_MAXCOUNT 512
 
 // DSP settings
 #define LPF_COEF 0.05
