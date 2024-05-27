@@ -4,7 +4,7 @@
 
 #include "bmp280.h"
 
-#define BMP_ADDR 0x77
+#define BMP_ADDR 0x76
 
 enum BMP_REGISTER {
 	BMP_ID		= 0xd0,
@@ -25,7 +25,7 @@ int bmp_read(struct bmp_device *dev, uint8_t addr,
 {
 	if (HAL_I2C_Mem_Read(dev->hi2c, BMP_ADDR << 1, addr,
 		1, data, size, 1000) != HAL_OK)
-		return 1;
+		return (-1);
 
 	return 0;
 }
@@ -38,7 +38,7 @@ int bmp_waitwrite(struct bmp_device *dev)
 	s = 1;
 
 	for (i = 0; i < BMP_WRITERETRIES; ++i) {
-		if (bmp_read(dev, BMP_STATUS, &s, 1) == 0 && s & 0x1)
+		if (bmp_read(dev, BMP_STATUS, &s, 1) == 0 && !(s & 0x1))
 			break;
 		HAL_Delay(300);
 	}

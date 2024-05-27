@@ -5,11 +5,17 @@
 #include <inttypes.h>
 #include <stdarg.h>
 
+#include <guichan.hpp>
+#include <guichan/sdl.hpp>
+
 #define LOCAL_PORT 8880
 #define REMOTE_PORT 8880
 #define REMOTE_ADDR "192.168.1.39"
 
 #define BUFSZ 1024
+
+SDL_Surface *screen;
+SDL_Renderer *render;
 
 int initsocks(int *lsfd, struct sockaddr_in *rsi)
 {
@@ -53,7 +59,8 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi)
 	return 0;
 }
 
-int sendcmd(int lsfd, const struct sockaddr_in *rsi, char *fmt, ...)
+int sendcmd(int lsfd, const struct sockaddr_in *rsi,
+	const char *fmt, ...)
 {
 	char buf[BUFSZ];
 	va_list va;
@@ -114,6 +121,8 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 			sendcmd(lsfd, rsi, "sl\n");
 		if (event->key.keysym.sym == SDLK_2)
 			sendcmd(lsfd, rsi, "dl\n");
+		if (event->key.keysym.sym == SDLK_SPACE)
+			sendcmd(lsfd, rsi, "c 0.0\n");
 	}
 
 	return 0;
@@ -122,16 +131,14 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 {
 	if (event->type == SDL_CONTROLLERBUTTONUP) {
-		if (event->cbutton.button == SDL_CONTROLLER_BUTTON_A) {
+		if (event->cbutton.button == SDL_CONTROLLER_BUTTON_A)
 			sendcmd(lsfd, rsi, "md\n");
-		}
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_B) {
+		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_B)
 			sendcmd(lsfd, rsi, "pd\n");
-		}
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_X)
 			sendcmd(lsfd, rsi, "vd\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_Y)
-			sendcmd(lsfd, rsi, "c 0.0\n");
+			sendcmd(lsfd, rsi, "bd\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
 			sendcmd(lsfd, rsi, "r\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
@@ -192,7 +199,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "cannot create window\n");
 		exit(1);
 	}
-			
+
+	screen = SDL_GetWindowSurface(win);
+	render = SDL_GetRenderer(win);
+
 	while (1) {
 		SDL_Event event;
 		char buf[BUFSZ];
@@ -214,6 +224,8 @@ int main(int argc, char *argv[])
 			handlepad(&event, lsfd, &rsi);
 			handlekeys(&event, lsfd, &rsi); 
 		}
+
+		SDL_RenderPresent(render);
 	}
 
 	SDL_GameControllerClose(pad);

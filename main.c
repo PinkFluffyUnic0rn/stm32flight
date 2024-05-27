@@ -102,7 +102,7 @@ float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 
 // PID settings and accelerometer correction
-float ax0 = -0.047, ay0 = -0.026, az0 = 0.065;
+float ax0 = 0.072, ay0 = -0.026, az0 = 0.065;
 int speedpid = 0;
 float p = 0.0,		i = 0.0000,	d = 0.0;
 float sp = 0.0,		si = 0.0000,	sd = 0.0;
@@ -264,12 +264,11 @@ int stabilize(float dt)
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
-/*
 	dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
 		sizeof(struct bmp_data));
 
 	dsp_updatelpf(&presslpf, bd.press);
-*/
+
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 		sizeof(struct mpu_data));
 
@@ -696,7 +695,7 @@ int main(void)
 	HAL_Delay(2000);
 
 	initstabilize(0.75);
-
+		
 	loops = 0;
 	mss = ms = 0;
 	while (1) {
@@ -983,8 +982,10 @@ static void mpu_init()
 	mpu_getdriver(drivers + MPU_DEV);
 
 	d.hi2c = &hi2c1;
+	d.devtype = MPU_DEV6050;
 	d.accelscale = MPU_4G;
-	d.gyroscale = MPU_500DPS;
+	d.gyroscale = MPU_1000DPS;
+	d.dlpfwidth = MPU_44DLPF;
 
 	if (drivers[0].initdevice(&d, dev + MPU_DEV) == 0)
 		uartprintf("MPU-6500 initilized\r\n");

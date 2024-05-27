@@ -19,6 +19,21 @@ enum MPU_GYROSCALE {
 	MPU_2000DPS	= 0x18
 };
 
+enum MPU_DLPF {
+	MPU_260DLPF	= 0,
+	MPU_184DLPF	= 1,
+	MPU_94DLPF	= 2,
+	MPU_44DLPF	= 3,
+	MPU_21DLPF	= 4,
+	MPU_10DLPF	= 5,
+	MPU_5DLPF	= 6
+};
+
+enum MPU_DEVTYPE {
+	MPU_DEV6050 = 0x68,
+	MPU_DEV6500 = 0x70
+};
+
 struct mpu_data {
 	int16_t ax, ay, az;
 	int16_t gx, gy, gz;
@@ -29,8 +44,10 @@ struct mpu_data {
 
 struct mpu_device {
 	I2C_HandleTypeDef *hi2c;
+	int devtype;
 	enum MPU_ACCELSCALE accelscale;
 	enum MPU_GYROSCALE gyroscale;
+	enum MPU_DLPF dlpfwidth;
 };
 
 int mpu_getdriver(struct driver *driver);
