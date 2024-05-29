@@ -24,7 +24,7 @@
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
-#define PWM_MAXCOUNT 512
+#define PWM_MAXCOUNT (1024 * 2)
 
 // DSP settings
 #define LPF_COEF 0.05
@@ -102,7 +102,8 @@ float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 
 // PID settings and accelerometer correction
-float ax0 = 0.072, ay0 = -0.026, az0 = 0.065;
+//float ax0 = 0.072, ay0 = -0.026, az0 = 0.065;
+float ax0 = -0.009, ay0 = -0.047, az0 = 0.030;
 int speedpid = 0;
 float p = 0.0,		i = 0.0000,	d = 0.0;
 float sp = 0.0,		si = 0.0000,	sd = 0.0;
@@ -511,14 +512,13 @@ int controlcmd(char *cmd)
 		
 		return 0;
 	}
-	else if (strcmp(toks[0], "sl") == 0) {
+	else if (strcmp(toks[0], "dl") == 0) {
 		speedpid = 0;
 		
 		return 0;
 	}
-	else if (strcmp(toks[0], "dl") == 0) {
-		speedpid = 1
-			;
+	else if (strcmp(toks[0], "sl") == 0) {
+		speedpid = 1;
 		return 0;
 	}
 
@@ -640,19 +640,19 @@ int controlcmd(char *cmd)
 			return 0;
 		}
 	}
-	else if (strcmp(toks[0], "lb") == 0) {
+	else if (strcmp(toks[0], "lbt") == 0) {
 		if (changef(toks[1][0], &lbw, exact, WSTEP) >= 0)
 			return 0;
 	}
-	else if (strcmp(toks[0], "rb") == 0) {
+	else if (strcmp(toks[0], "rbt") == 0) {
 		if (changef(toks[1][0], &rbw, exact, WSTEP) >= 0)
 			return 0;
 	}
-	else if (strcmp(toks[0], "lt") == 0) {
+	else if (strcmp(toks[0], "ltt") == 0) {
 		if (changef(toks[1][0], &ltw, exact, WSTEP) >= 0)
 			return 0;
 	}
-	else if (strcmp(toks[0], "rt") == 0) {
+	else if (strcmp(toks[0], "rtt") == 0) {
 		if (changef(toks[1][0], &rtw, exact, WSTEP) >= 0)
 			return 0;
 	}

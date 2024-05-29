@@ -4,13 +4,12 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdarg.h>
-
-#include <guichan.hpp>
-#include <guichan/sdl.hpp>
+#include <unistd.h>
 
 #define LOCAL_PORT 8880
 #define REMOTE_PORT 8880
-#define REMOTE_ADDR "192.168.1.39"
+//#define REMOTE_ADDR "192.168.1.39"
+#define REMOTE_ADDR "192.168.1.49"
 
 #define BUFSZ 1024
 
@@ -141,8 +140,11 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 			sendcmd(lsfd, rsi, "bd\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
 			sendcmd(lsfd, rsi, "r\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
+		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) {
 			sendcmd(lsfd, rsi, "e\n");
+			//usleep(50);
+			//sendcmd(lsfd, rsi, "rtt s 1.1\n");
+		}
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
 			sendcmd(lsfd, rsi, "t i\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
@@ -198,6 +200,21 @@ int main(int argc, char *argv[])
 		SDL_WINDOWPOS_UNDEFINED, 1000, 500, 0)) == NULL) {
 		fprintf(stderr, "cannot create window\n");
 		exit(1);
+	}
+
+	if (argc > 1) {
+		FILE *f;
+		char s[256];
+		if ((f = fopen(argv[1], "r")) == NULL) {
+			fprintf(stderr, "cannot open file %s\n",
+				argv[1]);
+			exit(1);
+		}
+
+		while (fgets(s, 256, f) != NULL) {
+			sendcmd(lsfd, &rsi, s);
+			usleep(100);
+		}
 	}
 
 	screen = SDL_GetWindowSurface(win);
