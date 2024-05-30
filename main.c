@@ -102,7 +102,6 @@ float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 
 // PID settings and accelerometer correction
-//float ax0 = 0.072, ay0 = -0.026, az0 = 0.065;
 float ax0 = -0.009, ay0 = -0.047, az0 = 0.030;
 int speedpid = 0;
 float p = 0.0,		i = 0.0000,	d = 0.0;
@@ -350,64 +349,6 @@ int changef(char cmd, float *f, float exact, float step)
 
 	return 0;
 }
-
-// info commands:
-// 	md -- mpu6500 data
-// 	bd -- bmp280 data
-// 	vd -- control values
-//
-// control commands:
-// 	r -- turn off motors
-// 	e -- turn on motors
-// 	sl -- switch to single PID loop mode
-// 	dl -- switch to dobule PID loop
-// 	c [altitude] -- recalibrate
-
-// value commands:
-//	t s [val] -- set exact thrust value
-//	t [i|d] -- increase/decrease thrust
-//
-//	pt [i|d] -- increase/decrease pitch target
-//	pt [val] -- set exact pitch target
-//	rt [i|d] -- increase/decrease roll target
-//	rt [val] -- set exact roll target
-//	yt [i|d] -- increase/decrease yaw target
-//	yt [val] -- set exact yaw target
-//
-//	xc [i|d] -- increase/decrease X accelerometer correction
-//	xc [val] -- set exact X accelerometer correction
-//	xc [i|d] -- increase/decrease Y accelerometer correction
-//	yc [val] -- set exact Y accelerometer correction
-//	xc [i|d] -- increase/decrease Z accelerometer correction
-//	zc [val] -- set exact Z accelerometer correction
-//
-//	p s [val] -- set exact position pid P value
-//	p [i|d] -- increase/decrease position pid P value
-//
-//	i s [val] -- set exact position pid I value
-//	i [i|d] -- increase/decrease position pid I value
-//
-//	d s [val] -- set exact position pid D value
-//	d [i|d] -- increase/decrease position pid D value
-//
-//	sp s [val] -- set exact speed pid P value
-//	sp [i|d] -- increase/decrease position pid P value
-//	
-//	si s [val] -- set exact speed pid I value
-//	si [i|d] -- increase/decrease position pid I value
-//	
-//	sd s [val] -- set exact speed pid D value
-//	sd [i|d] -- increase/decrease position pid D value
-//
-//	yp s [val] -- set exact yaw pid P value
-//	yp [i|d] -- increase/decrease position pid P value
-//	
-//	yi s [val] -- set exact yaw pid I value
-//	yi [i|d] -- increase/decrease position pid I value
-//	
-//	yd s [val] -- set exact yaw pid D value
-//	yd [i|d] -- increase/decrease position pid D value
-
 
 int controlcmd(char *cmd)
 {
