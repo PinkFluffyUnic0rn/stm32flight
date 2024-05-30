@@ -140,11 +140,8 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 			sendcmd(lsfd, rsi, "bd\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
 			sendcmd(lsfd, rsi, "r\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) {
+		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
 			sendcmd(lsfd, rsi, "e\n");
-			//usleep(50);
-			//sendcmd(lsfd, rsi, "rtt s 1.1\n");
-		}
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
 			sendcmd(lsfd, rsi, "t i\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
