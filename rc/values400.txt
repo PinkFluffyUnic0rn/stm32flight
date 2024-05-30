@@ -1,0 +1,12 @@
+p s 1.700
+i s 0.005
+d s 0.05
+sp s 0.500
+si s 0.004
+sd s 0.00
+yp s -0.300
+yi s 0.0
+yd s 0.0
+yc s 0.0
+xc s 0.1
+dl
