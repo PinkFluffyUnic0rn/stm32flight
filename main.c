@@ -24,7 +24,7 @@
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
-#define PWM_MAXCOUNT (1024 * 2)
+#define PWM_MAXCOUNT 2048
 
 // DSP settings
 #define LPF_COEF 0.05
@@ -102,7 +102,7 @@ float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 
 // PID settings and accelerometer correction
-float ax0 = -0.009, ay0 = 0.0, az0 = 0.030;
+float ax0 = 0.000, ay0 = 0.0, az0 = 0.0;
 int speedpid = 0;
 float p = 0.0,		i = 0.0000,	d = 0.0;
 float sp = 0.0,		si = 0.0000,	sd = 0.0;
@@ -635,7 +635,7 @@ int main(void)
 	
 	HAL_Delay(2000);
 
-	initstabilize(0.75);
+	initstabilize(0.0);
 		
 	loops = 0;
 	mss = ms = 0;

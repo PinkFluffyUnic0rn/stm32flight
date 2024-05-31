@@ -9,4 +9,5 @@ yi s 0.0
 yd s 0.0
 yc s 0.09
 xc s 0.09
+zc s 0.03
 dl
