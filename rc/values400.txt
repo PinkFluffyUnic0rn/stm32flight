@@ -7,7 +7,7 @@ sd s 0.00
 yp s -0.300
 yi s 0.0
 yd s 0.0
-yc s 0.05
+yc s -0.03
 xc s 0.09
 zc s 0.03
 dl

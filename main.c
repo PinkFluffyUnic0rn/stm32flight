@@ -24,11 +24,10 @@
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
-#define PWM_MAXCOUNT 2048
+#define PWM_MAXCOUNT 20000
 
 // DSP settings
 #define LPF_COEF 0.05
-#define COMP_COEF 0.98
 #define TSTEP 0.01
 #define PTSTEP 0.1
 #define RTSTEP 0.1
@@ -61,6 +60,7 @@ static void tim2_init();
 static void adc1_init(void);
 static void usart1_init();
 static void usart2_init();
+static void esc_init();
 static void mpu_init();
 static void bmp_init();
 static void espdev_init();
@@ -104,6 +104,7 @@ float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 // PID settings and accelerometer correction
 float ax0 = 0.000, ay0 = 0.0, az0 = 0.0;
 int speedpid = 0;
+float cf = 0.98;
 float p = 0.0,		i = 0.0000,	d = 0.0;
 float sp = 0.0,		si = 0.0000,	sd = 0.0;
 float ysp = 0.0,	ysi = 0.0000,	ysd = 0.0;
@@ -196,13 +197,11 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 	float *gy, float *gz)
 {
 	struct mpu_data md;
-	float axt, ayt, azt;
-	float gxt, gyt, gzt;
+	float axt, ayt, azt, gxt, gyt, gzt;
 	int i;
 
-	axt = ayt = azt = 0;
-	gxt = gyt = gzt = 0;
-	for (i = 0; i < 100; ++i) {
+	axt = ayt = azt = gxt = gyt = gzt = 0;
+	for (i = 0; i < 250; ++i) {
 		dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 			sizeof(struct mpu_data));
 
@@ -217,13 +216,13 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 		HAL_Delay(10);
 	}
 
-	*gx = gxt / 100.0;
-	*gy = gyt / 100.0;
-	*gz = gzt / 100.0;
+	*gx = gxt / 250.0;
+	*gy = gyt / 250.0;
+	*gz = gzt / 250.0;
 
-	*ax = axt / 100.0;
-	*ay = ayt / 100.0;
-	*az = azt / 100.0;
+	*ax = axt / 250.0;
+	*ay = ayt / 250.0;
+	*az = azt / 250.0;
 
 	return 0;
 }
@@ -238,8 +237,8 @@ int initstabilize(float alt)
 
 	averageposition(&ax, &ay, &az, &gx0, &gy0, &gz0);
 
-	dsp_initcompl(&pitchcompl, COMP_COEF);
-	dsp_initcompl(&rollcompl, COMP_COEF);
+	dsp_initcompl(&pitchcompl, cf);
+	dsp_initcompl(&rollcompl, cf);
 
 	dsp_initpidval(&pitchpv, p, i, d, 0.0);
 	dsp_initpidval(&rollpv, p, i, d, 0.0);
@@ -255,46 +254,48 @@ int initstabilize(float alt)
 
 int stabilize(float dt)
 {
-	struct bmp_data bd;
+//	struct bmp_data bd;
 	struct mpu_data md;
 	float lbd, rbd, ltd, rtd;
 	float roll, pitch;
 	float rollcor, pitchcor, yawcor;
-	float asy, asx, asz;
+	float gy, gx, gz;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
-
+/*
 	dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
 		sizeof(struct bmp_data));
 
 	dsp_updatelpf(&presslpf, bd.press);
-
+*/
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 		sizeof(struct mpu_data));
 
-	asy = deg2rad((md.gfy - gy0));
-	asx = deg2rad((md.gfx - gx0));
-	asz = deg2rad((md.gfz - gz0));
+	gy = deg2rad((md.gfy - gy0));
+	gx = deg2rad((md.gfx - gx0));
+	gz = deg2rad((md.gfz - gz0));
 
-	roll = dsp_updatecompl(&rollcompl, asy * dt,
-		-atanf((md.afx - ax0) / (md.afz - az0)));
+	roll = dsp_updatecompl(&rollcompl, gy * dt,
+		atan2f(-md.afx,
+		sqrt(md.afy * md.afy + md.afz * md.afz))) - ax0;
 
-	pitch = dsp_updatecompl(&pitchcompl, asx * dt,
-		atanf((md.afy - ay0) / (md.afz - az0)));
+	pitch = dsp_updatecompl(&pitchcompl, gx * dt,
+		atan2f(md.afy,
+		sqrt(md.afx * md.afx + md.afz * md.afz))) - ay0;
 
 	if (speedpid) {
-		rollcor = dsp_pid(&rollspv, rolltarget, asy, dt);
-		pitchcor = dsp_pid(&pitchspv, pitchtarget, asx, dt);
+		rollcor = dsp_pid(&rollspv, rolltarget, gy, dt);
+		pitchcor = dsp_pid(&pitchspv, pitchtarget, gx, dt);
 	}
 	else {
 		rollcor = dsp_pid(&rollpv, rolltarget, roll, dt);
 		pitchcor = dsp_pid(&pitchpv, pitchtarget, pitch, dt);
 
-		rollcor = dsp_pid(&rollspv, rollcor, asy, dt);
-		pitchcor = dsp_pid(&pitchspv, pitchcor, asx, dt);
+		rollcor = dsp_pid(&rollspv, rollcor, gy, dt);
+		pitchcor = dsp_pid(&pitchspv, pitchcor, gx, dt);
 	}
 		
-	yawcor = dsp_pid(&yawspv, yawtarget, asz, dt);
+	yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
 	
 	lbd = trimuf(lbw * (thrust + 0.5 * rollcor
 		- 0.5 * pitchcor + 0.5 * yawcor));
@@ -305,26 +306,13 @@ int stabilize(float dt)
 	rtd = trimuf(rtw * (thrust - 0.5 * rollcor
 		+ 0.5 * pitchcor + 0.5 * yawcor));
 
-	TIM1->CCR1 = (uint16_t) (ltd * (float) PWM_MAXCOUNT);
-	TIM1->CCR2 = (uint16_t) (rtd * (float) PWM_MAXCOUNT);
-	TIM1->CCR3 = (uint16_t) (rbd * (float) PWM_MAXCOUNT);
-	TIM1->CCR4 = (uint16_t) (lbd * (float) PWM_MAXCOUNT);
+
+	TIM1->CCR1 = (uint16_t) ((ltd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
+	TIM1->CCR2 = (uint16_t) ((rtd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
+	TIM1->CCR3 = (uint16_t) ((rbd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
+	TIM1->CCR4 = (uint16_t) ((lbd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
 
 	return 0;
-}
-
-int rfm12bcmd(uint16_t cmd)
-{
-	uint8_t sbuf[4], gbuf[2];
-
-	sbuf[0] = cmd & 0xff;
-	sbuf[1] = cmd >> 8;
-
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	HAL_SPI_TransmitReceive(&hspi1, sbuf, gbuf, 1, 5000);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-
-	return ((gbuf[1] << 8) & (gbuf[0]));
 }
 
 int parsecommand(char **toks, int maxtoks, char *data)
@@ -369,9 +357,8 @@ int controlcmd(char *cmd)
 			sizeof(struct mpu_data));
 
 		sprintf(s, "%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
-			"accel: ", (double) (md.afx - ax0),
-			(double) (md.afy - ay0),
-			(double) (md.afz - az0));
+			"accel: ", (double) md.afx, (double) md.afy,
+			(double) md.afz);
 		sprintf(s + strlen(s),
 			"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
 			"gyro: ", (double) deg2rad(md.gfx - gx0),
@@ -380,8 +367,12 @@ int controlcmd(char *cmd)
 	
 		sprintf(s + strlen(s),
 			"roll: %0.3f; pitch: %0.3f\n\r",
-			(double) dsp_getcompl(&rollcompl),
-			(double) dsp_getcompl(&pitchcompl));
+			(double) (dsp_getcompl(&rollcompl) - ax0),
+			(double) (dsp_getcompl(&pitchcompl) - ay0));
+
+		sprintf(s + strlen(s),
+			"battery: %0.3f\n\r",
+			getadcv(&hadc1) / (double) 0xfff * (double) 6.6);
 
 		esp_send(&espdev, s);
 	
@@ -413,6 +404,8 @@ int controlcmd(char *cmd)
 			"lb: %.1f; rb: %.1f; lt: %.1f; rt: %.1f\r\n",
 			(double) lbw, (double) rbw,
 			(double) ltw, (double) rtw);
+	
+		sprintf(s + strlen(s), "cf: %.5f\r\n", (double) cf);
 		
 		sprintf(s + strlen(s), "loops count: %d\r\n",
 			loopscount);
@@ -570,7 +563,7 @@ int controlcmd(char *cmd)
 	else if (strcmp(toks[0], "yi") == 0) {
 		if (changef(toks[1][0], &ysi, exact, ISTEP) >= 0) {
 			dsp_setpid(&yawspv, ysp, ysi, ysd);
-			
+
 			return 0;
 		}
 	}
@@ -597,7 +590,14 @@ int controlcmd(char *cmd)
 		if (changef(toks[1][0], &rtw, exact, WSTEP) >= 0)
 			return 0;
 	}
-		
+	else if (strcmp(toks[0], "cf") == 0) {
+		if (changef(toks[1][0], &cf, exact, WSTEP) >= 0)
+			return 0;
+	
+		dsp_initcompl(&pitchcompl, cf);
+		dsp_initcompl(&rollcompl, cf);
+	}	
+
 	esp_send(&espdev, "Unknown command\r\n");
 
 	return (-1);
@@ -624,6 +624,7 @@ int main(void)
 	adc1_init();
 	usart1_init();
 	usart2_init();
+	esc_init();
 	bmp_init();
 	mpu_init();
 	espdev_init();
@@ -632,11 +633,9 @@ int main(void)
 		led0(1);
 	else if (espdev.status == ESP_CONNECTED)
 		led1(1);
-	
-	HAL_Delay(2000);
 
 	initstabilize(0.0);
-		
+
 	loops = 0;
 	mss = ms = 0;
 	while (1) {
@@ -648,7 +647,7 @@ int main(void)
 		if (esp_poll(&espdev, cmd) >= 0)
 			controlcmd(cmd);
 
-		if (ms > TICKSPERSEC/250) {
+		if (ms > TICKSPERSEC/500) {
 			double dt;
 
 			dt = (float) ms / (float) TICKSPERSEC;
@@ -659,10 +658,7 @@ int main(void)
 			++loops;
 		}
 	
-
 		if (mss > TICKSPERSEC/1) {
-		//	uartprintf("loops performed: %d\r\n", loops);
-
 			loopscount = loops;
 
 			mss = loops = 0;
@@ -774,7 +770,7 @@ static void tim1_init(void)
 	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
 	htim1.Instance = TIM1;
-	htim1.Init.Prescaler = 0;
+	htim1.Init.Prescaler = PRESCALER - 1;
 	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim1.Init.Period = PWM_MAXCOUNT;
 	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -914,6 +910,13 @@ static void usart2_init()
 
 	if (HAL_UART_Init(&huart2) != HAL_OK)
 		error_handler();
+}
+
+static void esc_init()
+{
+	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4
+		= (uint16_t) (0.05 * (float) PWM_MAXCOUNT);
+	HAL_Delay(2000);
 }
 
 static void mpu_init()
