@@ -254,7 +254,7 @@ int initstabilize(float alt)
 
 int stabilize(float dt)
 {
-//	struct bmp_data bd;
+	struct bmp_data bd;
 	struct mpu_data md;
 	float lbd, rbd, ltd, rtd;
 	float roll, pitch;
@@ -262,12 +262,12 @@ int stabilize(float dt)
 	float gy, gx, gz;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
-/*
+
 	dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
 		sizeof(struct bmp_data));
 
 	dsp_updatelpf(&presslpf, bd.press);
-*/
+
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 		sizeof(struct mpu_data));
 
@@ -305,7 +305,6 @@ int stabilize(float dt)
 		+ 0.5 * pitchcor - 0.5 * yawcor));
 	rtd = trimuf(rtw * (thrust - 0.5 * rollcor
 		+ 0.5 * pitchcor + 0.5 * yawcor));
-
 
 	TIM1->CCR1 = (uint16_t) ((ltd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
 	TIM1->CCR2 = (uint16_t) ((rtd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
@@ -647,11 +646,11 @@ int main(void)
 		if (esp_poll(&espdev, cmd) >= 0)
 			controlcmd(cmd);
 
-		if (ms > TICKSPERSEC/500) {
+		if (ms > TICKSPERSEC/1000) {
 			double dt;
 
 			dt = (float) ms / (float) TICKSPERSEC;
-			
+		
 			ms = 0;
 
 			stabilize(dt);
@@ -664,8 +663,8 @@ int main(void)
 			mss = loops = 0;
 		}
 
-		while ((c = __HAL_TIM_GET_COUNTER(&htim2)) < 100);
-		
+		c = __HAL_TIM_GET_COUNTER(&htim2);
+
 		ms += c;
 		mss += c;
 	}
@@ -731,7 +730,7 @@ static void dma_init(void)
 static void i2c_init(void)
 {
 	hi2c1.Instance = I2C1;
-	hi2c1.Init.ClockSpeed = 100000;
+	hi2c1.Init.ClockSpeed = 400000;
 	hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
 	hi2c1.Init.OwnAddress1 = 0;
 	hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -929,7 +928,7 @@ static void mpu_init()
 	d.devtype = MPU_DEV6050;
 	d.accelscale = MPU_4G;
 	d.gyroscale = MPU_1000DPS;
-	d.dlpfwidth = MPU_44DLPF;
+	d.dlpfwidth = MPU_10DLPF;
 
 	if (drivers[0].initdevice(&d, dev + MPU_DEV) == 0)
 		uartprintf("MPU-6500 initilized\r\n");
