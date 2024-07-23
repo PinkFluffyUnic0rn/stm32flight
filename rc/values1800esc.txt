@@ -1,13 +1,13 @@
-p s 2.5
+p s 3.0
 i s 0.00001
 d s 0.0001
-sp s 0.2
+sp s 0.1
 si s 0.0
 sd s 0.0
-yp s 0.3
+yp s 0.5
 yi s 0.0
 yd s 0.0
-xc s -0.003
-yc s -0.014
-cf s 0.998
+xc s -0.03
+yc s -0.03
+tc s 0.5
 dl

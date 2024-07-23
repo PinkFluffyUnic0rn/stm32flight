@@ -1,21 +1,21 @@
 STM32 Flight controller
 =========================
 
-Implementing flight controller for a small quadcopter with coreless 8520
-dc motors.
+Implementing flight controller for a small quadcopter.
 
 Parameters
 ==========
- * Motors: 8520
- * Props: 65mm
+ * Motors: 1106
+ * Props: 4045, ~100mm
 
 Weight
 ======
- * PCB: ~33g
- * Motors: 20g
- * Battery: 12g (400mAh), 27g (1800 mAh)
- * Frame: ~15 (plywood)
- * Total weight: ~80g (400 mAh battery), ~100g (1800 mAh battery)
+ * PCB and ESCs: ~30g
+ * Motors: 32g
+ * Battery: 28g (1800 mAh)
+ * Frame: ~30g (plywood)
+ * Wires: ~30g
+ * Total weight: 150g 
 
 Devices
 =======
@@ -49,3 +49,4 @@ value commands:
  * `(p | i | d) (i | d | s {val})` -- increase/decrease/set position pid P/I/D value
  * `s(p | i | d) (i | d | s {val})` -- increase/decrease/set speed pid P/I/D value
  * `y(p | i | d) (i | d | s {val})` -- increase/decrease/set yaw pid P/I/D value
+ * `tc (i | d | s {val})` -- increate/decrease/set complementary filter's time constant

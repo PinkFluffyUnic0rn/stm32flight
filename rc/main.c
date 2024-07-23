@@ -5,6 +5,8 @@
 #include <inttypes.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <limits.h>
+#include <libgen.h>
 
 #define LOCAL_PORT 8880
 #define REMOTE_PORT 8880
@@ -127,6 +129,8 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 	return 0;
 }
 
+#define AXISSCALE (M_PI / 6.0)
+
 int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 {
 	if (event->type == SDL_CONTROLLERBUTTONUP) {
@@ -157,9 +161,9 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
 			sendcmd(lsfd, rsi, "yt s %f\n", -event->caxis.value / 32767.0 * M_PI);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
-			sendcmd(lsfd, rsi, "pt s %f\n", -event->caxis.value / 32767.0 / 2.0);
+			sendcmd(lsfd, rsi, "pt s %f\n", -event->caxis.value / 32767.0 * AXISSCALE);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
-			sendcmd(lsfd, rsi, "rt s %f\n", event->caxis.value / 32767.0 / 2.0);
+			sendcmd(lsfd, rsi, "rt s %f\n", event->caxis.value / 32767.0 * AXISSCALE);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX) {
 		
 		} else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY)
@@ -174,11 +178,14 @@ int main(int argc, char *argv[])
 	SDL_Window *win;
 	SDL_GameController *pad;
 	struct sockaddr_in rsi;
+	char gcpath[PATH_MAX];
 	int lsfd;
 
 	initsocks(&lsfd, &rsi);
 
-	if (SDL_GameControllerAddMappingsFromFile("gamecontrollerdb.txt") < 0) {
+	sprintf(gcpath, "%s/gamecontrollerdb.txt", dirname(argv[0]));
+
+	if (SDL_GameControllerAddMappingsFromFile(gcpath) < 0) {
 		fprintf(stderr, "cannot open controller mapping\n");
 		exit(1);
 	}

@@ -56,10 +56,10 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt)
 	return v;
 }
 
-int dsp_initcompl(struct dsp_compl *comp, float coef)
+int dsp_initcompl(struct dsp_compl *comp, float tc, int freq)
 {
 	comp->s = 0;
-	comp->coef = coef;
+	comp->coef = tc / (tc + 1.0 / (float) freq);
 
 	return 0;
 }
@@ -71,7 +71,7 @@ float dsp_getcompl(struct dsp_compl *comp)
 
 float dsp_updatecompl(struct dsp_compl *comp, float v0, float v1)
 {
-	comp->s = comp->coef * (comp->s + v0) + (1 - comp->coef) * v1;
+	comp->s = comp->coef * (comp->s + v0) + (1.0 - comp->coef) * v1;
 
 	return comp->s;
 }

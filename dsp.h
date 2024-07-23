@@ -34,7 +34,7 @@ float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd);
 
 float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt);
 
-int dsp_initcompl(struct dsp_compl *comp, float coef);
+int dsp_initcompl(struct dsp_compl *comp, float tc, int freq);//float coef);
 
 float dsp_getcompl(struct dsp_compl *comp);
 

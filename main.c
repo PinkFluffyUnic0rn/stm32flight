@@ -27,6 +27,7 @@
 #define PWM_MAXCOUNT 20000
 
 // DSP settings
+#define PID_FREQ 1000
 #define LPF_COEF 0.05
 #define TSTEP 0.01
 #define PTSTEP 0.1
@@ -104,7 +105,7 @@ float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 // PID settings and accelerometer correction
 float ax0 = 0.000, ay0 = 0.0, az0 = 0.0;
 int speedpid = 0;
-float cf = 0.98;
+float tcoef = 0.5;
 float p = 0.0,		i = 0.0000,	d = 0.0;
 float sp = 0.0,		si = 0.0000,	sd = 0.0;
 float ysp = 0.0,	ysi = 0.0000,	ysd = 0.0;
@@ -237,8 +238,8 @@ int initstabilize(float alt)
 
 	averageposition(&ax, &ay, &az, &gx0, &gy0, &gz0);
 
-	dsp_initcompl(&pitchcompl, cf);
-	dsp_initcompl(&rollcompl, cf);
+	dsp_initcompl(&pitchcompl, tcoef, PID_FREQ);
+	dsp_initcompl(&rollcompl, tcoef, PID_FREQ);
 
 	dsp_initpidval(&pitchpv, p, i, d, 0.0);
 	dsp_initpidval(&rollpv, p, i, d, 0.0);
@@ -404,7 +405,8 @@ int controlcmd(char *cmd)
 			(double) lbw, (double) rbw,
 			(double) ltw, (double) rtw);
 	
-		sprintf(s + strlen(s), "cf: %.5f\r\n", (double) cf);
+		sprintf(s + strlen(s), "cf: %.6f\r\n", (double) pitchcompl.coef);
+		sprintf(s + strlen(s), "tc: %.2f\r\n", (double) tcoef);
 		
 		sprintf(s + strlen(s), "loops count: %d\r\n",
 			loopscount);
@@ -589,12 +591,13 @@ int controlcmd(char *cmd)
 		if (changef(toks[1][0], &rtw, exact, WSTEP) >= 0)
 			return 0;
 	}
-	else if (strcmp(toks[0], "cf") == 0) {
-		if (changef(toks[1][0], &cf, exact, WSTEP) >= 0)
+	else if (strcmp(toks[0], "tc") == 0) {
+		if (changef(toks[1][0], &tcoef, exact, WSTEP) >= 0) {
+			dsp_initcompl(&pitchcompl, tcoef, PID_FREQ);
+			dsp_initcompl(&rollcompl, tcoef, PID_FREQ);	
+		
 			return 0;
-	
-		dsp_initcompl(&pitchcompl, cf);
-		dsp_initcompl(&rollcompl, cf);
+		}
 	}	
 
 	esp_send(&espdev, "Unknown command\r\n");
@@ -646,7 +649,7 @@ int main(void)
 		if (esp_poll(&espdev, cmd) >= 0)
 			controlcmd(cmd);
 
-		if (ms > TICKSPERSEC/1000) {
+		if (ms > TICKSPERSEC/PID_FREQ) {
 			double dt;
 
 			dt = (float) ms / (float) TICKSPERSEC;
