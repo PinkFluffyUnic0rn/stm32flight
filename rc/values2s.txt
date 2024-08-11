@@ -1,10 +1,10 @@
-p s 3.0
-i s 0.000001
-d s 0.00001
-sp s 0.1
+p s 2.5
+i s 0.0005
+d s 0.001
+sp s 0.03
 si s 0.0
 sd s 0.0
-yp s 0.7
+yp s 0.2
 yi s 0.0
 yd s 0.0
 xc s 0.0

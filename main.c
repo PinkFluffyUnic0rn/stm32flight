@@ -24,7 +24,8 @@
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
-#define PWM_MAXCOUNT 20000
+#define PWM_MAXCOUNT 2500
+//#define PWM_MAXCOUNT 20000
 
 // DSP settings
 #define PID_FREQ 1000
