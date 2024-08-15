@@ -1,9 +1,11 @@
+#include <math.h>
+
 #include "dsp.h"
 
-int dsp_initlpf(struct dsp_lpf *ir, float coef)
+int dsp_initlpf(struct dsp_lpf *ir, float tcoef, int freq)
 {
 	ir->avg = 0.0;
-	ir->alpha = coef;
+	ir->alpha = exp(-1.0 / (float) freq / tcoef);
 
 	return 0;
 }
@@ -15,7 +17,7 @@ float dsp_getlpf(struct dsp_lpf *ir)
 
 float dsp_updatelpf(struct dsp_lpf *ir, float v)
 {
-	ir->avg = ir->alpha * v + (1 - ir->alpha) * ir->avg;
+	ir->avg = ir->alpha * ir->avg + (1 - ir->alpha) * v;
 
 	return ir->avg;
 }

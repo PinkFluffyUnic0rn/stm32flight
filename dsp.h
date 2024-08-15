@@ -21,7 +21,7 @@ struct dsp_compl {
 	float coef;
 };
 
-int dsp_initlpf(struct dsp_lpf *ir, float coef);
+int dsp_initlpf(struct dsp_lpf *ir, float tcoef, int freq);
 
 float dsp_getlpf(struct dsp_lpf *ir);
 

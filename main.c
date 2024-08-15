@@ -25,12 +25,9 @@
 
 // PWM settings
 #define PWM_MAXCOUNT 2500
-//#define PWM_MAXCOUNT 20000
 
 // DSP settings
 #define PID_FREQ 1000
-#define LPF_COEF 0.05
-#define ZLPF_COEF 0.995
 #define TSTEP 0.01
 #define PTSTEP 0.1
 #define RTSTEP 0.1
@@ -90,8 +87,8 @@ struct device dev[4];
 struct esp_device espdev;
 
 // DSP contexts
-struct dsp_lpf presslpf;
 struct dsp_lpf zlpf;
+struct dsp_lpf presslpf;
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
 struct dsp_pidval pitchpv;
@@ -100,6 +97,7 @@ struct dsp_pidval pitchspv;
 struct dsp_pidval rollspv;
 struct dsp_pidval yawspv;
 struct dsp_pidval zspv;
+struct dsp_pidval ppv;
 
 // control values
 float thrust = 0.0;
@@ -110,10 +108,13 @@ float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 float ax0 = 0.000, ay0 = 0.0, az0 = 0.0;
 int speedpid = 0;
 float tcoef = 0.5;
+float ztcoef = 0.2;
+float ptcoef = 0.5;
 float p = 0.0,		i = 0.0000,	d = 0.0;
 float sp = 0.0,		si = 0.0000,	sd = 0.0;
 float ysp = 0.0,	ysi = 0.0000,	ysd = 0.0;
 float zsp = 0.0,	zsi = 0.0000,	zsd = 0.0;
+float psp = 0.0,	psi = 0.0000,	psd = 0.0;
 
 int loopscount = 0;
 
@@ -253,9 +254,10 @@ int initstabilize(float alt)
 	dsp_initpidval(&rollspv, sp, si, sd, 0.0);
 	dsp_initpidval(&yawspv, ysp, ysi, ysd, 0.0);
 	dsp_initpidval(&zspv, zsp, zsi, zsd, 0.0);
+	dsp_initpidval(&ppv, psp, psi, psd, 0.0);
 
-	dsp_initlpf(&presslpf, LPF_COEF);
-	dsp_initlpf(&zlpf, ZLPF_COEF);
+	dsp_initlpf(&presslpf, ptcoef, PID_FREQ);
+	dsp_initlpf(&zlpf, ztcoef, PID_FREQ);
 
 	return 0;
 }
@@ -307,8 +309,13 @@ int stabilize(float dt)
 		
 	yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
 
+//	thrustcor = dsp_pid(&ppv, thrust * 2.5,
+//		getalt(press0, dsp_getlpf(&presslpf)), dt);
+//	thrustcor = dsp_pid(&zspv, thrustcor + 1.0, dsp_getlpf(&zlpf), dt);
+
+
 	thrustcor = dsp_pid(&zspv, thrust + 1.0, dsp_getlpf(&zlpf), dt);
-	
+
 	lbd = trimuf(lbw * (thrustcor + 0.5 * rollcor
 		- 0.5 * pitchcor + 0.5 * yawcor));
 	rbd = trimuf(rbw * (thrustcor - 0.5 * rollcor
@@ -384,10 +391,10 @@ int controlcmd(char *cmd)
 		sprintf(s + strlen(s),
 			"battery: %0.3f\n\r",
 			getadcv(&hadc1) / (double) 0xfff * (double) 6.6);
-
-		sprintf(s, "z accel: %f\r\n",
+/*
+		sprintf(s + strlen(s), "z accel: %f\r\n",
 			(double) dsp_getlpf(&zlpf));
-
+*/
 		esp_send(&espdev, s);
 	
 		return 0;
@@ -413,14 +420,13 @@ int controlcmd(char *cmd)
 			(double) rolltarget,
 			(double) pitchtarget,
 			(double) yawtarget);
-
-		sprintf(s + strlen(s),
-			"lb: %.1f; rb: %.1f; lt: %.1f; rt: %.1f\r\n",
-			(double) lbw, (double) rbw,
-			(double) ltw, (double) rtw);
 	
-		sprintf(s + strlen(s), "cf: %.6f\r\n", (double) pitchcompl.coef);
-		sprintf(s + strlen(s), "tc: %.2f\r\n", (double) tcoef);
+		sprintf(s + strlen(s), "cf: %.6f\r\n",
+			(double) pitchcompl.coef);
+		sprintf(s + strlen(s), "accel cf: %.6f\r\n",
+			(double) zlpf.alpha);
+		sprintf(s + strlen(s), "pressure cf: %.6f\r\n",
+			(double) presslpf.alpha);
 		
 		sprintf(s + strlen(s), "loops count: %d\r\n",
 			loopscount);
@@ -446,8 +452,11 @@ int controlcmd(char *cmd)
 		sprintf(s + strlen(s),
 			"thrust PID: %.3f,%.3f,%.3f\r\n",
 			(double) zsp, (double) zsi, (double) zsd);
-
-
+/*
+		sprintf(s + strlen(s),
+			"pressure PID: %.3f,%.3f,%.3f\r\n",
+			(double) psp, (double) psi, (double) psd);
+*/
 		sprintf(s + strlen(s), "%s mode\r\n",
 			speedpid ? "single" : "dual");
 
@@ -615,6 +624,29 @@ int controlcmd(char *cmd)
 			return 0;
 		}
 	}
+
+	else if (strcmp(toks[0], "pp") == 0) {
+		if (changef(toks[1][0], &psp, exact, PSTEP) >= 0) {
+			dsp_setpid(&ppv, psp, psi, psd);
+
+			return 0;
+		}
+	}
+	else if (strcmp(toks[0], "pi") == 0) {
+		if (changef(toks[1][0], &psi, exact, ISTEP) >= 0) {
+			dsp_setpid(&ppv, psp, psi, psd);
+
+			return 0;
+		}
+	}
+	else if (strcmp(toks[0], "pd") == 0) {
+		if (changef(toks[1][0], &psd, exact, DSTEP) >= 0) {
+			dsp_setpid(&ppv, psp, psi, psd);
+			
+			return 0;
+		}
+	}
+
 	else if (strcmp(toks[0], "lbt") == 0) {
 		if (changef(toks[1][0], &lbw, exact, WSTEP) >= 0)
 			return 0;
@@ -638,7 +670,21 @@ int controlcmd(char *cmd)
 		
 			return 0;
 		}
+	}
+	else if (strcmp(toks[0], "ptc") == 0) {
+		if (changef(toks[1][0], &ptcoef, exact, WSTEP) >= 0) {
+			dsp_initlpf(&presslpf, ptcoef, PID_FREQ);
+
+			return 0;
+		}
 	}	
+	else if (strcmp(toks[0], "ztc") == 0) {
+		if (changef(toks[1][0], &ztcoef, exact, WSTEP) >= 0) {
+			dsp_initlpf(&zlpf, ztcoef, PID_FREQ);
+
+			return 0;
+		}
+	}
 
 	esp_send(&espdev, "Unknown command\r\n");
 
