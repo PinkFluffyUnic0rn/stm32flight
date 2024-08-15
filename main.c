@@ -30,6 +30,7 @@
 // DSP settings
 #define PID_FREQ 1000
 #define LPF_COEF 0.05
+#define ZLPF_COEF 0.995
 #define TSTEP 0.01
 #define PTSTEP 0.1
 #define RTSTEP 0.1
@@ -90,6 +91,7 @@ struct esp_device espdev;
 
 // DSP contexts
 struct dsp_lpf presslpf;
+struct dsp_lpf zlpf;
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
 struct dsp_pidval pitchpv;
@@ -97,6 +99,7 @@ struct dsp_pidval rollpv;
 struct dsp_pidval pitchspv;
 struct dsp_pidval rollspv;
 struct dsp_pidval yawspv;
+struct dsp_pidval zspv;
 
 // control values
 float thrust = 0.0;
@@ -110,6 +113,7 @@ float tcoef = 0.5;
 float p = 0.0,		i = 0.0000,	d = 0.0;
 float sp = 0.0,		si = 0.0000,	sd = 0.0;
 float ysp = 0.0,	ysi = 0.0000,	ysd = 0.0;
+float zsp = 0.0,	zsi = 0.0000,	zsd = 0.0;
 
 int loopscount = 0;
 
@@ -248,8 +252,10 @@ int initstabilize(float alt)
 	dsp_initpidval(&pitchspv, sp, si, sd, 0.0);
 	dsp_initpidval(&rollspv, sp, si, sd, 0.0);
 	dsp_initpidval(&yawspv, ysp, ysi, ysd, 0.0);
+	dsp_initpidval(&zspv, zsp, zsi, zsd, 0.0);
 
 	dsp_initlpf(&presslpf, LPF_COEF);
+	dsp_initlpf(&zlpf, ZLPF_COEF);
 
 	return 0;
 }
@@ -260,7 +266,7 @@ int stabilize(float dt)
 	struct mpu_data md;
 	float lbd, rbd, ltd, rtd;
 	float roll, pitch;
-	float rollcor, pitchcor, yawcor;
+	float rollcor, pitchcor, yawcor, thrustcor;
 	float gy, gx, gz;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
@@ -272,6 +278,8 @@ int stabilize(float dt)
 
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 		sizeof(struct mpu_data));
+	
+	dsp_updatelpf(&zlpf, md.afz);
 
 	gy = deg2rad((md.gfy - gy0));
 	gx = deg2rad((md.gfx - gx0));
@@ -298,14 +306,16 @@ int stabilize(float dt)
 	}
 		
 	yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
+
+	thrustcor = dsp_pid(&zspv, thrust + 1.0, dsp_getlpf(&zlpf), dt);
 	
-	lbd = trimuf(lbw * (thrust + 0.5 * rollcor
+	lbd = trimuf(lbw * (thrustcor + 0.5 * rollcor
 		- 0.5 * pitchcor + 0.5 * yawcor));
-	rbd = trimuf(rbw * (thrust - 0.5 * rollcor
+	rbd = trimuf(rbw * (thrustcor - 0.5 * rollcor
 		- 0.5 * pitchcor - 0.5 * yawcor));
-	ltd = trimuf(ltw * (thrust + 0.5 * rollcor
+	ltd = trimuf(ltw * (thrustcor + 0.5 * rollcor
 		+ 0.5 * pitchcor - 0.5 * yawcor));
-	rtd = trimuf(rtw * (thrust - 0.5 * rollcor
+	rtd = trimuf(rtw * (thrustcor - 0.5 * rollcor
 		+ 0.5 * pitchcor + 0.5 * yawcor));
 
 	TIM1->CCR1 = (uint16_t) ((ltd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
@@ -375,6 +385,9 @@ int controlcmd(char *cmd)
 			"battery: %0.3f\n\r",
 			getadcv(&hadc1) / (double) 0xfff * (double) 6.6);
 
+		sprintf(s, "z accel: %f\r\n",
+			(double) dsp_getlpf(&zlpf));
+
 		esp_send(&espdev, s);
 	
 		return 0;
@@ -430,6 +443,11 @@ int controlcmd(char *cmd)
 			"yaw PID: %.3f,%.3f,%.3f\r\n",
 			(double) ysp, (double) ysi, (double) ysd);
 
+		sprintf(s + strlen(s),
+			"thrust PID: %.3f,%.3f,%.3f\r\n",
+			(double) zsp, (double) zsi, (double) zsd);
+
+
 		sprintf(s + strlen(s), "%s mode\r\n",
 			speedpid ? "single" : "dual");
 
@@ -479,7 +497,7 @@ int controlcmd(char *cmd)
 		exact = atof(toks[2]);
 	}
 
-	if (strcmp(toks[0], "t") == 0) {
+	if (strcmp(toks[0], "tt") == 0) {
 		if (changef(toks[1][0], &thrust, exact, TSTEP) >= 0)
 			return 0;
 	}
@@ -572,6 +590,27 @@ int controlcmd(char *cmd)
 	else if (strcmp(toks[0], "yd") == 0) {
 		if (changef(toks[1][0], &ysd, exact, DSTEP) >= 0) {
 			dsp_setpid(&yawspv, ysp, ysi, ysd);
+			
+			return 0;
+		}
+	}
+	else if (strcmp(toks[0], "tp") == 0) {
+		if (changef(toks[1][0], &zsp, exact, PSTEP) >= 0) {
+			dsp_setpid(&zspv, zsp, zsi, zsd);
+
+			return 0;
+		}
+	}
+	else if (strcmp(toks[0], "ti") == 0) {
+		if (changef(toks[1][0], &zsi, exact, ISTEP) >= 0) {
+			dsp_setpid(&zspv, zsp, zsi, zsd);
+
+			return 0;
+		}
+	}
+	else if (strcmp(toks[0], "td") == 0) {
+		if (changef(toks[1][0], &zsd, exact, DSTEP) >= 0) {
+			dsp_setpid(&zspv, zsp, zsi, zsd);
 			
 			return 0;
 		}

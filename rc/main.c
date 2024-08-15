@@ -147,9 +147,9 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
 			sendcmd(lsfd, rsi, "e\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
-			sendcmd(lsfd, rsi, "t i\n");
+			sendcmd(lsfd, rsi, "tt i\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
-			sendcmd(lsfd, rsi, "t d\n");
+			sendcmd(lsfd, rsi, "tt d\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
 			sendcmd(lsfd, rsi, "p d\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
@@ -167,7 +167,7 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX) {
 		
 		} else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY)
-			sendcmd(lsfd, rsi, "t s %f\n", -event->caxis.value / 32767.0 * 1.0);
+			sendcmd(lsfd, rsi, "tt s %f\n", -event->caxis.value / 32767.0 * 1.0);
 	}
 
 	return 0;

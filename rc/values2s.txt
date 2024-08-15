@@ -1,13 +1,16 @@
 p s 2.5
-i s 0.0005
+i s 0.0003
 d s 0.001
 sp s 0.03
 si s 0.0
 sd s 0.0
-yp s 0.2
+yp s 0.25
 yi s 0.0
 yd s 0.0
-xc s 0.0
-yc s -0.07
+tp s 2.2
+ti s 0.0001
+td s 0.0005
+xc s 0.03
+yc s 0.05
 tc s 0.5
 dl
