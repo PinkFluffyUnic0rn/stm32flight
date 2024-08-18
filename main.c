@@ -10,11 +10,17 @@
 #include "mpu6500.h"
 #include "bmp280.h"
 #include "esp8266.h"
+#include "hmc5883l.h"
 #include "dsp.h"
+
+// Max length for info packet
+// sent back to operator
+#define INFOLEN 512
 
 // device numbers
 #define MPU_DEV 0
 #define BMP_DEV 1
+#define HMC_DEV 2
 
 // timer settings
 #define PRESCALER 16
@@ -28,15 +34,9 @@
 
 // DSP settings
 #define PID_FREQ 1000
-#define TSTEP 0.01
-#define PTSTEP 0.1
-#define RTSTEP 0.1
-#define YTSTEP (0.1 * M_PI)
-#define PSTEP 0.1
-#define ISTEP 0.001
-#define DSTEP 0.001
-#define WSTEP 0.01
-#define CSTEP 0.001
+#define MAGNETIC_DECLANATION 0.3264
+
+#define WIFI_TIMEOUT 3
 
 // Wi-Fi settings:
 // 	define SSID
@@ -44,11 +44,6 @@
 // 	define SERIP
 // 	define SERVPORT
 #include "wifidefs.h"
-
-#define led0(s) HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12,	\
-	(s) ? GPIO_PIN_SET : GPIO_PIN_RESET)
-#define led1(s) HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 	\
-	(s) ? GPIO_PIN_SET : GPIO_PIN_RESET)
 
 void systemclock_config();
 static void gpio_init();
@@ -63,6 +58,7 @@ static void usart2_init();
 static void esc_init();
 static void mpu_init();
 static void bmp_init();
+static void hmc_init();
 static void espdev_init();
 
 ADC_HandleTypeDef hadc1;
@@ -91,10 +87,12 @@ struct dsp_lpf zlpf;
 struct dsp_lpf presslpf;
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
+struct dsp_compl yawcompl;
 struct dsp_pidval pitchpv;
 struct dsp_pidval rollpv;
 struct dsp_pidval pitchspv;
 struct dsp_pidval rollspv;
+struct dsp_pidval yawpv;
 struct dsp_pidval yawspv;
 struct dsp_pidval zspv;
 struct dsp_pidval ppv;
@@ -105,18 +103,20 @@ float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 
 // PID settings and accelerometer correction
-float ax0 = 0.000, ay0 = 0.0, az0 = 0.0;
-int speedpid = 0;
+float ax0 = 0.0, ay0 = 0.0, az0 = 0.0;
+int speedpid = 0, yawspeedpid = 0;
 float tcoef = 0.5;
 float ztcoef = 0.2;
 float ptcoef = 0.5;
 float p = 0.0,		i = 0.0000,	d = 0.0;
 float sp = 0.0,		si = 0.0000,	sd = 0.0;
+float yp = 0.0,		yi = 0.0000,	yd = 0.0;
 float ysp = 0.0,	ysi = 0.0000,	ysd = 0.0;
 float zsp = 0.0,	zsi = 0.0000,	zsd = 0.0;
 float psp = 0.0,	psi = 0.0000,	psd = 0.0;
 
 int loopscount = 0;
+int wifitimeout = WIFI_TIMEOUT;
 
 uint32_t getadcv(ADC_HandleTypeDef *hadc)
 {
@@ -234,18 +234,32 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 	return 0;
 }
 
+float hmc_heading(float p, float r, float x, float y, float z)
+{
+
+	float xc, yc;
+
+	xc = x * cosf(p) + y * sinf(r) * sinf(p)
+		+ z * cosf(r) * sinf(p);
+	yc = y * cosf(r) - z * sinf(r);
+
+	return circf(atan2f(-yc, xc) + MAGNETIC_DECLANATION);
+}
+
 int initstabilize(float alt)
 {
 	float ax, ay, az;
 
 	alt0 = alt;
 
-	press0 = groundpressure(alt);
+	if (dev[BMP_DEV].status == DEVSTATUS_INIT)
+		press0 = groundpressure(alt);
 
 	averageposition(&ax, &ay, &az, &gx0, &gy0, &gz0);
 
 	dsp_initcompl(&pitchcompl, tcoef, PID_FREQ);
 	dsp_initcompl(&rollcompl, tcoef, PID_FREQ);
+	dsp_initcompl(&yawcompl, 5.0, PID_FREQ);
 
 	dsp_initpidval(&pitchpv, p, i, d, 0.0);
 	dsp_initpidval(&rollpv, p, i, d, 0.0);
@@ -253,6 +267,7 @@ int initstabilize(float alt)
 	dsp_initpidval(&pitchspv, sp, si, sd, 0.0);
 	dsp_initpidval(&rollspv, sp, si, sd, 0.0);
 	dsp_initpidval(&yawspv, ysp, ysi, ysd, 0.0);
+	dsp_initpidval(&yawpv, yp, yi, yd, 0.0);
 	dsp_initpidval(&zspv, zsp, zsi, zsd, 0.0);
 	dsp_initpidval(&ppv, psp, psi, psd, 0.0);
 
@@ -266,17 +281,20 @@ int stabilize(float dt)
 {
 	struct bmp_data bd;
 	struct mpu_data md;
+	struct hmc_data hd;
 	float lbd, rbd, ltd, rtd;
-	float roll, pitch;
+	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
 	float gy, gx, gz;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
-	dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
-		sizeof(struct bmp_data));
+	if (dev[BMP_DEV].status == DEVSTATUS_INIT) {
+		dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
+			sizeof(struct bmp_data));
 
-	dsp_updatelpf(&presslpf, bd.press);
+		dsp_updatelpf(&presslpf, bd.press);
+	}
 
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 		sizeof(struct mpu_data));
@@ -295,6 +313,18 @@ int stabilize(float dt)
 		atan2f(md.afy,
 		sqrt(md.afx * md.afx + md.afz * md.afz))) - ay0;
 
+	float h;
+
+	dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+		sizeof(struct hmc_data));
+
+	h = hmc_heading(roll, pitch, hd.fx, hd.fy, hd.fz);
+
+	dsp_updatecompl(&yawcompl, gz * dt, h);
+	yawcompl.s = circf(yawcompl.s);
+
+	yaw = circf(dsp_getcompl(&yawcompl) - az0);
+
 	if (speedpid) {
 		rollcor = dsp_pid(&rollspv, rolltarget, gy, dt);
 		pitchcor = dsp_pid(&pitchspv, pitchtarget, gx, dt);
@@ -306,13 +336,13 @@ int stabilize(float dt)
 		rollcor = dsp_pid(&rollspv, rollcor, gy, dt);
 		pitchcor = dsp_pid(&pitchspv, pitchcor, gx, dt);
 	}
-		
-	yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
 
-//	thrustcor = dsp_pid(&ppv, thrust * 2.5,
-//		getalt(press0, dsp_getlpf(&presslpf)), dt);
-//	thrustcor = dsp_pid(&zspv, thrustcor + 1.0, dsp_getlpf(&zlpf), dt);
-
+	if (yawspeedpid)
+		yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
+	else {
+		yawcor = dsp_circpid(&yawpv, yawtarget, yaw, dt);
+		yawcor = dsp_pid(&yawspv, yawcor, gz, dt);
+	}
 
 	thrustcor = dsp_pid(&zspv, thrust + 1.0, dsp_getlpf(&zlpf), dt);
 
@@ -346,66 +376,85 @@ int parsecommand(char **toks, int maxtoks, char *data)
 	return (i - 1);
 }
 
-int changef(char cmd, float *f, float exact, float step)
-{
-	if (cmd == 's')		*f = exact;
-	else if (cmd == 'i')	*f += step;
-	else if (cmd == 'd')	*f -= step;
-	else			return (-1);
-
-	return 0;
-}
-
 int controlcmd(char *cmd)
 {
 	char *toks[12];
 	int tc;
-	float exact;
 
 	if (cmd[0] == '\0')
 		return 0;
 
 	tc = parsecommand(toks, 12, cmd);
 
+	if (strcmp(toks[0], "beep") == 0) {
+		wifitimeout = WIFI_TIMEOUT;
+
+		return 0;
+	}
 	if (strcmp(toks[0], "md") == 0) {
 		struct mpu_data md;
-		char s[ESP_CMDSIZE];
+		char s[INFOLEN];
 
 		dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 			sizeof(struct mpu_data));
 
-		sprintf(s, "%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		snprintf(s, INFOLEN,
+			"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
 			"accel: ", (double) md.afx, (double) md.afy,
 			(double) md.afz);
-		sprintf(s + strlen(s),
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
 			"gyro: ", (double) deg2rad(md.gfx - gx0),
 			(double) deg2rad(md.gfy - gy0),
 			(double) deg2rad(md.gfz - gz0));
-	
-		sprintf(s + strlen(s),
-			"roll: %0.3f; pitch: %0.3f\n\r",
-			(double) (dsp_getcompl(&rollcompl) - ax0),
-			(double) (dsp_getcompl(&pitchcompl) - ay0));
 
-		sprintf(s + strlen(s),
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
+			(double) (dsp_getcompl(&rollcompl) - ax0),
+			(double) (dsp_getcompl(&pitchcompl) - ay0),
+			(double) circf(dsp_getcompl(&yawcompl) - az0));
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"z acceleration: %f\r\n",
+			(double) dsp_getlpf(&zlpf));
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"battery: %0.3f\n\r",
 			getadcv(&hadc1) / (double) 0xfff * (double) 6.6);
-/*
-		sprintf(s + strlen(s), "z accel: %f\r\n",
-			(double) dsp_getlpf(&zlpf));
-*/
+
 		esp_send(&espdev, s);
 	
 		return 0;
 	}
+	else if (strcmp(toks[0], "hd") == 0) {
+		struct hmc_data hd;
+		char s[INFOLEN];
+
+		dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+			sizeof(struct hmc_data));
+	
+		snprintf(s, INFOLEN,
+			"x = %0.3f; y = %0.3f; z = %0.3f\n\r",
+			(double) hd.fx, (double) hd.fy,
+			(double) hd.fz);
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"heading: %f\r\n", (double) hmc_heading(
+				dsp_getcompl(&rollcompl) - ax0,
+				dsp_getcompl(&pitchcompl) - ay0,
+				hd.fx, hd.fy, hd.fz));
+	
+		esp_send(&espdev, s);
+
+		return 0;
+	}
 	else if (strcmp(toks[0], "bd") == 0) {
-		char s[ESP_CMDSIZE];
+		char s[INFOLEN];
 		float press;
 
 		press = dsp_getlpf(&presslpf);
 
-		sprintf(s, "bar: %f; alt: %f\r\n",
+		snprintf(s, INFOLEN, "bar: %f; alt: %f\r\n",
 			(double) press, (double) getalt(press0, press));
 		
 		esp_send(&espdev, s);
@@ -413,75 +462,97 @@ int controlcmd(char *cmd)
 		return 0;
 	}
 	else if (strcmp(toks[0], "vd") == 0) {
-		char s[ESP_CMDSIZE];
+		char s[INFOLEN];
 		
-		sprintf(s, "t: %.3f; r: %.3f; p: %.3f; y: %.3f\r\n",
-			(double) thrust,
-			(double) rolltarget,
-			(double) pitchtarget,
-			(double) yawtarget);
-	
-		sprintf(s + strlen(s), "cf: %.6f\r\n",
-			(double) pitchcompl.coef);
-		sprintf(s + strlen(s), "accel cf: %.6f\r\n",
-			(double) zlpf.alpha);
-		sprintf(s + strlen(s), "pressure cf: %.6f\r\n",
+		snprintf(s, INFOLEN,
+			"t: %.3f; r: %.3f; p: %.3f; y: %.3f\r\n",
+			(double) thrust, (double) rolltarget,
+			(double) pitchtarget, (double) yawtarget);
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"x cor: %.3f; y cor: %.3f; z cor: %.3f\r\n",
+			(double) ax0, (double) ay0, (double) az0);
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"lbw: %0.1f; rbw: %0.1f; ltw: %0.1f; rtw: %0.1f\r\n",
+			(double) lbw, (double) rbw,
+			(double) ltw, (double) rtw);
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"cf: %.6f\r\n", (double) pitchcompl.coef);
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"accel cf: %.6f\r\n", (double) zlpf.alpha);
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"pressure cf: %.6f\r\n",
 			(double) presslpf.alpha);
 		
-		sprintf(s + strlen(s), "loops count: %d\r\n",
-			loopscount);
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"loops count: %d\r\n", loopscount);
 
 		esp_send(&espdev, s);
 		
 		return 0;
 	}
 	else if (strcmp(toks[0], "pd") == 0) {
-		char s[ESP_CMDSIZE];
+		char s[INFOLEN];
 		
-		sprintf(s, "pos PID: %.3f,%.3f,%.3f\r\n",
+		snprintf(s, INFOLEN, "pos PID: %.3f,%.3f,%.3f\r\n",
 			(double) p, (double) i, (double) d);
 
-		sprintf(s + strlen(s),
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"speed PID: %.3f,%.3f,%.3f\r\n",
 			(double) sp, (double) si, (double) sd);
 
-		sprintf(s + strlen(s),
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"yaw PID: %.3f,%.3f,%.3f\r\n",
+			(double) yp, (double) yi, (double) yd);
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"yaw speed PID: %.3f,%.3f,%.3f\r\n",
 			(double) ysp, (double) ysi, (double) ysd);
 
-		sprintf(s + strlen(s),
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"thrust PID: %.3f,%.3f,%.3f\r\n",
 			(double) zsp, (double) zsi, (double) zsd);
-/*
-		sprintf(s + strlen(s),
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"pressure PID: %.3f,%.3f,%.3f\r\n",
 			(double) psp, (double) psi, (double) psd);
-*/
-		sprintf(s + strlen(s), "%s mode\r\n",
-			speedpid ? "single" : "dual");
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"%s mode\r\n", speedpid ? "single" : "dual");
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"%s yaw mode\r\n",
+			yawspeedpid ? "single" : "dual");
+
 
 		esp_send(&espdev, s);
 		
 		return 0;
 	}
-
 	else if (strcmp(toks[0], "r") == 0) {
 		lbw = rbw = ltw = rtw = 0.0;
-		
 		return 0;
 	}
 	else if (strcmp(toks[0], "e") == 0) {
 		lbw = rbw = ltw = rtw = 1.0;
-		
 		return 0;
 	}
 	else if (strcmp(toks[0], "dl") == 0) {
 		speedpid = 0;
-		
 		return 0;
 	}
 	else if (strcmp(toks[0], "sl") == 0) {
 		speedpid = 1;
+		return 0;
+	}
+	else if (strcmp(toks[0], "ydl") == 0) {
+		yawspeedpid = 0;
+		return 0;
+	}
+	else if (strcmp(toks[0], "ysl") == 0) {
+		yawspeedpid = 1;
 		return 0;
 	}
 
@@ -492,198 +563,190 @@ int controlcmd(char *cmd)
 
 	if (strcmp(toks[0], "c") == 0) {
 		initstabilize(atof(toks[1]));
-
+		return 0;
+	}
+	else if (strcmp(toks[0], "tt") == 0) {
+		thrust = atof(toks[1]);
+		return 0;
+	}
+	else if (strcmp(toks[0], "pt") == 0) {
+		pitchtarget = atof(toks[1]);
+		return 0;
+	}
+	else if (strcmp(toks[0], "rt") == 0) {
+		rolltarget = atof(toks[1]);
+		return 0;
+	}
+	else if (strcmp(toks[0], "yt") == 0) {
+		yawtarget = atof(toks[1]);
+		return 0;
+	}
+	else if (strcmp(toks[0], "xc") == 0) {
+		ax0 = atof(toks[1]);
+		return 0;
+	}
+	else if (strcmp(toks[0], "yc") == 0) {
+		ay0 = atof(toks[1]);
+		return 0;
+	}
+	else if (strcmp(toks[0], "zc") == 0) {
+		az0 = atof(toks[1]);
+		return 0;
+	}
+	else if (strcmp(toks[0], "p") == 0) {
+		p = atof(toks[1]);
+	
+		dsp_setpid(&pitchpv, p, i, d);
+		dsp_setpid(&rollpv, p, i, d);
+		
+		return 0;
+	}
+	else if (strcmp(toks[0], "i") == 0) {
+		i = atof(toks[1]);
+		
+		dsp_setpid(&pitchpv, p, i, d);
+		dsp_setpid(&rollpv, p, i, d);
+		
+		return 0;
+	}
+	else if (strcmp(toks[0], "d") == 0) {
+		d = atof(toks[1]);
+		
+		dsp_setpid(&pitchpv, p, i, d);
+		dsp_setpid(&rollpv, p, i, d);
+		
+		return 0;
+	}
+	else if (strcmp(toks[0], "sp") == 0) {
+		sp = atof(toks[1]);
+		
+		dsp_setpid(&pitchspv, sp, si, sd);
+		dsp_setpid(&rollspv, sp, si, sd);
+		
+		return 0;
+	}
+	else if (strcmp(toks[0], "si") == 0) {
+		si = atof(toks[1]);
+		
+		dsp_setpid(&pitchspv, sp, si, sd);
+		dsp_setpid(&rollspv, sp, si, sd);
+		
+		return 0;
+	}
+	else if (strcmp(toks[0], "sd") == 0) {
+		sd = atof(toks[1]);
+	
+		dsp_setpid(&pitchspv, sp, si, sd);
+		dsp_setpid(&rollspv, sp, si, sd);
+		
+		return 0;
+	}
+	else if (strcmp(toks[0], "yp") == 0) {
+		yp = atof(toks[1]);
+		
+		dsp_setpid(&yawpv, yp, yi, yd);
+		
+		return 0;
+	}
+	else if (strcmp(toks[0], "yi") == 0) {
+		yi = atof(toks[1]);
+		
+		dsp_setpid(&yawpv, yp, yi, yd);
+		
+		return 0;
+	}
+	else if (strcmp(toks[0], "yd") == 0) {
+		yd = atof(toks[1]);
+	
+		dsp_setpid(&yawpv, yp, yi, yd);
+		
 		return 0;
 	}
 
-	exact = 0.0;
-	if (strcmp(toks[1], "s") == 0) {
-		if (tc < 3) {
-			esp_send(&espdev, "Unknown command\r\n");
-			return (-1);
-		}
-	
-		exact = atof(toks[2]);
-	}
-
-	if (strcmp(toks[0], "tt") == 0) {
-		if (changef(toks[1][0], &thrust, exact, TSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "pt") == 0) {
-		if (changef(toks[1][0], &pitchtarget, exact, PTSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "rt") == 0) {
-		if (changef(toks[1][0], &rolltarget, exact, RTSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "yt") == 0) {
-		if (changef(toks[1][0], &yawtarget, exact, YTSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "xc") == 0) {
-		if (changef(toks[1][0], &ax0, exact, CSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "yc") == 0) {
-		if (changef(toks[1][0], &ay0, exact, CSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "zc") == 0) {
-		if (changef(toks[1][0], &az0, exact, CSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "p") == 0) {
-		if (changef(toks[1][0], &p, exact, PSTEP) >= 0) {
-			dsp_setpid(&pitchpv, p, i, d);
-			dsp_setpid(&rollpv, p, i, d);
-			
-			return 0;
-		}
-	}
-	else if (strcmp(toks[0], "i") == 0) {
-		if (changef(toks[1][0], &i, exact, ISTEP) >= 0) {
-			dsp_setpid(&pitchpv, p, i, d);
-			dsp_setpid(&rollpv, p, i, d);
-			
-			return 0;
-		}
-	}
-	else if (strcmp(toks[0], "d") == 0) {
-		if (changef(toks[1][0], &d, exact, DSTEP) >= 0) {
-			dsp_setpid(&pitchpv, p, i, d);
-			dsp_setpid(&rollpv, p, i, d);
+	else if (strcmp(toks[0], "ysp") == 0) {
+		ysp = atof(toks[1]);
 		
-			return 0;
-		}
+		dsp_setpid(&yawspv, ysp, ysi, ysd);
+		
+		return 0;
 	}
-	else if (strcmp(toks[0], "sp") == 0) {
-		if (changef(toks[1][0], &sp, exact, PSTEP) >= 0) {
-			dsp_setpid(&pitchspv, sp, si, sd);
-			dsp_setpid(&rollspv, sp, si, sd);
-
-			return 0;
-		}
+	else if (strcmp(toks[0], "ysi") == 0) {
+		ysi = atof(toks[1]);
+		
+		dsp_setpid(&yawspv, ysp, ysi, ysd);
+		
+		return 0;
 	}
-	else if (strcmp(toks[0], "si") == 0) {
-		if (changef(toks[1][0], &si, exact, ISTEP) >= 0) {
-			dsp_setpid(&pitchspv, sp, si, sd);
-			dsp_setpid(&rollspv, sp, si, sd);
-			
-			return 0;
-		}
-	}
-	else if (strcmp(toks[0], "sd") == 0) {
-		if (changef(toks[1][0], &sd, exact, DSTEP) >= 0) {
-			dsp_setpid(&pitchspv, sp, si, sd);
-			dsp_setpid(&rollspv, sp, si, sd);
-			
-			return 0;
-		}
-	}
-	else if (strcmp(toks[0], "yp") == 0) {
-		if (changef(toks[1][0], &ysp, exact, PSTEP) >= 0) {
-			dsp_setpid(&yawspv, ysp, ysi, ysd);
-
-			return 0;
-		}
-	}
-	else if (strcmp(toks[0], "yi") == 0) {
-		if (changef(toks[1][0], &ysi, exact, ISTEP) >= 0) {
-			dsp_setpid(&yawspv, ysp, ysi, ysd);
-
-			return 0;
-		}
-	}
-	else if (strcmp(toks[0], "yd") == 0) {
-		if (changef(toks[1][0], &ysd, exact, DSTEP) >= 0) {
-			dsp_setpid(&yawspv, ysp, ysi, ysd);
-			
-			return 0;
-		}
+	else if (strcmp(toks[0], "ysd") == 0) {
+		ysd = atof(toks[1]);
+	
+		dsp_setpid(&yawspv, ysp, ysi, ysd);
+		
+		return 0;
 	}
 	else if (strcmp(toks[0], "tp") == 0) {
-		if (changef(toks[1][0], &zsp, exact, PSTEP) >= 0) {
-			dsp_setpid(&zspv, zsp, zsi, zsd);
-
-			return 0;
-		}
+		zsp = atof(toks[1]);
+		
+		dsp_setpid(&zspv, zsp, zsi, zsd);
+		
+		return 0;
 	}
 	else if (strcmp(toks[0], "ti") == 0) {
-		if (changef(toks[1][0], &zsi, exact, ISTEP) >= 0) {
-			dsp_setpid(&zspv, zsp, zsi, zsd);
-
-			return 0;
-		}
+		zsi = atof(toks[1]);
+	
+		dsp_setpid(&zspv, zsp, zsi, zsd);
+		
+		return 0;
 	}
 	else if (strcmp(toks[0], "td") == 0) {
-		if (changef(toks[1][0], &zsd, exact, DSTEP) >= 0) {
-			dsp_setpid(&zspv, zsp, zsi, zsd);
-			
-			return 0;
-		}
+		zsd = atof(toks[1]);
+		
+		dsp_setpid(&zspv, zsp, zsi, zsd);
+		
+		return 0;
 	}
-
 	else if (strcmp(toks[0], "pp") == 0) {
-		if (changef(toks[1][0], &psp, exact, PSTEP) >= 0) {
-			dsp_setpid(&ppv, psp, psi, psd);
-
-			return 0;
-		}
+		psp = atof(toks[1]);
+	
+		dsp_setpid(&ppv, psp, psi, psd);
+		
+		return 0;
 	}
 	else if (strcmp(toks[0], "pi") == 0) {
-		if (changef(toks[1][0], &psi, exact, ISTEP) >= 0) {
-			dsp_setpid(&ppv, psp, psi, psd);
-
-			return 0;
-		}
+		psi = atof(toks[1]);
+	
+		dsp_setpid(&ppv, psp, psi, psd);
+		
+		return 0;
 	}
 	else if (strcmp(toks[0], "pd") == 0) {
-		if (changef(toks[1][0], &psd, exact, DSTEP) >= 0) {
-			dsp_setpid(&ppv, psp, psi, psd);
-			
-			return 0;
-		}
-	}
-
-	else if (strcmp(toks[0], "lbt") == 0) {
-		if (changef(toks[1][0], &lbw, exact, WSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "rbt") == 0) {
-		if (changef(toks[1][0], &rbw, exact, WSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "ltt") == 0) {
-		if (changef(toks[1][0], &ltw, exact, WSTEP) >= 0)
-			return 0;
-	}
-	else if (strcmp(toks[0], "rtt") == 0) {
-		if (changef(toks[1][0], &rtw, exact, WSTEP) >= 0)
-			return 0;
+		psd = atof(toks[1]);
+	
+		dsp_setpid(&ppv, psp, psi, psd);
+		
+		return 0;
 	}
 	else if (strcmp(toks[0], "tc") == 0) {
-		if (changef(toks[1][0], &tcoef, exact, WSTEP) >= 0) {
-			dsp_initcompl(&pitchcompl, tcoef, PID_FREQ);
-			dsp_initcompl(&rollcompl, tcoef, PID_FREQ);	
+		tcoef = atof(toks[1]);
+	
+		dsp_initcompl(&pitchcompl, tcoef, PID_FREQ);
+		dsp_initcompl(&rollcompl, tcoef, PID_FREQ);	
 		
-			return 0;
-		}
+		return 0;
 	}
 	else if (strcmp(toks[0], "ptc") == 0) {
-		if (changef(toks[1][0], &ptcoef, exact, WSTEP) >= 0) {
-			dsp_initlpf(&presslpf, ptcoef, PID_FREQ);
-
-			return 0;
-		}
+		ptcoef = atof(toks[1]);
+			
+		dsp_initlpf(&presslpf, ptcoef, PID_FREQ);
+		
+		return 0;
 	}	
 	else if (strcmp(toks[0], "ztc") == 0) {
-		if (changef(toks[1][0], &ztcoef, exact, WSTEP) >= 0) {
-			dsp_initlpf(&zlpf, ztcoef, PID_FREQ);
-
-			return 0;
-		}
+		ztcoef = atof(toks[1]);
+		
+		dsp_initlpf(&zlpf, ztcoef, PID_FREQ);
+		
+		return 0;
 	}
 
 	esp_send(&espdev, "Unknown command\r\n");
@@ -715,21 +778,18 @@ int main(void)
 	esc_init();
 	bmp_init();
 	mpu_init();
+	hmc_init();
 	espdev_init();
-
-	if (espdev.status == ESP_INIT)
-		led0(1);
-	else if (espdev.status == ESP_CONNECTED)
-		led1(1);
 
 	initstabilize(0.0);
 
 	loops = 0;
 	mss = ms = 0;
+	wifitimeout = WIFI_TIMEOUT;
 	while (1) {
 		char cmd[ESP_CMDSIZE];
 		int c;
-		
+
 		__HAL_TIM_SET_COUNTER(&htim2, 0);
 
 		if (esp_poll(&espdev, cmd) >= 0)
@@ -739,14 +799,34 @@ int main(void)
 			double dt;
 
 			dt = (float) ms / (float) TICKSPERSEC;
-		
+
 			ms = 0;
 
 			stabilize(dt);
 			++loops;
 		}
-	
+
+		// every 1 second
 		if (mss > TICKSPERSEC/1) {
+			if (wifitimeout != 0)
+				--wifitimeout;
+
+			if (wifitimeout == 0) {
+				char s[INFOLEN];
+		
+				TIM1->CCR1 = (uint16_t) (0.049 * (float) PWM_MAXCOUNT);
+				TIM1->CCR2 = (uint16_t) (0.049 * (float) PWM_MAXCOUNT);
+				TIM1->CCR3 = (uint16_t) (0.049 * (float) PWM_MAXCOUNT);
+				TIM1->CCR4 = (uint16_t) (0.049 * (float) PWM_MAXCOUNT);
+			
+				lbw = rbw = ltw = rtw;
+
+
+				snprintf(s, INFOLEN, "wi-fi timed out!\n\r");
+
+				esp_send(&espdev, s);
+			}
+
 			loopscount = loops;
 
 			mss = loops = 0;
@@ -798,10 +878,9 @@ static void gpio_init(void)
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4 | GPIO_PIN_12 | GPIO_PIN_15,
-		GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 
-	GPIO_InitStruct.Pin = GPIO_PIN_4 | GPIO_PIN_12 | GPIO_PIN_15;
+	GPIO_InitStruct.Pin = GPIO_PIN_4;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1038,6 +1117,21 @@ static void bmp_init()
 	else
 		uartprintf("failed to initilize BMP280\r\n");
 
+}
+
+static void hmc_init()
+{
+	struct hmc_device d;
+	hmc_getdriver(drivers + HMC_DEV);
+
+	d.hi2c = &hi2c1;
+	d.scale = HMC_SCALE_1_3;
+	d.rate = HMC_RATE_15;
+
+	if (drivers[2].initdevice(&d, dev + HMC_DEV) == 0)
+		uartprintf("HMC5883L initilized\r\n");
+	else
+		uartprintf("failed to initilize HMC5883L\r\n");
 }
 
 static void espdev_init()

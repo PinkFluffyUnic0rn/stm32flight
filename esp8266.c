@@ -227,15 +227,32 @@ static enum ESP_RESPONSE _esp_send(struct esp_device *dev, int timeout,
 	const char *data)
 {
 	char buf[ESP_CMDSIZE];
+	size_t rem, off;
 	int r;
 
-	sprintf(buf, "AT+CIPSEND=%d\r\n", strlen(data));
+	rem = strlen(data);
+	off = 0;
+
+
+	sprintf(buf, "AT+CIPSEND=%d\r\n", rem);
 
 	HAL_UART_Transmit(dev->huart, (uint8_t *) buf,
 		strlen(buf), ESP_UARTTIMEOUT);
-	HAL_Delay(10);
-	HAL_UART_Transmit(dev->huart, (uint8_t *) data,
-		strlen(data), ESP_UARTTIMEOUT);
+	HAL_Delay(1);
+
+	while (rem > 0) {
+		size_t len;
+
+		len = (rem < (ESP_CMDSIZE - 1) ? rem : (ESP_CMDSIZE - 1));
+
+		HAL_UART_Transmit(dev->huart, (uint8_t *) (data + off),
+			len, ESP_UARTTIMEOUT);
+	
+		HAL_Delay(1);
+		
+		rem -= len;
+		off += len;
+	}
 
 	r = esp_waitforstrings(&fifo, timeout, buf,
 		"SEND OK", "ERROR", "SEND FAIL", NULL);

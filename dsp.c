@@ -58,6 +58,22 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt)
 	return v;
 }
 
+float dsp_circpid(struct dsp_pidval *pv, float target,
+	float val, float dt)
+{
+	float e, v;
+
+	e = circf(target - val);
+
+	pv->s += e * dt;
+
+	v = pv->kp * e + pv->ki * pv->s + pv->kd * (e - pv->pe) / dt;
+
+	pv->pe = e;
+
+	return v;
+}
+
 int dsp_initcompl(struct dsp_compl *comp, float tc, int freq)
 {
 	comp->s = 0;

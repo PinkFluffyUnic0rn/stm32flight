@@ -79,51 +79,48 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi,
 	return 0;
 }
 
+struct timerparam {
+	struct sockaddr_in *rsi;
+	int lsfd;
+};
+
+Uint32 timercb(Uint32 interval, void *param)
+{
+	struct timerparam *p;
+
+	p = param;
+
+	sendcmd(p->lsfd, p->rsi, "beep\n");
+
+	return interval;
+}
+
 int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 {
 	if (event->type == SDL_KEYUP) {
-		if (event->key.keysym.sym == SDLK_q)
-			sendcmd(lsfd, rsi, "p d\n");
-		if (event->key.keysym.sym == SDLK_w)
-			sendcmd(lsfd, rsi, "p i\n");
-		if (event->key.keysym.sym == SDLK_a)
-			sendcmd(lsfd, rsi, "i d\n");
-		if (event->key.keysym.sym == SDLK_s)
-			sendcmd(lsfd, rsi, "i i\n");
-		if (event->key.keysym.sym == SDLK_z)
-			sendcmd(lsfd, rsi, "d d\n");
-		if (event->key.keysym.sym == SDLK_x)
-			sendcmd(lsfd, rsi, "d i\n");
-		if (event->key.keysym.sym == SDLK_e)
-			sendcmd(lsfd, rsi, "sp d\n");
-		if (event->key.keysym.sym == SDLK_r)
-			sendcmd(lsfd, rsi, "sp i\n");
-		if (event->key.keysym.sym == SDLK_d)
-			sendcmd(lsfd, rsi, "si d\n");
-		if (event->key.keysym.sym == SDLK_f)
-			sendcmd(lsfd, rsi, "si i\n");
-		if (event->key.keysym.sym == SDLK_c)
-			sendcmd(lsfd, rsi, "sd d\n");
-		if (event->key.keysym.sym == SDLK_v)
-			sendcmd(lsfd, rsi, "sd i\n");
-		if (event->key.keysym.sym == SDLK_t)
-			sendcmd(lsfd, rsi, "yp d\n");
-		if (event->key.keysym.sym == SDLK_y)
-			sendcmd(lsfd, rsi, "yp i\n");
-		if (event->key.keysym.sym == SDLK_g)
-			sendcmd(lsfd, rsi, "yi d\n");
-		if (event->key.keysym.sym == SDLK_h)
-			sendcmd(lsfd, rsi, "yi i\n");
-		if (event->key.keysym.sym == SDLK_b)
-			sendcmd(lsfd, rsi, "yd d\n");
-		if (event->key.keysym.sym == SDLK_n)
-			sendcmd(lsfd, rsi, "yd i\n");
-		if (event->key.keysym.sym == SDLK_1)
-			sendcmd(lsfd, rsi, "sl\n");
-		if (event->key.keysym.sym == SDLK_2)
-			sendcmd(lsfd, rsi, "dl\n");
-		if (event->key.keysym.sym == SDLK_SPACE)
+		if (event->key.keysym.sym == SDLK_q) {}
+		if (event->key.keysym.sym == SDLK_w) {}
+		if (event->key.keysym.sym == SDLK_a) {}
+		if (event->key.keysym.sym == SDLK_s) {}
+		if (event->key.keysym.sym == SDLK_z) {}
+		if (event->key.keysym.sym == SDLK_x) {}
+		if (event->key.keysym.sym == SDLK_e) {}
+		if (event->key.keysym.sym == SDLK_r) {}
+		if (event->key.keysym.sym == SDLK_d) {}
+		if (event->key.keysym.sym == SDLK_f) {}
+		if (event->key.keysym.sym == SDLK_c) {}
+		if (event->key.keysym.sym == SDLK_v) {}
+		if (event->key.keysym.sym == SDLK_t) {}
+		if (event->key.keysym.sym == SDLK_y) {}
+		if (event->key.keysym.sym == SDLK_g) {}
+		if (event->key.keysym.sym == SDLK_h) {}
+		if (event->key.keysym.sym == SDLK_b) {}
+		if (event->key.keysym.sym == SDLK_n) {}
+		if (event->key.keysym.sym == SDLK_1) {}
+		if (event->key.keysym.sym == SDLK_2) {}
+		if (event->key.keysym.sym == SDLK_SPACE) {
 			sendcmd(lsfd, rsi, "c 0.0\n");
+		}
 	}
 
 	return 0;
@@ -141,33 +138,33 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_X)
 			sendcmd(lsfd, rsi, "vd\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_Y)
-			sendcmd(lsfd, rsi, "bd\n");
+			sendcmd(lsfd, rsi, "hd\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
 			sendcmd(lsfd, rsi, "r\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
 			sendcmd(lsfd, rsi, "e\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
-			sendcmd(lsfd, rsi, "tt i\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
-			sendcmd(lsfd, rsi, "tt d\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
-			sendcmd(lsfd, rsi, "p d\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
-			sendcmd(lsfd, rsi, "p i\n");
+		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP) {
+		}
+		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN) {
+		}
+		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
+		}
+		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
+		}
 	}
 	else if (event->type == SDL_CONTROLLERAXISMOTION) {
 		if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
-			sendcmd(lsfd, rsi, "yt s %f\n", event->caxis.value / 32767.0 * M_PI);
+			sendcmd(lsfd, rsi, "yt %f\n", event->caxis.value / 32767.0 * M_PI);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
-			sendcmd(lsfd, rsi, "yt s %f\n", -event->caxis.value / 32767.0 * M_PI);
+			sendcmd(lsfd, rsi, "yt %f\n", -event->caxis.value / 32767.0 * M_PI);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
-			sendcmd(lsfd, rsi, "pt s %f\n", -event->caxis.value / 32767.0 * AXISSCALE);
+			sendcmd(lsfd, rsi, "pt %f\n", -event->caxis.value / 32767.0 * AXISSCALE);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
-			sendcmd(lsfd, rsi, "rt s %f\n", event->caxis.value / 32767.0 * AXISSCALE);
+			sendcmd(lsfd, rsi, "rt %f\n", event->caxis.value / 32767.0 * AXISSCALE);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX) {
 		
 		} else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY)
-			sendcmd(lsfd, rsi, "tt s %f\n", -event->caxis.value / 32767.0 * 1.0);
+			sendcmd(lsfd, rsi, "tt %f\n", -event->caxis.value / 32767.0 * 1.0);
 	}
 
 	return 0;
@@ -177,6 +174,8 @@ int main(int argc, char *argv[])
 {
 	SDL_Window *win;
 	SDL_GameController *pad;
+	SDL_TimerID tid;
+	struct timerparam tp;
 	struct sockaddr_in rsi;
 	char gcpath[PATH_MAX];
 	int lsfd;
@@ -190,7 +189,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (SDL_Init(SDL_INIT_GAMECONTROLLER) < 0) {
+	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_TIMER) < 0) {
 		fprintf(stderr, "cannot init controller\n");
 		exit(1);
 	}
@@ -217,9 +216,14 @@ int main(int argc, char *argv[])
 
 		while (fgets(s, 256, f) != NULL) {
 			sendcmd(lsfd, &rsi, s);
-			usleep(100);
+			usleep(1000);
 		}
 	}
+	
+
+	tp.lsfd = lsfd;
+	tp.rsi = &rsi;
+	tid = SDL_AddTimer(1000, timercb, &tp);
 
 	screen = SDL_GetWindowSurface(win);
 	render = SDL_GetRenderer(win);
@@ -249,6 +253,7 @@ int main(int argc, char *argv[])
 		SDL_RenderPresent(render);
 	}
 
+	SDL_RemoveTimer(tid);
 	SDL_GameControllerClose(pad);
 	SDL_DestroyWindow(win);
 	SDL_Quit();

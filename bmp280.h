@@ -48,7 +48,6 @@ struct bmp_data {
 
 struct bmp_device {
 	I2C_HandleTypeDef *hi2c;
-	
 
 	int32_t t_fine;
 	uint16_t digt1, digp1;

@@ -40,7 +40,7 @@ int bmp_waitwrite(struct bmp_device *dev)
 	for (i = 0; i < BMP_WRITERETRIES; ++i) {
 		if (bmp_read(dev, BMP_STATUS, &s, 1) == 0 && !(s & 0x1))
 			break;
-		HAL_Delay(300);
+		HAL_Delay(100);
 	}
 
 	if (i >= BMP_WRITERETRIES)

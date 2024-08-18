@@ -1,21 +1,26 @@
-p s 2.5
-i s 0.0003
-d s 0.001
-sp s 0.03
-si s 0.0
-sd s 0.0
-yp s 0.25
-yi s 0.0
-yd s 0.0
-tp s 2.5
-ti s 0.0001
-td s 0.001
-pp s 1.0
-pi s 0.0
-pd s 0.0
-xc s 0.03
-yc s 0.05
-tc s 0.5
-ztc s 0.25
-ptc s 10.0
+xc 0.0
+yc 0.0
+zc 2.5
+p 2.5
+i 0.0001
+d 0.0005
+sp 0.03
+si 0.0
+sd 0.0
+yp 1.5
+yi 0.0
+yd 0.0
+ysp 0.25
+ysi 0.0
+ysd 0.0
+tp 2.5
+ti 0.0001
+td 0.001
+pp 1.0
+pi 0.0
+pd 0.0
+tc 0.5
+ztc 0.25
+ptc 10.0
+ydl
 dl
