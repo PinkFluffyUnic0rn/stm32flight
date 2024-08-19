@@ -1,13 +1,10 @@
-xc 0.0
-yc 0.0
-zc 2.5
 p 2.5
 i 0.0001
 d 0.0005
 sp 0.03
 si 0.0
 sd 0.0
-yp 1.5
+yp -1.5
 yi 0.0
 yd 0.0
 ysp 0.25
@@ -16,11 +13,11 @@ ysd 0.0
 tp 2.5
 ti 0.0001
 td 0.001
-pp 1.0
-pi 0.0
-pd 0.0
 tc 0.5
 ztc 0.25
 ptc 10.0
-ydl
+xc 0.0
+yc 0.0
+zc 3.0
+ysl
 dl

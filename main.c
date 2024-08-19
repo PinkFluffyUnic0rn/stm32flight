@@ -87,7 +87,6 @@ struct dsp_lpf zlpf;
 struct dsp_lpf presslpf;
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
-struct dsp_compl yawcompl;
 struct dsp_pidval pitchpv;
 struct dsp_pidval rollpv;
 struct dsp_pidval pitchspv;
@@ -95,7 +94,6 @@ struct dsp_pidval rollspv;
 struct dsp_pidval yawpv;
 struct dsp_pidval yawspv;
 struct dsp_pidval zspv;
-struct dsp_pidval ppv;
 
 // control values
 float thrust = 0.0;
@@ -113,7 +111,6 @@ float sp = 0.0,		si = 0.0000,	sd = 0.0;
 float yp = 0.0,		yi = 0.0000,	yd = 0.0;
 float ysp = 0.0,	ysi = 0.0000,	ysd = 0.0;
 float zsp = 0.0,	zsi = 0.0000,	zsd = 0.0;
-float psp = 0.0,	psi = 0.0000,	psd = 0.0;
 
 int loopscount = 0;
 int wifitimeout = WIFI_TIMEOUT;
@@ -234,7 +231,7 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 	return 0;
 }
 
-float hmc_heading(float p, float r, float x, float y, float z)
+float hmc_heading(float r, float p, float x, float y, float z)
 {
 
 	float xc, yc;
@@ -243,7 +240,24 @@ float hmc_heading(float p, float r, float x, float y, float z)
 		+ z * cosf(r) * sinf(p);
 	yc = y * cosf(r) - z * sinf(r);
 
-	return circf(atan2f(-yc, xc) + MAGNETIC_DECLANATION);
+	return circf(atan2f(yc, xc) + MAGNETIC_DECLANATION);
+}
+
+int setthrust(float ltd, float rtd, float rbd, float lbd)
+{
+	if (isnan(ltd) || isnan(rtd) || isnan(rbd) || isnan(lbd))
+		ltd = rtd = rbd = lbd = 0.0;
+
+	TIM1->CCR1 = (uint16_t) ((ltd * 0.05 + 0.049)
+		* (float) PWM_MAXCOUNT);
+	TIM1->CCR2 = (uint16_t) ((rtd * 0.05 + 0.049)
+		* (float) PWM_MAXCOUNT);
+	TIM1->CCR3 = (uint16_t) ((rbd * 0.05 + 0.049)
+		* (float) PWM_MAXCOUNT);
+	TIM1->CCR4 = (uint16_t) ((lbd * 0.05 + 0.049)
+		* (float) PWM_MAXCOUNT);
+
+	return 0;
 }
 
 int initstabilize(float alt)
@@ -259,7 +273,6 @@ int initstabilize(float alt)
 
 	dsp_initcompl(&pitchcompl, tcoef, PID_FREQ);
 	dsp_initcompl(&rollcompl, tcoef, PID_FREQ);
-	dsp_initcompl(&yawcompl, 5.0, PID_FREQ);
 
 	dsp_initpidval(&pitchpv, p, i, d, 0.0);
 	dsp_initpidval(&rollpv, p, i, d, 0.0);
@@ -269,7 +282,6 @@ int initstabilize(float alt)
 	dsp_initpidval(&yawspv, ysp, ysi, ysd, 0.0);
 	dsp_initpidval(&yawpv, yp, yi, yd, 0.0);
 	dsp_initpidval(&zspv, zsp, zsi, zsd, 0.0);
-	dsp_initpidval(&ppv, psp, psi, psd, 0.0);
 
 	dsp_initlpf(&presslpf, ptcoef, PID_FREQ);
 	dsp_initlpf(&zlpf, ztcoef, PID_FREQ);
@@ -313,17 +325,11 @@ int stabilize(float dt)
 		atan2f(md.afy,
 		sqrt(md.afx * md.afx + md.afz * md.afz))) - ay0;
 
-	float h;
-
 	dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
 		sizeof(struct hmc_data));
 
-	h = hmc_heading(roll, pitch, hd.fx, hd.fy, hd.fz);
-
-	dsp_updatecompl(&yawcompl, gz * dt, h);
-	yawcompl.s = circf(yawcompl.s);
-
-	yaw = circf(dsp_getcompl(&yawcompl) - az0);
+	yaw = circf(hmc_heading(pitch, roll, hd.fx, hd.fy, hd.fz)
+		- az0);
 
 	if (speedpid) {
 		rollcor = dsp_pid(&rollspv, rolltarget, gy, dt);
@@ -340,7 +346,7 @@ int stabilize(float dt)
 	if (yawspeedpid)
 		yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
 	else {
-		yawcor = dsp_circpid(&yawpv, yawtarget, yaw, dt);
+		yawcor = circf(dsp_pid(&yawpv, yawtarget, yaw, dt));
 		yawcor = dsp_pid(&yawspv, yawcor, gz, dt);
 	}
 
@@ -355,10 +361,7 @@ int stabilize(float dt)
 	rtd = trimuf(rtw * (thrustcor - 0.5 * rollcor
 		+ 0.5 * pitchcor + 0.5 * yawcor));
 
-	TIM1->CCR1 = (uint16_t) ((ltd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
-	TIM1->CCR2 = (uint16_t) ((rtd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
-	TIM1->CCR3 = (uint16_t) ((rbd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
-	TIM1->CCR4 = (uint16_t) ((lbd * 0.05 + 0.049) * (float) PWM_MAXCOUNT);
+	setthrust(ltd, rtd, rbd, lbd);
 
 	return 0;
 }
@@ -393,11 +396,15 @@ int controlcmd(char *cmd)
 	}
 	if (strcmp(toks[0], "md") == 0) {
 		struct mpu_data md;
+		struct hmc_data hd;
 		char s[INFOLEN];
 
 		dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 			sizeof(struct mpu_data));
 
+		dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+			sizeof(struct hmc_data));
+	
 		snprintf(s, INFOLEN,
 			"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
 			"accel: ", (double) md.afx, (double) md.afy,
@@ -412,7 +419,10 @@ int controlcmd(char *cmd)
 			"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
 			(double) (dsp_getcompl(&rollcompl) - ax0),
 			(double) (dsp_getcompl(&pitchcompl) - ay0),
-			(double) circf(dsp_getcompl(&yawcompl) - az0));
+			(double) circf(hmc_heading(
+				dsp_getcompl(&pitchcompl) - ay0,
+				dsp_getcompl(&rollcompl) - ax0,
+				hd.fx, hd.fy, hd.fz) - az0));
 
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"z acceleration: %f\r\n",
@@ -440,8 +450,8 @@ int controlcmd(char *cmd)
 
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"heading: %f\r\n", (double) hmc_heading(
-				dsp_getcompl(&rollcompl) - ax0,
 				dsp_getcompl(&pitchcompl) - ay0,
+				dsp_getcompl(&rollcompl) - ax0,
 				hd.fx, hd.fy, hd.fz));
 	
 		esp_send(&espdev, s);
@@ -514,10 +524,6 @@ int controlcmd(char *cmd)
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"thrust PID: %.3f,%.3f,%.3f\r\n",
 			(double) zsp, (double) zsi, (double) zsd);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"pressure PID: %.3f,%.3f,%.3f\r\n",
-			(double) psp, (double) psi, (double) psd);
 
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"%s mode\r\n", speedpid ? "single" : "dual");
@@ -662,7 +668,6 @@ int controlcmd(char *cmd)
 		
 		return 0;
 	}
-
 	else if (strcmp(toks[0], "ysp") == 0) {
 		ysp = atof(toks[1]);
 		
@@ -702,27 +707,6 @@ int controlcmd(char *cmd)
 		zsd = atof(toks[1]);
 		
 		dsp_setpid(&zspv, zsp, zsi, zsd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "pp") == 0) {
-		psp = atof(toks[1]);
-	
-		dsp_setpid(&ppv, psp, psi, psd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "pi") == 0) {
-		psi = atof(toks[1]);
-	
-		dsp_setpid(&ppv, psp, psi, psd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "pd") == 0) {
-		psd = atof(toks[1]);
-	
-		dsp_setpid(&ppv, psp, psi, psd);
 		
 		return 0;
 	}
@@ -814,13 +798,9 @@ int main(void)
 			if (wifitimeout == 0) {
 				char s[INFOLEN];
 		
-				TIM1->CCR1 = (uint16_t) (0.049 * (float) PWM_MAXCOUNT);
-				TIM1->CCR2 = (uint16_t) (0.049 * (float) PWM_MAXCOUNT);
-				TIM1->CCR3 = (uint16_t) (0.049 * (float) PWM_MAXCOUNT);
-				TIM1->CCR4 = (uint16_t) (0.049 * (float) PWM_MAXCOUNT);
-			
-				lbw = rbw = ltw = rtw;
+				setthrust(0.0, 0.0, 0.0, 0.0);
 
+				lbw = rbw = ltw = rtw = 0.0;
 
 				snprintf(s, INFOLEN, "wi-fi timed out!\n\r");
 

@@ -144,7 +144,19 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass)
 	int i;
 	
 	HAL_UART_Receive_IT(dev->huart, Rxdata, 1);
+	/*
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=500000,8,1,0,0") != ESP_OK)
+		return (-1);
 
+	HAL_UART_DeInit(dev->huart);
+	
+	dev->huart->Init.BaudRate = 500000;
+
+	if (HAL_UART_Init(dev->huart) != HAL_OK)
+		error_handler();
+	
+	HAL_UART_Receive_IT(dev->huart, Rxdata, 1);
+*/
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
 		return (-1);
 
@@ -248,8 +260,6 @@ static enum ESP_RESPONSE _esp_send(struct esp_device *dev, int timeout,
 		HAL_UART_Transmit(dev->huart, (uint8_t *) (data + off),
 			len, ESP_UARTTIMEOUT);
 	
-		HAL_Delay(1);
-		
 		rem -= len;
 		off += len;
 	}

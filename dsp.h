@@ -42,6 +42,8 @@ int dsp_initcompl(struct dsp_compl *comp, float tc, int freq);
 
 float dsp_getcompl(struct dsp_compl *comp);
 
+float dsp_updatecirccompl(struct dsp_compl *comp, float v0, float v1);
+
 float dsp_updatecompl(struct dsp_compl *comp, float v0, float v1);
 
 #endif
