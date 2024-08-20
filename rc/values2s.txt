@@ -1,23 +1,23 @@
 pid tilt mode double
-pid tilt p 2.5
-pid tilt i 0.0001
-pid tilt d 0.0005
+pid tilt p 3.5
+pid tilt i 0.00005
+pid tilt d 0.0003
 pid stilt p 0.03
 pid stilt i 0.0
 pid stilt d 0.0
 pid yaw mode double
-pid yaw p -0.15
+pid yaw p -1.5
 pid yaw i 0.0
 pid yaw d 0.0
-pid syaw p 0.25
+pid syaw p 0.5
 pid syaw i 0.0
 pid syaw d 0.0
-pid sclimb p 2.5
-pid sclimb i 0.0001
+pid sclimb p 3.0
+pid sclimb i 0.0005
 pid sclimb d 0.001
 compl 0.25
-lpf climb 0.25
+lpf climb 0.2
 lpf pressure 10.0
-adj roll 0.0
-adj pitch 0.0
-adj yaw 2.0
+adj roll -0.03
+adj pitch -0.12
+adj yaw 2.5

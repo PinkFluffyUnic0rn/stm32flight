@@ -154,9 +154,9 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 	}
 	else if (event->type == SDL_CONTROLLERAXISMOTION) {
 		if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
-			sendcmd(lsfd, rsi, "t y %f\n", event->caxis.value / 32767.0 * M_PI);
-		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
 			sendcmd(lsfd, rsi, "t y %f\n", -event->caxis.value / 32767.0 * M_PI);
+		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
+			sendcmd(lsfd, rsi, "t y %f\n", event->caxis.value / 32767.0 * M_PI);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
 			sendcmd(lsfd, rsi, "t p %f\n", -event->caxis.value / 32767.0 * AXISSCALE);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)

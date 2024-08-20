@@ -13,7 +13,7 @@
 #define ESP_UARTTIMEOUT 100
 #define ESP_TIMEOUT 1000
 #define ESP_JOINTIMEOUT 30000
-#define ESP_FIFOSIZE 16
+#define ESP_FIFOSIZE 64
 
 enum ESP_RESPONSE {
 	ESP_OK = 0,
@@ -65,13 +65,13 @@ int esp_waitforstrings(struct fifo *f, int timeout, char *res, ...)
 {
 	int t;
 
-	for (t = 0; t < timeout; t += 10) {
+	for (t = 0; t < timeout; t += 1) {
 		va_list args;
 		char *s;
 		int i;
 	
 		if (esp_dequeque(f, res) < 0) {
-			HAL_Delay(10);
+			HAL_Delay(1);
 			continue;
 		}
 		
@@ -87,7 +87,7 @@ int esp_waitforstrings(struct fifo *f, int timeout, char *res, ...)
 
 		va_end(args);
 
-		HAL_Delay(10);
+		HAL_Delay(1);
 	}
 
 	return (-1);

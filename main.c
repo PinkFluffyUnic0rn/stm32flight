@@ -102,9 +102,8 @@ float alt0, press0;
 // sensors correction
 float mx0 = -70.0, my0 = 100.0, mz0 = -40.0;
 float mxscale = 1.0, myscale = 1.0, mzscale = 1.090909;
-
+float gx0 = -4.622, gy0 = -0.396, gz0 = -0.717;
 float ax0 = 0.0, ay0 = 0.0, az0 = 0.0;
-float gx0, gy0, gz0;
 
 // filters time constants
 float tcoef = 0.5;
@@ -419,9 +418,9 @@ int controlcmd(char *cmd)
 			(double) md.afz);
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
-			"gyro: ", (double) deg2rad(md.gfx - gx0),
-			(double) deg2rad(md.gfy - gy0),
-			(double) deg2rad(md.gfz - gz0));
+			"gyro: ", (double) deg2rad(md.gfx),
+			(double) deg2rad(md.gfy),
+			(double) deg2rad(md.gfz));
 
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
@@ -478,7 +477,11 @@ int controlcmd(char *cmd)
 			(double) pitchtarget, (double) yawtarget);
 
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"x cor: %.3f; y cor: %.3f; z cor: %.3f\r\n",
+			"gyro cor:(%.3f; %.3f; %.3f\r\n",
+			(double) gx0, (double) gy0, (double) gz0);
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"roll cor: %.3f; pitch cor: %.3f; yaw cor: %.3f\r\n",
 			(double) ax0, (double) ay0, (double) az0);
 
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
