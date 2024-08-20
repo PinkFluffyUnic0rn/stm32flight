@@ -18,6 +18,6 @@ ztc 0.25
 ptc 10.0
 xc 0.0
 yc 0.0
-zc 3.0
-ysl
+zc 2.75
+ydl
 dl

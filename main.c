@@ -73,10 +73,6 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
-// sensor initial values
-float gx0, gy0, gz0;
-float alt0, press0;
-
 // IC drivers
 struct driver drivers[4];
 struct device dev[4];
@@ -100,12 +96,24 @@ float thrust = 0.0;
 float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 
-// PID settings and accelerometer correction
+// pressure and altitude initial values
+float alt0, press0;
+
+// sensors correction
+float mx0 = -70.0, my0 = 100.0, mz0 = -40.0;
+float mxscale = 1.0, myscale = 1.0, mzscale = 1.090909;
+
 float ax0 = 0.0, ay0 = 0.0, az0 = 0.0;
-int speedpid = 0, yawspeedpid = 0;
+float gx0, gy0, gz0;
+
+// filters time constants
 float tcoef = 0.5;
 float ztcoef = 0.2;
 float ptcoef = 0.5;
+
+// PID settings
+int speedpid = 0;
+int yawspeedpid = 0;
 float p = 0.0,		i = 0.0000,	d = 0.0;
 float sp = 0.0,		si = 0.0000,	sd = 0.0;
 float yp = 0.0,		yi = 0.0000,	yd = 0.0;
@@ -233,14 +241,15 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 
 float hmc_heading(float r, float p, float x, float y, float z)
 {
+	x = mxscale * (x + mx0);
+	y = myscale * (y + my0);
+	z = mzscale * (z + mz0);
 
-	float xc, yc;
-
-	xc = x * cosf(p) + y * sinf(r) * sinf(p)
+	x = x * cosf(p) + y * sinf(r) * sinf(p)
 		+ z * cosf(r) * sinf(p);
-	yc = y * cosf(r) - z * sinf(r);
+	y = y * cosf(r) - z * sinf(r);
 
-	return circf(atan2f(yc, xc) + MAGNETIC_DECLANATION);
+	return circf(atan2f(y, x) + MAGNETIC_DECLANATION);
 }
 
 int setthrust(float ltd, float rtd, float rbd, float lbd)
@@ -531,7 +540,6 @@ int controlcmd(char *cmd)
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"%s yaw mode\r\n",
 			yawspeedpid ? "single" : "dual");
-
 
 		esp_send(&espdev, s);
 		
