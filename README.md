@@ -33,30 +33,21 @@ info commands:
 --------------
  * md -- mpu6050 data
  * bd -- bmp280 data
+ * hd -- hmc5883L data
  * vd -- control values
  * pd -- PID values
- * hd -- hmc5883L values
 
 control commands:
 --------------
  * r -- turn off motors
  * e -- turn on motors
- * sl -- switch to single PID loop mode (speed controlled) for roll/picth
- * dl -- switch to dobule PID loop (with stabilization) for roll/picth
- * ysl -- switch to single PID loop mode (speed controlled) for yaw 
- * ydl -- switch to dobule PID loop (with stabilization) for yaw
  * c [altitude] -- recalibrate
 
 value commands:
 --------------
- * `tt {val})` -- set thrust target
- * `(p | r | y)t {val}` -- set pitch/roll/yaw target
- * `(x | y | z)c {val}` -- set X/Y/Z orienation correction
- * `(p | i | d) {val}` -- set position pid P/I/D value
- * `s(p | i | d) {val}` -- set speed pid P/I/D value
- * `y(p | i | d) {val}` -- set yaw pid P/I/D value
- * `ys(p | i | d) {val}` -- set yaw speed pid P/I/D value
- * `t(p | i | d) {val}` -- set thrust P/I/D value
- * `tc {val}` -- set roll/pitch complementary filter's time constant
- * `ptc {val}` -- set pressure low-pass filter's time constant
- * `ztc {val}` -- set Z-axis acceleration low-pass filter's time constant
+ * `pid (tilt|stilt|yaw|syaw|sclimb) (p|i|d) {val}` -- set tilt/tilt speed/yaw/yaw speed/climb speed PID P/I/D value
+ * `pid (tilt|yaw) (single/double)` -- switch to single/double PID loop mode for tilt/yaw
+ * `compl {val}` -- set complimentary filter's time constant for tilt
+ * `lpf (climb|pressure) {val}` -- set low-pass filter's time constant for climb speed/pressure
+ * `adj (roll|pitch|yaw) {val}` -- set offset for roll/pitch/yaw (only for dual PID loop mode)
+ * `t (p | r | y | c) {val}` -- set pitch/roll/yaw/climb target

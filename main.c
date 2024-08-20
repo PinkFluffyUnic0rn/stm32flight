@@ -379,6 +379,9 @@ int parsecommand(char **toks, int maxtoks, char *data)
 {
 	int i;
 
+	for (i = 0; i < maxtoks; ++i)
+		toks[i] = "";
+
 	i = 0;
 
 	toks[i++] = strtok((char *) data, " ");
@@ -390,23 +393,19 @@ int parsecommand(char **toks, int maxtoks, char *data)
 
 int controlcmd(char *cmd)
 {
+	char s[INFOLEN];
 	char *toks[12];
-	int tc;
 
 	if (cmd[0] == '\0')
 		return 0;
 
-	tc = parsecommand(toks, 12, cmd);
+	parsecommand(toks, 12, cmd);
 
-	if (strcmp(toks[0], "beep") == 0) {
+	if (strcmp(toks[0], "beep") == 0)
 		wifitimeout = WIFI_TIMEOUT;
-
-		return 0;
-	}
-	if (strcmp(toks[0], "md") == 0) {
+	else if (strcmp(toks[0], "md") == 0) {
 		struct mpu_data md;
 		struct hmc_data hd;
-		char s[INFOLEN];
 
 		dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 			sizeof(struct mpu_data));
@@ -442,12 +441,9 @@ int controlcmd(char *cmd)
 			getadcv(&hadc1) / (double) 0xfff * (double) 6.6);
 
 		esp_send(&espdev, s);
-	
-		return 0;
 	}
 	else if (strcmp(toks[0], "hd") == 0) {
 		struct hmc_data hd;
-		char s[INFOLEN];
 
 		dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
 			sizeof(struct hmc_data));
@@ -464,11 +460,8 @@ int controlcmd(char *cmd)
 				hd.fx, hd.fy, hd.fz));
 	
 		esp_send(&espdev, s);
-
-		return 0;
 	}
 	else if (strcmp(toks[0], "bd") == 0) {
-		char s[INFOLEN];
 		float press;
 
 		press = dsp_getlpf(&presslpf);
@@ -477,12 +470,8 @@ int controlcmd(char *cmd)
 			(double) press, (double) getalt(press0, press));
 		
 		esp_send(&espdev, s);
-		
-		return 0;
 	}
 	else if (strcmp(toks[0], "vd") == 0) {
-		char s[INFOLEN];
-		
 		snprintf(s, INFOLEN,
 			"t: %.3f; r: %.3f; p: %.3f; y: %.3f\r\n",
 			(double) thrust, (double) rolltarget,
@@ -509,12 +498,8 @@ int controlcmd(char *cmd)
 			"loops count: %d\r\n", loopscount);
 
 		esp_send(&espdev, s);
-		
-		return 0;
 	}
 	else if (strcmp(toks[0], "pd") == 0) {
-		char s[INFOLEN];
-		
 		snprintf(s, INFOLEN, "pos PID: %.3f,%.3f,%.3f\r\n",
 			(double) p, (double) i, (double) d);
 
@@ -542,206 +527,135 @@ int controlcmd(char *cmd)
 			yawspeedpid ? "single" : "dual");
 
 		esp_send(&espdev, s);
-		
-		return 0;
 	}
-	else if (strcmp(toks[0], "r") == 0) {
+	else if (strcmp(toks[0], "r") == 0)
 		lbw = rbw = ltw = rtw = 0.0;
-		return 0;
-	}
-	else if (strcmp(toks[0], "e") == 0) {
+	else if (strcmp(toks[0], "e") == 0)
 		lbw = rbw = ltw = rtw = 1.0;
-		return 0;
-	}
-	else if (strcmp(toks[0], "dl") == 0) {
-		speedpid = 0;
-		return 0;
-	}
-	else if (strcmp(toks[0], "sl") == 0) {
-		speedpid = 1;
-		return 0;
-	}
-	else if (strcmp(toks[0], "ydl") == 0) {
-		yawspeedpid = 0;
-		return 0;
-	}
-	else if (strcmp(toks[0], "ysl") == 0) {
-		yawspeedpid = 1;
-		return 0;
-	}
-
-	if (tc < 2) {
-		esp_send(&espdev, "Unknown command\r\n");
-		return (-1);
-	}
-
-	if (strcmp(toks[0], "c") == 0) {
+	else if (strcmp(toks[0], "c") == 0)
 		initstabilize(atof(toks[1]));
-		return 0;
-	}
-	else if (strcmp(toks[0], "tt") == 0) {
-		thrust = atof(toks[1]);
-		return 0;
-	}
-	else if (strcmp(toks[0], "pt") == 0) {
-		pitchtarget = atof(toks[1]);
-		return 0;
-	}
-	else if (strcmp(toks[0], "rt") == 0) {
-		rolltarget = atof(toks[1]);
-		return 0;
-	}
-	else if (strcmp(toks[0], "yt") == 0) {
-		yawtarget = atof(toks[1]);
-		return 0;
-	}
-	else if (strcmp(toks[0], "xc") == 0) {
-		ax0 = atof(toks[1]);
-		return 0;
-	}
-	else if (strcmp(toks[0], "yc") == 0) {
-		ay0 = atof(toks[1]);
-		return 0;
-	}
-	else if (strcmp(toks[0], "zc") == 0) {
-		az0 = atof(toks[1]);
-		return 0;
-	}
-	else if (strcmp(toks[0], "p") == 0) {
-		p = atof(toks[1]);
+	else if (strcmp(toks[0], "t") == 0) {
+		float v;
 	
-		dsp_setpid(&pitchpv, p, i, d);
-		dsp_setpid(&rollpv, p, i, d);
+		v = atof(toks[2]);
 		
-		return 0;
+		if (strcmp(toks[1], "c") == 0)		thrust = v;
+		else if (strcmp(toks[1], "r") == 0)	rolltarget = v;
+		else if (strcmp(toks[1], "p") == 0)	pitchtarget = v;
+		else if (strcmp(toks[1], "y") == 0)	yawtarget = v;
+		else
+			goto unknown;
 	}
-	else if (strcmp(toks[0], "i") == 0) {
-		i = atof(toks[1]);
-		
-		dsp_setpid(&pitchpv, p, i, d);
-		dsp_setpid(&rollpv, p, i, d);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "d") == 0) {
-		d = atof(toks[1]);
-		
-		dsp_setpid(&pitchpv, p, i, d);
-		dsp_setpid(&rollpv, p, i, d);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "sp") == 0) {
-		sp = atof(toks[1]);
-		
-		dsp_setpid(&pitchspv, sp, si, sd);
-		dsp_setpid(&rollspv, sp, si, sd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "si") == 0) {
-		si = atof(toks[1]);
-		
-		dsp_setpid(&pitchspv, sp, si, sd);
-		dsp_setpid(&rollspv, sp, si, sd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "sd") == 0) {
-		sd = atof(toks[1]);
+	else if (strcmp(toks[0], "pid") == 0) {
+		float v;
 	
-		dsp_setpid(&pitchspv, sp, si, sd);
-		dsp_setpid(&rollspv, sp, si, sd);
+		v = atof(toks[3]);
 		
-		return 0;
-	}
-	else if (strcmp(toks[0], "yp") == 0) {
-		yp = atof(toks[1]);
-		
-		dsp_setpid(&yawpv, yp, yi, yd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "yi") == 0) {
-		yi = atof(toks[1]);
-		
-		dsp_setpid(&yawpv, yp, yi, yd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "yd") == 0) {
-		yd = atof(toks[1]);
+		if (strcmp(toks[1], "tilt") == 0) {
+			if (strcmp(toks[2], "mode") == 0) {
+				if (strcmp(toks[3], "double") == 0)
+					speedpid = 0;
+				else if (strcmp(toks[3], "single") == 0)
+					speedpid = 1;
+				else
+					goto unknown;
+			}
+			else if (strcmp(toks[2], "p") == 0)	p = v;
+			else if (strcmp(toks[2], "i") == 0)	i = v;
+			else if (strcmp(toks[2], "d") == 0)	d = v;
+			else
+				goto unknown;
 	
-		dsp_setpid(&yawpv, yp, yi, yd);
+			dsp_setpid(&pitchpv, p, i, d);
+			dsp_setpid(&rollpv, p, i, d);
+		}
+		else if (strcmp(toks[1], "stilt") == 0) {
+			if (strcmp(toks[2], "p") == 0)		sp = v;
+			else if (strcmp(toks[2], "i") == 0)	si = v;
+			else if (strcmp(toks[2], "d") == 0)	sd = v;
+			else
+				goto unknown;
+
+			dsp_setpid(&pitchspv, sp, si, sd);
+			dsp_setpid(&rollspv, sp, si, sd);
+		}
+		else if (strcmp(toks[1], "yaw") == 0) {
+			if (strcmp(toks[2], "mode") == 0) {
+				if (strcmp(toks[3], "double") == 0)
+					yawspeedpid = 0;
+				else if (strcmp(toks[3], "single") == 0)
+					yawspeedpid = 1;
+				else
+					goto unknown;
+			}
+			else if (strcmp(toks[2], "p") == 0)	yp = v;
+			else if (strcmp(toks[2], "i") == 0)	yi = v;
+			else if (strcmp(toks[2], "d") == 0)	yd = v;
+			else
+				goto unknown;
 		
-		return 0;
+			dsp_setpid(&yawpv, yp, yi, yd);
+		}
+		else if (strcmp(toks[1], "syaw") == 0) {
+			if (strcmp(toks[2], "p") == 0)		ysp = v;
+			else if (strcmp(toks[2], "i") == 0)	ysi = v;
+			else if (strcmp(toks[2], "d") == 0)	ysd = v;
+			else
+				goto unknown;
+		
+			dsp_setpid(&yawspv, ysp, ysi, ysd);
+		}
+		else if (strcmp(toks[1], "sclimb") == 0) {
+			if (strcmp(toks[2], "p") == 0)		zsp = v;
+			else if (strcmp(toks[2], "i") == 0)	zsi = v;
+			else if (strcmp(toks[2], "d") == 0)	zsd = v;
+			else
+				goto unknown;
+
+			dsp_setpid(&zspv, zsp, zsi, zsd);
+		}
+		else
+			goto unknown;
 	}
-	else if (strcmp(toks[0], "ysp") == 0) {
-		ysp = atof(toks[1]);
-		
-		dsp_setpid(&yawspv, ysp, ysi, ysd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "ysi") == 0) {
-		ysi = atof(toks[1]);
-		
-		dsp_setpid(&yawspv, ysp, ysi, ysd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "ysd") == 0) {
-		ysd = atof(toks[1]);
-	
-		dsp_setpid(&yawspv, ysp, ysi, ysd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "tp") == 0) {
-		zsp = atof(toks[1]);
-		
-		dsp_setpid(&zspv, zsp, zsi, zsd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "ti") == 0) {
-		zsi = atof(toks[1]);
-	
-		dsp_setpid(&zspv, zsp, zsi, zsd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "td") == 0) {
-		zsd = atof(toks[1]);
-		
-		dsp_setpid(&zspv, zsp, zsi, zsd);
-		
-		return 0;
-	}
-	else if (strcmp(toks[0], "tc") == 0) {
+	else if (strcmp(toks[0], "compl") == 0) {
 		tcoef = atof(toks[1]);
-	
+		
 		dsp_initcompl(&pitchcompl, tcoef, PID_FREQ);
 		dsp_initcompl(&rollcompl, tcoef, PID_FREQ);	
-		
-		return 0;
 	}
-	else if (strcmp(toks[0], "ptc") == 0) {
-		ptcoef = atof(toks[1]);
+	else if (strcmp(toks[0], "lpf") == 0) {
+		if (strcmp(toks[1], "climb") == 0) {
+			ztcoef = atof(toks[2]);
 			
-		dsp_initlpf(&presslpf, ptcoef, PID_FREQ);
-		
-		return 0;
-	}	
-	else if (strcmp(toks[0], "ztc") == 0) {
-		ztcoef = atof(toks[1]);
-		
-		dsp_initlpf(&zlpf, ztcoef, PID_FREQ);
-		
-		return 0;
+			dsp_initlpf(&zlpf, ztcoef, PID_FREQ);
+		}
+		else if (strcmp(toks[1], "pressure") == 0) {
+			ptcoef = atof(toks[2]);
+				
+			dsp_initlpf(&presslpf, ptcoef, PID_FREQ);
+		}
+		else
+			goto unknown;
 	}
+	else if (strcmp(toks[0], "adj") == 0) {
+		float v;
+	
+		v = atof(toks[2]);
+		
+		if (strcmp(toks[1], "roll") == 0)		ax0 = v;
+		else if (strcmp(toks[1], "pitch") == 0)		ay0 = v;
+		else if (strcmp(toks[1], "yaw") == 0)		az0 = v;
+		else
+			goto unknown;
+	}
+	else
+		goto unknown;
 
-	esp_send(&espdev, "Unknown command\r\n");
+	return 0;
+
+unknown:
+	snprintf(s, INFOLEN, "Unknown command: %s\r\n", cmd);
+	esp_send(&espdev, s);
 
 	return (-1);
 }

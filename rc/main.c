@@ -154,17 +154,17 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 	}
 	else if (event->type == SDL_CONTROLLERAXISMOTION) {
 		if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
-			sendcmd(lsfd, rsi, "yt %f\n", event->caxis.value / 32767.0 * M_PI);
+			sendcmd(lsfd, rsi, "t y %f\n", event->caxis.value / 32767.0 * M_PI);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
-			sendcmd(lsfd, rsi, "yt %f\n", -event->caxis.value / 32767.0 * M_PI);
+			sendcmd(lsfd, rsi, "t y %f\n", -event->caxis.value / 32767.0 * M_PI);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
-			sendcmd(lsfd, rsi, "pt %f\n", -event->caxis.value / 32767.0 * AXISSCALE);
+			sendcmd(lsfd, rsi, "t p %f\n", -event->caxis.value / 32767.0 * AXISSCALE);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
-			sendcmd(lsfd, rsi, "rt %f\n", event->caxis.value / 32767.0 * AXISSCALE);
+			sendcmd(lsfd, rsi, "t r %f\n", event->caxis.value / 32767.0 * AXISSCALE);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX) {
 		
 		} else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY)
-			sendcmd(lsfd, rsi, "tt %f\n", -event->caxis.value / 32767.0 * 1.0);
+			sendcmd(lsfd, rsi, "t c %f\n", -event->caxis.value / 32767.0 * 1.0);
 	}
 
 	return 0;
