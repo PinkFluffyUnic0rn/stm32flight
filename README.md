@@ -23,6 +23,7 @@ Devices
 =======
  * MCU: STM32F411CEU6
  * Accelerometer/Gyroscope: MPU6050
+ * Magnetometer: HMC5883L
  * Remote control: ESP8266 (ESP-01s)
  * Barometer: BMP280
 
@@ -34,21 +35,28 @@ info commands:
  * bd -- bmp280 data
  * vd -- control values
  * pd -- PID values
+ * hd -- hmc5883L values
 
 control commands:
 --------------
  * r -- turn off motors
  * e -- turn on motors
- * sl -- switch to single PID loop mode (speed controlled)
- * dl -- switch to dobule PID loop (with stabilization)
+ * sl -- switch to single PID loop mode (speed controlled) for roll/picth
+ * dl -- switch to dobule PID loop (with stabilization) for roll/picth
+ * ysl -- switch to single PID loop mode (speed controlled) for yaw 
+ * ydl -- switch to dobule PID loop (with stabilization) for yaw
  * c [altitude] -- recalibrate
 
 value commands:
 --------------
- * `t (i | d | s {val})` -- increase/decrease/set thrust
- * `(p | r | y)t (i | d| s {val})` -- increase/decrease/set pitch/roll/yaw target
- * `(x | y | z)c (i | d | s {val})` -- increase/decrease X/Y/Z accelerometer correction
- * `(p | i | d) (i | d | s {val})` -- increase/decrease/set position pid P/I/D value
- * `s(p | i | d) (i | d | s {val})` -- increase/decrease/set speed pid P/I/D value
- * `y(p | i | d) (i | d | s {val})` -- increase/decrease/set yaw pid P/I/D value
- * `tc (i | d | s {val})` -- increate/decrease/set complementary filter's time constant
+ * `tt {val})` -- set thrust target
+ * `(p | r | y)t {val}` -- set pitch/roll/yaw target
+ * `(x | y | z)c {val}` -- set X/Y/Z orienation correction
+ * `(p | i | d) {val}` -- set position pid P/I/D value
+ * `s(p | i | d) {val}` -- set speed pid P/I/D value
+ * `y(p | i | d) {val}` -- set yaw pid P/I/D value
+ * `ys(p | i | d) {val}` -- set yaw speed pid P/I/D value
+ * `t(p | i | d) {val}` -- set thrust P/I/D value
+ * `tc {val}` -- set roll/pitch complementary filter's time constant
+ * `ptc {val}` -- set pressure low-pass filter's time constant
+ * `ztc {val}` -- set Z-axis acceleration low-pass filter's time constant
