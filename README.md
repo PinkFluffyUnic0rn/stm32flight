@@ -1,7 +1,8 @@
 STM32 Flight controller
 =========================
 
-Implementing flight controller for a small quadcopter.
+Implementing flight controller for a small quadcopter. UAV is controlled
+from desktop PC using Xbox (or any else supported by SLD2) gamepad.
 
 Parameters
 ==========
