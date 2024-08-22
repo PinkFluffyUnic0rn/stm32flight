@@ -18,6 +18,8 @@
 SDL_Surface *screen;
 SDL_Renderer *render;
 
+float yaw = 0.0;
+
 int initsocks(int *lsfd, struct sockaddr_in *rsi)
 {
 	struct sockaddr_in lsi;
@@ -148,15 +150,23 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN) {
 		}
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
+			yaw -= 0.1 * M_PI;
+
+			sendcmd(lsfd, rsi, "t y %f\n", yaw);
 		}
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
+			yaw += 0.1 * M_PI;
+			sendcmd(lsfd, rsi, "t y %f\n", yaw);		
 		}
 	}
 	else if (event->type == SDL_CONTROLLERAXISMOTION) {
-		if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
+		if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) {
 			sendcmd(lsfd, rsi, "t y %f\n", -event->caxis.value / 32767.0 * M_PI);
-		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
+	
+		}
+		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
 			sendcmd(lsfd, rsi, "t y %f\n", event->caxis.value / 32767.0 * M_PI);
+		}
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
 			sendcmd(lsfd, rsi, "t p %f\n", -event->caxis.value / 32767.0 * AXISSCALE);
 		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
@@ -216,7 +226,7 @@ int main(int argc, char *argv[])
 
 		while (fgets(s, 256, f) != NULL) {
 			sendcmd(lsfd, &rsi, s);
-			usleep(100000);
+			usleep(10000);
 		}
 	}
 	
