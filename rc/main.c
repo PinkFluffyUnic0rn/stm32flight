@@ -134,13 +134,13 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 {
 	if (event->type == SDL_CONTROLLERBUTTONUP) {
 		if (event->cbutton.button == SDL_CONTROLLER_BUTTON_A)
-			sendcmd(lsfd, rsi, "md\n");
+			sendcmd(lsfd, rsi, "info mpu\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_B)
-			sendcmd(lsfd, rsi, "pd\n");
+			sendcmd(lsfd, rsi, "info pid\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_X)
-			sendcmd(lsfd, rsi, "vd\n");
+			sendcmd(lsfd, rsi, "info values\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_Y)
-			sendcmd(lsfd, rsi, "hd\n");
+			sendcmd(lsfd, rsi, "info hmc\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
 			sendcmd(lsfd, rsi, "r\n");
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)

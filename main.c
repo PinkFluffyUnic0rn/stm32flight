@@ -48,6 +48,23 @@
 // 	define SERVPORT
 #include "wifidefs.h"
 
+struct settings {
+	float mx0,	my0,		mz0;
+	float mxsc,	mysc,		mzsc;
+	float gx0,	gy0,		gz0;
+	float roll0,	pitch0,		yaw0;
+
+	float tcoef, ttcoef, ptcoef;
+
+	int speedpid;
+	int yawspeedpid;
+	float p,	i,	d;
+	float sp,	si,	sd;
+	float yp,	yi,	yd;
+	float ysp,	ysi,	ysd;
+	float zsp,	zsi,	zsd;
+};
+
 void systemclock_config();
 static void gpio_init();
 static void i2c_init();
@@ -104,42 +121,8 @@ float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
 // pressure and altitude initial values
 float alt0, press0;
 
-// sensors correction
-float mx0 = -70.0, my0 = 100.0, mz0 = -40.0;
-float mxscale = 1.0, myscale = 1.0, mzscale = 1.090909;
-float gx0 = -4.622, gy0 = -0.396, gz0 = -0.717;
-float roll0 = -0.03, pitch0 = 0.07, yaw0 = 0.0;
-
-// filters time constants
-float tcoef = 0.5;
-float ttcoef = 0.2;
-float ptcoef = 0.5;
-
-// PID settings
-int speedpid = 0;
-int yawspeedpid = 0;
-float p = 0.0,		i = 0.0000,	d = 0.0;
-float sp = 0.0,		si = 0.0000,	sd = 0.0;
-float yp = 0.0,		yi = 0.0000,	yd = 0.0;
-float ysp = 0.0,	ysi = 0.0000,	ysd = 0.0;
-float zsp = 0.0,	zsi = 0.0000,	zsd = 0.0;
-
-struct settings {
-	float mx0,	my0,		mz0;
-	float mxscale,	myscale,	mzscale;
-	float gx0,	gy0,		gz0;
-	float roll0,	pitch0,		yaw0;
-
-	float tcoef, ttcoef, ptcoef;
-
-	int speedpid;
-	int yawspeedpid;
-	float p,	i,	d;
-	float sp,	si,	sd;
-	float yp,	yi,	yd;
-	float ysp,	ysi,	ysd;
-	float zsp,	zsi,	zsd;
-};
+// settings
+struct settings st;
 
 int loopscount = 0;
 int wifitimeout = WIFI_TIMEOUT;
@@ -154,7 +137,7 @@ uint32_t getadcv(ADC_HandleTypeDef *hadc)
 	v = HAL_ADC_GetValue(hadc);
 
 	HAL_ADC_Stop(hadc);
-	
+
 	return v;
 }
 
@@ -262,9 +245,9 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 
 float hmc_heading(float r, float p, float x, float y, float z)
 {
-	x = mxscale * (x + mx0);
-	y = myscale * (y + my0);
-	z = mzscale * (z + mz0);
+	x = st.mxsc * (x + st.mx0);
+	y = st.mysc * (y + st.my0);
+	z = st.mzsc * (z + st.mz0);
 
 	x = x * cosf(p) + y * sinf(r) * sinf(p)
 		+ z * cosf(r) * sinf(p);
@@ -295,7 +278,6 @@ int writesettings(int slot)
 	FLASH_EraseInitTypeDef ferase;
 	uint32_t serror;
 	uint32_t sz;
-	struct settings sts;
 	uint32_t *pt;
 	uint32_t addr;
 	int j;
@@ -310,23 +292,8 @@ int writesettings(int slot)
 	HAL_FLASHEx_Erase(&ferase, &serror);
 
 	sz = sizeof(struct settings);
-	sts.mx0 = mx0;		sts.my0 = my0;		sts.mz0 = mz0;
-	sts.mxscale = mxscale;	sts.myscale = myscale;	sts.mzscale = mzscale;
-	sts.gx0 = gx0;		sts.gy0 = gy0;		sts.gz0 = gz0;
-	sts.roll0 = roll0;	sts.pitch0 = pitch0;	sts.yaw0 = yaw0;
 
-	sts.tcoef = tcoef;	sts.ttcoef = ttcoef;	sts.ptcoef = ptcoef;
-
-	sts.speedpid = speedpid;
-	sts.yawspeedpid = yawspeedpid;
-
-	sts.p = p;		sts.i = i;		sts.d = d;
-	sts.sp = sp;		sts.si = si;		sts.sd = sd;
-	sts.yp = yp;		sts.yi = yi;		sts.yd = yd;
-	sts.ysp = ysp;		sts.ysi = ysi;		sts.ysd = ysd;
-	sts.zsp = zsp;		sts.zsi = zsi;		sts.zsd = zsd;
-
-	pt = (uint32_t *) &sts;
+	pt = (uint32_t *) &st;
 
 	addr = USER_FLASH + sizeof(struct settings) * slot;
 	for (j = 0; j < sz / 4; ++j) {
@@ -342,36 +309,8 @@ int writesettings(int slot)
 
 int readsettings(int slot)
 {
-	__IO struct settings *sts;
-
-	sts = (__IO struct settings *) USER_FLASH + slot;
-	
-	mx0 = sts->mx0;	
-	my0 = sts->my0;
-	mz0 = sts->mz0;
-	mxscale = sts->mxscale;
-	myscale = sts->myscale;
-	mzscale = sts->mzscale;
-
-	gx0 = sts->gx0;
-	gy0 = sts->gy0;
-	gz0 = sts->gz0;
-	roll0 = sts->roll0;
-	pitch0 = sts->pitch0;
-	yaw0 = sts->yaw0;
-
-	tcoef = sts->tcoef;
-	ttcoef = sts->ttcoef;
-	ptcoef = sts->ptcoef;
-
-	speedpid = sts->speedpid;
-	yawspeedpid = sts->yawspeedpid;
-
-	p = sts->p;		i = sts->i;		d = sts->d;
-	sp = sts->sp;		si = sts->si;		sd = sts->sd;
-	yp = sts->yp;		yi = sts->yi;		yd = sts->yd;
-	ysp = sts->ysp;		ysi = sts->ysi;		ysd = sts->ysd;
-	zsp = sts->zsp;		zsi = sts->zsi;		zsd = sts->zsd;
+	memcpy(&st, (void *) (USER_FLASH + slot),
+		sizeof(struct settings));
 
 	return 0;
 }
@@ -385,22 +324,22 @@ int initstabilize(float alt)
 	if (dev[BMP_DEV].status == DEVSTATUS_INIT)
 		press0 = groundpressure(alt);
 
-	averageposition(&ax, &ay, &az, &gx0, &gy0, &gz0);
+	averageposition(&ax, &ay, &az, &(st.gx0), &(st.gy0), &(st.gz0));
 
-	dsp_initcompl(&pitchcompl, tcoef, PID_FREQ);
-	dsp_initcompl(&rollcompl, tcoef, PID_FREQ);
+	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
+	dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);
 
-	dsp_initpidval(&pitchpv, p, i, d, 0.0);
-	dsp_initpidval(&rollpv, p, i, d, 0.0);
+	dsp_initpidval(&pitchpv, st.p, st.i, st.d, 0.0);
+	dsp_initpidval(&rollpv, st.p, st.i, st.d, 0.0);
 
-	dsp_initpidval(&pitchspv, sp, si, sd, 0.0);
-	dsp_initpidval(&rollspv, sp, si, sd, 0.0);
-	dsp_initpidval(&yawspv, ysp, ysi, ysd, 0.0);
-	dsp_initpidval(&yawpv, yp, yi, yd, 0.0);
-	dsp_initpidval(&tpv, zsp, zsi, zsd, 0.0);
+	dsp_initpidval(&pitchspv, st.sp, st.si, st.sd, 0.0);
+	dsp_initpidval(&rollspv, st.sp, st.si, st.sd, 0.0);
+	dsp_initpidval(&yawspv, st.ysp, st.ysi, st.ysd, 0.0);
+	dsp_initpidval(&yawpv, st.yp, st.yi, st.yd, 0.0);
+	dsp_initpidval(&tpv, st.zsp, st.zsi, st.zsd, 0.0);
 
-	dsp_initlpf(&presslpf, ptcoef, PID_FREQ);
-	dsp_initlpf(&tlpf, ttcoef, PID_FREQ);
+	dsp_initlpf(&presslpf, st.ptcoef, PID_FREQ);
+	dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 
 	return 0;
 }
@@ -428,25 +367,25 @@ int stabilize(float dt)
 	
 	dsp_updatelpf(&tlpf, md.afz);
 
-	gy = deg2rad((md.gfy - gy0));
-	gx = deg2rad((md.gfx - gx0));
-	gz = deg2rad((md.gfz - gz0));
+	gy = deg2rad((md.gfy - st.gy0));
+	gx = deg2rad((md.gfx - st.gx0));
+	gz = deg2rad((md.gfz - st.gz0));
 
 	roll = dsp_updatecompl(&rollcompl, gy * dt,
 		atan2f(-md.afx,
-		sqrt(md.afy * md.afy + md.afz * md.afz))) - roll0;
+		sqrt(md.afy * md.afy + md.afz * md.afz))) - st.roll0;
 
 	pitch = dsp_updatecompl(&pitchcompl, gx * dt,
 		atan2f(md.afy,
-		sqrt(md.afx * md.afx + md.afz * md.afz))) - pitch0;
+		sqrt(md.afx * md.afx + md.afz * md.afz))) - st.pitch0;
 
 	dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
 		sizeof(struct hmc_data));
 
 	yaw = circf(hmc_heading(pitch, roll, hd.fx, hd.fy, hd.fz)
-		- yaw0);
+		- st.yaw0);
 
-	if (speedpid) {
+	if (st.speedpid) {
 		rollcor = dsp_pid(&rollspv, rolltarget, gy, dt);
 		pitchcor = dsp_pid(&pitchspv, pitchtarget, gx, dt);
 	}
@@ -458,7 +397,7 @@ int stabilize(float dt)
 		pitchcor = dsp_pid(&pitchspv, pitchcor, gx, dt);
 	}
 
-	if (yawspeedpid)
+	if (st.yawspeedpid)
 		yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
 	else {
 		yawcor = circf(dsp_pid(&yawpv, yawtarget, yaw, dt));
@@ -495,6 +434,132 @@ int parsecommand(char **toks, int maxtoks, char *data)
 	return (i - 1);
 }
 
+int sprintpos(char *s, struct mpu_data *md, struct hmc_data *hd)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "accel: ",
+		(double) md->afx, (double) md->afy, (double) md->afz);
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "gyro: ",
+		(double) md->gfx, (double) md->gfy, (double) md->gfz);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
+		(double) (dsp_getcompl(&rollcompl) - st.roll0),
+		(double) (dsp_getcompl(&pitchcompl) - st.pitch0),
+		(double) circf(hmc_heading(
+			dsp_getcompl(&pitchcompl) - st.pitch0,
+			dsp_getcompl(&rollcompl) - st.roll0,
+			hd->fx, hd->fy, hd->fz) - st.yaw0));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"z acceleration: %f\r\n",
+		(double) dsp_getlpf(&tlpf));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"battery: %0.3f\n\r",
+		getadcv(&hadc1) / (double) 0xfff * (double) 6.6);
+
+	return 0;
+}
+
+int sprinthmc(char *s, struct hmc_data *hd)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"x = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		(double) hd->fx, (double) hd->fy, (double) hd->fz);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"heading: %f\r\n", (double) hmc_heading(
+			dsp_getcompl(&pitchcompl) - st.pitch0,
+			dsp_getcompl(&rollcompl) - st.roll0,
+			hd->fx, hd->fy, hd->fz));
+
+	return 0;
+}
+
+int sprintvalues(char *s)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"t: %.3f; r: %.3f; p: %.3f; y: %.3f\r\n",
+		(double) thrust, (double) rolltarget,
+		(double) pitchtarget, (double) yawtarget);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"mag off: %.3f; %.3f; %.3f\r\n",
+		(double) st.mx0, (double) st.my0, (double) st.mz0);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"mag scale: %.3f; %.3f; %.3f\r\n",
+		(double) st.mxsc, (double) st.mysc, (double) st.mzsc);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"gyro cor: %.3f; %.3f; %.3f\r\n",
+		(double) st.gx0, (double) st.gy0, (double) st.gz0);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"roll cor: %.3f; pitch cor: %.3f; yaw cor: %.3f\r\n",
+		(double) st.roll0, (double) st.pitch0,
+		(double) st.yaw0);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"lbw: %0.1f; rbw: %0.1f; ltw: %0.1f; rtw: %0.1f\r\n",
+		(double) lbw, (double) rbw,
+		(double) ltw, (double) rtw);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"cf: %.6f\r\n", (double) st.tcoef);
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"accel cf: %.6f\r\n", (double) st.ttcoef);
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"pressure cf: %.6f\r\n", (double) st.ptcoef);
+	
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"loops count: %d\r\n", loopscount);
+
+	return 0;
+}
+
+int sprintpid(char *s)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"pos PID: %.3f,%.3f,%.3f\r\n",
+		(double) st.p, (double) st.i, (double) st.d);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"speed PID: %.3f,%.3f,%.3f\r\n",
+		(double) st.sp, (double) st.si, (double) st.sd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw PID: %.3f,%.3f,%.3f\r\n",
+		(double) st.yp, (double) st.yi, (double) st.yd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw speed PID: %.3f,%.3f,%.3f\r\n",
+		(double) st.ysp, (double) st.ysi, (double) st.ysd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"thrust PID: %.3f,%.3f,%.3f\r\n",
+		(double) st.zsp, (double) st.zsi, (double) st.zsd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%s mode\r\n", st.speedpid ? "single" : "dual");
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%s yaw mode\r\n",
+		st.yawspeedpid ? "single" : "dual");
+	
+	return 0;
+}
+
 int controlcmd(char *cmd)
 {
 	char s[INFOLEN];
@@ -507,143 +572,49 @@ int controlcmd(char *cmd)
 
 	if (strcmp(toks[0], "beep") == 0)
 		wifitimeout = WIFI_TIMEOUT;
-	else if (strcmp(toks[0], "md") == 0) {
-		struct mpu_data md;
-		struct hmc_data hd;
+	else if (strcmp(toks[0], "info") == 0) {
+		if (strcmp(toks[1], "mpu") == 0) {
+			struct mpu_data md;
+			struct hmc_data hd;
 
-		dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
-			sizeof(struct mpu_data));
+			dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
+				sizeof(struct mpu_data));
 
-		dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
-			sizeof(struct hmc_data));
-	
-		snprintf(s, INFOLEN,
-			"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
-			"accel: ", (double) md.afx, (double) md.afy,
-			(double) md.afz);
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
-			"gyro: ", (double) deg2rad(md.gfx),
-			(double) deg2rad(md.gfy),
-			(double) deg2rad(md.gfz));
+			dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+				sizeof(struct hmc_data));
 
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
-			(double) (dsp_getcompl(&rollcompl) - roll0),
-			(double) (dsp_getcompl(&pitchcompl) - pitch0),
-			(double) circf(hmc_heading(
-				dsp_getcompl(&pitchcompl) - pitch0,
-				dsp_getcompl(&rollcompl) - roll0,
-				hd.fx, hd.fy, hd.fz) - yaw0));
+			sprintpos(s, &md, &hd);
 
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"z acceleration: %f\r\n",
-			(double) dsp_getlpf(&tlpf));
+			esp_send(&espdev, s);
+		}
+		else if (strcmp(toks[1], "hmc") == 0) {
+			struct hmc_data hd;
 
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"battery: %0.3f\n\r",
-			getadcv(&hadc1) / (double) 0xfff * (double) 6.6);
-
-		esp_send(&espdev, s);
-	}
-	else if (strcmp(toks[0], "hd") == 0) {
-		struct hmc_data hd;
-
-		dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
-			sizeof(struct hmc_data));
-	
-		snprintf(s, INFOLEN,
-			"x = %0.3f; y = %0.3f; z = %0.3f\n\r",
-			(double) hd.fx, (double) hd.fy,
-			(double) hd.fz);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"heading: %f\r\n", (double) hmc_heading(
-				dsp_getcompl(&pitchcompl) - pitch0,
-				dsp_getcompl(&rollcompl) - roll0,
-				hd.fx, hd.fy, hd.fz));
-	
-		esp_send(&espdev, s);
-	}
-	else if (strcmp(toks[0], "bd") == 0) {
-		float press;
-
-		press = dsp_getlpf(&presslpf);
-
-		snprintf(s, INFOLEN, "bar: %f; alt: %f\r\n",
-			(double) press, (double) getalt(press0, press));
+			dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+				sizeof(struct hmc_data));
 		
-		esp_send(&espdev, s);
-	}
-	else if (strcmp(toks[0], "vd") == 0) {
-		snprintf(s, INFOLEN,
-			"t: %.3f; r: %.3f; p: %.3f; y: %.3f\r\n",
-			(double) thrust, (double) rolltarget,
-			(double) pitchtarget, (double) yawtarget);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"mag off: %.3f; %.3f; %.3f\r\n",
-			(double) mx0, (double) my0, (double) mz0);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"mag scale: %.3f; %.3f; %.3f\r\n",
-			(double) mxscale, (double) myscale,
-			(double) mzscale);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"gyro cor: %.3f; %.3f; %.3f\r\n",
-			(double) gx0, (double) gy0, (double) gz0);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"roll cor: %.3f; pitch cor: %.3f; yaw cor: %.3f\r\n",
-			(double) roll0, (double) pitch0, (double) yaw0);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"lbw: %0.1f; rbw: %0.1f; ltw: %0.1f; rtw: %0.1f\r\n",
-			(double) lbw, (double) rbw,
-			(double) ltw, (double) rtw);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"cf: %.6f\r\n", (double) tcoef);
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"accel cf: %.6f\r\n", (double) ttcoef);
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"pressure cf: %.6f\r\n",
-			(double) ptcoef);
+			sprinthmc(s, &hd);	
 		
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"loops count: %d\r\n", loopscount);
+			esp_send(&espdev, s);
+		}
+		else if (strcmp(toks[1], "bmp") == 0) {
+			float press;
 
-		esp_send(&espdev, s);
-	}
-	else if (strcmp(toks[0], "pd") == 0) {
-		snprintf(s, INFOLEN, "pos PID: %.3f,%.3f,%.3f\r\n",
-			(double) p, (double) i, (double) d);
+			press = dsp_getlpf(&presslpf);
 
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"speed PID: %.3f,%.3f,%.3f\r\n",
-			(double) sp, (double) si, (double) sd);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"yaw PID: %.3f,%.3f,%.3f\r\n",
-			(double) yp, (double) yi, (double) yd);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"yaw speed PID: %.3f,%.3f,%.3f\r\n",
-			(double) ysp, (double) ysi, (double) ysd);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"thrust PID: %.3f,%.3f,%.3f\r\n",
-			(double) zsp, (double) zsi, (double) zsd);
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"%s mode\r\n", speedpid ? "single" : "dual");
-
-		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"%s yaw mode\r\n",
-			yawspeedpid ? "single" : "dual");
-
-		esp_send(&espdev, s);
+			snprintf(s, INFOLEN, "bar: %f; alt: %f\r\n",
+				(double) press, (double) getalt(press0, press));
+			
+			esp_send(&espdev, s);
+		}
+		else if (strcmp(toks[1], "values") == 0) {
+			sprintvalues(s);
+			esp_send(&espdev, s);
+		}
+		else if (strcmp(toks[1], "pid") == 0) {
+			sprintpid(s);
+			esp_send(&espdev, s);
+		}
 	}
 	else if (strcmp(toks[0], "r") == 0)
 		lbw = rbw = ltw = rtw = 0.0;
@@ -677,85 +648,100 @@ int controlcmd(char *cmd)
 		if (strcmp(toks[1], "tilt") == 0) {
 			if (strcmp(toks[2], "mode") == 0) {
 				if (strcmp(toks[3], "double") == 0)
-					speedpid = 0;
+					st.speedpid = 0;
 				else if (strcmp(toks[3], "single") == 0)
-					speedpid = 1;
+					st.speedpid = 1;
 				else
 					goto unknown;
 			}
-			else if (strcmp(toks[2], "p") == 0)	p = v;
-			else if (strcmp(toks[2], "i") == 0)	i = v;
-			else if (strcmp(toks[2], "d") == 0)	d = v;
+			else if (strcmp(toks[2], "p") == 0)
+				st.p = v;
+			else if (strcmp(toks[2], "i") == 0)
+				st.i = v;
+			else if (strcmp(toks[2], "d") == 0)
+				st.d = v;
 			else
 				goto unknown;
 	
-			dsp_setpid(&pitchpv, p, i, d);
-			dsp_setpid(&rollpv, p, i, d);
+			dsp_setpid(&pitchpv, st.p, st.i, st.d);
+			dsp_setpid(&rollpv, st.p, st.i, st.d);
 		}
 		else if (strcmp(toks[1], "stilt") == 0) {
-			if (strcmp(toks[2], "p") == 0)		sp = v;
-			else if (strcmp(toks[2], "i") == 0)	si = v;
-			else if (strcmp(toks[2], "d") == 0)	sd = v;
+			if (strcmp(toks[2], "p") == 0)
+				st.sp = v;
+			else if (strcmp(toks[2], "i") == 0)
+				st.si = v;
+			else if (strcmp(toks[2], "d") == 0)
+				st.sd = v;
 			else
 				goto unknown;
 
-			dsp_setpid(&pitchspv, sp, si, sd);
-			dsp_setpid(&rollspv, sp, si, sd);
+			dsp_setpid(&pitchspv, st.sp, st.si, st.sd);
+			dsp_setpid(&rollspv, st.sp, st.si, st.sd);
 		}
 		else if (strcmp(toks[1], "yaw") == 0) {
 			if (strcmp(toks[2], "mode") == 0) {
 				if (strcmp(toks[3], "double") == 0)
-					yawspeedpid = 0;
+					st.yawspeedpid = 0;
 				else if (strcmp(toks[3], "single") == 0)
-					yawspeedpid = 1;
+					st.yawspeedpid = 1;
 				else
 					goto unknown;
 			}
-			else if (strcmp(toks[2], "p") == 0)	yp = v;
-			else if (strcmp(toks[2], "i") == 0)	yi = v;
-			else if (strcmp(toks[2], "d") == 0)	yd = v;
+			else if (strcmp(toks[2], "p") == 0)
+				st.yp = v;
+			else if (strcmp(toks[2], "i") == 0)
+				st.yi = v;
+			else if (strcmp(toks[2], "d") == 0)
+				st.yd = v;
 			else
 				goto unknown;
 		
-			dsp_setpid(&yawpv, yp, yi, yd);
+			dsp_setpid(&yawpv, st.yp, st.yi, st.yd);
 		}
 		else if (strcmp(toks[1], "syaw") == 0) {
-			if (strcmp(toks[2], "p") == 0)		ysp = v;
-			else if (strcmp(toks[2], "i") == 0)	ysi = v;
-			else if (strcmp(toks[2], "d") == 0)	ysd = v;
+			if (strcmp(toks[2], "p") == 0)
+				st.ysp = v;
+			else if (strcmp(toks[2], "i") == 0)
+				st.ysi = v;
+			else if (strcmp(toks[2], "d") == 0)
+				st.ysd = v;
 			else
 				goto unknown;
 		
-			dsp_setpid(&yawspv, ysp, ysi, ysd);
+			dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd);
 		}
 		else if (strcmp(toks[1], "climb") == 0) {
-			if (strcmp(toks[2], "p") == 0)		zsp = v;
-			else if (strcmp(toks[2], "i") == 0)	zsi = v;
-			else if (strcmp(toks[2], "d") == 0)	zsd = v;
+			if (strcmp(toks[2], "p") == 0)
+				st.zsp = v;
+			else if (strcmp(toks[2], "i") == 0)
+				st.zsi = v;
+			else if (strcmp(toks[2], "d") == 0)
+				st.zsd = v;
 			else
 				goto unknown;
 
-			dsp_setpid(&tpv, zsp, zsi, zsd);
+			dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd);
 		}
 		else
 			goto unknown;
 	}
 	else if (strcmp(toks[0], "compl") == 0) {
-		tcoef = atof(toks[1]);
+		st.tcoef = atof(toks[1]);
 		
-		dsp_initcompl(&pitchcompl, tcoef, PID_FREQ);
-		dsp_initcompl(&rollcompl, tcoef, PID_FREQ);	
+		dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
+		dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);	
 	}
 	else if (strcmp(toks[0], "lpf") == 0) {
 		if (strcmp(toks[1], "climb") == 0) {
-			ttcoef = atof(toks[2]);
+			st.ttcoef = atof(toks[2]);
 			
-			dsp_initlpf(&tlpf, ttcoef, PID_FREQ);
+			dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 		}
 		else if (strcmp(toks[1], "pressure") == 0) {
-			ptcoef = atof(toks[2]);
+			st.ptcoef = atof(toks[2]);
 				
-			dsp_initlpf(&presslpf, ptcoef, PID_FREQ);
+			dsp_initlpf(&presslpf, st.ptcoef, PID_FREQ);
 		}
 		else
 			goto unknown;
@@ -765,9 +751,25 @@ int controlcmd(char *cmd)
 	
 		v = atof(toks[2]);
 		
-		if (strcmp(toks[1], "roll") == 0)	roll0 = v;
-		else if (strcmp(toks[1], "pitch") == 0)	pitch0 = v;
-		else if (strcmp(toks[1], "yaw") == 0)	yaw0 = v;
+		if (strcmp(toks[1], "roll") == 0)	st.roll0 = v;
+		else if (strcmp(toks[1], "pitch") == 0)	st.pitch0 = v;
+		else if (strcmp(toks[1], "yaw") == 0)	st.yaw0 = v;
+		else if (strcmp(toks[1], "mag") == 0) {
+			if (strcmp(toks[2], "x0") == 0)
+				st.mx0 = atof(toks[3]);
+			else if (strcmp(toks[2], "y0") == 0)
+				st.my0 = atof(toks[3]);
+			else if (strcmp(toks[2], "z0") == 0)
+				st.mz0 = atof(toks[3]);
+			else if (strcmp(toks[2], "xscale") == 0)
+				st.mxsc = atof(toks[3]);
+			else if (strcmp(toks[2], "yscale") == 0)
+				st.mysc = atof(toks[3]);
+			else if (strcmp(toks[2], "zscale") == 0)
+				st.mzsc = atof(toks[3]);
+			else
+				goto unknown;
+		}
 		else
 			goto unknown;
 	}

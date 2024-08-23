@@ -19,6 +19,12 @@ compl 0.25
 lpf climb 0.25
 lpf pressure 10.0
 adj roll -0.03
-adj pitch -0.07
+adj pitch -0.1
 adj yaw 2.5
-flash write 0
+adj mag x0 -70.0
+adj mag y0 100.0
+adj mag z0 -40.0
+adj mag xscale 1.0
+adj mag yscale 1.0
+adj mag zscale 1.090909
+flash write
