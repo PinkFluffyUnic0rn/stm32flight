@@ -36,6 +36,9 @@
 #define PID_FREQ 1000
 #define MAGNETIC_DECLANATION 0.3264
 
+#define USER_FLASH 0x08020000
+#define UESR_SETSLOTS (0x80 / sizeof(struct settings))
+
 #define WIFI_TIMEOUT 3
 
 // Wi-Fi settings:
@@ -120,6 +123,23 @@ float sp = 0.0,		si = 0.0000,	sd = 0.0;
 float yp = 0.0,		yi = 0.0000,	yd = 0.0;
 float ysp = 0.0,	ysi = 0.0000,	ysd = 0.0;
 float zsp = 0.0,	zsi = 0.0000,	zsd = 0.0;
+
+struct settings {
+	float mx0,	my0,		mz0;
+	float mxscale,	myscale,	mzscale;
+	float gx0,	gy0,		gz0;
+	float roll0,	pitch0,		yaw0;
+
+	float tcoef, ttcoef, ptcoef;
+
+	int speedpid;
+	int yawspeedpid;
+	float p,	i,	d;
+	float sp,	si,	sd;
+	float yp,	yi,	yd;
+	float ysp,	ysi,	ysd;
+	float zsp,	zsi,	zsd;
+};
 
 int loopscount = 0;
 int wifitimeout = WIFI_TIMEOUT;
@@ -266,6 +286,92 @@ int setthrust(float ltd, float rtd, float rbd, float lbd)
 		* (float) PWM_MAXCOUNT);
 	TIM1->CCR4 = (uint16_t) ((trimuf(lbd) * 0.05 + 0.049)
 		* (float) PWM_MAXCOUNT);
+
+	return 0;
+}
+
+int writesettings(int slot)
+{
+	FLASH_EraseInitTypeDef ferase;
+	uint32_t serror;
+	uint32_t sz;
+	struct settings sts;
+	uint32_t *pt;
+	uint32_t addr;
+	int j;
+
+	__disable_irq();
+	HAL_FLASH_Unlock();
+
+	ferase.TypeErase = FLASH_TYPEERASE_SECTORS;
+	ferase.NbSectors = 1;
+	ferase.Sector = FLASH_SECTOR_5;
+	ferase.VoltageRange = VOLTAGE_RANGE_3;
+	HAL_FLASHEx_Erase(&ferase, &serror);
+
+	sz = sizeof(struct settings);
+	sts.mx0 = mx0;		sts.my0 = my0;		sts.mz0 = mz0;
+	sts.mxscale = mxscale;	sts.myscale = myscale;	sts.mzscale = mzscale;
+	sts.gx0 = gx0;		sts.gy0 = gy0;		sts.gz0 = gz0;
+	sts.roll0 = roll0;	sts.pitch0 = pitch0;	sts.yaw0 = yaw0;
+
+	sts.tcoef = tcoef;	sts.ttcoef = ttcoef;	sts.ptcoef = ptcoef;
+
+	sts.speedpid = speedpid;
+	sts.yawspeedpid = yawspeedpid;
+
+	sts.p = p;		sts.i = i;		sts.d = d;
+	sts.sp = sp;		sts.si = si;		sts.sd = sd;
+	sts.yp = yp;		sts.yi = yi;		sts.yd = yd;
+	sts.ysp = ysp;		sts.ysi = ysi;		sts.ysd = ysd;
+	sts.zsp = zsp;		sts.zsi = zsi;		sts.zsd = zsd;
+
+	pt = (uint32_t *) &sts;
+
+	addr = USER_FLASH + sizeof(struct settings) * slot;
+	for (j = 0; j < sz / 4; ++j) {
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr, pt[j]);
+		addr += 4;
+	}
+
+	HAL_FLASH_Lock();
+	__enable_irq();
+
+	return 0;
+}
+
+int readsettings(int slot)
+{
+	__IO struct settings *sts;
+
+	sts = (__IO struct settings *) USER_FLASH + slot;
+	
+	mx0 = sts->mx0;	
+	my0 = sts->my0;
+	mz0 = sts->mz0;
+	mxscale = sts->mxscale;
+	myscale = sts->myscale;
+	mzscale = sts->mzscale;
+
+	gx0 = sts->gx0;
+	gy0 = sts->gy0;
+	gz0 = sts->gz0;
+	roll0 = sts->roll0;
+	pitch0 = sts->pitch0;
+	yaw0 = sts->yaw0;
+
+	tcoef = sts->tcoef;
+	ttcoef = sts->ttcoef;
+	ptcoef = sts->ptcoef;
+
+	speedpid = sts->speedpid;
+	yawspeedpid = sts->yawspeedpid;
+
+	p = sts->p;		i = sts->i;		d = sts->d;
+	sp = sts->sp;		si = sts->si;		sd = sts->sd;
+	yp = sts->yp;		yi = sts->yi;		yd = sts->yd;
+	ysp = sts->ysp;		ysi = sts->ysi;		ysd = sts->ysd;
+	zsp = sts->zsp;		zsi = sts->zsi;		zsd = sts->zsd;
 
 	return 0;
 }
@@ -476,6 +582,15 @@ int controlcmd(char *cmd)
 			(double) pitchtarget, (double) yawtarget);
 
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"mag off: %.3f; %.3f; %.3f\r\n",
+			(double) mx0, (double) my0, (double) mz0);
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"mag scale: %.3f; %.3f; %.3f\r\n",
+			(double) mxscale, (double) myscale,
+			(double) mzscale);
+
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"gyro cor: %.3f; %.3f; %.3f\r\n",
 			(double) gx0, (double) gy0, (double) gz0);
 
@@ -489,12 +604,12 @@ int controlcmd(char *cmd)
 			(double) ltw, (double) rtw);
 
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"cf: %.6f\r\n", (double) pitchcompl.coef);
+			"cf: %.6f\r\n", (double) tcoef);
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
-			"accel cf: %.6f\r\n", (double) tlpf.alpha);
+			"accel cf: %.6f\r\n", (double) ttcoef);
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"pressure cf: %.6f\r\n",
-			(double) presslpf.alpha);
+			(double) ptcoef);
 		
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"loops count: %d\r\n", loopscount);
@@ -547,6 +662,12 @@ int controlcmd(char *cmd)
 		else if (strcmp(toks[1], "y") == 0)	yawtarget = v;
 		else
 			goto unknown;
+	}
+	else if (strcmp(toks[0], "flash") == 0) {
+		if (strcmp(toks[1], "write") == 0)
+			writesettings(atoi(toks[2]));	
+		else if (strcmp(toks[1], "read") == 0)
+			readsettings(atoi(toks[2]));
 	}
 	else if (strcmp(toks[0], "pid") == 0) {
 		float v;
@@ -688,6 +809,8 @@ int main(void)
 	mpu_init();
 	hmc_init();
 	espdev_init();
+
+	readsettings(0);
 
 	initstabilize(0.0);
 

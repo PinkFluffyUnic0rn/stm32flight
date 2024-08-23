@@ -21,3 +21,4 @@ lpf pressure 10.0
 adj roll -0.03
 adj pitch -0.07
 adj yaw 2.5
+flash write 0
