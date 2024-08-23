@@ -30,22 +30,11 @@ Devices
 
 UAV commands:
 =============
-info commands:
---------------
- * md -- mpu6050 data
- * bd -- bmp280 data
- * hd -- hmc5883L data
- * vd -- control values
- * pd -- PID values
-
-control commands:
---------------
+ 
+ * info (mpu | hmc | bmp | values | pid) -- mpu6050/hmc5883L/bmp280/control values/PID data
  * r -- turn off motors
  * e -- turn on motors
  * c [altitude] -- recalibrate
-
-value commands:
---------------
  * `pid (tilt|stilt|yaw|syaw|sclimb) (p|i|d) {val}` -- set tilt/tilt speed/yaw/yaw speed/climb speed PID P/I/D value
  * `pid (tilt|yaw) (single/double)` -- switch to single/double PID loop mode for tilt/yaw
  * `compl {val}` -- set complimentary filter's time constant for tilt
