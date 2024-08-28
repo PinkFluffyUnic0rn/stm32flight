@@ -1,4 +1,4 @@
-#include "stm32f4xx_hal.h"
+#include "stm32f3xx_hal.h"
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -13,7 +13,7 @@
 #define ESP_UARTTIMEOUT 100
 #define ESP_TIMEOUT 1000
 #define ESP_JOINTIMEOUT 30000
-#define ESP_FIFOSIZE 64
+#define ESP_FIFOSIZE 16
 
 enum ESP_RESPONSE {
 	ESP_OK = 0,
@@ -144,19 +144,19 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass)
 	int i;
 	
 	HAL_UART_Receive_IT(dev->huart, Rxdata, 1);
-	/*
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=500000,8,1,0,0") != ESP_OK)
+
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=921600,8,1,0,0") != ESP_OK)
 		return (-1);
 
 	HAL_UART_DeInit(dev->huart);
 	
-	dev->huart->Init.BaudRate = 500000;
+	dev->huart->Init.BaudRate = 921600;
 
 	if (HAL_UART_Init(dev->huart) != HAL_OK)
-		error_handler();
+		return (-1);	
 	
 	HAL_UART_Receive_IT(dev->huart, Rxdata, 1);
-*/
+
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
 		return (-1);
 

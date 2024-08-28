@@ -1,7 +1,7 @@
 #ifndef UARTDEBUG_H
 #define UARTDEBUG_H
 
-#include "stm32f4xx_hal.h"
+#include "stm32f3xx_hal.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
