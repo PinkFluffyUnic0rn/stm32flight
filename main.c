@@ -881,9 +881,12 @@ int main(void)
 					&hd, sizeof(struct hmc_data));
 	
 				sprintf(s, "%f %f %f\r\n",
-					st.mxsc * (hd.fx + st.mx0),
-					st.mysc * (hd.fy + st.my0),
-					st.mzsc * (hd.fz + st.mz0));
+					(double) (st.mxsc
+						* (hd.fx + st.mx0)),
+					(double) (st.mysc
+						* (hd.fy + st.my0)),
+					(double) (st.mzsc
+						* (hd.fz + st.mz0)));
 			
 				esp_send(&espdev, s);
 			}
