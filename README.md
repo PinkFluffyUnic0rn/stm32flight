@@ -21,7 +21,7 @@ Weight
 
 Devices
 =======
- * MCU: STM32F411CEU6
+ * MCU: STM32F303CBT6
  * Accelerometer/Gyroscope: MPU6050
  * Magnetometer: HMC5883L
  * Remote control: ESP8266 (ESP-01s)
