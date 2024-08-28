@@ -35,10 +35,18 @@
 // DSP settings
 #define PID_FREQ 1000
 #define CALIB_FREQ 25
+#define BMP_FREQ 150
 #define MAGNETIC_DECLANATION 0.3264
 
 #define USER_FLASH 0x0801f800
 #define UESR_SETSLOTS (0x80 / sizeof(struct settings))
+
+// Timer events
+#define TEV_PID 	0
+#define TEV_CHECK 	1
+#define TEV_CALIB	2
+#define TEV_BMP		3
+#define TEV_COUNT	4
 
 #define WIFI_TIMEOUT 3
 
@@ -48,6 +56,10 @@
 // 	define SERIP
 // 	define SERVPORT
 #include "wifidefs.h"
+
+#define checktimev(ev) ((ev)->ms > TICKSPERSEC / (ev)->freq)
+#define resettimev(ev) (ev)->ms = 0;
+#define updatetimev(ev, s) (ev)->ms += (s);
 
 struct settings {
 	float mx0,	my0,		mz0;
@@ -64,6 +76,11 @@ struct settings {
 	float yp,	yi,	yd;
 	float ysp,	ysi,	ysd;
 	float zsp,	zsi,	zsd;
+};
+
+struct timev {
+	int ms;
+	int freq;
 };
 
 void systemclock_config();
@@ -126,6 +143,9 @@ float alt0, press0;
 // settings
 struct settings st;
 
+// timer events
+struct timev evs[TEV_COUNT];
+
 int loopscount = 0;
 int wifitimeout = WIFI_TIMEOUT;
 
@@ -146,6 +166,14 @@ uint32_t getadcv(ADC_HandleTypeDef *hadc)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
 {
 	esp_interrupt(&espdev, huart);
+}
+
+int inittimev(struct timev *ev, int freq)
+{
+	ev->ms = 0;
+	ev->freq = freq;
+
+	return 0;
 }
 
 int mpu_printuart(const struct mpu_data *md)
@@ -338,7 +366,7 @@ int initstabilize(float alt)
 	dsp_initpidval(&yawpv, st.yp, st.yi, st.yd, 0.0);
 	dsp_initpidval(&tpv, st.zsp, st.zsi, st.zsd, 0.0);
 
-	dsp_initlpf(&presslpf, st.ptcoef, PID_FREQ);
+	dsp_initlpf(&presslpf, st.ptcoef, BMP_FREQ);
 	dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 
 	return 0;
@@ -346,7 +374,6 @@ int initstabilize(float alt)
 
 int stabilize(float dt)
 {
-	struct bmp_data bd;
 	struct mpu_data md;
 	struct hmc_data hd;
 	float roll, pitch, yaw;
@@ -354,13 +381,6 @@ int stabilize(float dt)
 	float gy, gx, gz;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
-
-	if (dev[BMP_DEV].status == DEVSTATUS_INIT) {
-		dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
-			sizeof(struct bmp_data));
-
-		dsp_updatelpf(&presslpf, bd.press);
-	}
 
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
 		sizeof(struct mpu_data));
@@ -460,7 +480,7 @@ int sprintpos(char *s, struct mpu_data *md, struct hmc_data *hd)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"battery: %0.3f\n\r",
-		getadcv(&hadc1) / (double) 0xfff * (double) 6.6);
+		getadcv(&hadc1) / (double) 0xfff * (double) 10.921);
 
 	return 0;
 }
@@ -753,7 +773,7 @@ int controlcmd(char *cmd)
 		else if (strcmp(toks[1], "pressure") == 0) {
 			st.ptcoef = atof(toks[2]);
 				
-			dsp_initlpf(&presslpf, st.ptcoef, PID_FREQ);
+			dsp_initlpf(&presslpf, st.ptcoef, BMP_FREQ);
 		}
 		else
 			goto unknown;
@@ -800,7 +820,6 @@ unknown:
 int main(void)
 {
 	int loops;
-	int pidms, checkms, calibms;
 
 	HAL_Init();
 
@@ -827,31 +846,35 @@ int main(void)
 
 	initstabilize(0.0);
 
+	inittimev(evs + TEV_PID, PID_FREQ);
+	inittimev(evs + TEV_CHECK, 1);
+	inittimev(evs + TEV_CALIB, CALIB_FREQ);
+	inittimev(evs + TEV_BMP, BMP_FREQ);
+
 	loops = 0;
-	checkms = pidms = calibms = 0;
 	wifitimeout = WIFI_TIMEOUT;
 	while (1) {
 		char cmd[ESP_CMDSIZE];
-		int c;
+		int c, i;
 
 		__HAL_TIM_SET_COUNTER(&htim2, 0);
 
 		if (esp_poll(&espdev, cmd) >= 0)
 			controlcmd(cmd);
 
-		if (pidms > TICKSPERSEC / PID_FREQ) {
+		if (checktimev(evs + TEV_PID)) {
 			double dt;
 
-			dt = (float) pidms / (float) TICKSPERSEC;
-
-			pidms = 0;
+			dt = (float) evs[TEV_PID].ms / (float) TICKSPERSEC;
 
 			stabilize(dt);
 			++loops;
+
+			resettimev(evs + TEV_PID);
 		}
 
 		// every 1 second
-		if (checkms > TICKSPERSEC / 1) {
+		if (checktimev(evs + TEV_CHECK)) {
 			if (wifitimeout != 0)
 				--wifitimeout;
 
@@ -869,10 +892,12 @@ int main(void)
 
 			loopscount = loops;
 
-			checkms = loops = 0;
+			loops = 0;
+			
+			resettimev(evs + TEV_CHECK);
 		}
 
-		if (calibms > TICKSPERSEC / CALIB_FREQ) {
+		if (checktimev(evs + TEV_CALIB)) {
 			if (magcalib) {
 				struct hmc_data hd;
 				char s[INFOLEN];
@@ -889,14 +914,28 @@ int main(void)
 						* (hd.fz + st.mz0)));
 			
 				esp_send(&espdev, s);
+			
 			}
+			
+			resettimev(evs + TEV_CALIB);
+		}
+
+		if (checktimev(evs + TEV_BMP)) {
+			if (dev[BMP_DEV].status == DEVSTATUS_INIT) {
+				struct bmp_data bd;
+				dev[BMP_DEV].read(dev[BMP_DEV].priv, 0,
+					&bd, sizeof(struct bmp_data));
+
+				dsp_updatelpf(&presslpf, bd.press);
+			}
+			
+			resettimev(evs + TEV_BMP);
 		}
 
 		c = __HAL_TIM_GET_COUNTER(&htim2);
 
-		pidms += c;
-		checkms += c;
-		calibms += c;
+		for (i = 0; i < TEV_COUNT; ++i)
+			updatetimev(evs + i, c);
 	}
 
 	return 0;
