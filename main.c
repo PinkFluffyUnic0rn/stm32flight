@@ -82,6 +82,7 @@ struct settings {
 struct timev {
 	int ms;
 	int freq;
+	int (*cb)(int);
 };
 
 void systemclock_config();
@@ -136,7 +137,7 @@ struct dsp_pidval tpv;
 float thrust = 0.0;
 float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float en = 0.0;
-int magcalib = 0;
+int magcalibmode = 0;
 
 // pressure and altitude initial values
 float alt0, press0;
@@ -147,7 +148,9 @@ struct settings st;
 // timer events
 struct timev evs[TEV_COUNT];
 
+int loops = 0;
 int loopscount = 0;
+
 int wifitimeout = WIFI_TIMEOUT;
 
 uint32_t getadcv(ADC_HandleTypeDef *hadc)
@@ -169,10 +172,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	esp_interrupt(&espdev, huart);
 }
 
-int inittimev(struct timev *ev, int freq)
+int inittimev(struct timev *ev, int freq, int (*cb)(int))
 {
 	ev->ms = 0;
 	ev->freq = freq;
+	ev->cb = cb;
 
 	return 0;
 }
@@ -373,14 +377,16 @@ int initstabilize(float alt)
 	return 0;
 }
 
-int stabilize(float dt)
+int stabilize(int ms)
 {
 	struct mpu_data md;
 	struct hmc_data hd;
 	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
 	float gy, gx, gz;
-
+	float dt;
+			
+	dt = ms / (float) TICKSPERSEC;
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
@@ -435,6 +441,68 @@ int stabilize(float dt)
 			- 0.5 * pitchcor - 0.5 * yawcor),
 		en * (thrustcor + 0.5 * rollcor
 			- 0.5 * pitchcor + 0.5 * yawcor));
+			
+	++loops;
+
+	return 0;
+}
+
+int checkconnection(int ms)
+{
+	if (wifitimeout != 0)
+		--wifitimeout;
+
+	if (wifitimeout == 0) {
+		char s[INFOLEN];
+
+		setthrust(0.0, 0.0, 0.0, 0.0);
+
+		en = 0.0;
+
+		snprintf(s, INFOLEN, "wi-fi timed out!\n\r");
+
+		esp_send(&espdev, s);
+	}
+
+	// since it runs every 1 second update loop counter here too
+	loopscount = loops;
+	loops = 0;
+		
+	return 0;
+}
+
+int magcalib(int ms)
+{
+	struct hmc_data hd;
+	char s[INFOLEN];
+
+	if (!magcalibmode)
+		return 0;
+
+	dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+		sizeof(struct hmc_data));
+
+	sprintf(s, "%f %f %f\r\n",
+		(double) (st.mxsc * (hd.fx + st.mx0)),
+		(double) (st.mysc * (hd.fy + st.my0)),
+		(double) (st.mzsc * (hd.fz + st.mz0)));
+
+	esp_send(&espdev, s);
+
+	return 0;
+}
+
+int bmpupdate(int ms)
+{
+	struct bmp_data bd;
+	
+	if (dev[BMP_DEV].status != DEVSTATUS_INIT) 
+		return 0;
+
+	dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
+		sizeof(struct bmp_data));
+
+	dsp_updatelpf(&presslpf, bd.press);
 
 	return 0;
 }
@@ -660,9 +728,9 @@ int controlcmd(char *cmd)
 	else if (strcmp(toks[0], "calib") == 0) {
 		if (strcmp(toks[1], "mag") == 0) {
 			if (strcmp(toks[2], "on") == 0)
-				magcalib = 1;
+				magcalibmode = 1;
 			else if (strcmp(toks[2], "off") == 0)
-				magcalib = 0;
+				magcalibmode = 0;
 			else
 				goto unknown;
 		}
@@ -824,8 +892,6 @@ unknown:
 
 int main(void)
 {
-	int loops;
-
 	HAL_Init();
 
 	systemclock_config();
@@ -851,12 +917,11 @@ int main(void)
 
 	initstabilize(0.0);
 
-	inittimev(evs + TEV_PID, PID_FREQ);
-	inittimev(evs + TEV_CHECK, 1);
-	inittimev(evs + TEV_CALIB, CALIB_FREQ);
-	inittimev(evs + TEV_BMP, BMP_FREQ);
+	inittimev(evs + TEV_PID, PID_FREQ, stabilize);
+	inittimev(evs + TEV_CHECK, 1, checkconnection);
+	inittimev(evs + TEV_CALIB, CALIB_FREQ, magcalib);
+	inittimev(evs + TEV_BMP, BMP_FREQ, bmpupdate);
 
-	loops = 0;
 	wifitimeout = WIFI_TIMEOUT;
 	while (1) {
 		char cmd[ESP_CMDSIZE];
@@ -867,74 +932,11 @@ int main(void)
 		if (esp_poll(&espdev, cmd) >= 0)
 			controlcmd(cmd);
 
-		if (checktimev(evs + TEV_PID)) {
-			double dt;
-
-			dt = (float) evs[TEV_PID].ms / (float) TICKSPERSEC;
-
-			stabilize(dt);
-			++loops;
-
-			resettimev(evs + TEV_PID);
-		}
-
-		// every 1 second
-		if (checktimev(evs + TEV_CHECK)) {
-			if (wifitimeout != 0)
-				--wifitimeout;
-
-			if (wifitimeout == 0) {
-				char s[INFOLEN];
-		
-				setthrust(0.0, 0.0, 0.0, 0.0);
-
-				en = 0.0;
-
-				snprintf(s, INFOLEN, "wi-fi timed out!\n\r");
-
-				esp_send(&espdev, s);
+		for (i = 0; i < TEV_COUNT; ++i) {
+			if (checktimev(evs + i)) {
+				evs[i].cb(evs[i].ms);
+				resettimev(evs + i);
 			}
-
-			loopscount = loops;
-
-			loops = 0;
-			
-			resettimev(evs + TEV_CHECK);
-		}
-
-		if (checktimev(evs + TEV_CALIB)) {
-			if (magcalib) {
-				struct hmc_data hd;
-				char s[INFOLEN];
-
-				dev[HMC_DEV].read(dev[HMC_DEV].priv, 0,
-					&hd, sizeof(struct hmc_data));
-	
-				sprintf(s, "%f %f %f\r\n",
-					(double) (st.mxsc
-						* (hd.fx + st.mx0)),
-					(double) (st.mysc
-						* (hd.fy + st.my0)),
-					(double) (st.mzsc
-						* (hd.fz + st.mz0)));
-			
-				esp_send(&espdev, s);
-			
-			}
-			
-			resettimev(evs + TEV_CALIB);
-		}
-
-		if (checktimev(evs + TEV_BMP)) {
-			if (dev[BMP_DEV].status == DEVSTATUS_INIT) {
-				struct bmp_data bd;
-				dev[BMP_DEV].read(dev[BMP_DEV].priv, 0,
-					&bd, sizeof(struct bmp_data));
-
-				dsp_updatelpf(&presslpf, bd.press);
-			}
-			
-			resettimev(evs + TEV_BMP);
 		}
 
 		c = __HAL_TIM_GET_COUNTER(&htim2);
