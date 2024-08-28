@@ -22,6 +22,8 @@ Weight
 Devices
 =======
  * MCU: STM32F303CBT6
+ * Crystall oscillator: 16 Mhz
+ * Control board voltage regulator: AMS1117-3.3
  * Accelerometer/Gyroscope: MPU6050
  * Magnetometer: HMC5883L
  * Remote control: ESP8266 (ESP-01s)

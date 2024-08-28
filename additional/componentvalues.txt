@@ -1,0 +1,13 @@
+r1:	10 kOhm
+r2:	5.1 kOhm
+r3:	10 kOhm
+r4:	10 kOhm
+c1:	10 uF
+c2:	0.01 uF
+c3:	0.01 uF
+c4:	0.01 uF
+c5:	0.01 uF
+c6:	0.01 uF
+c7:	0.01 uF
+c8:	18 pF
+c9:	18 pF
