@@ -36,7 +36,6 @@
 #define PID_FREQ 1000
 #define CALIB_FREQ 25
 #define BMP_FREQ 150
-#define MAGNETIC_DECLANATION 0.3264
 
 #define USER_FLASH 0x0801f800
 #define UESR_SETSLOTS (0x80 / sizeof(struct settings))
@@ -64,6 +63,8 @@
 struct settings {
 	float mx0,	my0,		mz0;
 	float mxsc,	mysc,		mzsc;
+	float magdecl;
+
 	float gx0,	gy0,		gz0;
 	float roll0,	pitch0,		yaw0;
 
@@ -134,7 +135,7 @@ struct dsp_pidval tpv;
 // control values
 float thrust = 0.0;
 float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
-float lbw = 0.0, rbw = 0.0, ltw = 0.0, rtw = 0.0;
+float en = 0.0;
 int magcalib = 0;
 
 // pressure and altitude initial values
@@ -283,7 +284,7 @@ float hmc_heading(float r, float p, float x, float y, float z)
 		+ z * cosf(r) * sinf(p);
 	y = y * cosf(r) - z * sinf(r);
 
-	return circf(atan2f(y, x) + MAGNETIC_DECLANATION);
+	return circf(atan2f(y, x) + st.magdecl);
 }
 
 int setthrust(float ltd, float rtd, float rbd, float lbd)
@@ -426,13 +427,13 @@ int stabilize(float dt)
 
 	thrustcor = dsp_pid(&tpv, thrust + 1.0, dsp_getlpf(&tlpf), dt);
 
-	setthrust(ltw * (thrustcor + 0.5 * rollcor
+	setthrust(en * (thrustcor + 0.5 * rollcor
 			+ 0.5 * pitchcor - 0.5 * yawcor),
-		rtw * (thrustcor - 0.5 * rollcor
+		en * (thrustcor - 0.5 * rollcor
 			+ 0.5 * pitchcor + 0.5 * yawcor),
-		rbw * (thrustcor - 0.5 * rollcor
+		en * (thrustcor - 0.5 * rollcor
 			- 0.5 * pitchcor - 0.5 * yawcor),
-		lbw * (thrustcor + 0.5 * rollcor
+		en * (thrustcor + 0.5 * rollcor
 			- 0.5 * pitchcor + 0.5 * yawcor));
 
 	return 0;
@@ -520,6 +521,10 @@ int sprintvalues(char *s)
 		(double) st.mxsc, (double) st.mysc, (double) st.mzsc);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"mag decl: %.5f\r\n",
+		(double) st.magdecl);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"gyro cor: %.3f; %.3f; %.3f\r\n",
 		(double) st.gx0, (double) st.gy0, (double) st.gz0);
 
@@ -529,9 +534,7 @@ int sprintvalues(char *s)
 		(double) st.yaw0);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"lbw: %0.1f; rbw: %0.1f; ltw: %0.1f; rtw: %0.1f\r\n",
-		(double) lbw, (double) rbw,
-		(double) ltw, (double) rtw);
+		"motors state: %.3f\r\n", (double) en);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"cf: %.6f\r\n", (double) st.tcoef);
@@ -637,9 +640,9 @@ int controlcmd(char *cmd)
 		}
 	}
 	else if (strcmp(toks[0], "r") == 0)
-		lbw = rbw = ltw = rtw = 0.0;
+		en = 0.0;
 	else if (strcmp(toks[0], "e") == 0)
-		lbw = rbw = ltw = rtw = 1.0;
+		en = 1.0;
 	else if (strcmp(toks[0], "c") == 0)
 		initstabilize(atof(toks[1]));
 	else if (strcmp(toks[0], "t") == 0) {
@@ -799,6 +802,8 @@ int controlcmd(char *cmd)
 				st.mysc = atof(toks[3]);
 			else if (strcmp(toks[2], "zscale") == 0)
 				st.mzsc = atof(toks[3]);
+			else if (strcmp(toks[2], "decl") == 0)
+				st.magdecl = atof(toks[3]);
 			else
 				goto unknown;
 		}
@@ -883,7 +888,7 @@ int main(void)
 		
 				setthrust(0.0, 0.0, 0.0, 0.0);
 
-				lbw = rbw = ltw = rtw = 0.0;
+				en = 0.0;
 
 				snprintf(s, INFOLEN, "wi-fi timed out!\n\r");
 

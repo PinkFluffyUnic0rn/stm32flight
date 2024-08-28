@@ -26,4 +26,5 @@ adj mag z0 -50.0
 adj mag xscale 1.0
 adj mag yscale 1.0
 adj mag zscale 1.104
+adj mag decl 0.3264
 flash write
