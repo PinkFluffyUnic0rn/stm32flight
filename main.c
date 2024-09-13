@@ -549,7 +549,7 @@ int sprintpos(char *s, struct mpu_data *md, struct hmc_data *hd)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"battery: %0.3f\n\r",
-		getadcv(&hadc1) / (double) 0xfff * (double) 10.921);
+		getadcv(&hadc1) / (double) 0xfff * (double) 9.7705);
 
 	return 0;
 }
@@ -981,7 +981,7 @@ void systemclock_config(void)
 			      |RCC_PERIPHCLK_ADC12;
 	PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
 	PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
-	PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV1;
+	PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV256;
 	PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
 	PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
 	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
@@ -1159,7 +1159,7 @@ static void adc1_init(void)
 	ADC_ChannelConfTypeDef sConfig = {0};
 
 	hadc1.Instance = ADC1;
-	hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+	hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
 	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
 	hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
 	hadc1.Init.ContinuousConvMode = ENABLE;
