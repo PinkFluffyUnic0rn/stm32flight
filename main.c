@@ -549,7 +549,7 @@ int sprintpos(char *s, struct mpu_data *md, struct hmc_data *hd)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"battery: %0.3f\n\r",
-		getadcv(&hadc1) / (double) 0xfff * (double) 9.7705);
+		getadcv(&hadc1) / (double) 0xfff * (double) 9.9276);
 
 	return 0;
 }
