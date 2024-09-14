@@ -8,16 +8,16 @@ Parameters
 ==========
  * Motors: 1106
  * Props: 4045, ~100mm
- * Battery: 7.4v (2s), 1300 mAh
+ * Battery: 7.4v (2s), 1100 mAh
  * Frame: plywood
 
 Weight
 ======
  * PCB and ESCs: ~30g
  * Motors: 32g
- * Battery: 63g
- * Frame + Connector: ~55g
- * Total weight: 180g 
+ * Battery: 46g
+ * Frame + Connector: ~56g
+ * Total weight: 164g 
 
 Devices
 =======
