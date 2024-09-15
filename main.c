@@ -12,6 +12,7 @@
 #include "esp8266.h"
 #include "hmc5883l.h"
 #include "dsp.h"
+#include "crsf.h"
 
 // Max length for info packet
 // sent back to operator
@@ -36,6 +37,7 @@
 #define PID_FREQ 1000
 #define CALIB_FREQ 25
 #define BMP_FREQ 150
+#define CRSF_FREQ 100
 
 #define USER_FLASH 0x0801f800
 #define UESR_SETSLOTS (0x80 / sizeof(struct settings))
@@ -100,6 +102,7 @@ static void mpu_init();
 static void bmp_init();
 static void hmc_init();
 static void espdev_init();
+static void crsfdev_init();
 
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
@@ -112,11 +115,13 @@ TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_rx;
 
 // IC drivers
 struct driver drivers[4];
 struct device dev[4];
 struct esp_device espdev;
+struct crsf_device crsfdev;
 
 // DSP contexts
 struct dsp_lpf tlpf;
@@ -170,6 +175,7 @@ uint32_t getadcv(ADC_HandleTypeDef *hadc)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
 {
 	esp_interrupt(&espdev, huart);
+	crsf_interrupt(&crsfdev, huart);
 }
 
 int inittimev(struct timev *ev, int freq, int (*cb)(int))
@@ -464,6 +470,26 @@ int checkconnection(int ms)
 		esp_send(&espdev, s);
 	}
 
+/*			
+	struct crsf_channels cdata;
+	char s[INFOLEN];
+
+	crsf_read(&cdata);
+
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[0]);
+	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[1]);
+	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[2]);
+	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[3]);
+	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[4]);
+	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[5]);
+	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[6]);
+	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[7]);
+	snprintf(s + strlen(s), INFOLEN, "\r\n");
+
+	esp_send(&espdev, s);
+*/
 	// since it runs every 1 second update loop counter here too
 	loopscount = loops;
 	loops = 0;
@@ -504,6 +530,11 @@ int bmpupdate(int ms)
 
 	dsp_updatelpf(&presslpf, bd.press);
 
+	return 0;
+}
+
+int crsfget(int ms)
+{
 	return 0;
 }
 
@@ -890,6 +921,18 @@ unknown:
 	return (-1);
 }
 
+int crsfcmd(const struct crsf_channels *cdata)
+{
+	pitchtarget = -cdata->chf[0] * (M_PI / 6.0);
+	rolltarget = -cdata->chf[1] * (M_PI / 6.0);
+	thrust = cdata->chf[2];
+	yawtarget = cdata->chf[3] * M_PI;
+
+	en = (cdata->chf[5] > 0.5) ? 1.0 : 0.0;
+
+	return 0;
+}
+
 int main(void)
 {
 	HAL_Init();
@@ -912,6 +955,7 @@ int main(void)
 	mpu_init();
 	hmc_init();
 	espdev_init();
+	crsfdev_init();
 
 	readsettings(0);
 
@@ -925,12 +969,17 @@ int main(void)
 	wifitimeout = WIFI_TIMEOUT;
 	while (1) {
 		char cmd[ESP_CMDSIZE];
+		struct crsf_channels cdata;
 		int c, i;
 
 		__HAL_TIM_SET_COUNTER(&htim2, 0);
 
 		if (esp_poll(&espdev, cmd) >= 0)
 			controlcmd(cmd);
+	
+		if (crsf_read(&cdata) >= 0) {
+			crsfcmd(&cdata);
+		}
 
 		for (i = 0; i < TEV_COUNT; ++i) {
 			if (checktimev(evs + i)) {
@@ -1011,6 +1060,9 @@ static void dma_init(void)
 
 	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+	HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
 }
 
 static void i2c_init(void)
@@ -1308,6 +1360,13 @@ static void espdev_init()
 
 	uartprintf("connected\r\n");
 
+}
+
+static void crsfdev_init()
+{
+	crsfdev.huart = &huart2;
+
+	crsf_init(&crsfdev);
 }
 
 void error_handler(void)

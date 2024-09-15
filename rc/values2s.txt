@@ -5,7 +5,7 @@ pid tilt d 0.0003
 pid stilt p 0.03
 pid stilt i 0.0
 pid stilt d 0.0
-pid yaw mode double
+pid yaw mode single
 pid yaw p -1.5
 pid yaw i 0.0
 pid yaw d 0.0
@@ -18,7 +18,8 @@ pid climb d 0.001
 compl 0.5
 lpf climb 0.25
 lpf pressure 1.0
-adj pitch -0.1
+adj roll 0.0
+adj pitch 0.0
 adj yaw -0.75
 adj mag x0 -120.0
 adj mag y0 65.0
