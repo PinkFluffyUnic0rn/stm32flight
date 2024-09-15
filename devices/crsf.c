@@ -3,6 +3,8 @@
 
 #include "crsf.h"
 
+#define RXCIRCSIZE 16
+
 struct packet {
 	uint8_t type;
 	uint8_t len;
@@ -15,7 +17,7 @@ volatile static uint8_t Packstate;
 volatile static uint8_t Packrest;
 volatile static uint8_t Packw;
 volatile static uint8_t Packr;
-volatile static struct packet Pack[16];
+volatile static struct packet Pack[RXCIRCSIZE];
 
 int crsf_interrupt(struct crsf_device *dev, const void *h) 
 {
@@ -27,8 +29,11 @@ int crsf_interrupt(struct crsf_device *dev, const void *h)
 	b = Rxbuf;
 
 	if (Packstate == 0) {
+		if ((Packw + 1) % RXCIRCSIZE == Packr)
+			return 0;
+
 		if (b == 0xc8) {
-			Packw = (Packw + 1) % 16;
+			Packw = (Packw + 1) % RXCIRCSIZE;
 			Packstate = 1;
 		}
 	}
@@ -49,10 +54,8 @@ int crsf_interrupt(struct crsf_device *dev, const void *h)
 		Pack[Packw].pl[Pack[Packw].len - Packrest] = b;
 		--Packrest;
 	
-		if (Packrest == 0) {
-			Packr = Packw;
+		if (Packrest == 0)
 			Packstate = 0;
-		}
 	}
 
 	return 0;
@@ -68,9 +71,16 @@ int crsf_read(struct crsf_channels *c)
 	if (Packr == Packw)
 		return (-1);
 
-	if (Pack[Packr].type != 0x16)
+	if (Pack[Packr].len < 0x18) {
+		Packr = (Packr + 1) % RXCIRCSIZE;
 		return (-1);
+	}
 
+	if (Pack[Packr].type != 0x16) {
+		Packr = (Packr + 1) % RXCIRCSIZE;
+		return (-1);
+	}
+	
 	merged = value = 0;
 	curb = 0;
 
@@ -85,6 +95,8 @@ int crsf_read(struct crsf_channels *c)
 		value >>= 11;
 		merged -= 11;
 	}
+
+	Packr = (Packr + 1) % RXCIRCSIZE;
 
 	return 0;
 }

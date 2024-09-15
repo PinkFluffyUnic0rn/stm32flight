@@ -100,29 +100,18 @@ Uint32 timercb(Uint32 interval, void *param)
 int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 {
 	if (event->type == SDL_KEYUP) {
-		if (event->key.keysym.sym == SDLK_q) {}
-		if (event->key.keysym.sym == SDLK_w) {}
-		if (event->key.keysym.sym == SDLK_a) {}
-		if (event->key.keysym.sym == SDLK_s) {}
-		if (event->key.keysym.sym == SDLK_z) {}
-		if (event->key.keysym.sym == SDLK_x) {}
-		if (event->key.keysym.sym == SDLK_e) {}
-		if (event->key.keysym.sym == SDLK_r) {}
-		if (event->key.keysym.sym == SDLK_d) {}
-		if (event->key.keysym.sym == SDLK_f) {}
-		if (event->key.keysym.sym == SDLK_c) {}
-		if (event->key.keysym.sym == SDLK_v) {}
-		if (event->key.keysym.sym == SDLK_t) {}
-		if (event->key.keysym.sym == SDLK_y) {}
-		if (event->key.keysym.sym == SDLK_g) {}
-		if (event->key.keysym.sym == SDLK_h) {}
-		if (event->key.keysym.sym == SDLK_b) {}
-		if (event->key.keysym.sym == SDLK_n) {}
-		if (event->key.keysym.sym == SDLK_1) {}
-		if (event->key.keysym.sym == SDLK_2) {}
-		if (event->key.keysym.sym == SDLK_SPACE) {
+		if (event->key.keysym.sym == SDLK_m)
+			sendcmd(lsfd, rsi, "info mpu\n");
+		else if (event->key.keysym.sym == SDLK_p)
+			sendcmd(lsfd, rsi, "info pid\n");
+		else if (event->key.keysym.sym == SDLK_v)
+			sendcmd(lsfd, rsi, "info values\n");
+		else if (event->key.keysym.sym == SDLK_h)
+			sendcmd(lsfd, rsi, "info hmc\n");
+		else if (event->key.keysym.sym == SDLK_b)
+			sendcmd(lsfd, rsi, "info bmp\n");
+		else if (event->key.keysym.sym == SDLK_SPACE)
 			sendcmd(lsfd, rsi, "c 0.0\n");
-		}
 	}
 
 	return 0;
@@ -206,11 +195,14 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "cannot init controller\n");
 		exit(1);
 	}
-
+/*
 	if ((pad = SDL_GameControllerOpen(0)) == NULL) {
 		fprintf(stderr, "cannot open controller\n");
 		exit(1);
 	}
+*/
+
+	pad = SDL_GameControllerOpen(0);
 
 	if ((win = SDL_CreateWindow("RC", SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED, 1000, 500, 0)) == NULL) {

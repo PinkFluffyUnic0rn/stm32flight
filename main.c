@@ -181,6 +181,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	crsf_interrupt(&crsfdev, huart);
 }
 
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+	esp_error(&espdev, huart);
+}
+
 int inittimev(struct timev *ev, int freq, int (*cb)(int))
 {
 	ev->ms = 0;
@@ -476,7 +481,7 @@ int checkconnection(int ms)
 		esp_send(&espdev, s);
 	}
 
-	if (elrstimeout <= 0) {
+	if (elrstimeout <= 0 && elrs == 1) {
 		setthrust(0.0, 0.0, 0.0, 0.0);
 		en = 0.0;
 	}
@@ -484,7 +489,7 @@ int checkconnection(int ms)
 	// since it runs every 1 second update loop counter here too
 	loopscount = loops;
 	loops = 0;
-		
+
 	return 0;
 }
 

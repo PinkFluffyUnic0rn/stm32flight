@@ -27,6 +27,8 @@ int esp_disconnect(struct esp_device *dev);
 
 int esp_interrupt(struct esp_device *dev, const void *huart);
 
+int esp_error(struct esp_device *dev, const void *huart);
+
 int esp_send(struct esp_device *dev, const char *data);
 
 int esp_poll(struct esp_device *dev, char *outdata);

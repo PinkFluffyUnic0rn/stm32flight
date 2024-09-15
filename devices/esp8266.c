@@ -28,8 +28,8 @@ struct fifo {
 	size_t top;
 };
 
-static uint8_t Rxdata[ESP_RXSIZE];
-static size_t Rxoffset = 0;
+static volatile uint8_t Rxdata[ESP_RXSIZE];
+static volatile size_t Rxoffset = 0;
 
 static struct fifo fifo;
 
@@ -42,6 +42,9 @@ int esp_initfifo(struct fifo *f)
 
 int esp_enqueque(struct fifo *f, const char *in, size_t len)
 {
+	if ((f->top + 1) % ESP_FIFOSIZE == f->bot)
+		return (-1);
+
 	memcpy(f->cmd[f->top], in, len);
 	
 	f->top = (f->top + 1) % ESP_FIFOSIZE;
@@ -143,7 +146,9 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass)
 	char cmd[ESP_CMDSIZE];
 	int i;
 	
-	HAL_UART_Receive_IT(dev->huart, Rxdata, 1);
+	esp_initfifo(&fifo);
+
+	HAL_UART_Receive_IT(dev->huart, (uint8_t *) Rxdata, 1);
 
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=921600,8,1,0,0") != ESP_OK)
 		return (-1);
@@ -155,7 +160,7 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass)
 	if (HAL_UART_Init(dev->huart) != HAL_OK)
 		return (-1);	
 	
-	HAL_UART_Receive_IT(dev->huart, Rxdata, 1);
+	HAL_UART_Receive_IT(dev->huart, (uint8_t *) Rxdata, 1);
 
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
 		return (-1);
@@ -230,7 +235,22 @@ int esp_interrupt(struct esp_device *dev, const void *h)
 	else if (Rxoffset++ == ESP_RXSIZE)
 		Rxoffset = 0;
 
-	HAL_UART_Receive_IT(dev->huart, Rxdata + Rxoffset, 1); 
+	HAL_UART_Receive_IT(dev->huart,
+		((uint8_t *) Rxdata) + Rxoffset, 1); 
+
+	return 0;
+}
+
+int esp_error(struct esp_device *dev, const void *h)
+{
+	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
+		return 0;
+
+	__HAL_UART_CLEAR_OREFLAG(dev->huart);
+	__HAL_UART_CLEAR_NEFLAG(dev->huart);
+	__HAL_UART_CLEAR_FEFLAG(dev->huart);
+
+	HAL_UART_Receive_IT(dev->huart, (uint8_t *) Rxdata, 1);
 
 	return 0;
 }
@@ -250,7 +270,8 @@ static enum ESP_RESPONSE _esp_send(struct esp_device *dev, int timeout,
 
 	HAL_UART_Transmit(dev->huart, (uint8_t *) buf,
 		strlen(buf), ESP_UARTTIMEOUT);
-	HAL_Delay(1);
+
+	esp_waitforstrings(&fifo, timeout, buf, ">", NULL);
 
 	while (rem > 0) {
 		size_t len;
