@@ -50,6 +50,7 @@
 #define TEV_COUNT	4
 
 #define WIFI_TIMEOUT 3
+#define ELRS_TIMEOUT 3
 
 // Wi-Fi settings:
 // 	define SSID
@@ -143,6 +144,7 @@ float thrust = 0.0;
 float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float en = 0.0;
 int magcalibmode = 0;
+int elrs = 0;
 
 // pressure and altitude initial values
 float alt0, press0;
@@ -157,6 +159,7 @@ int loops = 0;
 int loopscount = 0;
 
 int wifitimeout = WIFI_TIMEOUT;
+int elrstimeout = ELRS_TIMEOUT;
 
 uint32_t getadcv(ADC_HandleTypeDef *hadc)
 {
@@ -457,8 +460,11 @@ int checkconnection(int ms)
 {
 	if (wifitimeout != 0)
 		--wifitimeout;
+	
+	if (elrstimeout != 0)
+		--elrstimeout;
 
-	if (wifitimeout == 0) {
+	if (wifitimeout <= 0 && elrs == 0) {
 		char s[INFOLEN];
 
 		setthrust(0.0, 0.0, 0.0, 0.0);
@@ -470,26 +476,11 @@ int checkconnection(int ms)
 		esp_send(&espdev, s);
 	}
 
-/*			
-	struct crsf_channels cdata;
-	char s[INFOLEN];
-
-	crsf_read(&cdata);
-
-	s[0] = '\0';
-
-	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[0]);
-	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[1]);
-	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[2]);
-	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[3]);
-	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[4]);
-	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[5]);
-	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[6]);
-	snprintf(s + strlen(s), INFOLEN, "%f\r\n", cdata.chf[7]);
-	snprintf(s + strlen(s), INFOLEN, "\r\n");
-
-	esp_send(&espdev, s);
-*/
+	if (elrstimeout <= 0) {
+		setthrust(0.0, 0.0, 0.0, 0.0);
+		en = 0.0;
+	}
+	
 	// since it runs every 1 second update loop counter here too
 	loopscount = loops;
 	loops = 0;
@@ -923,12 +914,22 @@ unknown:
 
 int crsfcmd(const struct crsf_channels *cdata)
 {
-	pitchtarget = -cdata->chf[0] * (M_PI / 6.0);
-	rolltarget = -cdata->chf[1] * (M_PI / 6.0);
-	thrust = cdata->chf[2];
-	yawtarget = cdata->chf[3] * M_PI;
+	elrs = (cdata->chf[7] > 0.5) ? 1 : 0;
 
-	en = (cdata->chf[5] > 0.5) ? 1.0 : 0.0;
+	elrstimeout = ELRS_TIMEOUT;
+
+	if (elrs) {
+		en = 1.0;
+	
+		pitchtarget = -cdata->chf[0] * (M_PI / 6.0);
+		rolltarget = -cdata->chf[1] * (M_PI / 6.0);
+		thrust = (cdata->chf[2] + 0.75) / 3.5;
+		yawtarget = -cdata->chf[9] * M_PI;
+		en = (cdata->chf[5] > 0.5) ? 1 : 0;
+	
+		if (en < 0.5)
+			setthrust(0.0, 0.0, 0.0, 0.0);
+	}
 
 	return 0;
 }

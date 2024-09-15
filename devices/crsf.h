@@ -1,7 +1,7 @@
 #ifndef CRSF_H
 #define CRSF_H
 
-#define CRSF_CHANNELCOUNT 8
+#define CRSF_CHANNELCOUNT 10
 
 struct crsf_device {
 	UART_HandleTypeDef *huart;

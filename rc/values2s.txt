@@ -5,7 +5,7 @@ pid tilt d 0.0003
 pid stilt p 0.03
 pid stilt i 0.0
 pid stilt d 0.0
-pid yaw mode single
+pid yaw mode double
 pid yaw p -1.5
 pid yaw i 0.0
 pid yaw d 0.0

@@ -33,6 +33,9 @@ int crsf_interrupt(struct crsf_device *dev, const void *h)
 		}
 	}
 	else if (Packstate == 1) {
+		if (b > 64)
+			Packstate = 0;
+
 		Pack[Packw].len = Packrest = b;
 
 		Packstate = 2;
@@ -66,7 +69,7 @@ int crsf_read(struct crsf_channels *c)
 		return (-1);
 
 	if (Pack[Packr].type != 0x16)
-		return 0;
+		return (-1);
 
 	merged = value = 0;
 	curb = 0;
