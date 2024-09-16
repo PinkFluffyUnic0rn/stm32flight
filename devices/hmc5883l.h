@@ -3,7 +3,7 @@
 
 #include "driver.h"
 
-#define HMC_MAXDEVS 4
+#define HMC_MAXDEVS 1
 
 enum HMC_RATE {
 	HMC_RATE_0_75	= 0x0,

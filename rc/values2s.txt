@@ -19,7 +19,7 @@ compl 0.5
 lpf climb 0.25
 lpf pressure 1.0
 adj roll 0.0
-adj pitch 0.0
+adj pitch -0.1
 adj yaw -0.75
 adj mag x0 -120.0
 adj mag y0 65.0

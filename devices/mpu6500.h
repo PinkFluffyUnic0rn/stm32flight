@@ -3,7 +3,7 @@
 
 #include "driver.h"
 
-#define MPU_MAXDEVS 4
+#define MPU_MAXDEVS 1
 
 enum MPU_ACCELSCALE {
 	MPU_2G	= 0,

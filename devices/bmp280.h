@@ -3,7 +3,7 @@
 
 #include "driver.h"
 
-#define BMP_MAXDEVS 4
+#define BMP_MAXDEVS 1
 #define BMP_WRITERETRIES 10
 
 enum BMP_STANDBY {

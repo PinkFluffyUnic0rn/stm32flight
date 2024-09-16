@@ -22,16 +22,6 @@ struct device {
 	int (*read)(void *dev, size_t addr, void *data, size_t sz);
 	int (*write)(void *dev, size_t addr, const void *data,
 		size_t sz);
-
-	int (*eraseall)(void *dev);
-	int (*erasesector)(void *dev, size_t addr);
-	int (*writesector)(void *dev, size_t addr, const void *data,
-		size_t sz);
-
-	size_t writesize;
-	size_t sectorsize;
-	size_t totalsize;
-	
 	int status;
 
 	void *priv;

@@ -40,7 +40,7 @@
 #define CRSF_FREQ 100
 
 #define USER_FLASH 0x0801f800
-#define UESR_SETSLOTS (0x80 / sizeof(struct settings))
+#define USER_SETSLOTS (0x80 / sizeof(struct settings))
 
 // Timer events
 #define TEV_PID 	0
@@ -191,30 +191,6 @@ int inittimev(struct timev *ev, int freq, int (*cb)(int))
 	ev->ms = 0;
 	ev->freq = freq;
 	ev->cb = cb;
-
-	return 0;
-}
-
-int mpu_printuart(const struct mpu_data *md)
-{
-	uartprintf("%-15sx = %hd; y = %hd; z = %hd\n\r",
-		"acceleration: ", md->ax, md->ay, md->az);
-
-	uartprintf("%-15sx = %hd; y = %hd; z = %hd\n\r\n\r",
-		"rotation: ", md->gx, md->gy, md->gz);
-
-	return 0;
-}
-
-int mpu_printuartf(const struct mpu_data *md)
-{
-	uartprintf("%-15sx = %-.3f; y = %-.3f; z = %-.3f\n\r",
-		"acceleration: ", (double) md->afx, (double) md->afy,
-		(double) md->afz);
-
-	uartprintf("%-15sx = %-.3f; y = %-.3f; z = %-.3f\n\r\n\r",
-		"rotation: ", (double) md->gfx, (double) md->gfy,
-		(double) md->gfz);
 
 	return 0;
 }
@@ -475,6 +451,8 @@ int checkconnection(int ms)
 		setthrust(0.0, 0.0, 0.0, 0.0);
 
 		en = 0.0;
+
+//		esp_error(&espdev, espdev.huart);
 
 		snprintf(s, INFOLEN, "wi-fi timed out!\n\r");
 
@@ -983,9 +961,8 @@ int main(void)
 		if (esp_poll(&espdev, cmd) >= 0)
 			controlcmd(cmd);
 	
-		if (crsf_read(&cdata) >= 0) {
+		if (crsf_read(&cdata) >= 0)
 			crsfcmd(&cdata);
-		}
 
 		for (i = 0; i < TEV_COUNT; ++i) {
 			if (checktimev(evs + i)) {
@@ -1129,10 +1106,7 @@ static void tim1_init(void)
 
 	if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
 		error_handler();
-/*
-	if (HAL_TIM_OC_Init(&htim1) != HAL_OK)
-		error_handler();
-*/
+
 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
 	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
 	if (HAL_TIMEx_MasterConfigSynchronization(&htim1,
@@ -1300,10 +1274,7 @@ static void mpu_init()
 	d.gyroscale = MPU_1000DPS;
 	d.dlpfwidth = MPU_10DLPF;
 
-	if (drivers[0].initdevice(&d, dev + MPU_DEV) == 0)
-		uartprintf("MPU-6500 initilized\r\n");
-	else
-		uartprintf("failed to initilize MPU-6500\r\n");
+	drivers[0].initdevice(&d, dev + MPU_DEV);
 }
 
 static void bmp_init()
@@ -1314,11 +1285,7 @@ static void bmp_init()
 
 	d.hi2c = &hi2c1;
 
-	if (drivers[1].initdevice(&d, dev + BMP_DEV) == 0)
-		uartprintf("BMP280 initilized\r\n");
-	else
-		uartprintf("failed to initilize BMP280\r\n");
-
+	drivers[1].initdevice(&d, dev + BMP_DEV);
 }
 
 static void hmc_init()
@@ -1330,10 +1297,7 @@ static void hmc_init()
 	d.scale = HMC_SCALE_1_3;
 	d.rate = HMC_RATE_15;
 
-	if (drivers[2].initdevice(&d, dev + HMC_DEV) == 0)
-		uartprintf("HMC5883L initilized\r\n");
-	else
-		uartprintf("failed to initilize HMC5883L\r\n");
+	drivers[2].initdevice(&d, dev + HMC_DEV);
 }
 
 static void espdev_init()
@@ -1342,30 +1306,11 @@ static void espdev_init()
 	
 	espdev.huart = &huart1;
 
-	if (esp_init(&espdev, SSID, PASSWORD) < 0) {
-		uartprintf("failed to initilize ESP8266\r\n");
-		return;
-	}
+	esp_init(&espdev, SSID, PASSWORD);
 
-	uartprintf("ESP8266 initilized\r\n");
-
-	uartprintf("getting ip...\r\n");
-
-	if (esp_getip(&espdev, ip) < 0)
-		uartprintf("failed to get ip\r\n");
-	else
-		uartprintf("got ip %s\r\n", ip);
-
-	uartprintf("connecting to %s:%d...\r\n", SERVIP, SERVPORT);
+	esp_getip(&espdev, ip);
 	
-	if (esp_connect(&espdev, SERVIP, SERVPORT) < 0) {
-		uartprintf("failed to connect to %s %s\r\n",
-			SERVIP, SERVPORT);
-		return;
-	}
-
-	uartprintf("connected\r\n");
-
+	esp_connect(&espdev, SERVIP, SERVPORT);
 }
 
 static void crsfdev_init()
@@ -1377,6 +1322,8 @@ static void crsfdev_init()
 
 void error_handler(void)
 {
+	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+
 	__disable_irq();
 	while (1) {}
 }

@@ -7,13 +7,11 @@
 #include "uartdebug.h"
 #include "esp8266.h"
 
-#define ESP_RXSIZE 1024
-
 #define ESP_RESPONSECOUNT 4
 #define ESP_UARTTIMEOUT 100
 #define ESP_TIMEOUT 1000
 #define ESP_JOINTIMEOUT 30000
-#define ESP_FIFOSIZE 16
+#define ESP_FIFOSIZE 8
 
 enum ESP_RESPONSE {
 	ESP_OK = 0,
@@ -28,43 +26,56 @@ struct fifo {
 	size_t top;
 };
 
-static volatile uint8_t Rxdata[ESP_RXSIZE];
+static uint8_t Rxbyte;
+static volatile uint8_t Rxdata[ESP_CMDSIZE];
 static volatile size_t Rxoffset = 0;
 
-static struct fifo fifo;
+static volatile struct fifo fifo;
 
-int esp_initfifo(struct fifo *f)
+void memcpyv(volatile void *dest, const volatile void *src, size_t n)
+{
+	int i;
+
+	for (i = 0; i < n; ++i)
+		((uint8_t *) dest)[i] = ((uint8_t *) src)[i];
+}
+
+int esp_initfifo(volatile struct fifo *f)
 {
 	f->bot = f->top = 0;
 
 	return 0;
 }
 
-int esp_enqueque(struct fifo *f, const char *in, size_t len)
+int esp_enqueque(volatile struct fifo *f, const char *in, size_t len)
 {
 	if ((f->top + 1) % ESP_FIFOSIZE == f->bot)
 		return (-1);
 
-	memcpy(f->cmd[f->top], in, len);
-	
+	len = (len > ESP_CMDSIZE) ? ESP_CMDSIZE : len;
+
+	memcpyv(f->cmd[f->top], in, len);
+	f->cmd[f->top][len - 1] = '\0';
+
 	f->top = (f->top + 1) % ESP_FIFOSIZE;
 
 	return 0;
 }
 
-int esp_dequeque(struct fifo *f, char *out)
+int esp_dequeque(volatile struct fifo *f, char *out)
 {
 	if (f->bot == f->top)
 		return (-1);
 
-	memcpy(out, f->cmd[f->bot], ESP_CMDSIZE);
+	memcpyv(out, f->cmd[f->bot], ESP_CMDSIZE);
 
 	f->bot = (f->bot + 1) % ESP_FIFOSIZE;
 
 	return 0;
 }
 
-int esp_waitforstrings(struct fifo *f, int timeout, char *res, ...)
+int esp_waitforstrings(volatile struct fifo *f, int timeout,
+	char *res, ...)
 {
 	int t;
 
@@ -82,8 +93,10 @@ int esp_waitforstrings(struct fifo *f, int timeout, char *res, ...)
 
 		i = 0;
 		while ((s = va_arg(args, char *)) != NULL) {
-			if (strncmp(res, s, strlen(s)) == 0)
+			if (strncmp(res, s, strlen(s)) == 0) {	
+				va_end(args);
 				return i;
+			}
 
 			++i;
 		}
@@ -148,7 +161,7 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass)
 	
 	esp_initfifo(&fifo);
 
-	HAL_UART_Receive_IT(dev->huart, (uint8_t *) Rxdata, 1);
+	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=921600,8,1,0,0") != ESP_OK)
 		return (-1);
@@ -160,7 +173,7 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass)
 	if (HAL_UART_Init(dev->huart) != HAL_OK)
 		return (-1);	
 	
-	HAL_UART_Receive_IT(dev->huart, (uint8_t *) Rxdata, 1);
+	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
 		return (-1);
@@ -227,16 +240,17 @@ int esp_interrupt(struct esp_device *dev, const void *h)
 	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
 		return 0;
 
+	Rxdata[Rxoffset] = Rxbyte;
+
 	if (Rxdata[Rxoffset] == '\n') {
 		Rxdata[Rxoffset] = '\0';
 		esp_enqueque(&fifo, (char *) Rxdata, Rxoffset + 1);
 		Rxoffset = 0;
 	}
-	else if (Rxoffset++ == ESP_RXSIZE)
+	else if (Rxoffset++ == (ESP_CMDSIZE - 1))
 		Rxoffset = 0;
 
-	HAL_UART_Receive_IT(dev->huart,
-		((uint8_t *) Rxdata) + Rxoffset, 1); 
+	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1); 
 
 	return 0;
 }
@@ -250,7 +264,11 @@ int esp_error(struct esp_device *dev, const void *h)
 	__HAL_UART_CLEAR_NEFLAG(dev->huart);
 	__HAL_UART_CLEAR_FEFLAG(dev->huart);
 
-	HAL_UART_Receive_IT(dev->huart, (uint8_t *) Rxdata, 1);
+	HAL_UART_DeInit(dev->huart);
+	
+	HAL_UART_Init(dev->huart);
+
+	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 
 	return 0;
 }
@@ -265,13 +283,12 @@ static enum ESP_RESPONSE _esp_send(struct esp_device *dev, int timeout,
 	rem = strlen(data);
 	off = 0;
 
-
 	sprintf(buf, "AT+CIPSEND=%d\r\n", rem);
 
 	HAL_UART_Transmit(dev->huart, (uint8_t *) buf,
 		strlen(buf), ESP_UARTTIMEOUT);
 
-	esp_waitforstrings(&fifo, timeout, buf, ">", NULL);
+	esp_waitforstrings(&fifo, timeout, buf, "> ", NULL);
 
 	while (rem > 0) {
 		size_t len;
@@ -325,6 +342,9 @@ int esp_poll(struct esp_device *dev, char *outdata)
 		return (-1);
 
 	*data++ = '\0';
+
+	if (strlen(data) >= ESP_CMDSIZE)
+		return (-1);
 
 	memcpy(outdata, data, strlen(data) + 1);
 

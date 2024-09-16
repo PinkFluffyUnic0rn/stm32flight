@@ -166,18 +166,8 @@ int bmp_initdevice(void *is, struct device *dev)
 	sprintf(dev->name, "%s%d", "bmp280", bmp_devcount);
 
 	dev->type = DEVTYPE_CHAR;
-
 	dev->priv = bmp_devs + bmp_devcount;
-
 	dev->read = bmp_getdata;
-	dev->write = NULL;
-	dev->eraseall = NULL;
-	dev->erasesector = NULL;
-	dev->writesector = NULL;
-
-	dev->writesize = 1;
-	dev->sectorsize = 0;
-	dev->totalsize = 0;
 
 	r = bmp_init(bmp_devs + bmp_devcount++, BMP_STANDBY_05,
 		BMP_IIR_16, BMP_OVERSAMPLING_16, BMP_MODE_NORMAL);

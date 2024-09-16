@@ -96,18 +96,8 @@ int hmc_initdevice(void *is, struct device *dev)
 	sprintf(dev->name, "%s%d", "hmc5883l", hmc_devcount);
 
 	dev->type = DEVTYPE_CHAR;
-
 	dev->priv = hmc_devs + hmc_devcount;
-
 	dev->read = hmc_getdata;
-	dev->write = NULL;
-	dev->eraseall = NULL;
-	dev->erasesector = NULL;
-	dev->writesector = NULL;
-
-	dev->writesize = 1;
-	dev->sectorsize = 0;
-	dev->totalsize = 0;
 
 	r = hmc_init(hmc_devs + hmc_devcount++);
 

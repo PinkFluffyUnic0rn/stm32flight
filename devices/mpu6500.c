@@ -112,18 +112,8 @@ int mpu_initdevice(void *is, struct device *dev)
 	sprintf(dev->name, "%s%d", "mpu6500", mpu_devcount);
 
 	dev->type = DEVTYPE_CHAR;
-
 	dev->priv = mpu_devs + mpu_devcount;
-
 	dev->read = mpu_getdata;
-	dev->write = NULL;
-	dev->eraseall = NULL;
-	dev->erasesector = NULL;
-	dev->writesector = NULL;
-
-	dev->writesize = 1;
-	dev->sectorsize = 0;
-	dev->totalsize = 0;
 
 	r = mpu_init(mpu_devs + mpu_devcount++);
 
