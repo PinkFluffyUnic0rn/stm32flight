@@ -13,11 +13,11 @@ Parameters
 
 Weight
 ======
- * PCB and ESCs: ~30g
+ * PCB and ESCs: ~33g
  * Motors: 32g
  * Battery: 46g
  * Frame + Connector: ~56g
- * Total weight: 164g 
+ * Total weight: 167g 
 
 Devices
 =======
@@ -26,7 +26,8 @@ Devices
  * Control board voltage regulator: AMS1117-3.3
  * Accelerometer/Gyroscope: MPU6050
  * Magnetometer: HMC5883L
- * Remote control: ESP8266 (ESP-01s)
+ * Remote control: ERLS CRSF receiver
+ * Telemetry/debug: ESP8266 (ESP-01s)
  * Barometer: BMP280
 
 UAV commands:
