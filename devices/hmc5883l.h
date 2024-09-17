@@ -1,7 +1,7 @@
 #ifndef HMC5883L_H
 #define HMC5883L
 
-#include "driver.h"
+#include "device.h"
 
 #define HMC_MAXDEVS 1
 
@@ -38,6 +38,6 @@ struct hmc_device {
 	enum HMC_SCALE scale;
 };
 
-int hmc_getdriver(struct driver *driver);
+int hmc_initdevice(void *is, struct cdevice *dev);
 
 #endif

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #include "main.h"
-#include "driver.h"
+#include "device.h"
 #include "uartdebug.h"
 #include "mpu6500.h"
 #include "bmp280.h"
@@ -22,6 +22,8 @@
 #define MPU_DEV 0
 #define BMP_DEV 1
 #define HMC_DEV 2
+#define CRSF_DEV 3
+#define DEV_COUNT 4
 
 // timer settings
 #define PRESCALER 48
@@ -119,8 +121,7 @@ UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
 
 // IC drivers
-struct driver drivers[4];
-struct device dev[4];
+struct cdevice dev[DEV_COUNT];
 struct esp_device espdev;
 struct crsf_device crsfdev;
 
@@ -178,7 +179,9 @@ uint32_t getadcv(ADC_HandleTypeDef *hadc)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
 {
 	esp_interrupt(&espdev, huart);
-	crsf_interrupt(&crsfdev, huart);
+	
+	if (dev[CRSF_DEV].status == DEVSTATUS_INIT)
+		dev[CRSF_DEV].interrupt(dev[CRSF_DEV].priv, huart);
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
@@ -208,7 +211,7 @@ float groundpressure(float alt)
 		struct bmp_data bd;
 		float t, tt;
 
-		dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
+		dev[BMP_DEV].read(dev[BMP_DEV].priv, &bd,
 			sizeof(struct bmp_data));
 	
 		tt = bd.press / 100.0
@@ -243,7 +246,7 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 
 	axt = ayt = azt = gxt = gyt = gzt = 0;
 	for (i = 0; i < 250; ++i) {
-		dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
+		dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 			sizeof(struct mpu_data));
 
 		gxt += md.gfx;
@@ -379,7 +382,7 @@ int stabilize(int ms)
 	dt = ms / (float) TICKSPERSEC;
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
-	dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
+	dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 		sizeof(struct mpu_data));
 
 	dsp_updatelpf(&tlpf, md.afz);
@@ -396,7 +399,7 @@ int stabilize(int ms)
 		atan2f(md.afy,
 		sqrt(md.afx * md.afx + md.afz * md.afz))) - st.pitch0;
 
-	dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+	dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
 		sizeof(struct hmc_data));
 
 	yaw = circf(hmc_heading(-pitch, -roll, hd.fx, hd.fy, hd.fz)
@@ -452,8 +455,6 @@ int checkconnection(int ms)
 
 		en = 0.0;
 
-//		esp_error(&espdev, espdev.huart);
-
 		snprintf(s, INFOLEN, "wi-fi timed out!\n\r");
 
 		esp_send(&espdev, s);
@@ -479,7 +480,7 @@ int magcalib(int ms)
 	if (!magcalibmode)
 		return 0;
 
-	dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+	dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
 		sizeof(struct hmc_data));
 
 	sprintf(s, "%f %f %f\r\n",
@@ -499,7 +500,7 @@ int bmpupdate(int ms)
 	if (dev[BMP_DEV].status != DEVSTATUS_INIT) 
 		return 0;
 
-	dev[BMP_DEV].read(dev[BMP_DEV].priv, 0, &bd,
+	dev[BMP_DEV].read(dev[BMP_DEV].priv, &bd,
 		sizeof(struct bmp_data));
 
 	dsp_updatelpf(&presslpf, bd.press);
@@ -673,10 +674,10 @@ int controlcmd(char *cmd)
 			struct mpu_data md;
 			struct hmc_data hd;
 
-			dev[MPU_DEV].read(dev[MPU_DEV].priv, 0, &md,
+			dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 				sizeof(struct mpu_data));
 
-			dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+			dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
 				sizeof(struct hmc_data));
 
 			sprintpos(s, &md, &hd);
@@ -686,7 +687,7 @@ int controlcmd(char *cmd)
 		else if (strcmp(toks[1], "hmc") == 0) {
 			struct hmc_data hd;
 
-			dev[HMC_DEV].read(dev[HMC_DEV].priv, 0, &hd,
+			dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
 				sizeof(struct hmc_data));
 		
 			sprinthmc(s, &hd);	
@@ -895,20 +896,20 @@ unknown:
 	return (-1);
 }
 
-int crsfcmd(const struct crsf_channels *cdata)
+int crsfcmd(const struct crsf_data *cd)
 {
-	elrs = (cdata->chf[7] > 0.5) ? 1 : 0;
+	elrs = (cd->chf[7] > 0.5) ? 1 : 0;
 
 	elrstimeout = ELRS_TIMEOUT;
 
 	if (elrs) {
 		en = 1.0;
 	
-		pitchtarget = -cdata->chf[0] * (M_PI / 6.0);
-		rolltarget = -cdata->chf[1] * (M_PI / 6.0);
-		thrust = (cdata->chf[2] + 0.75) / 3.5;
-		yawtarget = -cdata->chf[9] * M_PI;
-		en = (cdata->chf[5] > 0.5) ? 1 : 0;
+		pitchtarget = -cd->chf[0] * (M_PI / 6.0);
+		rolltarget = -cd->chf[1] * (M_PI / 6.0);
+		thrust = (cd->chf[2] + 0.75) / 3.5;
+		yawtarget = cd->chf[9] * M_PI;
+		en = (cd->chf[5] > 0.5) ? 1 : 0;
 	
 		if (en < 0.5)
 			setthrust(0.0, 0.0, 0.0, 0.0);
@@ -919,11 +920,16 @@ int crsfcmd(const struct crsf_channels *cdata)
 
 int main(void)
 {
+	int i;
+
 	HAL_Init();
 
 	systemclock_config();
 	
 	HAL_Delay(1000);
+
+	for (i = 0; i < DEV_COUNT; ++i)
+		dev[i].status = DEVSTATUS_NOINIT;
 
 	gpio_init();
 	tim1_init();
@@ -953,16 +959,19 @@ int main(void)
 	wifitimeout = WIFI_TIMEOUT;
 	while (1) {
 		char cmd[ESP_CMDSIZE];
-		struct crsf_channels cdata;
+		struct crsf_data cd;
 		int c, i;
 
 		__HAL_TIM_SET_COUNTER(&htim2, 0);
 
 		if (esp_poll(&espdev, cmd) >= 0)
 			controlcmd(cmd);
-	
-		if (crsf_read(&cdata) >= 0)
-			crsfcmd(&cdata);
+
+
+		if (dev[CRSF_DEV].read(dev[CRSF_DEV].priv, &cd,
+			sizeof(struct crsf_data)) >= 0) {
+			crsfcmd(&cd);
+		}
 
 		for (i = 0; i < TEV_COUNT; ++i) {
 			if (checktimev(evs + i)) {
@@ -1266,38 +1275,33 @@ static void mpu_init()
 {
 	struct mpu_device d;
 
-	mpu_getdriver(drivers + MPU_DEV);
-
 	d.hi2c = &hi2c1;
 	d.devtype = MPU_DEV6050;
 	d.accelscale = MPU_4G;
 	d.gyroscale = MPU_1000DPS;
 	d.dlpfwidth = MPU_10DLPF;
 
-	drivers[0].initdevice(&d, dev + MPU_DEV);
+	mpu_initdevice(&d, dev + MPU_DEV);
 }
 
 static void bmp_init()
 {
 	struct bmp_device d;
 
-	bmp_getdriver(drivers + BMP_DEV);
-
 	d.hi2c = &hi2c1;
 
-	drivers[1].initdevice(&d, dev + BMP_DEV);
+	bmp_initdevice(&d, dev + BMP_DEV);
 }
 
 static void hmc_init()
 {
 	struct hmc_device d;
-	hmc_getdriver(drivers + HMC_DEV);
 
 	d.hi2c = &hi2c1;
 	d.scale = HMC_SCALE_1_3;
 	d.rate = HMC_RATE_15;
 
-	drivers[2].initdevice(&d, dev + HMC_DEV);
+	hmc_initdevice(&d, dev + HMC_DEV);
 }
 
 static void espdev_init()
@@ -1315,9 +1319,11 @@ static void espdev_init()
 
 static void crsfdev_init()
 {
-	crsfdev.huart = &huart2;
+	struct crsf_device d;
 
-	crsf_init(&crsfdev);
+	d.huart = &huart2;
+
+	crsf_initdevice(&d, dev + CRSF_DEV);
 }
 
 void error_handler(void)

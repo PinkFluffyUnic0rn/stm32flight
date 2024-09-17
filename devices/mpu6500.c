@@ -54,7 +54,7 @@ int mpu_getintdata(struct mpu_device *dev, struct mpu_data *data)
 	return 0;
 }
 
-int mpu_getdata(void *d, size_t addr, void *dt, size_t sz)
+int mpu_getdata(void *d, void *dt, size_t sz)
 {
 	struct mpu_device *dev;
 	struct mpu_data *data;
@@ -103,7 +103,7 @@ int mpu_init(struct mpu_device *dev)
 	return 0;
 }
 
-int mpu_initdevice(void *is, struct device *dev)
+int mpu_initdevice(void *is, struct cdevice *dev)
 {
 	int r;
 
@@ -111,20 +111,14 @@ int mpu_initdevice(void *is, struct device *dev)
 	
 	sprintf(dev->name, "%s%d", "mpu6500", mpu_devcount);
 
-	dev->type = DEVTYPE_CHAR;
 	dev->priv = mpu_devs + mpu_devcount;
 	dev->read = mpu_getdata;
+	dev->write = NULL;
+	dev->interrupt = NULL;
 
 	r = mpu_init(mpu_devs + mpu_devcount++);
 
 	dev->status = (r == 0) ? DEVSTATUS_INIT : DEVSTATUS_FAILED;
 
 	return r;
-}
-
-int mpu_getdriver(struct driver *driver)
-{
-	driver->initdevice = mpu_initdevice;
-
-	return 0;
 }

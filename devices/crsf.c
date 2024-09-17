@@ -1,5 +1,7 @@
 #include "stm32f3xx_hal.h"
 #include <stdint.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "crsf.h"
 
@@ -11,6 +13,9 @@ struct packet {
 	uint8_t pl[64];
 };
 
+static struct crsf_device crsf_devs[CRSF_MAXDEVS];
+static size_t crsf_devcount = 0;
+
 static uint8_t Rxbuf;
 
 volatile static uint8_t Packstate;
@@ -19,11 +24,14 @@ volatile static uint8_t Packw;
 volatile static uint8_t Packr;
 volatile static struct packet Pack[RXCIRCSIZE];
 
-int crsf_interrupt(struct crsf_device *dev, const void *h) 
+int crsf_interrupt(void *dev, const void *h) 
 {
+	struct crsf_device *d;
 	uint8_t b;
+
+	d = dev;
 	
-	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
+	if (((UART_HandleTypeDef *)h)->Instance != d->huart->Instance)
 		return 0;
 
 	b = Rxbuf;
@@ -61,12 +69,15 @@ int crsf_interrupt(struct crsf_device *dev, const void *h)
 	return 0;
 }
 
-int crsf_read(struct crsf_channels *c)
+int crsf_read(void *dev, void *dt, size_t sz)
 {
+	struct crsf_data *data;
 	uint32_t merged;
 	uint32_t value;
 	int curb;
 	int i;
+
+	data = (struct crsf_data *) dt;
 
 	if (Packr == Packw)
 		return (-1);
@@ -90,7 +101,7 @@ int crsf_read(struct crsf_channels *c)
 			merged += 8;
 		}
 
-		c->chf[i] = ((value & 0x000007ff) - 992.0) / 819.5;
+		data->chf[i] = ((value & 0x000007ff) - 992.0) / 819.5;
 
 		value >>= 11;
 		merged -= 11;
@@ -108,6 +119,26 @@ int crsf_init(struct crsf_device *crsf)
 	Packstate = 0;
 	Packrest = 0;
 	Packw = Packr = 0;
+
+	return 0;
+}
+
+int crsf_initdevice(void *is, struct cdevice *dev)
+{
+	int r; 
+
+	memmove(crsf_devs + crsf_devcount, is, sizeof(struct crsf_device));
+	
+	sprintf(dev->name, "%s%d", "crsf", crsf_devcount);
+
+	dev->priv = crsf_devs + crsf_devcount;
+	dev->read = crsf_read;
+	dev->write = NULL;
+	dev->interrupt = crsf_interrupt;
+
+	r = crsf_init(crsf_devs + crsf_devcount++);
+	
+	dev->status = (r == 0) ? DEVSTATUS_INIT : DEVSTATUS_FAILED;
 
 	return 0;
 };

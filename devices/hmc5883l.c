@@ -47,7 +47,7 @@ int hmc_getintdata(struct hmc_device *dev, struct hmc_data *data)
 	return 0;
 }
 
-int hmc_getdata(void *d, size_t addr, void *dt, size_t sz)
+int hmc_getdata(void *d, void *dt, size_t sz)
 {
 	struct hmc_device *dev;
 	struct hmc_data *data;
@@ -87,7 +87,7 @@ int hmc_init(struct hmc_device *dev)
 	return 0;
 }
 
-int hmc_initdevice(void *is, struct device *dev)
+int hmc_initdevice(void *is, struct cdevice *dev)
 {
 	int r;
 
@@ -95,20 +95,14 @@ int hmc_initdevice(void *is, struct device *dev)
 	
 	sprintf(dev->name, "%s%d", "hmc5883l", hmc_devcount);
 
-	dev->type = DEVTYPE_CHAR;
 	dev->priv = hmc_devs + hmc_devcount;
 	dev->read = hmc_getdata;
+	dev->write = NULL;
+	dev->interrupt = NULL;
 
 	r = hmc_init(hmc_devs + hmc_devcount++);
 
 	dev->status = (r == 0) ? DEVSTATUS_INIT : DEVSTATUS_FAILED;
 
 	return r;
-}
-
-int hmc_getdriver(struct driver *driver)
-{
-	driver->initdevice = hmc_initdevice;
-
-	return 0;
 }

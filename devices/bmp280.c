@@ -98,7 +98,7 @@ float bmp_pressf(struct bmp_device *dev, int32_t adc_P)
 	return p;
 }
 
-int bmp_getdata(void *d, size_t addr, void *dt, size_t sz)
+int bmp_getdata(void *d, void *dt, size_t sz)
 {
 	struct bmp_device *dev;
 	struct bmp_data *data;
@@ -157,7 +157,7 @@ int bmp_init(struct bmp_device *dev,
 	return 0;
 }
 
-int bmp_initdevice(void *is, struct device *dev)
+int bmp_initdevice(void *is, struct cdevice *dev)
 {
 	int r;
 
@@ -165,9 +165,10 @@ int bmp_initdevice(void *is, struct device *dev)
 	
 	sprintf(dev->name, "%s%d", "bmp280", bmp_devcount);
 
-	dev->type = DEVTYPE_CHAR;
 	dev->priv = bmp_devs + bmp_devcount;
 	dev->read = bmp_getdata;
+	dev->write = NULL;
+	dev->interrupt = NULL;
 
 	r = bmp_init(bmp_devs + bmp_devcount++, BMP_STANDBY_05,
 		BMP_IIR_16, BMP_OVERSAMPLING_16, BMP_MODE_NORMAL);
@@ -175,11 +176,4 @@ int bmp_initdevice(void *is, struct device *dev)
 	dev->status = (r == 0) ? DEVSTATUS_INIT : DEVSTATUS_FAILED;
 
 	return r;
-}
-
-int bmp_getdriver(struct driver *driver)
-{
-	driver->initdevice = bmp_initdevice;
-
-	return 0;
 }

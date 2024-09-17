@@ -1,7 +1,7 @@
 #ifndef MPU6500_H
 #define MPU6500_H
 
-#include "driver.h"
+#include "device.h"
 
 #define MPU_MAXDEVS 1
 
@@ -50,6 +50,6 @@ struct mpu_device {
 	enum MPU_DLPF dlpfwidth;
 };
 
-int mpu_getdriver(struct driver *driver);
+int mpu_initdevice(void *is, struct cdevice *dev);
 
 #endif

@@ -1,7 +1,7 @@
 #ifndef BMP280_H
 #define BMP280_H
 
-#include "driver.h"
+#include "device.h"
 
 #define BMP_MAXDEVS 1
 #define BMP_WRITERETRIES 10
@@ -55,6 +55,6 @@ struct bmp_device {
 	int16_t digt[4];
 };
 
-int bmp_getdriver(struct driver *driver);
+int bmp_initdevice(void *is, struct cdevice *dev);
 
 #endif
