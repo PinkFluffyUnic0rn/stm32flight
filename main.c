@@ -399,11 +399,13 @@ int stabilize(int ms)
 		atan2f(md.afy,
 		sqrt(md.afx * md.afx + md.afz * md.afz))) - st.pitch0;
 
-	dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
-		sizeof(struct hmc_data));
+	if (!st.yawspeedpid) {
+		dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
+			sizeof(struct hmc_data));
 
-	yaw = circf(hmc_heading(-pitch, -roll, hd.fx, hd.fy, hd.fz)
-		- st.yaw0);
+		yaw = circf(hmc_heading(-pitch, -roll, hd.fx, hd.fy, hd.fz)
+			- st.yaw0);
+	}
 
 	if (st.speedpid) {
 		rollcor = dsp_pid(&rollspv, rolltarget, gy, dt);
@@ -964,9 +966,8 @@ int main(void)
 
 		__HAL_TIM_SET_COUNTER(&htim2, 0);
 
-		if (esp_poll(&espdev, cmd) >= 0)
+		if (esp_poll(&espdev, cmd) >= 0) 
 			controlcmd(cmd);
-
 
 		if (dev[CRSF_DEV].read(dev[CRSF_DEV].priv, &cd,
 			sizeof(struct crsf_data)) >= 0) {

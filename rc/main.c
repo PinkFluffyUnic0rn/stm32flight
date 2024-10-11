@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 
 		while (fgets(s, 256, f) != NULL) {
 			sendcmd(lsfd, &rsi, s);
-			usleep(10000);
+			usleep(1000000);
 		}
 	}
 	
