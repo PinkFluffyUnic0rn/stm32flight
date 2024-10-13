@@ -107,7 +107,7 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 		else if (event->key.keysym.sym == SDLK_v)
 			sendcmd(lsfd, rsi, "info values\n");
 		else if (event->key.keysym.sym == SDLK_h)
-			sendcmd(lsfd, rsi, "info hmc\n");
+			sendcmd(lsfd, rsi, "info qmc\n");
 		else if (event->key.keysym.sym == SDLK_b)
 			sendcmd(lsfd, rsi, "info bmp\n");
 		else if (event->key.keysym.sym == SDLK_SPACE)

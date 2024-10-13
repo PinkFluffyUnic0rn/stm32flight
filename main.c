@@ -10,7 +10,7 @@
 #include "mpu6500.h"
 #include "bmp280.h"
 #include "esp8266.h"
-#include "hmc5883l.h"
+#include "qmc5883l.h"
 #include "dsp.h"
 #include "crsf.h"
 
@@ -21,7 +21,7 @@
 // device numbers
 #define MPU_DEV 0
 #define BMP_DEV 1
-#define HMC_DEV 2
+#define QMC_DEV 2
 #define CRSF_DEV 3
 #define DEV_COUNT 4
 
@@ -103,7 +103,7 @@ static void usart2_init();
 static void esc_init();
 static void mpu_init();
 static void bmp_init();
-static void hmc_init();
+static void qmc_init();
 static void espdev_init();
 static void crsfdev_init();
 
@@ -271,7 +271,7 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 	return 0;
 }
 
-float hmc_heading(float r, float p, float x, float y, float z)
+float qmc_heading(float r, float p, float x, float y, float z)
 {
 	x = st.mxsc * (x + st.mx0);
 	y = st.mysc * (y + st.my0);
@@ -373,7 +373,7 @@ int initstabilize(float alt)
 int stabilize(int ms)
 {
 	struct mpu_data md;
-	struct hmc_data hd;
+	struct qmc_data hd;
 	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
 	float gy, gx, gz;
@@ -399,13 +399,11 @@ int stabilize(int ms)
 		atan2f(md.afy,
 		sqrt(md.afx * md.afx + md.afz * md.afz))) - st.pitch0;
 
-	if (!st.yawspeedpid) {
-		dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
-			sizeof(struct hmc_data));
+	dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
+		sizeof(struct qmc_data));
 
-		yaw = circf(hmc_heading(-pitch, -roll, hd.fx, hd.fy, hd.fz)
-			- st.yaw0);
-	}
+	yaw = circf(qmc_heading(-pitch, -roll, hd.fx, hd.fy, hd.fz)
+		- st.yaw0);
 
 	if (st.speedpid) {
 		rollcor = dsp_pid(&rollspv, rolltarget, gy, dt);
@@ -476,14 +474,14 @@ int checkconnection(int ms)
 
 int magcalib(int ms)
 {
-	struct hmc_data hd;
+	struct qmc_data hd;
 	char s[INFOLEN];
 
 	if (!magcalibmode)
 		return 0;
 
-	dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
-		sizeof(struct hmc_data));
+	dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
+		sizeof(struct qmc_data));
 
 	sprintf(s, "%f %f %f\r\n",
 		(double) (st.mxsc * (hd.fx + st.mx0)),
@@ -531,7 +529,7 @@ int parsecommand(char **toks, int maxtoks, char *data)
 	return (i - 1);
 }
 
-int sprintpos(char *s, struct mpu_data *md, struct hmc_data *hd)
+int sprintpos(char *s, struct mpu_data *md, struct qmc_data *hd)
 {
 	s[0] = '\0';
 
@@ -546,7 +544,7 @@ int sprintpos(char *s, struct mpu_data *md, struct hmc_data *hd)
 		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
 		(double) (dsp_getcompl(&rollcompl) - st.roll0),
 		(double) (dsp_getcompl(&pitchcompl) - st.pitch0),
-		(double) circf(hmc_heading(
+		(double) circf(qmc_heading(
 			-(dsp_getcompl(&pitchcompl) - st.pitch0),
 			-(dsp_getcompl(&rollcompl) - st.roll0),
 			hd->fx, hd->fy, hd->fz) - st.yaw0));
@@ -562,7 +560,7 @@ int sprintpos(char *s, struct mpu_data *md, struct hmc_data *hd)
 	return 0;
 }
 
-int sprinthmc(char *s, struct hmc_data *hd)
+int sprintqmc(char *s, struct qmc_data *hd)
 {
 	s[0] = '\0';
 
@@ -571,7 +569,7 @@ int sprinthmc(char *s, struct hmc_data *hd)
 		(double) hd->fx, (double) hd->fy, (double) hd->fz);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"heading: %f\r\n", (double) hmc_heading(
+		"heading: %f\r\n", (double) qmc_heading(
 			-(dsp_getcompl(&pitchcompl) - st.pitch0),
 			-(dsp_getcompl(&rollcompl) - st.roll0),
 			hd->fx, hd->fy, hd->fz));
@@ -674,25 +672,25 @@ int controlcmd(char *cmd)
 	else if (strcmp(toks[0], "info") == 0) {
 		if (strcmp(toks[1], "mpu") == 0) {
 			struct mpu_data md;
-			struct hmc_data hd;
+			struct qmc_data hd;
 
 			dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 				sizeof(struct mpu_data));
 
-			dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
-				sizeof(struct hmc_data));
+			dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
+				sizeof(struct qmc_data));
 
 			sprintpos(s, &md, &hd);
 
 			esp_send(&espdev, s);
 		}
-		else if (strcmp(toks[1], "hmc") == 0) {
-			struct hmc_data hd;
+		else if (strcmp(toks[1], "qmc") == 0) {
+			struct qmc_data hd;
 
-			dev[HMC_DEV].read(dev[HMC_DEV].priv, &hd,
-				sizeof(struct hmc_data));
+			dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
+				sizeof(struct qmc_data));
 		
-			sprinthmc(s, &hd);	
+			sprintqmc(s, &hd);	
 		
 			esp_send(&espdev, s);
 		}
@@ -945,7 +943,7 @@ int main(void)
 	esc_init();
 	bmp_init();
 	mpu_init();
-	hmc_init();
+	qmc_init();
 	espdev_init();
 	crsfdev_init();
 
@@ -1294,15 +1292,16 @@ static void bmp_init()
 	bmp_initdevice(&d, dev + BMP_DEV);
 }
 
-static void hmc_init()
+static void qmc_init()
 {
-	struct hmc_device d;
+	struct qmc_device d;
 
 	d.hi2c = &hi2c1;
-	d.scale = HMC_SCALE_1_3;
-	d.rate = HMC_RATE_15;
+	d.scale = QMC_SCALE_2;
+	d.rate = QMC_RATE_200;
+	d.osr = QMC_OSR_512;
 
-	hmc_initdevice(&d, dev + HMC_DEV);
+	qmc_initdevice(&d, dev + QMC_DEV);
 }
 
 static void espdev_init()
