@@ -420,7 +420,10 @@ int stabilize(int ms)
 	if (st.yawspeedpid)
 		yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
 	else {
-		yawcor = circf(dsp_pid(&yawpv, yawtarget, yaw, dt));
+	//	yawcor = circf(dsp_pid(&yawpv, yawtarget, yaw, dt));
+		
+		yawcor = dsp_circpid(&yawpv, yawtarget, yaw, dt);
+
 		yawcor = dsp_pid(&yawspv, yawcor, gz, dt);
 	}
 
@@ -1298,7 +1301,7 @@ static void qmc_init()
 
 	d.hi2c = &hi2c1;
 	d.scale = QMC_SCALE_2;
-	d.rate = QMC_RATE_200;
+	d.rate = QMC_RATE_100;
 	d.osr = QMC_OSR_512;
 
 	qmc_initdevice(&d, dev + QMC_DEV);

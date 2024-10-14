@@ -288,7 +288,9 @@ static enum ESP_RESPONSE _esp_send(struct esp_device *dev, int timeout,
 	HAL_UART_Transmit(dev->huart, (uint8_t *) buf,
 		strlen(buf), ESP_UARTTIMEOUT);
 
-	esp_waitforstrings(&fifo, timeout, buf, "> ", NULL);
+//	esp_waitforstrings(&fifo, timeout, buf, "> ", NULL);
+
+	HAL_Delay(1);
 
 	while (rem > 0) {
 		size_t len;
