@@ -64,11 +64,11 @@ float dsp_circpid(struct dsp_pidval *pv, float target, float val, float dt)
 
 	e = circf(target - val);
 
-//	pv->s += e * dt;
+	pv->s += e * dt;
 
-	v = pv->kp * e;// + pv->ki * pv->s + pv->kd * (e - pv->pe) / dt;
+	v = pv->kp * e + pv->ki * pv->s + pv->kd * (e - pv->pe) / dt;
 
-//	pv->pe = e;
+	pv->pe = e;
 
 	return v;
 }

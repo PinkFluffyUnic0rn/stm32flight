@@ -420,8 +420,6 @@ int stabilize(int ms)
 	if (st.yawspeedpid)
 		yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
 	else {
-	//	yawcor = circf(dsp_pid(&yawpv, yawtarget, yaw, dt));
-		
 		yawcor = dsp_circpid(&yawpv, yawtarget, yaw, dt);
 
 		yawcor = dsp_pid(&yawspv, yawcor, gz, dt);

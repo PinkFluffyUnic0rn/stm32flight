@@ -6,7 +6,7 @@ pid stilt p 0.03
 pid stilt i 0.0
 pid stilt d 0.0
 pid yaw mode double
-pid yaw p -0.5
+pid yaw p -1.0
 pid yaw i 0.0
 pid yaw d 0.0
 pid syaw p 0.2
@@ -20,6 +20,7 @@ lpf climb 0.25
 lpf pressure 1.0
 adj roll 0.0
 adj pitch -0.1
+adj yaw 0.0 
 adj mag x0 -605.0
 adj mag y0 782.0
 adj mag z0 263.0
@@ -30,5 +31,4 @@ adj mag xscale 0.9298
 adj mag yscale 1.0
 adj mag zscale 1.0
 adj mag decl 0.3264
-adj yaw 0.0 
 flash write
