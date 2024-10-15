@@ -1300,7 +1300,7 @@ static void qmc_init()
 	struct qmc_device d;
 
 	d.hi2c = &hi2c1;
-	d.scale = QMC_SCALE_2;
+	d.scale = QMC_SCALE_8;
 	d.rate = QMC_RATE_100;
 	d.osr = QMC_OSR_512;
 

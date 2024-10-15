@@ -23,6 +23,9 @@ adj pitch -0.1
 adj mag x0 -605.0
 adj mag y0 782.0
 adj mag z0 263.0
+adj mag x0 -151.25
+adj mag y0 195.5
+adj mag z0 65.75
 adj mag xscale 0.9298
 adj mag yscale 1.0
 adj mag zscale 1.0
