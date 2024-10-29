@@ -17,18 +17,15 @@ pid climb i 0.0005
 pid climb d 0.001
 compl 0.5
 lpf climb 0.25
-lpf pressure 1.0
-adj roll 0.0
+lpf altitude 0.5
+adj roll 0.03
 adj pitch -0.1
 adj yaw 0.0 
-adj mag x0 -605.0
-adj mag y0 782.0
-adj mag z0 263.0
-adj mag x0 -151.25
-adj mag y0 195.5
-adj mag z0 65.75
-adj mag xscale 0.9298
+adj mag x0 -371.0
+adj mag y0 700.0
+adj mag z0 123.0
+adj mag xscale 0.95
 adj mag yscale 1.0
-adj mag zscale 1.0
+adj mag zscale 0.94
 adj mag decl 0.3264
 flash write

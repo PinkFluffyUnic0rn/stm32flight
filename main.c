@@ -8,7 +8,7 @@
 #include "device.h"
 #include "uartdebug.h"
 #include "mpu6500.h"
-#include "bmp280.h"
+#include "hp206c.h"
 #include "esp8266.h"
 #include "qmc5883l.h"
 #include "dsp.h"
@@ -20,7 +20,7 @@
 
 // device numbers
 #define MPU_DEV 0
-#define BMP_DEV 1
+#define HP_DEV 1
 #define QMC_DEV 2
 #define CRSF_DEV 3
 #define DEV_COUNT 4
@@ -38,7 +38,7 @@
 // DSP settings
 #define PID_FREQ 1000
 #define CALIB_FREQ 25
-#define BMP_FREQ 150
+#define HP_FREQ 25
 #define CRSF_FREQ 100
 
 #define USER_FLASH 0x0801f800
@@ -48,7 +48,7 @@
 #define TEV_PID 	0
 #define TEV_CHECK 	1
 #define TEV_CALIB	2
-#define TEV_BMP		3
+#define TEV_HP		3
 #define TEV_COUNT	4
 
 #define WIFI_TIMEOUT 3
@@ -73,7 +73,7 @@ struct settings {
 	float gx0,	gy0,		gz0;
 	float roll0,	pitch0,		yaw0;
 
-	float tcoef, ttcoef, ptcoef;
+	float tcoef, ttcoef, atcoef;
 
 	int speedpid;
 	int yawspeedpid;
@@ -100,9 +100,10 @@ static void tim2_init();
 static void adc1_init(void);
 static void usart1_init();
 static void usart2_init();
+static void usart3_init();
 static void esc_init();
+static void hp_init();
 static void mpu_init();
-static void bmp_init();
 static void qmc_init();
 static void espdev_init();
 static void crsfdev_init();
@@ -118,6 +119,7 @@ TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart2_rx;
 
 // IC drivers
@@ -127,7 +129,8 @@ struct crsf_device crsfdev;
 
 // DSP contexts
 struct dsp_lpf tlpf;
-struct dsp_lpf presslpf;
+struct dsp_lpf altlpf;
+float temp;
 
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
@@ -148,7 +151,7 @@ int magcalibmode = 0;
 int elrs = 0;
 
 // pressure and altitude initial values
-float alt0, press0;
+float alt0;
 
 // settings
 struct settings st;
@@ -196,45 +199,6 @@ int inittimev(struct timev *ev, int freq, int (*cb)(int))
 	ev->cb = cb;
 
 	return 0;
-}
-
-float groundpressure(float alt)
-{
-	float press;
-	float c;
-	int i;
-
-	press = 0.0;
-	c = 0.0;
-
-	for (i = 0; i < 100; ++i) {
-		struct bmp_data bd;
-		float t, tt;
-
-		dev[BMP_DEV].read(dev[BMP_DEV].priv, &bd,
-			sizeof(struct bmp_data));
-	
-		tt = bd.press / 100.0
-			/ powf(1.0 - (alt / 44330.0), 5.255) - c;
-		
-		t = press + tt;
-	
-		c = (t - press) - tt;
-
-		press = t;
-
-		HAL_Delay(10);
-	}
-
-	press /= 100.0;
-
-	return press;
-}
-
-float getalt(float press0, float press)
-{
-	return (44330.0 * (1.0 - powf(press / 100.0 / press0,
-		1.0 / 5.225)));
 }
 
 int averageposition(float *ax, float *ay, float *az, float *gx,
@@ -347,9 +311,6 @@ int initstabilize(float alt)
 
 	alt0 = alt;
 
-	if (dev[BMP_DEV].status == DEVSTATUS_INIT)
-		press0 = groundpressure(alt);
-
 	averageposition(&ax, &ay, &az, &(st.gx0), &(st.gy0), &(st.gz0));
 
 	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
@@ -364,7 +325,7 @@ int initstabilize(float alt)
 	dsp_initpidval(&yawpv, st.yp, st.yi, st.yd, 0.0);
 	dsp_initpidval(&tpv, st.zsp, st.zsi, st.zsd, 0.0);
 
-	dsp_initlpf(&presslpf, st.ptcoef, BMP_FREQ);
+	dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
 	dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 
 	return 0;
@@ -402,7 +363,7 @@ int stabilize(int ms)
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
 		sizeof(struct qmc_data));
 
-	yaw = circf(qmc_heading(-pitch, -roll, hd.fx, hd.fy, hd.fz)
+	yaw = circf(qmc_heading(pitch, roll, hd.fx, hd.fy, hd.fz)
 		- st.yaw0);
 
 	if (st.speedpid) {
@@ -494,17 +455,18 @@ int magcalib(int ms)
 	return 0;
 }
 
-int bmpupdate(int ms)
+int hpupdate(int ms)
 {
-	struct bmp_data bd;
+	struct hp_data hd;
 	
-	if (dev[BMP_DEV].status != DEVSTATUS_INIT) 
+	if (dev[HP_DEV].status != DEVSTATUS_INIT) 
 		return 0;
 
-	dev[BMP_DEV].read(dev[BMP_DEV].priv, &bd,
-		sizeof(struct bmp_data));
+	dev[HP_DEV].read(dev[HP_DEV].priv, &hd,
+		sizeof(struct hp_data));
 
-	dsp_updatelpf(&presslpf, bd.press);
+	dsp_updatelpf(&altlpf, hd.altf);
+	temp = hd.tempf;
 
 	return 0;
 }
@@ -571,8 +533,8 @@ int sprintqmc(char *s, struct qmc_data *hd)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"heading: %f\r\n", (double) qmc_heading(
-			-(dsp_getcompl(&pitchcompl) - st.pitch0),
-			-(dsp_getcompl(&rollcompl) - st.roll0),
+			(dsp_getcompl(&pitchcompl) - st.pitch0),
+			(dsp_getcompl(&rollcompl) - st.roll0),
 			hd->fx, hd->fy, hd->fz));
 
 	return 0;
@@ -612,11 +574,11 @@ int sprintvalues(char *s)
 		"motors state: %.3f\r\n", (double) en);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"cf: %.6f\r\n", (double) st.tcoef);
+		"tc: %.6f\r\n", (double) st.tcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"accel cf: %.6f\r\n", (double) st.ttcoef);
+		"accel tc: %.6f\r\n", (double) st.ttcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"pressure cf: %.6f\r\n", (double) st.ptcoef);
+		"altitude tc: %.6f\r\n", (double) st.atcoef);
 	
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"loops count: %d\r\n", loopscount);
@@ -695,13 +657,13 @@ int controlcmd(char *cmd)
 		
 			esp_send(&espdev, s);
 		}
-		else if (strcmp(toks[1], "bmp") == 0) {
-			float press;
+		else if (strcmp(toks[1], "hp") == 0) {
+			float alt;
 
-			press = dsp_getlpf(&presslpf);
+			alt = dsp_getlpf(&altlpf);
 
-			snprintf(s, INFOLEN, "bar: %f; alt: %f\r\n",
-				(double) press, (double) getalt(press0, press));
+			snprintf(s, INFOLEN, "temp: %f; alt: %f\r\n",
+				(double) temp, (double) alt);
 			
 			esp_send(&espdev, s);
 		}
@@ -848,10 +810,10 @@ int controlcmd(char *cmd)
 			
 			dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 		}
-		else if (strcmp(toks[1], "pressure") == 0) {
-			st.ptcoef = atof(toks[2]);
+		else if (strcmp(toks[1], "altitude") == 0) {
+			st.atcoef = atof(toks[2]);
 				
-			dsp_initlpf(&presslpf, st.ptcoef, BMP_FREQ);
+			dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
 		}
 		else
 			goto unknown;
@@ -941,12 +903,15 @@ int main(void)
 	adc1_init();
 	usart1_init();
 	usart2_init();
+	usart3_init();
 	esc_init();
-	bmp_init();
 	mpu_init();
 	qmc_init();
 	espdev_init();
 	crsfdev_init();
+
+	HAL_Delay(1000);
+	hp_init();
 
 	readsettings(0);
 
@@ -955,7 +920,7 @@ int main(void)
 	inittimev(evs + TEV_PID, PID_FREQ, stabilize);
 	inittimev(evs + TEV_CHECK, 1, checkconnection);
 	inittimev(evs + TEV_CALIB, CALIB_FREQ, magcalib);
-	inittimev(evs + TEV_BMP, BMP_FREQ, bmpupdate);
+	inittimev(evs + TEV_HP, HP_FREQ, hpupdate);
 
 	wifitimeout = WIFI_TIMEOUT;
 	while (1) {
@@ -1074,7 +1039,7 @@ static void i2c_init(void)
 	if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
 		error_handler();
 
-	if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+	if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 15) != HAL_OK)
 		error_handler();
 }
 
@@ -1264,11 +1229,41 @@ static void usart2_init()
 		error_handler();
 }
 
+static void usart3_init()
+{
+	huart3.Instance = USART3;
+	huart3.Init.BaudRate = 921600;
+	huart3.Init.WordLength = UART_WORDLENGTH_8B;
+	huart3.Init.StopBits = UART_STOPBITS_1;
+	huart3.Init.Parity = UART_PARITY_NONE;
+	huart3.Init.Mode = UART_MODE_TX_RX;
+	huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+	huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+	huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+	
+	if (HAL_UART_Init(&huart3) != HAL_OK)
+		error_handler();
+}
+
 static void esc_init()
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4
 		= (uint16_t) (0.05 * (float) PWM_MAXCOUNT);
 	HAL_Delay(2000);
+}
+
+static void hp_init()
+{
+	struct hp_device d;
+
+	d.hi2c = &hi2c1;
+	d.osr = HP_OSR_1024;
+
+	if (hp_initdevice(&d, dev + HP_DEV) >= 0)
+		uartprintf("HP206C initilized\r\n");
+	else
+		uartprintf("failed to initilize HP206C\r\n");
 }
 
 static void mpu_init()
@@ -1281,16 +1276,10 @@ static void mpu_init()
 	d.gyroscale = MPU_1000DPS;
 	d.dlpfwidth = MPU_10DLPF;
 
-	mpu_initdevice(&d, dev + MPU_DEV);
-}
-
-static void bmp_init()
-{
-	struct bmp_device d;
-
-	d.hi2c = &hi2c1;
-
-	bmp_initdevice(&d, dev + BMP_DEV);
+	if (mpu_initdevice(&d, dev + MPU_DEV) >= 0)
+		uartprintf("MPU-6050 initilized\r\n");
+	else
+		uartprintf("failed to initilize MPU-6500\r\n");
 }
 
 static void qmc_init()
@@ -1302,7 +1291,10 @@ static void qmc_init()
 	d.rate = QMC_RATE_100;
 	d.osr = QMC_OSR_512;
 
-	qmc_initdevice(&d, dev + QMC_DEV);
+	if (qmc_initdevice(&d, dev + QMC_DEV) >= 0)
+		uartprintf("QMC5883L initilized\r\n");
+	else
+		uartprintf("failed to initilize QMC5883L\r\n");
 }
 
 static void espdev_init()
@@ -1311,11 +1303,29 @@ static void espdev_init()
 	
 	espdev.huart = &huart1;
 
-	esp_init(&espdev, SSID, PASSWORD);
+	if (esp_init(&espdev, SSID, PASSWORD) < 0) {
+		uartprintf("failed to initilize ESP8266\r\n");
+		return;
+	}
 
-	esp_getip(&espdev, ip);
+	uartprintf("ESP8266 initilized\r\n");
+
+	uartprintf("getting ip...\r\n");
+
+	if (esp_getip(&espdev, ip) < 0)
+		uartprintf("failed to get ip\r\n");
+	else
+		uartprintf("got ip %s\r\n", ip);
+
+	uartprintf("connecting to %s:%d...\r\n", SERVIP, SERVPORT);
 	
-	esp_connect(&espdev, SERVIP, SERVPORT);
+	if (esp_connect(&espdev, SERVIP, SERVPORT) < 0) {
+		uartprintf("failed to connect to %s %s\r\n",
+			SERVIP, SERVPORT);
+		return;
+	}
+
+	uartprintf("connected\r\n");
 }
 
 static void crsfdev_init()

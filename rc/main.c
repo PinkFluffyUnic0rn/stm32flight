@@ -10,8 +10,9 @@
 
 #define LOCAL_PORT 8880
 #define REMOTE_PORT 8880
+#define REMOTE_ADDR "192.168.1.38"
 //#define REMOTE_ADDR "192.168.1.39"
-#define REMOTE_ADDR "192.168.1.49"
+//#define REMOTE_ADDR "192.168.1.49"
 
 #define BUFSZ 1024
 
@@ -109,7 +110,7 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 		else if (event->key.keysym.sym == SDLK_h)
 			sendcmd(lsfd, rsi, "info qmc\n");
 		else if (event->key.keysym.sym == SDLK_b)
-			sendcmd(lsfd, rsi, "info bmp\n");
+			sendcmd(lsfd, rsi, "info hp\n");
 		else if (event->key.keysym.sym == SDLK_SPACE)
 			sendcmd(lsfd, rsi, "c 0.0\n");
 	}
@@ -131,7 +132,7 @@ int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_Y) {
 			sendcmd(lsfd, rsi, "info hmc\n");
 			usleep(10000);
-			sendcmd(lsfd, rsi, "info bmp\n");
+			sendcmd(lsfd, rsi, "info hp\n");
 		}
 		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
 			sendcmd(lsfd, rsi, "r\n");

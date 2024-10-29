@@ -198,7 +198,7 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass)
 	if (i >= ESP_CONNRETRIES)
 		return (-1);
 
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+SLEEP=0") != ESP_OK)
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+SLEEP=2") != ESP_OK)
 		return (-1);
 
 	dev->status = ESP_CONNECTED;

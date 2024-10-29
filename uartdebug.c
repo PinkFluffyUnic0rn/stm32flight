@@ -8,7 +8,7 @@
 
 #include "uartdebug.h"
 
-extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart3;
 
 int uartprintf(const char *format, ...)
 {
@@ -19,7 +19,7 @@ int uartprintf(const char *format, ...)
 
 	vsprintf(buf, format, args);
 
-	HAL_UART_Transmit(&huart2, (uint8_t *) buf, strlen(buf), 100);
+	HAL_UART_Transmit(&huart3, (uint8_t *) buf, strlen(buf), 100);
 
 	return 0;
 }
