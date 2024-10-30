@@ -1,13 +1,24 @@
-r1:	10 kOhm
-r2:	5.1 kOhm
+r1:	10 (9.03) kOhm
+r2:	5.1 (5.08) kOhm
 r3:	10 kOhm
 r4:	10 kOhm
+r5:	1 kOhm
+r6:	1 kOhm
+r7:	2 kOhm
+r8:	2 kOhm
 c1:	10 uF
-c2:	0.01 uF
-c3:	0.01 uF
-c4:	0.01 uF
-c5:	0.01 uF
-c6:	0.01 uF
-c7:	0.01 uF
+c2:	0.1 uF
+c3:	0.1 uF
+c4:	0.1 uF
+c5:	0.1 uF
+c6:	0.1 uF
+c7:	0.1 uF
 c8:	18 pF
 c9:	18 pF
+led1:	orange led
+led2:	blue led
+u1:	AMS1117-3.3
+u2:	STM32F303CBT6
+u3:	ESP07
+u4:	HP206C
+u5:	W25Q128FVSIG
