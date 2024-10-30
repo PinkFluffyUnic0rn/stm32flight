@@ -1,3 +1,4 @@
+main board:
 r1:	10 (9.03) kOhm
 r2:	5.1 (5.08) kOhm
 r3:	10 kOhm
@@ -22,3 +23,12 @@ u2:	STM32F303CBT6
 u3:	ESP07
 u4:	HP206C
 u5:	W25Q128FVSIG
+
+dc-dc converter:
+l1:	10 uH
+r9:	10 kOhm
+r10:	3.3 kOhm
+c10:	0.1 uF
+c11:	10 uF
+c12:	100 uF
+u6:	tps5430
