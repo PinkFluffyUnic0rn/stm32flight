@@ -2,7 +2,8 @@ STM32 Flight controller
 =========================
 
 Implementing flight controller for a small quadcopter. UAV is controlled
-from desktop PC using Xbox (or any else supported by SLD2) gamepad.
+from desktop PC using Xbox (or any else supported by SLD2) gamepad or
+through ELRS transmitter.
 
 Parameters
 ==========
@@ -13,22 +14,23 @@ Parameters
 
 Weight
 ======
- * PCB and ESCs: ~33g
+ * PCB and ESCs: ~49g
  * Motors: 32g
  * Battery: 46g
  * Frame + Connector: ~56g
- * Total weight: 167g 
+ * Total weight: 183g 
 
 Devices
 =======
  * MCU: STM32F303CBT6
  * Crystall oscillator: 16 Mhz
+ * DC-DC converter for control board and camera: TPS5430
  * Control board voltage regulator: AMS1117-3.3
  * Accelerometer/Gyroscope: MPU6050
- * Magnetometer: HMC5883L
+ * Magnetometer: QMC5883L
  * Remote control: ERLS CRSF receiver
  * Telemetry/debug: ESP8266 (ESP-01s)
- * Barometer: BMP280
+ * Barometer: HP206C
 
 UAV commands:
 =============
