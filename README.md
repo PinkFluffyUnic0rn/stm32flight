@@ -36,7 +36,7 @@ UAV commands:
 =============
 
 Debug and configuration is performed through AP named `copter` created
-by this UAV. Listed ommand should be sent using UDP/IP to address
+by this UAV. Listed commands should be sent using UDP/IP to address
 `192.168.3.1`.
 
  * `info (mpu | qmc | hp | values | pid)` -- mpu6050/qmc5883L/hp206c/control values/PID data
