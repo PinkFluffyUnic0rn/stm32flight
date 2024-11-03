@@ -17,7 +17,7 @@ struct esp_device {
 };
 
 int esp_init(struct esp_device *dev, const char *ssid,
-	const char *pass);
+	const char *pass, int port);
 
 int esp_getip(struct esp_device *dev, char *ip);
 

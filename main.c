@@ -51,15 +51,11 @@
 #define TEV_HP		3
 #define TEV_COUNT	4
 
+// Debug connection port
+#define SERVPORT 8880
+
 #define WIFI_TIMEOUT 3
 #define ELRS_TIMEOUT 3
-
-// Wi-Fi settings:
-// 	define SSID
-// 	define PASSWORD
-// 	define SERIP
-// 	define SERVPORT
-#include "wifidefs.h"
 
 #define checktimev(ev) ((ev)->ms > TICKSPERSEC / (ev)->freq)
 #define resettimev(ev) (ev)->ms = 0;
@@ -1299,33 +1295,14 @@ static void qmc_init()
 
 static void espdev_init()
 {
-	char ip[32];
-	
 	espdev.huart = &huart1;
 
-	if (esp_init(&espdev, SSID, PASSWORD) < 0) {
+	if (esp_init(&espdev, "copter", "", SERVPORT) < 0) {
 		uartprintf("failed to initilize ESP8266\r\n");
 		return;
 	}
 
 	uartprintf("ESP8266 initilized\r\n");
-
-	uartprintf("getting ip...\r\n");
-
-	if (esp_getip(&espdev, ip) < 0)
-		uartprintf("failed to get ip\r\n");
-	else
-		uartprintf("got ip %s\r\n", ip);
-
-	uartprintf("connecting to %s:%d...\r\n", SERVIP, SERVPORT);
-	
-	if (esp_connect(&espdev, SERVIP, SERVPORT) < 0) {
-		uartprintf("failed to connect to %s %s\r\n",
-			SERVIP, SERVPORT);
-		return;
-	}
-
-	uartprintf("connected\r\n");
 }
 
 static void crsfdev_init()

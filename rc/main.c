@@ -10,7 +10,7 @@
 
 #define LOCAL_PORT 8880
 #define REMOTE_PORT 8880
-#define REMOTE_ADDR "192.168.1.38"
+#define REMOTE_ADDR "192.168.3.1"
 //#define REMOTE_ADDR "192.168.1.39"
 //#define REMOTE_ADDR "192.168.1.49"
 

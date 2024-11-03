@@ -83,17 +83,16 @@ int esp_waitforstrings(volatile struct fifo *f, int timeout,
 		va_list args;
 		char *s;
 		int i;
-	
 		if (esp_dequeque(f, res) < 0) {
 			HAL_Delay(1);
 			continue;
 		}
-		
+
 		va_start(args, res);
 
 		i = 0;
 		while ((s = va_arg(args, char *)) != NULL) {
-			if (strncmp(res, s, strlen(s)) == 0) {	
+			if (strncmp(res, s, strlen(s)) == 0) {
 				va_end(args);
 				return i;
 			}
@@ -154,16 +153,17 @@ int esp_getip(struct esp_device *dev, char *ipout)
 	return 0;
 }
 
-int esp_init(struct esp_device *dev, const char *ssid, const char *pass)
+int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
+	int port)
 {
 	char cmd[ESP_CMDSIZE];
-	int i;
 	
 	esp_initfifo(&fifo);
 
 	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=921600,8,1,0,0") != ESP_OK)
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
+		"AT+UART_CUR=921600,8,1,0,0") != ESP_OK)
 		return (-1);
 
 	HAL_UART_DeInit(dev->huart);
@@ -181,24 +181,31 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass)
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT") != ESP_OK)
 		return (-1);
 
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CWMODE=1") != ESP_OK)
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CWMODE=2") != ESP_OK)
 		return (-1);
-		
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CWDHCP=1,1") != ESP_OK)
+
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CWDHCP=0,1") != ESP_OK)
+		return (-1);
+
+	sprintf(cmd, "AT+CWSAP_CUR=\"%s\",\"%s\",5,0", ssid, pass);
+
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, cmd) != ESP_OK)
+		return (-1);
+	
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
+		"AT+CIPAP_CUR=\"192.168.3.1\",\"192.168.3.1\",\"255.255.255.0\"") != ESP_OK)
+		return (-1);
+	
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
+		"AT+CWDHCPS_CUR=1,2880,\"192.168.3.2\",\"192.168.3.2\"") != ESP_OK)
 		return (-1);
 
 	dev->status = ESP_INIT;
 
-	sprintf(cmd, "AT+CWJAP=\"%s\",\"%s\"", ssid, pass);
-	for (i = 0; i < ESP_CONNRETRIES; ++i) {
-		if (esp_cmd(dev, NULL, ESP_JOINTIMEOUT, cmd) == ESP_OK)
-			break;
-	}
-	
-	if (i >= ESP_CONNRETRIES)
-		return (-1);
+	sprintf(cmd, "AT+CIPSTART=\"UDP\",\"192.168.3.2\",%d,%d,0",
+		port, port);
 
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+SLEEP=2") != ESP_OK)
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, cmd) != ESP_OK)
 		return (-1);
 
 	dev->status = ESP_CONNECTED;
@@ -288,9 +295,7 @@ static enum ESP_RESPONSE _esp_send(struct esp_device *dev, int timeout,
 	HAL_UART_Transmit(dev->huart, (uint8_t *) buf,
 		strlen(buf), ESP_UARTTIMEOUT);
 
-//	esp_waitforstrings(&fifo, timeout, buf, "> ", NULL);
-
-	HAL_Delay(1);
+	esp_waitforstrings(&fifo, timeout, buf, "OK", NULL);
 
 	while (rem > 0) {
 		size_t len;
