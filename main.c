@@ -40,6 +40,7 @@
 #define CALIB_FREQ 25
 #define HP_FREQ 25
 #define CRSF_FREQ 100
+#define QMC_FREQ 100
 
 #define USER_FLASH 0x0801f800
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
@@ -49,7 +50,8 @@
 #define TEV_CHECK 	1
 #define TEV_CALIB	2
 #define TEV_HP		3
-#define TEV_COUNT	4
+#define TEV_QMC		4
+#define TEV_COUNT	5
 
 // Debug connection port
 #define SERVPORT 8880
@@ -127,6 +129,7 @@ struct crsf_device crsfdev;
 struct dsp_lpf tlpf;
 struct dsp_lpf altlpf;
 float temp;
+struct qmc_data qmcdata;
 
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
@@ -330,7 +333,6 @@ int initstabilize(float alt)
 int stabilize(int ms)
 {
 	struct mpu_data md;
-	struct qmc_data hd;
 	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
 	float gy, gx, gz;
@@ -356,11 +358,8 @@ int stabilize(int ms)
 		atan2f(md.afy,
 		sqrt(md.afx * md.afx + md.afz * md.afz))) - st.pitch0;
 
-	dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
-		sizeof(struct qmc_data));
-
-	yaw = circf(qmc_heading(pitch, roll, hd.fx, hd.fy, hd.fz)
-		- st.yaw0);
+	yaw = circf(qmc_heading(pitch, roll,
+		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
 
 	if (st.speedpid) {
 		rollcor = dsp_pid(&rollspv, rolltarget, gy, dt);
@@ -467,6 +466,14 @@ int hpupdate(int ms)
 	return 0;
 }
 
+int qmcupdate(int ms)
+{
+	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
+		sizeof(struct qmc_data));
+
+	return 0;
+}
+
 int crsfget(int ms)
 {
 	return 0;
@@ -525,7 +532,8 @@ int sprintqmc(char *s, struct qmc_data *hd)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"x = %0.3f; y = %0.3f; z = %0.3f\n\r",
-		(double) hd->fx, (double) hd->fy, (double) hd->fz);
+		(double) qmcdata.fx, (double) qmcdata.fy,
+		(double) qmcdata.fz);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"heading: %f\r\n", (double) qmc_heading(
@@ -917,6 +925,7 @@ int main(void)
 	inittimev(evs + TEV_CHECK, 1, checkconnection);
 	inittimev(evs + TEV_CALIB, CALIB_FREQ, magcalib);
 	inittimev(evs + TEV_HP, HP_FREQ, hpupdate);
+	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
 
 	wifitimeout = WIFI_TIMEOUT;
 	while (1) {
@@ -1035,7 +1044,7 @@ static void i2c_init(void)
 	if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
 		error_handler();
 
-	if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 15) != HAL_OK)
+	if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
 		error_handler();
 }
 
@@ -1285,7 +1294,7 @@ static void qmc_init()
 	d.hi2c = &hi2c1;
 	d.scale = QMC_SCALE_8;
 	d.rate = QMC_RATE_100;
-	d.osr = QMC_OSR_512;
+	d.osr = QMC_OSR_256;
 
 	if (qmc_initdevice(&d, dev + QMC_DEV) >= 0)
 		uartprintf("QMC5883L initilized\r\n");

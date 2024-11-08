@@ -18,8 +18,8 @@ pid climb d 0.001
 compl 0.5
 lpf climb 0.25
 lpf altitude 0.5
-adj roll 0.03
-adj pitch -0.1
+adj roll 0.04
+adj pitch -0.07
 adj yaw 0.0 
 adj mag x0 -371.0
 adj mag y0 700.0
