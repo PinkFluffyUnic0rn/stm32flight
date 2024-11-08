@@ -7,18 +7,18 @@ through ELRS transmitter.
 
 Parameters
 ==========
- * Motors: 1106
- * Props: 4045, ~100mm
- * Battery: 7.4v (2s), 1100 mAh
+ * Motors: 1204
+ * Props: 3016, ~100mm
+ * Battery: 7.4v (2s), 1300 mAh
  * Frame: plywood
 
 Weight
 ======
- * PCB and ESCs: ~49g
- * Motors: 32g
- * Battery: 46g
- * Frame + Connector: ~56g
- * Total weight: 183g 
+ * PCB and ESCs: ~57g
+ * Motors + props: 27g
+ * Battery: 64g
+ * Frame + wires: ~59g
+ * Total weight: 207g 
 
 Devices
 =======
