@@ -2,13 +2,12 @@ STM32 Flight controller
 =========================
 
 Implementing flight controller for a small quadcopter. UAV is controlled
-from desktop PC using Xbox (or any else supported by SLD2) gamepad or
 through ELRS transmitter.
 
 Parameters
 ==========
  * Motors: 1204
- * Props: 3016, ~100mm
+ * Props: 3016
  * Battery: 7.4v (2s), 1300 mAh
  * Frame: plywood
 
@@ -50,4 +49,3 @@ by this UAV. Listed commands should be sent using UDP/IP to address
  * `lpf (climb|pressure) {val}` -- set low-pass filter's time constant for climb speed/pressure
  * `adj (roll|pitch|yaw) {val}` -- set offset for roll/pitch/yaw (only for dual PID loop mode)
  * `adj mag (x0|y0|z0|xscale|yscale|zscale|decl) {val}` -- set x/y/z offset, x/y/z scale or magnetic declination for magnetometer 
- * `t (p | r | y | c) {val}` -- set pitch/roll/yaw/climb target
