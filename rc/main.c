@@ -11,8 +11,6 @@
 #define LOCAL_PORT 8880
 #define REMOTE_PORT 8880
 #define REMOTE_ADDR "192.168.3.1"
-//#define REMOTE_ADDR "192.168.1.39"
-//#define REMOTE_ADDR "192.168.1.49"
 
 #define BUFSZ 1024
 
@@ -80,22 +78,6 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi,
 	va_end(va);
 
 	return 0;
-}
-
-struct timerparam {
-	struct sockaddr_in *rsi;
-	int lsfd;
-};
-
-Uint32 timercb(Uint32 interval, void *param)
-{
-	struct timerparam *p;
-
-	p = param;
-
-	sendcmd(p->lsfd, p->rsi, "beep\n");
-
-	return interval;
 }
 
 int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
@@ -177,8 +159,6 @@ int main(int argc, char *argv[])
 {
 	SDL_Window *win;
 	SDL_GameController *pad;
-//	SDL_TimerID tid;
-	struct timerparam tp;
 	struct sockaddr_in rsi;
 	char gcpath[PATH_MAX];
 	int lsfd;
@@ -196,12 +176,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "cannot init controller\n");
 		exit(1);
 	}
-/*
-	if ((pad = SDL_GameControllerOpen(0)) == NULL) {
-		fprintf(stderr, "cannot open controller\n");
-		exit(1);
-	}
-*/
 
 	pad = SDL_GameControllerOpen(0);
 
@@ -226,10 +200,6 @@ int main(int argc, char *argv[])
 		}
 	}
 	
-
-	tp.lsfd = lsfd;
-	tp.rsi = &rsi;
-//	tid = SDL_AddTimer(1000, timercb, &tp);
 
 	screen = SDL_GetWindowSurface(win);
 	render = SDL_GetRenderer(win);
