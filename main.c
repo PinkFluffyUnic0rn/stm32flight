@@ -863,19 +863,23 @@ unknown:
 	return (-1);
 }
 
-int crsfcmd(const struct crsf_data *cd)
+int crsfcmd(const struct crsf_data *cd, int ms)
 {
 	elrs = (cd->chf[7] > 0.5) ? 1 : 0;
 
 	elrstimeout = ELRS_TIMEOUT;
 
 	if (elrs) {
+		float dt;
+
+		dt = ms / (float) TICKSPERSEC;
+
 		en = 1.0;
 	
 		pitchtarget = -cd->chf[0] * (M_PI / 6.0);
 		rolltarget = -cd->chf[1] * (M_PI / 6.0);
 		thrust = (cd->chf[2] + 0.75) / 3.5;
-		yawtarget = cd->chf[9] * M_PI;
+		yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
 		en = (cd->chf[5] > 0.5) ? 1 : 0;
 	
 		if (en < 0.5)
@@ -887,6 +891,7 @@ int crsfcmd(const struct crsf_data *cd)
 
 int main(void)
 {
+	int elrsus;
 	int i;
 
 	HAL_Init();
@@ -927,6 +932,7 @@ int main(void)
 	inittimev(evs + TEV_HP, HP_FREQ, hpupdate);
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
 
+	elrsus = 0;
 	wifitimeout = WIFI_TIMEOUT;
 	while (1) {
 		char cmd[ESP_CMDSIZE];
@@ -940,7 +946,8 @@ int main(void)
 
 		if (dev[CRSF_DEV].read(dev[CRSF_DEV].priv, &cd,
 			sizeof(struct crsf_data)) >= 0) {
-			crsfcmd(&cd);
+			crsfcmd(&cd, elrsus);
+			elrsus = 0;
 		}
 
 		for (i = 0; i < TEV_COUNT; ++i) {
@@ -954,6 +961,8 @@ int main(void)
 
 		for (i = 0; i < TEV_COUNT; ++i)
 			updatetimev(evs + i, c);
+
+		elrsus += c;
 	}
 
 	return 0;
