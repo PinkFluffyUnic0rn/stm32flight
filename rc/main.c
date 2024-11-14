@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 {
 	SDL_Window *win;
 	SDL_GameController *pad;
-	SDL_TimerID tid;
+//	SDL_TimerID tid;
 	struct timerparam tp;
 	struct sockaddr_in rsi;
 	char gcpath[PATH_MAX];
@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
 
 	tp.lsfd = lsfd;
 	tp.rsi = &rsi;
-	tid = SDL_AddTimer(1000, timercb, &tp);
+//	tid = SDL_AddTimer(1000, timercb, &tp);
 
 	screen = SDL_GetWindowSurface(win);
 	render = SDL_GetRenderer(win);
@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
 		SDL_RenderPresent(render);
 	}
 
-	SDL_RemoveTimer(tid);
+//	SDL_RemoveTimer(tid);
 	SDL_GameControllerClose(pad);
 	SDL_DestroyWindow(win);
 	SDL_Quit();

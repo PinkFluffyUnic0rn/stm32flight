@@ -22,8 +22,8 @@ adj roll 0.0
 adj pitch 0.0
 adj yaw 0.0 
 adj mag x0 -371.0
-adj mag y0 700.0
-adj mag z0 123.0
+adj mag y0 665.0
+adj mag z0 64.0
 adj mag xscale 0.95
 adj mag yscale 1.0
 adj mag zscale 0.94

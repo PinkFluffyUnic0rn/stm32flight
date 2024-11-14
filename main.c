@@ -161,7 +161,6 @@ struct timev evs[TEV_COUNT];
 int loops = 0;
 int loopscount = 0;
 
-int wifitimeout = WIFI_TIMEOUT;
 int elrstimeout = ELRS_TIMEOUT;
 
 uint32_t getadcv(ADC_HandleTypeDef *hadc)
@@ -399,23 +398,8 @@ int stabilize(int ms)
 
 int checkconnection(int ms)
 {
-	if (wifitimeout != 0)
-		--wifitimeout;
-	
 	if (elrstimeout != 0)
 		--elrstimeout;
-
-	if (wifitimeout <= 0 && elrs == 0) {
-		char s[INFOLEN];
-
-		setthrust(0.0, 0.0, 0.0, 0.0);
-
-		en = 0.0;
-
-		snprintf(s, INFOLEN, "wi-fi timed out!\n\r");
-
-		esp_send(&espdev, s);
-	}
 
 	if (elrstimeout <= 0 && elrs == 1) {
 		setthrust(0.0, 0.0, 0.0, 0.0);
@@ -634,9 +618,7 @@ int controlcmd(char *cmd)
 
 	parsecommand(toks, 12, cmd);
 
-	if (strcmp(toks[0], "beep") == 0)
-		wifitimeout = WIFI_TIMEOUT;
-	else if (strcmp(toks[0], "info") == 0) {
+	if (strcmp(toks[0], "info") == 0) {
 		if (strcmp(toks[1], "mpu") == 0) {
 			struct mpu_data md;
 			struct qmc_data hd;
@@ -686,18 +668,6 @@ int controlcmd(char *cmd)
 		en = 1.0;
 	else if (strcmp(toks[0], "c") == 0)
 		initstabilize(atof(toks[1]));
-	else if (strcmp(toks[0], "t") == 0) {
-		float v;
-	
-		v = atof(toks[2]);
-		
-		if (strcmp(toks[1], "c") == 0)		thrust = v;
-		else if (strcmp(toks[1], "r") == 0)	rolltarget = v;
-		else if (strcmp(toks[1], "p") == 0)	pitchtarget = v;
-		else if (strcmp(toks[1], "y") == 0)	yawtarget = v;
-		else
-			goto unknown;
-	}
 	else if (strcmp(toks[0], "calib") == 0) {
 		if (strcmp(toks[1], "mag") == 0) {
 			if (strcmp(toks[2], "on") == 0)
@@ -933,7 +903,6 @@ int main(void)
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
 
 	elrsus = 0;
-	wifitimeout = WIFI_TIMEOUT;
 	while (1) {
 		char cmd[ESP_CMDSIZE];
 		struct crsf_data cd;
