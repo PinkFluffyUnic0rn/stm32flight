@@ -25,27 +25,35 @@
 #define CRSF_DEV 3
 #define DEV_COUNT 4
 
-// timer settings
+// timers prescaler
 #define PRESCALER 48
 
+// clock frequency
 #define OCSFREQ 48000000
-#define TIMPERIOD 0xffff
+
+// period for main timer (used to timing periodic events)
+#define TIMPERIOD 0xfff
+
+// main timer ticks per second
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
 #define PWM_MAXCOUNT 2500
 
-// DSP settings
+// Periodic events frequencies
 #define PID_FREQ 1000
 #define CALIB_FREQ 25
 #define HP_FREQ 25
 #define CRSF_FREQ 100
 #define QMC_FREQ 100
 
+// MCU flash address where quadcopter settings is stored
 #define USER_FLASH 0x0801f800
+
+// quadcopter setting's slot (currently unused)
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
 
-// Timer events
+// Timer events IDs
 #define TEV_PID 	0
 #define TEV_CHECK 	1
 #define TEV_CALIB	2
@@ -56,13 +64,28 @@
 // Debug connection port
 #define SERVPORT 8880
 
+// Unused, should be removed
 #define WIFI_TIMEOUT 3
+
+// Timeout in seconds before quadcopter disarm
+// when got no data from ERLS receiver
 #define ELRS_TIMEOUT 3
 
+// check if enough time passed to call periodic event again.
+// ev -- periodic event's context.
 #define checktimev(ev) ((ev)->ms > TICKSPERSEC / (ev)->freq)
+
+// reset periodic event's counter. Used after every
+// event's callback call.
+// ev -- periodic event's context.
 #define resettimev(ev) (ev)->ms = 0;
+
+// update periodic event's counter.
+// ev -- periodic event's context.
+// s -- time in microseconds after last callback's call.
 #define updatetimev(ev, s) (ev)->ms += (s);
 
+// Quadcopter settings structure stored in MCU's flash
 struct settings {
 	float mx0,	my0,		mz0;
 	float mxsc,	mysc,		mzsc;
@@ -82,12 +105,15 @@ struct settings {
 	float zsp,	zsi,	zsd;
 };
 
+// Periodic event's context that holds event's settings
+// and data needed beetween calls
 struct timev {
 	int ms;
 	int freq;
 	int (*cb)(int);
 };
 
+// STM32 clocks and periphery devices initilization
 void systemclock_config();
 static void gpio_init();
 static void i2c_init();
@@ -99,13 +125,26 @@ static void adc1_init(void);
 static void usart1_init();
 static void usart2_init();
 static void usart3_init();
+
+// Init ESC's
 static void esc_init();
+
+// Init HP206c barometer
 static void hp_init();
+
+// Init MPU6050 IMU
 static void mpu_init();
+
+// Init QMC5883L magnetometer
 static void qmc_init();
+
+// Init ESP07
 static void espdev_init();
+
+// Init ERLS receiver driver
 static void crsfdev_init();
 
+// STM32 perithery contexts
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
@@ -120,7 +159,7 @@ UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart2_rx;
 
-// IC drivers
+// Flight controller board's devices drivers
 struct cdevice dev[DEV_COUNT];
 struct esp_device espdev;
 struct crsf_device crsfdev;
@@ -142,27 +181,34 @@ struct dsp_pidval yawpv;
 struct dsp_pidval yawspv;
 struct dsp_pidval tpv;
 
-// control values
+// Control values
 float thrust = 0.0;
 float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
 float en = 0.0;
 int magcalibmode = 0;
 int elrs = 0;
 
-// pressure and altitude initial values
+// Pressure and altitude initial values
 float alt0;
 
-// settings
+// Settings
 struct settings st;
 
-// timer events
+// Timer events
 struct timev evs[TEV_COUNT];
 
+// Stabilization loops counter
 int loops = 0;
+
+// Stabilization loops performed in last second
 int loopscount = 0;
 
+// Timeout counter for the ELRS reciver. Set to ELRS_TIMEOUT after
+// receiving useful packet from receiver and decreased by 1 every
+// second. If it falls to 0, quadcopter disarms
 int elrstimeout = ELRS_TIMEOUT;
 
+// Get value from ADC, was used to monitor battery voltage
 uint32_t getadcv(ADC_HandleTypeDef *hadc)
 {
 	uint32_t v;
@@ -177,6 +223,8 @@ uint32_t getadcv(ADC_HandleTypeDef *hadc)
 	return v;
 }
 
+// UART receive callback. It calls interrupt handlers from
+// drivers for devices working through UART
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
 {
 	esp_interrupt(&espdev, huart);
@@ -185,11 +233,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		dev[CRSF_DEV].interrupt(dev[CRSF_DEV].priv, huart);
 }
 
+// UART error callback. Calls UART error handlers from
+// drivers for devices working through UART
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	esp_error(&espdev, huart);
 }
 
+// Initilize periodic event's context
+// ev -- periodic event's context.
+// freq -- periodic event's frequency in Hz (calls per second).
+// cb -- callback that is called by this event.
 int inittimev(struct timev *ev, int freq, int (*cb)(int))
 {
 	ev->ms = 0;
@@ -859,6 +913,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	return 0;
 }
 
+// Entry point
 int main(void)
 {
 	int elrsus;
@@ -1229,6 +1284,7 @@ static void usart3_init()
 		error_handler();
 }
 
+// Init ESC's
 static void esc_init()
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4
@@ -1236,6 +1292,7 @@ static void esc_init()
 	HAL_Delay(2000);
 }
 
+// Init HP206c barometer
 static void hp_init()
 {
 	struct hp_device d;
@@ -1249,6 +1306,7 @@ static void hp_init()
 		uartprintf("failed to initilize HP206C\r\n");
 }
 
+// Init MPU6050 IMU
 static void mpu_init()
 {
 	struct mpu_device d;
@@ -1265,6 +1323,7 @@ static void mpu_init()
 		uartprintf("failed to initilize MPU-6500\r\n");
 }
 
+// Init QMC5883L magnetometer
 static void qmc_init()
 {
 	struct qmc_device d;
@@ -1280,6 +1339,7 @@ static void qmc_init()
 		uartprintf("failed to initilize QMC5883L\r\n");
 }
 
+// Init ESP07
 static void espdev_init()
 {
 	espdev.huart = &huart1;
@@ -1292,6 +1352,7 @@ static void espdev_init()
 	uartprintf("ESP8266 initilized\r\n");
 }
 
+// Init ERLS receiver driver
 static void crsfdev_init()
 {
 	struct crsf_device d;
@@ -1301,6 +1362,8 @@ static void crsfdev_init()
 	crsf_initdevice(&d, dev + CRSF_DEV);
 }
 
+// MCU hardware errors handler. Disarm immediately
+// in case of any of such error.
 void error_handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
