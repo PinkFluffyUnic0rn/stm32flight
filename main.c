@@ -50,7 +50,7 @@
 // MCU flash address where quadcopter settings is stored
 #define USER_FLASH 0x0801f800
 
-// quadcopter setting's slot (currently unused)
+// quadcopter setting's slot
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
 
 // Timer events IDs
@@ -87,30 +87,55 @@
 
 // Quadcopter settings structure stored in MCU's flash
 struct settings {
-	float mx0,	my0,		mz0;
-	float mxsc,	mysc,		mzsc;
-	float magdecl;
+	float mx0, my0, mz0;	// magnetometer offset values for X, Y
+				// and Z axes determinted by
+				// calibration procedure
 
-	float gx0,	gy0,		gz0;
-	float roll0,	pitch0,		yaw0;
+	float mxsc, mysc, mzsc;	// megnetormeter scaling values for Z,
+				// Y and Z axes determinted by 
+				// calibration procedure
+	
+	float magdecl;	// magnetic declination
 
-	float tcoef, ttcoef, atcoef;
+	float gx0, gy0, gz0;	// gyroscope offset values for X, Y
+				// and Z axes. Currently unused: these
+				// values determined at power on
 
-	int speedpid;
-	int yawspeedpid;
-	float p,	i,	d;
-	float sp,	si,	sd;
-	float yp,	yi,	yd;
-	float ysp,	ysi,	ysd;
-	float zsp,	zsi,	zsd;
+	float roll0, pitch0, yaw0; // roll, pitch and yaw offset values
+
+	float tcoef;	// time coefficient for pitch/roll
+			// complimentary filter
+	float ttcoef;	// time coefficient for vertical axis
+			// acceleration pow-pass filter
+	float atcoef;	// time coefficient for pressure pow-pass filter
+
+	int speedpid;	// 1 if single PID loop for roll/pitch is used,
+			// 0 if double loop is used
+
+	int yawspeedpid; // 1 if single PID loop for yaw is used, 0 if
+			 // double loop is used
+
+	float p, i, d;	// P/I/D values for roll/pitch (used only in
+			// double roll/pitch PID loop mode)
+	
+	float sp, si, sd;	// P/I/D values for roll/pitch
+				// rotation speed
+	
+	float yp, yi, yd; // P/I/D values for yaw (used only in double
+			  // yaw PID loop mode)
+
+	float ysp, ysi, ysd;	// P/I/D values for yaw rotation speed
+	
+	float zsp, zsi,	zsd; // P/I/D values for vertical acceleration
 };
 
 // Periodic event's context that holds event's settings
 // and data needed beetween calls
 struct timev {
-	int ms;
-	int freq;
-	int (*cb)(int);
+	int ms;			// microseconds passed from
+				// last triggering
+	int freq;		// event frequency
+	int (*cb)(int);		// event callback
 };
 
 // STM32 clocks and periphery devices initilization
@@ -182,11 +207,15 @@ struct dsp_pidval yawspv;
 struct dsp_pidval tpv;
 
 // Control values
-float thrust = 0.0;
-float rolltarget = 0.0, pitchtarget = 0.0, yawtarget = 0.0;
-float en = 0.0;
-int magcalibmode = 0;
-int elrs = 0;
+float thrust = 0.0; // motors basic thrust
+float rolltarget = 0.0; // roll PID target
+float pitchtarget = 0.0; // pitch PID target
+float yawtarget = 0.0; // yaw PID target
+float en = 0.0; // 1.0 when motors turned on, 0.0 otherwise
+int magcalibmode = 0; // 1 when magnetometer calibration mode
+		      // is enabled, 0 otherwise
+int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
+	      // is > 50)
 
 // Pressure and altitude initial values
 float alt0;
@@ -205,10 +234,12 @@ int loopscount = 0;
 
 // Timeout counter for the ELRS reciver. Set to ELRS_TIMEOUT after
 // receiving useful packet from receiver and decreased by 1 every
-// second. If it falls to 0, quadcopter disarms
+// second. If it falls to 0, quadcopter disarms.
 int elrstimeout = ELRS_TIMEOUT;
 
 // Get value from ADC, was used to monitor battery voltage
+//
+// hadc -- ADC context.
 uint32_t getadcv(ADC_HandleTypeDef *hadc)
 {
 	uint32_t v;
@@ -224,7 +255,9 @@ uint32_t getadcv(ADC_HandleTypeDef *hadc)
 }
 
 // UART receive callback. It calls interrupt handlers from
-// drivers for devices working through UART
+// drivers for devices working through UART.
+//
+// huart -- context for UART triggered that callback.
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
 {
 	esp_interrupt(&espdev, huart);
@@ -234,13 +267,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 }
 
 // UART error callback. Calls UART error handlers from
-// drivers for devices working through UART
+// drivers for devices working through UART.
+//
+// huart -- context for UART triggered that callback.
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	esp_error(&espdev, huart);
 }
 
 // Initilize periodic event's context
+//
 // ev -- periodic event's context.
 // freq -- periodic event's frequency in Hz (calls per second).
 // cb -- callback that is called by this event.
@@ -253,6 +289,15 @@ int inittimev(struct timev *ev, int freq, int (*cb)(int))
 	return 0;
 }
 
+// Get IMU accelerometer and gyroscope averaged values
+// accumulated for 2.5 second
+//
+// ax -- accelerometer X axis value.
+// ay -- accelerometer Y axis value.
+// az -- accelerometer Z axis value.
+// ax -- gyroscope X axis value.
+// ay -- gyroscope Y axis value.
+// az -- gyroscope Z axis value.
 int averageposition(float *ax, float *ay, float *az, float *gx,
 	float *gy, float *gz)
 {
@@ -287,6 +332,14 @@ int averageposition(float *ax, float *ay, float *az, float *gx,
 	return 0;
 }
 
+// calculate tilt compensated heading direction using magnetometer
+// readings, roll value and pitch value.
+// 
+// r -- roll value.
+// p -- pitch value.
+// x -- magnetometer's X axis value.
+// y -- magnetometer's Y axis value.
+// z -- magnetometer's Z axis value.
 float qmc_heading(float r, float p, float x, float y, float z)
 {
 	x = st.mxsc * (x + st.mx0);
@@ -300,6 +353,19 @@ float qmc_heading(float r, float p, float x, float y, float z)
 	return circf(atan2f(y, x) + st.magdecl);
 }
 
+// Set motors thrust
+//
+//	ltd    rtd
+//	  \    /
+//   x     \  /
+//   |       
+//   v     /  \
+//        /    \
+//      lbd    rbd
+//        
+//        y ->
+//
+// all values should be between 0.0 and 1.0.
 int setthrust(float ltd, float rtd, float rbd, float lbd)
 {
 	if (isnan(ltd) || isnan(rtd) || isnan(rbd) || isnan(lbd))
@@ -317,6 +383,9 @@ int setthrust(float ltd, float rtd, float rbd, float lbd)
 	return 0;
 }
 
+// write quadcopter settings into internal MCU flash
+//
+// slot -- offset in settings array in flash.
 int writesettings(int slot)
 {
 	FLASH_EraseInitTypeDef ferase;
@@ -349,6 +418,9 @@ int writesettings(int slot)
 	return 0;
 }
 
+// Read setting from internal MCU flash.
+//
+// slot -- offset in settings array in flash.
 int readsettings(int slot)
 {
 	memcpy(&st, (void *) (USER_FLASH + slot),
@@ -357,6 +429,9 @@ int readsettings(int slot)
 	return 0;
 }
 
+// Init stabilization loop.
+//
+// alt -- initial quadcopter altitude. Usually 0.0.
 int initstabilize(float alt)
 {
 	float ax, ay, az;
@@ -383,6 +458,10 @@ int initstabilize(float alt)
 	return 0;
 }
 
+// Stabilization loop. Callback for TEV_PID periodic event. It is the
+// place where is almost all work happening.
+//
+// ms -- microsecond passed from last callback invocation.
 int stabilize(int ms)
 {
 	struct mpu_data md;
@@ -450,6 +529,10 @@ int stabilize(int ms)
 	return 0;
 }
 
+// Check if ERLS connection is alive, disarm if not. Callback for
+// TEV_CHECK periodic event.
+//
+// ms -- microsecond passed from last callback invocation.
 int checkconnection(int ms)
 {
 	if (elrstimeout != 0)
@@ -467,6 +550,11 @@ int checkconnection(int ms)
 	return 0;
 }
 
+// If magnetometer calibration mode is enabled, send magnetometer
+// readings into debug wi-fi connection. Callback for TEV_CALIB
+// periodic event.
+//
+// ms -- microsecond passed from last callback invocation.
 int magcalib(int ms)
 {
 	struct qmc_data hd;
@@ -488,6 +576,9 @@ int magcalib(int ms)
 	return 0;
 }
 
+// Get readings from barometer. Callback for TEV_HP periodic event.
+//
+// ms -- microsecond passed from last callback invocation.
 int hpupdate(int ms)
 {
 	struct hp_data hd;
@@ -504,6 +595,9 @@ int hpupdate(int ms)
 	return 0;
 }
 
+// Get readings from magnetomer. Callback for TEV_QMC periodic event.
+//
+// ms -- microsecond passed from last callback invocation.
 int qmcupdate(int ms)
 {
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
@@ -512,11 +606,17 @@ int qmcupdate(int ms)
 	return 0;
 }
 
+// Unused. Should be removed.
 int crsfget(int ms)
 {
 	return 0;
 }
 
+// Parse configureation command got from debug wi-fi connection
+//
+// toks -- result array of command tokens (it's a paring result).
+// maxtoks -- maximum number of tokens posible.
+// data -- command to be parsed.
 int parsecommand(char **toks, int maxtoks, char *data)
 {
 	int i;
@@ -533,6 +633,11 @@ int parsecommand(char **toks, int maxtoks, char *data)
 	return (i - 1);
 }
 
+// Print quadcopter's postion and tilt data into a string.
+//
+// s -- output string.
+// md -- accelerometer and gyroscope data.
+// hd -- magnetometer data.
 int sprintpos(char *s, struct mpu_data *md, struct qmc_data *hd)
 {
 	s[0] = '\0';
@@ -564,6 +669,10 @@ int sprintpos(char *s, struct mpu_data *md, struct qmc_data *hd)
 	return 0;
 }
 
+// Print magmetometer data into a string.
+//
+// s -- output string.
+// hd -- magnetometer data.
 int sprintqmc(char *s, struct qmc_data *hd)
 {
 	s[0] = '\0';
@@ -582,6 +691,9 @@ int sprintqmc(char *s, struct qmc_data *hd)
 	return 0;
 }
 
+// Print various configuration values into a string.
+//
+// s -- output string.
 int sprintvalues(char *s)
 {
 	s[0] = '\0';
@@ -628,6 +740,9 @@ int sprintvalues(char *s)
 	return 0;
 }
 
+// Print all PID values into a string.
+//
+// s -- output string.
 int sprintpid(char *s)
 {
 	s[0] = '\0';
@@ -662,6 +777,9 @@ int sprintpid(char *s)
 	return 0;
 }
 
+// Parse and execute control command bot from debug wifi-connetion.
+//
+// cmd -- command to be executed.
 int controlcmd(char *cmd)
 {
 	char s[INFOLEN];
@@ -887,6 +1005,10 @@ unknown:
 	return (-1);
 }
 
+// Set control values using CRSF packet.
+//
+// cd -- CRSF packet
+// ms -- microsecond passed from last CRSF packet
 int crsfcmd(const struct crsf_data *cd, int ms)
 {
 	elrs = (cd->chf[7] > 0.5) ? 1 : 0;
