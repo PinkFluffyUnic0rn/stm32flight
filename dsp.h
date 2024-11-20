@@ -43,6 +43,7 @@ struct dsp_compl {
 };
 
 // initilize low-pass filter.
+//
 // ir -- low-pass filter context.
 // tcoef -- time low-pass filter constant used to calculate
 // 	it's alpha coefficient.
@@ -51,17 +52,20 @@ struct dsp_compl {
 // 	(see main.c).
 int dsp_initlpf(struct dsp_lpf *ir, float tcoef, int freq);
 
-// get last calculated low-pass filtering result
-// (from last dsp_updatelpf call).
+// get last calculated low-pass filtering result (from last 
+// dsp_updatelpf call).
+//
 // ir -- low-pass filter's context.
 float dsp_getlpf(struct dsp_lpf *ir);
 
-// calculate next low-pass filter's value and get the result
+// calculate next low-pass filter's value and get the result.
+//
 // ir -- low-pass filter context.
 // v -- new value of a signal being filtered.
 float dsp_updatelpf(struct dsp_lpf *ir, float v);
 
 // initilize PID controller.
+//
 // pv -- PID controller context.
 // kp -- P coefficient.
 // ki -- I coefficient.
@@ -71,6 +75,7 @@ int dsp_initpidval(struct dsp_pidval *pv, float kp, float ki, float kd,
 	float target);
 
 // set new P, I and D coefficient for a PID controller.
+//
 // pv -- PID controller context.
 // kp -- P coefficient.
 // ki -- I coefficient.
@@ -78,6 +83,7 @@ int dsp_initpidval(struct dsp_pidval *pv, float kp, float ki, float kd,
 float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd);
 
 // calculate next PID controller's correction value.
+//
 // pv -- PID controller context.
 // target -- desired value (setpoint).
 // val -- current value.
@@ -90,6 +96,7 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt);
 // 	direction is determined by shortest arc from current value to
 // 	target. It's used only for yaw axis where full 360 degrees
 // 	rotaion is needed.
+//
 // pv -- PID controller context.
 // target -- desired value (setpoint).
 // val -- current value.
@@ -98,6 +105,7 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt);
 float dsp_circpid(struct dsp_pidval *pv, float target, float val, float dt);
 
 // initilize complimentary filter.
+//
 // comp -- complimentary filter's context.
 // tc -- complimentary filter's time constant in seconds.
 // freq -- discretisation frequency used to calculate filter's.
@@ -107,13 +115,15 @@ int dsp_initcompl(struct dsp_compl *comp, float tc, int freq);
 
 // get last calculated complimentary filtering result.
 // (from last dsp_updatecompl call).
+//
 // comp -- complimentary filter's context.
 float dsp_getcompl(struct dsp_compl *comp);
 
 // unused, should be removed.
 float dsp_updatecirccompl(struct dsp_compl *comp, float v0, float v1);
 
-// calculate next complimentary filter's value and get the result
+// calculate next complimentary filter's value and get the result.
+//
 // comp -- complimentary filter's context.
 // v0 -- new value of first signal to be filtered and merged.
 // v1 -- new value of second signal to be filtered and merged.
