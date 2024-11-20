@@ -436,22 +436,35 @@ int initstabilize(float alt)
 {
 	float ax, ay, az;
 
+	// set initial altitude. Usually 0.0
 	alt0 = alt;
 
+	// calculate initial acceleromter and gyroscope offsets. These
+	// ofset's came from device inperfections (and sometimes as
+	// result of harsh impacts). Accelerometer offsets are not used,
+	// gyroscope values stored and used in the stabilization loop.
 	averageposition(&ax, &ay, &az, &(st.gx0), &(st.gy0), &(st.gz0));
 
+	// init complementary filters contexts
 	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
 	dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);
 
+	// init roll and pitch position PID controller contexts
 	dsp_initpidval(&pitchpv, st.p, st.i, st.d, 0.0);
 	dsp_initpidval(&rollpv, st.p, st.i, st.d, 0.0);
 
+	// init roll, pitch and yaw speed PID controller contexts
 	dsp_initpidval(&pitchspv, st.sp, st.si, st.sd, 0.0);
 	dsp_initpidval(&rollspv, st.sp, st.si, st.sd, 0.0);
 	dsp_initpidval(&yawspv, st.ysp, st.ysi, st.ysd, 0.0);
+
+	// init yaw position PID controller's context
 	dsp_initpidval(&yawpv, st.yp, st.yi, st.yd, 0.0);
+
+	// init vertical acceleration PID controller's context
 	dsp_initpidval(&tpv, st.zsp, st.zsi, st.zsd, 0.0);
 
+	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
 	dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 
@@ -469,52 +482,96 @@ int stabilize(int ms)
 	float rollcor, pitchcor, yawcor, thrustcor;
 	float gy, gx, gz;
 	float dt;
-			
+		
+	// get time passed from last invocation of this calback function
 	dt = ms / (float) TICKSPERSEC;
+
+	// divide-by-zero protection
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
+	// get accelerometer and gyroscope readings
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 		sizeof(struct mpu_data));
 
+	// update vertical acceleration low-pass filter
 	dsp_updatelpf(&tlpf, md.afz);
 
+	// offset gyroscope readings by values, calculater
+	// at power on and convert result into radians
 	gy = deg2rad((md.gfy - st.gy0));
 	gx = deg2rad((md.gfx - st.gx0));
 	gz = deg2rad((md.gfz - st.gz0));
 
+	// update complimenraty filter for roll axis and get next roll
+	// value. First signal (value) is signal to be integrated: it's
+	// the speed of the rotation around Y axis. Second signal is
+	// signal to be low-pass filtered: it's the tilt value that is
+	// calculated from acceleromer readings through some
+	// trigonometry.
 	roll = dsp_updatecompl(&rollcompl, gy * dt,
 		atan2f(-md.afx,
 		sqrt(md.afy * md.afy + md.afz * md.afz))) - st.roll0;
 
+	// same as for roll but for different axes
 	pitch = dsp_updatecompl(&pitchcompl, gx * dt,
 		atan2f(md.afy,
 		sqrt(md.afx * md.afx + md.afz * md.afz))) - st.pitch0;
 
+	// calcualte yaw value using last magnetometer reading, roll
+	// value and pitch value, offset it by a value from settings.
 	yaw = circf(qmc_heading(pitch, roll,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
 
 	if (st.speedpid) {
+		// if in single PID loop mode for tilt
+		// (called accro mode), use only rotation speed values
+		// from the gyroscope. Update speed PID controllers for
+		// roll and pitch and get next correction values.
 		rollcor = dsp_pid(&rollspv, rolltarget, gy, dt);
 		pitchcor = dsp_pid(&pitchspv, pitchtarget, gx, dt);
 	}
 	else {
+		// if in double loop mode for tilt (most commonly used
+		// mode), first update roll and pitch POSITION PID
+		// controllers using currect roll and values and targets
+		// got from ERLS and get next correction values.
 		rollcor = dsp_pid(&rollpv, rolltarget, roll, dt);
 		pitchcor = dsp_pid(&pitchpv, pitchtarget, pitch, dt);
 
+		// then use this values to update roll and pitch speed
+		// PID controllers and get next SPEED correction values.
 		rollcor = dsp_pid(&rollspv, rollcor, gy, dt);
 		pitchcor = dsp_pid(&pitchspv, pitchcor, gx, dt);
 	}
 
-	if (st.yawspeedpid)
+	if (st.yawspeedpid) {
+		// if single PID loop mode for yaw is used just use
+		// rotation speed values around axis Z to upadte yaw PID
+		// controller and get next yaw correciton value
 		yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
+	}
 	else {
+		// if in double loop mode for yaw, first use yaw value
+		// calcualted using magnetometer and yaw target got from
+		// ERLS remove to update yaw POSITION PID controller and
+		// get it's next correciton value.
 		yawcor = dsp_circpid(&yawpv, yawtarget, yaw, dt);
 
+		// then use this value to update yaw speed PID
+		// controller and get next yaw SPEED correction value
 		yawcor = dsp_pid(&yawspv, yawcor, gz, dt);
 	}
 
+	// update vertical acceleration PID controller using next
+	// low-pass filtered value of vertical acceleration and target
+	// got from ERLS remote
 	thrustcor = dsp_pid(&tpv, thrust + 1.0, dsp_getlpf(&tlpf), dt);
 
+	// update motors thrust based on calculated values. For
+	// quadcopter it's enought to split correction in half for 
+	// 3 pairs of motors: left and right for roll, top and bottom
+	// for pitch and two diagonals (spinning in oposite directions)
+	// for yaw.
 	setthrust(en * (thrustcor + 0.5 * rollcor
 			+ 0.5 * pitchcor - 0.5 * yawcor),
 		en * (thrustcor - 0.5 * rollcor
@@ -523,7 +580,8 @@ int stabilize(int ms)
 			- 0.5 * pitchcor - 0.5 * yawcor),
 		en * (thrustcor + 0.5 * rollcor
 			- 0.5 * pitchcor + 0.5 * yawcor));
-			
+		
+	// update loops counter
 	++loops;
 
 	return 0;
@@ -535,9 +593,12 @@ int stabilize(int ms)
 // ms -- microsecond passed from last callback invocation.
 int checkconnection(int ms)
 {
+	// decrease ERLS timeout counter
 	if (elrstimeout != 0)
 		--elrstimeout;
 
+	// if timeout conter reached 0 and no ERLS
+	// packet came, disarm immediately
 	if (elrstimeout <= 0 && elrs == 1) {
 		setthrust(0.0, 0.0, 0.0, 0.0);
 		en = 0.0;
@@ -560,12 +621,16 @@ int magcalib(int ms)
 	struct qmc_data hd;
 	char s[INFOLEN];
 
+	// this callback is only for magnetometer calibration
+	// mode, so quit if this mode isn't enabled
 	if (!magcalibmode)
 		return 0;
 
+	// read magnetometer values
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
 		sizeof(struct qmc_data));
 
+	// send them to debug wifi connection
 	sprintf(s, "%f %f %f\r\n",
 		(double) (st.mxsc * (hd.fx + st.mx0)),
 		(double) (st.mysc * (hd.fy + st.my0)),
@@ -586,9 +651,11 @@ int hpupdate(int ms)
 	if (dev[HP_DEV].status != DEVSTATUS_INIT) 
 		return 0;
 
+	// read barometer values
 	dev[HP_DEV].read(dev[HP_DEV].priv, &hd,
 		sizeof(struct hp_data));
 
+	// upate altitude low-pass filter and temperature reading
 	dsp_updatelpf(&altlpf, hd.altf);
 	temp = hd.tempf;
 
@@ -613,6 +680,7 @@ int crsfget(int ms)
 }
 
 // Parse configureation command got from debug wi-fi connection
+// by just splitting it into tokens by spaces
 //
 // toks -- result array of command tokens (it's a paring result).
 // maxtoks -- maximum number of tokens posible.
@@ -788,8 +856,11 @@ int controlcmd(char *cmd)
 	if (cmd[0] == '\0')
 		return 0;
 
+	// split a command into tokens by spaces
 	parsecommand(toks, 12, cmd);
 
+	// perform corresponding action. Here is simple
+	// recursive descent is used.
 	if (strcmp(toks[0], "info") == 0) {
 		if (strcmp(toks[1], "mpu") == 0) {
 			struct mpu_data md;
@@ -1011,21 +1082,32 @@ unknown:
 // ms -- microsecond passed from last CRSF packet
 int crsfcmd(const struct crsf_data *cd, int ms)
 {
+	// channel to on remote is used to turn on/off
+	// erls control. If this channel has low state, all remote
+	// commands will be ignored, but packet still continue to
+	// comming, so no disarm will happen.
 	elrs = (cd->chf[7] > 0.5) ? 1 : 0;
 
+	// update ERLS timeout as we got packet
 	elrstimeout = ELRS_TIMEOUT;
 
 	if (elrs) {
 		float dt;
 
+		// get time passed from last ERLS packet
 		dt = ms / (float) TICKSPERSEC;
 
 		en = 1.0;
-	
+
+		// set pitch/roll/yaw/thrus targets based on
+		// channels 1-4 values (it's joysticks on most remotes).
 		pitchtarget = -cd->chf[0] * (M_PI / 6.0);
 		rolltarget = -cd->chf[1] * (M_PI / 6.0);
 		thrust = (cd->chf[2] + 0.75) / 3.5;
 		yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
+
+		// enable motors if channel six has value
+		// more than 50, disarm immediately otherwise.
 		en = (cd->chf[5] > 0.5) ? 1 : 0;
 	
 		if (en < 0.5)
@@ -1041,15 +1123,22 @@ int main(void)
 	int elrsus;
 	int i;
 
+	// initilize HAL
 	HAL_Init();
 
+	// initilize stm32 clocks
 	systemclock_config();
-	
+
+	// wait a little to let stm32 periphery and
+	// board's devices power on
 	HAL_Delay(1000);
 
+	// set initial status for all devices to prevent callback
+	// calls on corresponding events before inittialization
 	for (i = 0; i < DEV_COUNT; ++i)
 		dev[i].status = DEVSTATUS_NOINIT;
 
+	// init stm32 periphery
 	gpio_init();
 	tim1_init();
 	tim2_init();
@@ -1060,42 +1149,65 @@ int main(void)
 	usart1_init();
 	usart2_init();
 	usart3_init();
+
+	// init board's devices
 	esc_init();
 	mpu_init();
 	qmc_init();
 	espdev_init();
 	crsfdev_init();
 
+	// delay here is used as temporary fix. The problem is that
+	// because of layout mistake, barometer is placed on oposite
+	// side from ESP07 chip and gets heat from it. That heat skews
+	// altitude readings, so we wait 1 second before the barometer
+	// initilization to let it heat a little and use that 'skewed'
+	// temperature as reference point.
 	HAL_Delay(1000);
+	
 	hp_init();
 
+	// reading settings from memory slot 0
 	readsettings(0);
 
+	// initilize stabilization routine
 	initstabilize(0.0);
 
+	// initilize periodic events
 	inittimev(evs + TEV_PID, PID_FREQ, stabilize);
 	inittimev(evs + TEV_CHECK, 1, checkconnection);
 	inittimev(evs + TEV_CALIB, CALIB_FREQ, magcalib);
 	inittimev(evs + TEV_HP, HP_FREQ, hpupdate);
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
 
+	// initilize ERLS timer. For now ERLS polling is not a periodic
+	// event and called as frequently as possible, so it needs this
+	// separate timer.
 	elrsus = 0;
+
+	// main control loop
 	while (1) {
 		char cmd[ESP_CMDSIZE];
 		struct crsf_data cd;
 		int c, i;
 
+		// reset iteration time counter
 		__HAL_TIM_SET_COUNTER(&htim2, 0);
 
+		// poll for configureation and telemetry commands
+		// from from debug wifi connection
 		if (esp_poll(&espdev, cmd) >= 0) 
 			controlcmd(cmd);
 
+		// read the ELRS remote's packet
 		if (dev[CRSF_DEV].read(dev[CRSF_DEV].priv, &cd,
 			sizeof(struct crsf_data)) >= 0) {
 			crsfcmd(&cd, elrsus);
 			elrsus = 0;
 		}
 
+		// check all periodic events context's and run callbacks
+		// if enough time passed. Reset their timers after.
 		for (i = 0; i < TEV_COUNT; ++i) {
 			if (checktimev(evs + i)) {
 				evs[i].cb(evs[i].ms);
@@ -1103,11 +1215,14 @@ int main(void)
 			}
 		}
 
+		// get microseconds passed in this iteration
 		c = __HAL_TIM_GET_COUNTER(&htim2);
 
+		// update periodic events timers
 		for (i = 0; i < TEV_COUNT; ++i)
 			updatetimev(evs + i, c);
 
+		// update ELRS timer
 		elrsus += c;
 	}
 
