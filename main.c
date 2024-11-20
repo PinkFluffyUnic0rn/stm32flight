@@ -64,9 +64,6 @@
 // Debug connection port
 #define SERVPORT 8880
 
-// Unused, should be removed
-#define WIFI_TIMEOUT 3
-
 // Timeout in seconds before quadcopter disarm
 // when got no data from ERLS receiver
 #define ELRS_TIMEOUT 3
@@ -353,18 +350,18 @@ float qmc_heading(float r, float p, float x, float y, float z)
 	return circf(atan2f(y, x) + st.magdecl);
 }
 
-// Set motors thrust
-//
-//	ltd    rtd
-//	  \    /
-//   x     \  /
-//   |       
-//   v     /  \
-//        /    \
-//      lbd    rbd
-//        
-//        y ->
-//
+/* Set motors thrust
+
+      ltd    rtd
+        \    /
+   x     \  /
+   |       
+   v     /  \
+        /    \
+      lbd    rbd
+        
+         y ->
+*/
 // all values should be between 0.0 and 1.0.
 int setthrust(float ltd, float rtd, float rbd, float lbd)
 {
@@ -670,12 +667,6 @@ int qmcupdate(int ms)
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
 
-	return 0;
-}
-
-// Unused. Should be removed.
-int crsfget(int ms)
-{
 	return 0;
 }
 

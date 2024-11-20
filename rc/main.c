@@ -17,8 +17,10 @@
 SDL_Surface *screen;
 SDL_Renderer *render;
 
-float yaw = 0.0;
-
+// Init configuration connection sockets
+//
+// lsfd -- UDP socket for configuration connection.
+// rsi -- quadcopter's esp07 IP address.
 int initsocks(int *lsfd, struct sockaddr_in *rsi)
 {
 	struct sockaddr_in lsi;
@@ -61,6 +63,11 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi)
 	return 0;
 }
 
+// Send comand into configuration connection.
+//
+// lsfd -- UDP socket for configuration connection.
+// rsi -- quadcopter's esp07 IP address.
+// fmt, ... -- format line and arguments, like in printf function.
 int sendcmd(int lsfd, const struct sockaddr_in *rsi,
 	const char *fmt, ...)
 {
@@ -80,6 +87,11 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi,
 	return 0;
 }
 
+// Handle key press event.
+//
+// event -- key press event.
+// lsfd -- UDP socket for configuration connection.
+// rsi -- quadcopter's esp07 IP address.
 int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 {
 	if (event->type == SDL_KEYUP) {
@@ -100,91 +112,25 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 	return 0;
 }
 
-#define AXISSCALE (M_PI / 6.0)
-
-int handlepad(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
-{
-	if (event->type == SDL_CONTROLLERBUTTONUP) {
-		if (event->cbutton.button == SDL_CONTROLLER_BUTTON_A)
-			sendcmd(lsfd, rsi, "info mpu\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_B)
-			sendcmd(lsfd, rsi, "info pid\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_X)
-			sendcmd(lsfd, rsi, "info values\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_Y) {
-			sendcmd(lsfd, rsi, "info hmc\n");
-			usleep(10000);
-			sendcmd(lsfd, rsi, "info hp\n");
-		}
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
-			sendcmd(lsfd, rsi, "r\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
-			sendcmd(lsfd, rsi, "e\n");
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP) {
-		}
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN) {
-		}
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
-			yaw -= 0.1 * M_PI;
-
-			sendcmd(lsfd, rsi, "t y %f\n", yaw);
-		}
-		else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
-			yaw += 0.1 * M_PI;
-			sendcmd(lsfd, rsi, "t y %f\n", yaw);		
-		}
-	}
-	else if (event->type == SDL_CONTROLLERAXISMOTION) {
-		if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) {
-			sendcmd(lsfd, rsi, "t y %f\n", -event->caxis.value / 32767.0 * M_PI);
-	
-		}
-		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
-			sendcmd(lsfd, rsi, "t y %f\n", event->caxis.value / 32767.0 * M_PI);
-		}
-		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
-			sendcmd(lsfd, rsi, "t p %f\n", -event->caxis.value / 32767.0 * AXISSCALE);
-		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
-			sendcmd(lsfd, rsi, "t r %f\n", event->caxis.value / 32767.0 * AXISSCALE);
-		else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX) {
-		
-		} else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY)
-			sendcmd(lsfd, rsi, "t c %f\n", -event->caxis.value / 32767.0 * 1.0);
-	}
-
-	return 0;
-}
-
+// Entry point.
 int main(int argc, char *argv[])
 {
 	SDL_Window *win;
-	SDL_GameController *pad;
 	struct sockaddr_in rsi;
-	char gcpath[PATH_MAX];
 	int lsfd;
 
+	// initilize connection sockets
 	initsocks(&lsfd, &rsi);
 
-	sprintf(gcpath, "%s/gamecontrollerdb.txt", dirname(argv[0]));
-
-	if (SDL_GameControllerAddMappingsFromFile(gcpath) < 0) {
-		fprintf(stderr, "cannot open controller mapping\n");
-		exit(1);
-	}
-
-	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_TIMER) < 0) {
-		fprintf(stderr, "cannot init controller\n");
-		exit(1);
-	}
-
-	pad = SDL_GameControllerOpen(0);
-
+	// create SDL2 window
 	if ((win = SDL_CreateWindow("RC", SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED, 1000, 500, 0)) == NULL) {
 		fprintf(stderr, "cannot create window\n");
 		exit(1);
 	}
 
+	// if has a command line argument, read configuration file,
+	// which path is stored in this argument
 	if (argc > 1) {
 		FILE *f;
 		char s[256];
@@ -199,8 +145,8 @@ int main(int argc, char *argv[])
 			usleep(10000);
 		}
 	}
-	
 
+	// show SDL2 window
 	screen = SDL_GetWindowSurface(win);
 	render = SDL_GetRenderer(win);
 
@@ -212,25 +158,25 @@ int main(int argc, char *argv[])
 
 		rsis = sizeof(rsi);
 
+		// if got data on configuration
+		// connection print it to stdout
 		if ((rsz = recvfrom(lsfd, buf, BUFSZ, 0,
 			(struct sockaddr *) &rsi, &rsis)) > 0) {
 			buf[rsz] = '\0';
 			printf("%s\n", buf);
 		}
 
+		// process key presses
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_QUIT)
 				exit(0);
 		
-			handlepad(&event, lsfd, &rsi);
 			handlekeys(&event, lsfd, &rsi); 
 		}
 
 		SDL_RenderPresent(render);
 	}
 
-//	SDL_RemoveTimer(tid);
-	SDL_GameControllerClose(pad);
 	SDL_DestroyWindow(win);
 	SDL_Quit();
 	return 0;
