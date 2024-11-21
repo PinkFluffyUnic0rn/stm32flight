@@ -124,6 +124,8 @@ struct settings {
 	float ysp, ysi, ysd;	// P/I/D values for yaw rotation speed
 	
 	float zsp, zsi,	zsd; // P/I/D values for vertical acceleration
+	
+	float ap, ai, ad; // P/I/D values for altitude
 };
 
 // Periodic event's context that holds event's settings
@@ -202,6 +204,7 @@ struct dsp_pidval rollspv;
 struct dsp_pidval yawpv;
 struct dsp_pidval yawspv;
 struct dsp_pidval tpv;
+struct dsp_pidval apv;
 
 // Control values
 float thrust = 0.0; // motors basic thrust
@@ -209,6 +212,7 @@ float rolltarget = 0.0; // roll PID target
 float pitchtarget = 0.0; // pitch PID target
 float yawtarget = 0.0; // yaw PID target
 float en = 0.0; // 1.0 when motors turned on, 0.0 otherwise
+int althold = 0; // 1 if altitude holding mode is enabled, 0 otherwise
 int magcalibmode = 0; // 1 when magnetometer calibration mode
 		      // is enabled, 0 otherwise
 int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
@@ -460,6 +464,9 @@ int initstabilize(float alt)
 
 	// init vertical acceleration PID controller's context
 	dsp_initpidval(&tpv, st.zsp, st.zsi, st.zsd, 0.0);
+	
+	// init altitude PID controller's context
+	dsp_initpidval(&apv, st.ap, st.ai, st.ad, 0.0);
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
@@ -559,10 +566,21 @@ int stabilize(int ms)
 		yawcor = dsp_pid(&yawspv, yawcor, gz, dt);
 	}
 
-	// update vertical acceleration PID controller using next
-	// low-pass filtered value of vertical acceleration and target
-	// got from ERLS remote
-	thrustcor = dsp_pid(&tpv, thrust + 1.0, dsp_getlpf(&tlpf), dt);
+	if (althold) {
+		thrustcor = dsp_pid(&apv, thrust,
+			dsp_getlpf(&altlpf), dt);
+		thrustcor = (thrustcor > 0.1) ? 0.1: thrustcor;
+
+		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
+			dsp_getlpf(&tlpf), dt);
+	}
+	else {
+		// update vertical acceleration PID controller using
+		// next low-pass filtered value of vertical acceleration
+		// and target got from ERLS remote
+		thrustcor = dsp_pid(&tpv, thrust + 1.0,
+			dsp_getlpf(&tlpf), dt);
+	}
 
 	// update motors thrust based on calculated values. For
 	// quadcopter it's enought to split correction in half for 
@@ -807,24 +825,28 @@ int sprintpid(char *s)
 	s[0] = '\0';
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"pos PID: %.3f,%.3f,%.3f\r\n",
+		"pos PID: %.5f,%.5f,%.5f\r\n",
 		(double) st.p, (double) st.i, (double) st.d);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"speed PID: %.3f,%.3f,%.3f\r\n",
+		"speed PID: %.5f,%.5f,%.5f\r\n",
 		(double) st.sp, (double) st.si, (double) st.sd);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw PID: %.3f,%.3f,%.3f\r\n",
+		"yaw PID: %.5f,%.5f,%.5f\r\n",
 		(double) st.yp, (double) st.yi, (double) st.yd);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw speed PID: %.3f,%.3f,%.3f\r\n",
+		"yaw speed PID: %.5f,%.5f,%.5f\r\n",
 		(double) st.ysp, (double) st.ysi, (double) st.ysd);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"thrust PID: %.3f,%.3f,%.3f\r\n",
+		"thrust PID: %.5f,%.5f,%.5f\r\n",
 		(double) st.zsp, (double) st.zsi, (double) st.zsd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"altitude PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.ap, (double) st.ai, (double) st.ad);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%s mode\r\n", st.speedpid ? "single" : "dual");
@@ -1003,6 +1025,18 @@ int controlcmd(char *cmd)
 
 			dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd);
 		}
+		else if (strcmp(toks[1], "altitude") == 0) {
+			if (strcmp(toks[2], "p") == 0)
+				st.ap = v;
+			else if (strcmp(toks[2], "i") == 0)
+				st.ai = v;
+			else if (strcmp(toks[2], "d") == 0)
+				st.ad = v;
+			else
+				goto unknown;
+
+			dsp_setpid(&apv, st.ap, st.ai, st.ad);
+		}
 		else
 			goto unknown;
 	}
@@ -1096,6 +1130,10 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		rolltarget = -cd->chf[1] * (M_PI / 6.0);
 		thrust = (cd->chf[2] + 0.75) / 3.5;
 		yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
+
+		althold = (cd->chf[4] > 0.5) ? 1 : 0;
+		if (althold)
+			thrust = (cd->chf[2] + 1.0) * 3.0;
 
 		// enable motors if channel six has value
 		// more than 50, disarm immediately otherwise.

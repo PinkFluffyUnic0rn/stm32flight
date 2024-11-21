@@ -10,6 +10,7 @@ What's done:
 * double roll/pitch PID control loop, stabilization using
 accelerometer/gyroscope readings.
 * yaw stabilization using magnetometer readings.
+* acceleration stabilization using accelerometer readings.
 * configuration through wi-fi.
 
 Devices
@@ -87,13 +88,13 @@ Quadcopter parameters
 ==========
  * Motors: 1204
  * Props: 3016
- * Battery: 11.1v (3s), 1300 mAh
+ * Battery: 11.1v (3s), 1100 mAh, 60c
  * Frame: plywood
 
 Quadcopter Weight
 ======
  * PCB and ESCs: ~57g
  * Motors + props: 27g
- * Battery: 121g
+ * Battery: 67g
  * Frame + wires: ~59g
- * Total weight: 270g 
+ * Total weight: 220g 
