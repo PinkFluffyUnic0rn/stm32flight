@@ -66,7 +66,7 @@
 
 // Timeout in seconds before quadcopter disarm
 // when got no data from ERLS receiver
-#define ELRS_TIMEOUT 3
+#define ELRS_TIMEOUT 2
 
 // check if enough time passed to call periodic event again.
 // ev -- periodic event's context.
@@ -100,11 +100,14 @@ struct settings {
 
 	float roll0, pitch0, yaw0; // roll, pitch and yaw offset values
 
-	float tcoef;	// time coefficient for pitch/roll
-			// complimentary filter
-	float ttcoef;	// time coefficient for vertical axis
-			// acceleration pow-pass filter
-	float atcoef;	// time coefficient for pressure pow-pass filter
+	float tcoef;		// time coefficient for pitch/roll
+				// complimentary filter
+	float ttcoef;		// time coefficient for vertical axis
+				// acceleration pow-pass filter
+	float atcoef;		// time coefficient for pressure
+				// low-pass filter
+	float climbcoef;	// time coefficient for climb rate
+				// low-pass filter
 
 	int speedpid;	// 1 if single PID loop for roll/pitch is used,
 			// 0 if double loop is used
@@ -191,8 +194,10 @@ struct crsf_device crsfdev;
 // DSP contexts
 struct dsp_lpf tlpf;
 struct dsp_lpf altlpf;
+struct dsp_lpf climblpf;
 float temp;
 struct qmc_data qmcdata;
+float climbrate;
 
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
@@ -369,7 +374,8 @@ float qmc_heading(float r, float p, float x, float y, float z)
 // all values should be between 0.0 and 1.0.
 int setthrust(float ltd, float rtd, float rbd, float lbd)
 {
-	if (isnan(ltd) || isnan(rtd) || isnan(rbd) || isnan(lbd))
+	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
+		|| isnan(lbd) || !elrs)
 		ltd = rtd = rbd = lbd = 0.0;
 
 	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.05 + 0.049)
@@ -470,6 +476,7 @@ int initstabilize(float alt)
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
+	dsp_initlpf(&climblpf, st.climbcoef, HP_FREQ);
 	dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 
 	return 0;
@@ -567,9 +574,7 @@ int stabilize(int ms)
 	}
 
 	if (althold) {
-		thrustcor = dsp_pid(&apv, thrust,
-			dsp_getlpf(&altlpf), dt);
-		thrustcor = (thrustcor > 0.1) ? 0.1: thrustcor;
+		thrustcor = dsp_pid(&apv, thrust, climbrate, dt);
 
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
 			dsp_getlpf(&tlpf), dt);
@@ -614,7 +619,7 @@ int checkconnection(int ms)
 
 	// if timeout conter reached 0 and no ERLS
 	// packet came, disarm immediately
-	if (elrstimeout <= 0 && elrs == 1) {
+	if (elrstimeout <= 0) {
 		setthrust(0.0, 0.0, 0.0, 0.0);
 		en = 0.0;
 	}
@@ -662,6 +667,12 @@ int magcalib(int ms)
 int hpupdate(int ms)
 {
 	struct hp_data hd;
+	float prevalt;
+	float dt;
+
+	dt = ms / (float) TICKSPERSEC;
+	
+	dt = (dt < 0.000001) ? 0.000001 : dt;
 	
 	if (dev[HP_DEV].status != DEVSTATUS_INIT) 
 		return 0;
@@ -670,9 +681,13 @@ int hpupdate(int ms)
 	dev[HP_DEV].read(dev[HP_DEV].priv, &hd,
 		sizeof(struct hp_data));
 
+	prevalt = dsp_getlpf(&altlpf);
+
 	// upate altitude low-pass filter and temperature reading
 	dsp_updatelpf(&altlpf, hd.altf);
 	temp = hd.tempf;
+
+	dsp_updatelpf(&climblpf, (dsp_getlpf(&altlpf) - prevalt) / dt);
 
 	return 0;
 }
@@ -808,6 +823,9 @@ int sprintvalues(char *s)
 		"tc: %.6f\r\n", (double) st.tcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel tc: %.6f\r\n", (double) st.ttcoef);
+	
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"climb rate tc: %.6f\r\n", (double) st.climbcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"altitude tc: %.6f\r\n", (double) st.atcoef);
 	
@@ -904,8 +922,10 @@ int controlcmd(char *cmd)
 
 			alt = dsp_getlpf(&altlpf);
 
-			snprintf(s, INFOLEN, "temp: %f; alt: %f\r\n",
-				(double) temp, (double) alt);
+			snprintf(s, INFOLEN,
+				"temp: %f; alt: %f; climb rate: %f\r\n",
+				(double) temp, (double) alt,
+				(double) dsp_getlpf(&climblpf));
 			
 			esp_send(&espdev, s);
 		}
@@ -1052,6 +1072,11 @@ int controlcmd(char *cmd)
 			
 			dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 		}
+		else if (strcmp(toks[1], "climbrate") == 0) {
+			st.climbcoef = atof(toks[2]);
+			
+			dsp_initlpf(&climblpf, st.climbcoef, HP_FREQ);
+		}
 		else if (strcmp(toks[1], "altitude") == 0) {
 			st.atcoef = atof(toks[2]);
 				
@@ -1107,41 +1132,44 @@ unknown:
 // ms -- microsecond passed from last CRSF packet
 int crsfcmd(const struct crsf_data *cd, int ms)
 {
+	float dt;
+	
 	// channel to on remote is used to turn on/off
 	// erls control. If this channel has low state, all remote
 	// commands will be ignored, but packet still continue to
-	// comming, so no disarm will happen.
+	// comming.
 	elrs = (cd->chf[7] > 0.5) ? 1 : 0;
 
 	// update ERLS timeout as we got packet
 	elrstimeout = ELRS_TIMEOUT;
 
-	if (elrs) {
-		float dt;
-
-		// get time passed from last ERLS packet
-		dt = ms / (float) TICKSPERSEC;
-
-		en = 1.0;
-
-		// set pitch/roll/yaw/thrus targets based on
-		// channels 1-4 values (it's joysticks on most remotes).
-		pitchtarget = -cd->chf[0] * (M_PI / 6.0);
-		rolltarget = -cd->chf[1] * (M_PI / 6.0);
-		thrust = (cd->chf[2] + 0.75) / 3.5;
-		yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
-
-		althold = (cd->chf[4] > 0.5) ? 1 : 0;
-		if (althold)
-			thrust = (cd->chf[2] + 1.0) * 3.0;
-
-		// enable motors if channel six has value
-		// more than 50, disarm immediately otherwise.
-		en = (cd->chf[5] > 0.5) ? 1 : 0;
-	
-		if (en < 0.5)
-			setthrust(0.0, 0.0, 0.0, 0.0);
+	if (!elrs) {
+		en = 0.0;
+		setthrust(0.0, 0.0, 0.0, 0.0);
+		
+		return 0;
 	}
+
+	// get time passed from last ERLS packet
+	dt = ms / (float) TICKSPERSEC;
+
+	// set pitch/roll/yaw/thrus targets based on
+	// channels 1-4 values (it's joysticks on most remotes).
+	pitchtarget = -cd->chf[0] * (M_PI / 6.0);
+	rolltarget = -cd->chf[1] * (M_PI / 6.0);
+	thrust = (cd->chf[2] + 0.75) / 3.5;
+	yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
+
+	althold = (cd->chf[4] > 0.5) ? 1 : 0;
+	if (althold)
+		thrust = cd->chf[2] * 1.5;
+
+	// enable motors if channel six has value
+	// more than 50, disarm immediately otherwise.
+	en = (cd->chf[5] > 0.5) ? 1.0 : 0.0;
+
+	if (en < 0.5)
+		setthrust(0.0, 0.0, 0.0, 0.0);
 
 	return 0;
 }
