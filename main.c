@@ -574,7 +574,8 @@ int stabilize(int ms)
 	}
 
 	if (althold) {
-		thrustcor = dsp_pid(&apv, thrust, climbrate, dt);
+		thrustcor = dsp_pid(&apv, thrust,
+			dsp_getlpf(&climblpf), dt);
 
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
 			dsp_getlpf(&tlpf), dt);
