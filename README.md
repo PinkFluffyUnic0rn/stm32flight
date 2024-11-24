@@ -9,7 +9,8 @@ What's done:
 (accro mode) readings.
 * double roll/pitch PID control loop, stabilization using
 accelerometer/gyroscope readings.
-* yaw stabilization using magnetometer readings.
+* yaw stabilization using gyroscope readings.
+* yaw stabilization using magnetometer/gyroscope readings.
 * acceleration stabilization using accelerometer readings.
 * configuration through wi-fi.
 * altitude hold (kind of, yet tested only within 2.5 meters range)
