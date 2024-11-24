@@ -84,12 +84,17 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+
 	while (1) {}
 }
 
 void MemManage_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+	
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
 
 	while (1) {}
 }
@@ -97,6 +102,8 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+	
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
 
 	while (1) {}
 }
@@ -104,6 +111,8 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+	
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
 
 	while (1) {}
 }

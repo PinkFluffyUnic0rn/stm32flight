@@ -500,6 +500,9 @@ int stabilize(int ms)
 	// divide-by-zero protection
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12,
+		en ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
 	// get accelerometer and gyroscope readings
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 		sizeof(struct mpu_data));
@@ -1338,13 +1341,14 @@ static void gpio_init(void)
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12 | GPIO_PIN_13,
+		GPIO_PIN_RESET);
 
-	GPIO_InitStruct.Pin = GPIO_PIN_4;
+	GPIO_InitStruct.Pin = GPIO_PIN_12 | GPIO_PIN_13;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
 static void dma_init(void)
