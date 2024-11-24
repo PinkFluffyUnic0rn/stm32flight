@@ -12,6 +12,7 @@ accelerometer/gyroscope readings.
 * yaw stabilization using magnetometer readings.
 * acceleration stabilization using accelerometer readings.
 * configuration through wi-fi.
+* altitude hold (kind of, yet tested only within 2.5 meters range)
 
 Devices
 =======

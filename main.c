@@ -127,7 +127,7 @@ struct settings {
 	float ysp, ysi, ysd;	// P/I/D values for yaw rotation speed
 	
 	float zsp, zsi,	zsd; // P/I/D values for vertical acceleration
-	
+	float cp, ci, cd; // P/I/D values for climbrate
 	float ap, ai, ad; // P/I/D values for altitude
 };
 
@@ -209,6 +209,7 @@ struct dsp_pidval rollspv;
 struct dsp_pidval yawpv;
 struct dsp_pidval yawspv;
 struct dsp_pidval tpv;
+struct dsp_pidval cpv;
 struct dsp_pidval apv;
 
 // Control values
@@ -471,6 +472,9 @@ int initstabilize(float alt)
 	// init vertical acceleration PID controller's context
 	dsp_initpidval(&tpv, st.zsp, st.zsi, st.zsd, 0.0);
 	
+	// init climbrate PID controller's context
+	dsp_initpidval(&cpv, st.cp, st.ci, st.cd, 0.0);
+	
 	// init altitude PID controller's context
 	dsp_initpidval(&apv, st.ap, st.ai, st.ad, 0.0);
 
@@ -500,6 +504,7 @@ int stabilize(int ms)
 	// divide-by-zero protection
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
+	// toggle arming indication led
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12,
 		en ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
@@ -567,7 +572,7 @@ int stabilize(int ms)
 	else {
 		// if in double loop mode for yaw, first use yaw value
 		// calcualted using magnetometer and yaw target got from
-		// ERLS remove to update yaw POSITION PID controller and
+		// ELRS remote to update yaw POSITION PID controller and
 		// get it's next correciton value.
 		yawcor = dsp_circpid(&yawpv, yawtarget, yaw, dt);
 
@@ -577,16 +582,30 @@ int stabilize(int ms)
 	}
 
 	if (althold) {
+		// if altitude hold mode enabled, first use altitude
+		// got from barometer readings and target altitude from
+		// ELRS remote to update altitude PID controller and
+		// get it's next correction value
 		thrustcor = dsp_pid(&apv, thrust,
+			dsp_getlpf(&altlpf) - alt0, dt);
+
+		// then use altitude correction value and climb rate
+		// calculated by differentiating barometer readings to
+		// update climb rate PID controller and get it's next
+		// correction value
+		thrustcor = dsp_pid(&cpv, thrustcor,
 			dsp_getlpf(&climblpf), dt);
 
+		// and next use climb rate correction value to update
+		// vertial acceleration PID controller and get next
+		// thrust correction value
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
 			dsp_getlpf(&tlpf), dt);
 	}
 	else {
-		// update vertical acceleration PID controller using
-		// next low-pass filtered value of vertical acceleration
-		// and target got from ERLS remote
+		// if no altitude hold, update vertical acceleration PID
+		// controller using next low-pass filtered value of
+		// vertical acceleration and target got from ERLS remote
 		thrustcor = dsp_pid(&tpv, thrust + 1.0,
 			dsp_getlpf(&tlpf), dt);
 	}
@@ -867,6 +886,10 @@ int sprintpid(char *s)
 		(double) st.zsp, (double) st.zsi, (double) st.zsd);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"climbrate PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.cp, (double) st.ci, (double) st.cd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"altitude PID: %.5f,%.5f,%.5f\r\n",
 		(double) st.ap, (double) st.ai, (double) st.ad);
 
@@ -1049,6 +1072,18 @@ int controlcmd(char *cmd)
 
 			dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd);
 		}
+		else if (strcmp(toks[1], "climbrate") == 0) {
+			if (strcmp(toks[2], "p") == 0)
+				st.cp = v;
+			else if (strcmp(toks[2], "i") == 0)
+				st.ci = v;
+			else if (strcmp(toks[2], "d") == 0)
+				st.cd = v;
+			else
+				goto unknown;
+
+			dsp_setpid(&cpv, st.cp, st.ci, st.cd);
+		}
 		else if (strcmp(toks[1], "altitude") == 0) {
 			if (strcmp(toks[2], "p") == 0)
 				st.ap = v;
@@ -1141,7 +1176,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// channel to on remote is used to turn on/off
 	// erls control. If this channel has low state, all remote
 	// commands will be ignored, but packet still continue to
-	// comming.
+	// comming
 	elrs = (cd->chf[7] > 0.5) ? 1 : 0;
 
 	// update ERLS timeout as we got packet
@@ -1158,21 +1193,33 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	dt = ms / (float) TICKSPERSEC;
 
 	// set pitch/roll/yaw/thrus targets based on
-	// channels 1-4 values (it's joysticks on most remotes).
+	// channels 1-4 values (it's joysticks on most remotes)
 	pitchtarget = -cd->chf[0] * (M_PI / 6.0);
 	rolltarget = -cd->chf[1] * (M_PI / 6.0);
 	thrust = (cd->chf[2] + 0.75) / 3.5;
 	yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
 
-	if (cd->chf[8] > 0.0)
-		alt0 = dsp_getlpf(&altlpf);
-
+	// if channel 5 is active, set altitude hold mode
 	althold = (cd->chf[4] > 0.5) ? 1 : 0;
-	if (althold)
-		thrust = cd->chf[2] * 1.5;
+	if (althold) {
+	//	thrust += ((fabs(cd->chf[2]) > 0.2)
+	//		? (cd->chf[2] / 2.0 * dt) : 0.0);
+	
+		thrust = (cd->chf[2] + 1.0) * 2.0;
+
+	}
+
+	// if channel 9 is active (it's no-fix button on remote used
+	// for testing), set reference altitude from current altitude
+	if (cd->chf[8] > 0.0) {
+	//	if (althold)
+	//		thrust = 0.0;
+
+		alt0 = dsp_getlpf(&altlpf);
+	}
 
 	// enable motors if channel six has value
-	// more than 50, disarm immediately otherwise.
+	// more than 50, disarm immediately otherwise
 	en = (cd->chf[5] > 0.5) ? 1.0 : 0.0;
 
 	if (en < 0.5)

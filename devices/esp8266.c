@@ -83,6 +83,7 @@ int esp_waitforstrings(volatile struct fifo *f, int timeout,
 		va_list args;
 		char *s;
 		int i;
+		
 		if (esp_dequeque(f, res) < 0) {
 			HAL_Delay(1);
 			continue;
