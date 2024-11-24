@@ -42,7 +42,7 @@ int hp_getdata(void *d, void *dt, size_t sz)
 	data->alt = buf[3] << 16 | buf[4] << 8 | buf[5];
 
 	data->tempf = data->temp / 100.0;
-	data->altf = data->alt / 100.0 - dev->alt0;
+	data->altf = data->alt / 100.0;;
 
 	c = HP_ADCCVT | dev->osr << 2;
 	HAL_I2C_Master_Transmit(dev->hi2c, HP_ADDR << 1, &c, 1, 1000);
@@ -52,7 +52,6 @@ int hp_getdata(void *d, void *dt, size_t sz)
 
 int hp_init(struct hp_device *dev)
 {
-	float alt0;
 	uint8_t c;
 	int i;
 
@@ -69,20 +68,6 @@ int hp_init(struct hp_device *dev)
 
 		hp_getdata(dev, &hd, sizeof(struct hp_data));
 	}
-		
-	dev->alt0 = 0.0;
-	alt0 = 0.0;
-	for (i = 0; i < 50; ++i) {
-		struct hp_data hd;
-
-		hp_getdata(dev, &hd, sizeof(struct hp_data));
-
-		alt0 += hd.altf;
-		
-		HAL_Delay(35);
-	}
-
-	dev->alt0 = alt0 / 50.0;
 
 	return 0;
 }

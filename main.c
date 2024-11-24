@@ -921,7 +921,7 @@ int controlcmd(char *cmd)
 		else if (strcmp(toks[1], "hp") == 0) {
 			float alt;
 
-			alt = dsp_getlpf(&altlpf);
+			alt = dsp_getlpf(&altlpf) - alt0;
 
 			snprintf(s, INFOLEN,
 				"temp: %f; alt: %f; climb rate: %f\r\n",
@@ -1160,6 +1160,9 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	rolltarget = -cd->chf[1] * (M_PI / 6.0);
 	thrust = (cd->chf[2] + 0.75) / 3.5;
 	yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
+
+	if (cd->chf[8] > 0.0)
+		alt0 = dsp_getlpf(&altlpf);
 
 	althold = (cd->chf[4] > 0.5) ? 1 : 0;
 	if (althold)
