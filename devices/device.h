@@ -23,4 +23,24 @@ struct cdevice {
 	void *priv;
 };
 
+struct bdevice {
+	char name[DEVNAMEMAX];
+	int (*read)(void *dev, size_t addr, void *data, size_t sz);
+	int (*write)(void *dev, size_t addr, const void *data,
+		size_t sz);
+	int (*ioctl)(void *dev, int req, ...);
+
+	int (*eraseall)(void *dev);
+	int (*erasesector)(void *dev, size_t addr);
+	int (*writesector)(void *dev, size_t addr, const void *data,
+		size_t sz);
+	int status;
+
+	size_t writesize;
+	size_t sectorsize;
+	size_t totalsize;
+
+	void *priv;
+};
+
 #endif

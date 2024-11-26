@@ -13,6 +13,7 @@
 #include "qmc5883l.h"
 #include "dsp.h"
 #include "crsf.h"
+#include "w25.h"
 
 // Max length for info packet
 // sent back to operator
@@ -52,6 +53,13 @@
 
 // quadcopter setting's slot
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
+
+// maximum telemetry packets count, depends on onboard flash size
+#define LOG_MAXPACKS \
+	(W25_TOTALSIZE / sizeof(struct logpack))
+
+// telemetry packets for second
+#define LOG_PACKSPERSECOND 32
 
 // Timer events IDs
 #define TEV_PID 	0
@@ -131,6 +139,21 @@ struct settings {
 	float ap, ai, ad; // P/I/D values for altitude
 };
 
+// telemetry packet stored in onboard flash
+struct logpack {
+	float roll,	pitch,	yaw;	// pitch/roll/yaw
+	float afx,	afy,	afz;	// accelerometer x/y/z readings
+	float gfx,	gfy,	gfz;	// gyroscope x/y/z readings
+	float qfx,	qfy,	qfz;	// magnetometer x/y/z readings
+
+	float rollcor[3];	// all roll PID correction values
+	float pitchcor[3];	// all pitch PID correction values
+	float yawcor[3];	// all roll PID correction values
+	float altcor[3];	// all roll PID correction values
+	
+	float dummy[8];	// dummy fields, to make packet 32 bytes long
+};
+
 // Periodic event's context that holds event's settings
 // and data needed beetween calls
 struct timev {
@@ -171,6 +194,9 @@ static void espdev_init();
 // Init ERLS receiver driver
 static void crsfdev_init();
 
+// Init W25Q onboard flash memory
+static void w25dev_init();
+
 // STM32 perithery contexts
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
@@ -188,6 +214,7 @@ DMA_HandleTypeDef hdma_usart2_rx;
 
 // Flight controller board's devices drivers
 struct cdevice dev[DEV_COUNT];
+struct bdevice flashdev;
 struct esp_device espdev;
 struct crsf_device crsfdev;
 
@@ -221,6 +248,8 @@ float en = 0.0; // 1.0 when motors turned on, 0.0 otherwise
 int althold = 0; // 1 if altitude holding mode is enabled, 0 otherwise
 int magcalibmode = 0; // 1 when magnetometer calibration mode
 		      // is enabled, 0 otherwise
+int logen = 0;
+int logpacks = 0;
 int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
 	      // is > 50)
 
@@ -243,6 +272,8 @@ int loopscount = 0;
 // receiving useful packet from receiver and decreased by 1 every
 // second. If it falls to 0, quadcopter disarms.
 int elrstimeout = ELRS_TIMEOUT;
+
+struct logpack logbuf[sizeof(struct logpack) * LOG_PACKSPERSECOND];
 
 // Get value from ADC, was used to monitor battery voltage
 //
@@ -1153,6 +1184,34 @@ int controlcmd(char *cmd)
 		else
 			goto unknown;
 	}
+	else if (strcmp(toks[0], "log") == 0) {
+		if (strcmp(toks[1], "start") == 0) {
+			// flash erasing process takes time and blocks
+			// other actions, so disarm for safety
+			en = 0.0;
+			setthrust(0.0, 0.0, 0.0, 0.0);
+		
+			// notify user when erasing is started
+			sprintf(s, "erasing telemetry flash...\r\n");
+
+			// erase telemetry flash no
+			// respond during this process
+			flashdev.eraseall(flashdev.priv);
+
+			// enable telemetry
+			logen = 1;
+			logpacks = 0;
+
+			// notify user when telemetry flash is erased
+			sprintf(s, "telemetry flash erased\r\n");
+			esp_send(&espdev, s);
+		}
+		if (strcmp(toks[1], "stop") == 0) {
+			logen = 0;
+		}
+		if (strcmp(toks[1], "get") == 0) {
+		}
+	}
 	else
 		goto unknown;
 
@@ -1267,6 +1326,7 @@ int main(void)
 	qmc_init();
 	espdev_init();
 	crsfdev_init();
+	w25dev_init();
 
 	// delay here is used as temporary fix. The problem is that
 	// because of layout mistake, barometer is placed on oposite
@@ -1388,10 +1448,10 @@ static void gpio_init(void)
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12 | GPIO_PIN_13,
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3 | GPIO_PIN_12 | GPIO_PIN_13,
 		GPIO_PIN_RESET);
 
-	GPIO_InitStruct.Pin = GPIO_PIN_12 | GPIO_PIN_13;
+	GPIO_InitStruct.Pin = GPIO_PIN_3 | GPIO_PIN_12 | GPIO_PIN_13;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1435,7 +1495,7 @@ static void spi1_init(void)
 	hspi1.Instance = SPI1;
 	hspi1.Init.Mode = SPI_MODE_MASTER;
 	hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-	hspi1.Init.DataSize = SPI_DATASIZE_16BIT;
+	hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
 	hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
 	hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
 	hspi1.Init.NSS = SPI_NSS_SOFT;
@@ -1709,6 +1769,22 @@ static void crsfdev_init()
 	d.huart = &huart2;
 
 	crsf_initdevice(&d, dev + CRSF_DEV);
+}
+
+static void w25dev_init()
+{
+	struct w25_device d;
+
+	d.hspi = &hspi1;
+	d.gpio = GPIOB;
+	d.pin = GPIO_PIN_3;
+
+	if (w25_initdevice(&d, &flashdev) < 0) {
+		uartprintf("failed to initilize W25Q\r\n");
+		return;
+	}
+
+	uartprintf("W25Q initilized\r\n");
 }
 
 // MCU hardware errors handler. Disarm immediately
