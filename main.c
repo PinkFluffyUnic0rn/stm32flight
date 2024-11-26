@@ -90,6 +90,12 @@
 // s -- time in microseconds after last callback's call.
 #define updatetimev(ev, s) (ev)->ms += (s);
 
+enum ALTMODE {
+	ALTMODE_ACCEL	= 0,
+	ALTMODE_SPEED	= 1,
+	ALTMODE_POS	= 2
+};
+
 // Quadcopter settings structure stored in MCU's flash
 struct settings {
 	float mx0, my0, mz0;	// magnetometer offset values for X, Y
@@ -221,13 +227,14 @@ struct crsf_device crsfdev;
 // DSP contexts
 struct dsp_lpf tlpf;
 struct dsp_lpf altlpf;
-struct dsp_lpf climblpf;
 float temp;
 struct qmc_data qmcdata;
 float climbrate;
 
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
+
+struct dsp_compl climbratecompl;
 
 struct dsp_pidval pitchpv;
 struct dsp_pidval rollpv;
@@ -245,7 +252,10 @@ float rolltarget = 0.0; // roll PID target
 float pitchtarget = 0.0; // pitch PID target
 float yawtarget = 0.0; // yaw PID target
 float en = 0.0; // 1.0 when motors turned on, 0.0 otherwise
-int althold = 0; // 1 if altitude holding mode is enabled, 0 otherwise
+enum ALTMODE altmode = 0; // ALTMODE_POS if in altitude hold mode,
+			  // ALTMODE_SPEED if climbrate control mode,
+			  // ALTMODE_ACCEL if acceleration control mode
+
 int magcalibmode = 0; // 1 when magnetometer calibration mode
 		      // is enabled, 0 otherwise
 int logen = 0;
@@ -488,6 +498,8 @@ int initstabilize(float alt)
 	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
 	dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);
 
+	dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
+
 	// init roll and pitch position PID controller contexts
 	dsp_initpidval(&pitchpv, st.p, st.i, st.d, 0.0);
 	dsp_initpidval(&rollpv, st.p, st.i, st.d, 0.0);
@@ -511,7 +523,6 @@ int initstabilize(float alt)
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
-	dsp_initlpf(&climblpf, st.climbcoef, HP_FREQ);
 	dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 
 	return 0;
@@ -612,7 +623,7 @@ int stabilize(int ms)
 		yawcor = dsp_pid(&yawspv, yawcor, gz, dt);
 	}
 
-	if (althold) {
+	if (altmode == ALTMODE_POS) {
 		// if altitude hold mode enabled, first use altitude
 		// got from barometer readings and target altitude from
 		// ELRS remote to update altitude PID controller and
@@ -625,11 +636,19 @@ int stabilize(int ms)
 		// update climb rate PID controller and get it's next
 		// correction value
 		thrustcor = dsp_pid(&cpv, thrustcor,
-			dsp_getlpf(&climblpf), dt);
+			dsp_getcompl(&climbratecompl), dt);
+
 
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
+		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
+			dsp_getlpf(&tlpf), dt);
+	}
+	else if (altmode == ALTMODE_SPEED) {
+		thrustcor = dsp_pid(&cpv, thrust,
+			dsp_getcompl(&climbratecompl), dt);
+
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
 			dsp_getlpf(&tlpf), dt);
 	}
@@ -741,7 +760,8 @@ int hpupdate(int ms)
 	dsp_updatelpf(&altlpf, hd.altf);
 	temp = hd.tempf;
 
-	dsp_updatelpf(&climblpf, (dsp_getlpf(&altlpf) - prevalt) / dt);
+	dsp_updatecompl(&climbratecompl, (dsp_getlpf(&tlpf) - 1.0) * dt,
+		(dsp_getlpf(&altlpf) - prevalt) / dt);
 
 	return 0;
 }
@@ -931,6 +951,15 @@ int sprintpid(char *s)
 		"%s yaw mode\r\n",
 		st.yawspeedpid ? "single" : "dual");
 	
+	const char *mode;
+
+	if (altmode == ALTMODE_ACCEL)		mode = "single";
+	else if (altmode == ALTMODE_SPEED)	mode = "double";
+	else					mode = "triple";
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%s altitude mode\r\n", mode);
+
 	return 0;
 }
 
@@ -979,12 +1008,12 @@ int controlcmd(char *cmd)
 			float alt;
 
 			alt = dsp_getlpf(&altlpf) - alt0;
-
+			
 			snprintf(s, INFOLEN,
 				"temp: %f; alt: %f; climb rate: %f\r\n",
 				(double) temp, (double) alt,
-				(double) dsp_getlpf(&climblpf));
-			
+				(double) dsp_getcompl(&climbratecompl));
+
 			esp_send(&espdev, s);
 		}
 		else if (strcmp(toks[1], "values") == 0) {
@@ -1145,7 +1174,8 @@ int controlcmd(char *cmd)
 		else if (strcmp(toks[1], "climbrate") == 0) {
 			st.climbcoef = atof(toks[2]);
 			
-			dsp_initlpf(&climblpf, st.climbcoef, HP_FREQ);
+			dsp_initcompl(&climbratecompl,
+				st.climbcoef, HP_FREQ);
 		}
 		else if (strcmp(toks[1], "altitude") == 0) {
 			st.atcoef = atof(toks[2]);
@@ -1258,22 +1288,24 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	thrust = (cd->chf[2] + 0.75) / 3.5;
 	yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
 
-	// if channel 5 is active, set altitude hold mode
-	althold = (cd->chf[4] > 0.5) ? 1 : 0;
-	if (althold) {
-	//	thrust += ((fabs(cd->chf[2]) > 0.2)
-	//		? (cd->chf[2] / 2.0 * dt) : 0.0);
-	
+	if (cd->chf[6] < -0.25) {
+		altmode = ALTMODE_ACCEL;
+		thrust = (cd->chf[2] + 0.75) / 3.5;
+	}
+	else if (cd->chf[6] > 0.25) {
+		altmode = ALTMODE_POS;
 		thrust = (cd->chf[2] + 1.0) * 2.0;
-
+	}
+	else {
+		altmode = ALTMODE_SPEED;
+		thrust = cd->chf[2] * 1.5;
 	}
 
 	// if channel 9 is active (it's no-fix button on remote used
 	// for testing), set reference altitude from current altitude
 	if (cd->chf[8] > 0.0) {
-	//	if (althold)
-	//		thrust = 0.0;
-
+		dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
+	
 		alt0 = dsp_getlpf(&altlpf);
 	}
 
