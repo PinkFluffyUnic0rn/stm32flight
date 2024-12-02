@@ -15,19 +15,22 @@ pid syaw d 0.0
 pid climb p 3.0
 pid climb i 0.0005
 pid climb d 0.001
-pid climbrate p 0.3
+pid climbrate p 0.4
 pid climbrate i 0.0
 pid climbrate d 0.0001
-pid altitude p 0.2
+pid altitude p 0.4
 pid altitude i 0.0
 pid altitude d 0.0
 compl 0.75
 lpf climb 0.25
-lpf climbrate 2.5
+lpf climbrate 5.0
 lpf altitude 0.5
 adj roll 0.0
 adj pitch 0.0
 adj yaw 0.0 
+adj acc x 0.0
+adj acc y 0.0
+adj acc z -0.055
 adj mag x0 -371.0
 adj mag y0 665.0
 adj mag z0 64.0

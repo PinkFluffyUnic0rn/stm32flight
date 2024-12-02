@@ -108,6 +108,9 @@ struct settings {
 	
 	float magdecl;	// magnetic declination
 
+	float ax0, ay0, az0;	// accelometer offset values for X, Y
+				// and Z axes.
+
 	float gx0, gy0, gz0;	// gyroscope offset values for X, Y
 				// and Z axes. Currently unused: these
 				// values determined at power on
@@ -492,7 +495,13 @@ int initstabilize(float alt)
 	// ofset's came from device inperfections (and sometimes as
 	// result of harsh impacts). Accelerometer offsets are not used,
 	// gyroscope values stored and used in the stabilization loop.
-	averageposition(&ax, &ay, &az, &(st.gx0), &(st.gy0), &(st.gz0));
+//	averageposition(&(st.ax0), &(st.ay0), &(st.az0),
+//			&(st.gx0), &(st.gy0), &(st.gz0));
+//	st.az0 -= 1.0;
+
+	averageposition(&ax, &ay, &az,
+			&(st.gx0), &(st.gy0), &(st.gz0));
+
 
 	// init complementary filters contexts
 	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
@@ -553,6 +562,10 @@ int stabilize(int ms)
 	// get accelerometer and gyroscope readings
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 		sizeof(struct mpu_data));
+
+	md.afx -= st.ax0;
+	md.afy -= st.ay0;
+	md.afz -= st.az0;
 
 	// update vertical acceleration low-pass filter
 	dsp_updatelpf(&tlpf, md.afz);
@@ -760,7 +773,8 @@ int hpupdate(int ms)
 	dsp_updatelpf(&altlpf, hd.altf);
 	temp = hd.tempf;
 
-	dsp_updatecompl(&climbratecompl, (dsp_getlpf(&tlpf) - 1.0) * dt,
+	dsp_updatecompl(&climbratecompl,
+		9.80665 * (dsp_getlpf(&tlpf) - 1.0) * dt,
 		(dsp_getlpf(&altlpf) - prevalt) / dt);
 
 	return 0;
@@ -882,6 +896,10 @@ int sprintvalues(char *s)
 		(double) st.magdecl);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"accel cor: %.3f; %.3f; %.3f\r\n",
+		(double) st.ax0, (double) st.ay0, (double) st.az0);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"gyro cor: %.3f; %.3f; %.3f\r\n",
 		(double) st.gx0, (double) st.gy0, (double) st.gz0);
 
@@ -989,6 +1007,10 @@ int controlcmd(char *cmd)
 
 			dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
 				sizeof(struct qmc_data));
+
+			md.afx -= st.ax0;
+			md.afy -= st.ay0;
+			md.afz -= st.az0;
 
 			sprintpos(s, &md, &hd);
 
@@ -1193,6 +1215,22 @@ int controlcmd(char *cmd)
 		if (strcmp(toks[1], "roll") == 0)	st.roll0 = v;
 		else if (strcmp(toks[1], "pitch") == 0)	st.pitch0 = v;
 		else if (strcmp(toks[1], "yaw") == 0)	st.yaw0 = v;
+		else if (strcmp(toks[1], "acc") == 0) {
+			if (strcmp(toks[2], "x") == 0)
+				st.ax0 = atof(toks[3]);
+			else if (strcmp(toks[2], "y") == 0)
+				st.ay0 = atof(toks[3]);
+			else if (strcmp(toks[2], "z") == 0)
+				st.az0 = atof(toks[3]);
+		}
+		else if (strcmp(toks[1], "gyro") == 0) {
+			if (strcmp(toks[2], "x") == 0)
+				st.gx0 = atof(toks[3]);
+			else if (strcmp(toks[2], "y") == 0)
+				st.gy0 = atof(toks[3]);
+			else if (strcmp(toks[2], "z") == 0)
+				st.gz0 = atof(toks[3]);
+		}
 		else if (strcmp(toks[1], "mag") == 0) {
 			if (strcmp(toks[2], "x0") == 0)
 				st.mx0 = atof(toks[3]);
@@ -1739,7 +1777,7 @@ static void hp_init()
 	struct hp_device d;
 
 	d.hi2c = &hi2c1;
-	d.osr = HP_OSR_1024;
+	d.osr = HP_OSR_512;
 
 	if (hp_initdevice(&d, dev + HP_DEV) >= 0)
 		uartprintf("HP206C initilized\r\n");
