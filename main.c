@@ -258,6 +258,7 @@ float en = 0.0; // 1.0 when motors turned on, 0.0 otherwise
 enum ALTMODE altmode = 0; // ALTMODE_POS if in altitude hold mode,
 			  // ALTMODE_SPEED if climbrate control mode,
 			  // ALTMODE_ACCEL if acceleration control mode
+int yawspeedpid = 0;
 
 int magcalibmode = 0; // 1 when magnetometer calibration mode
 		      // is enabled, 0 otherwise
@@ -618,7 +619,7 @@ int stabilize(int ms)
 		pitchcor = dsp_pid(&pitchspv, pitchcor, gx, dt);
 	}
 
-	if (st.yawspeedpid) {
+	if (yawspeedpid) {
 		// if single PID loop mode for yaw is used just use
 		// rotation speed values around axis Z to upadte yaw PID
 		// controller and get next yaw correciton value
@@ -967,7 +968,7 @@ int sprintpid(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%s yaw mode\r\n",
-		st.yawspeedpid ? "single" : "dual");
+		yawspeedpid ? "single" : "dual");
 	
 	const char *mode;
 
@@ -1323,8 +1324,15 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// channels 1-4 values (it's joysticks on most remotes)
 	pitchtarget = -cd->chf[0] * (M_PI / 6.0);
 	rolltarget = -cd->chf[1] * (M_PI / 6.0);
-	thrust = (cd->chf[2] + 0.75) / 3.5;
-	yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
+
+	if (cd->chf[4] < 0.0) {
+		yawspeedpid = 0;
+		yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
+	}
+	else {
+		yawspeedpid = 1;
+		yawtarget = -cd->chf[3] * M_PI;
+	}
 
 	if (cd->chf[6] < -0.25) {
 		altmode = ALTMODE_ACCEL;
