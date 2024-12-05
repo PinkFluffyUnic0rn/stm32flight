@@ -38,4 +38,7 @@ adj mag xscale 0.95
 adj mag yscale 1.0
 adj mag zscale 0.94
 adj mag decl 0.3264
+adj gyro x 1.617
+adj gyro y -0.061
+adj gyro z 0.641
 flash write

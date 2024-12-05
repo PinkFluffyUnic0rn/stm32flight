@@ -399,8 +399,8 @@ float qmc_heading(float r, float p, float x, float y, float z)
 	z = st.mzsc * (z + st.mz0);
 
 	x = x * cosf(p) + y * sinf(r) * sinf(p)
-		+ z * cosf(r) * sinf(p);
-	y = y * cosf(r) - z * sinf(r);
+		- z * cosf(r) * sinf(p);
+	y = y * cosf(r) + z * sinf(r);
 
 	return circf(atan2f(y, x) + st.magdecl);
 }
@@ -492,18 +492,6 @@ int initstabilize(float alt)
 	// set initial altitude. Usually 0.0
 	alt0 = alt;
 
-	// calculate initial acceleromter and gyroscope offsets. These
-	// ofset's came from device inperfections (and sometimes as
-	// result of harsh impacts). Accelerometer offsets are not used,
-	// gyroscope values stored and used in the stabilization loop.
-//	averageposition(&(st.ax0), &(st.ay0), &(st.az0),
-//			&(st.gx0), &(st.gy0), &(st.gz0));
-//	st.az0 -= 1.0;
-
-	averageposition(&ax, &ay, &az,
-			&(st.gx0), &(st.gy0), &(st.gz0));
-
-
 	// init complementary filters contexts
 	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
 	dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);
@@ -594,7 +582,7 @@ int stabilize(int ms)
 
 	// calcualte yaw value using last magnetometer reading, roll
 	// value and pitch value, offset it by a value from settings.
-	yaw = circf(qmc_heading(pitch, roll,
+	yaw = circf(qmc_heading(-pitch, -roll,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
 
 	if (st.speedpid) {
@@ -864,9 +852,15 @@ int sprintqmc(char *s, struct qmc_data *hd)
 		(double) qmcdata.fz);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"corrected: x = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		(double) (st.mxsc * (qmcdata.fx + st.mx0)),
+		(double) (st.mysc * (qmcdata.fy + st.my0)),
+		(double) (st.mzsc * (qmcdata.fz + st.mz0)));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"heading: %f\r\n", (double) qmc_heading(
-			(dsp_getcompl(&pitchcompl) - st.pitch0),
-			(dsp_getcompl(&rollcompl) - st.roll0),
+			-(dsp_getcompl(&pitchcompl) - st.pitch0),
+			-(dsp_getcompl(&rollcompl) - st.roll0),
 			hd->fx, hd->fy, hd->fz));
 
 	return 0;
