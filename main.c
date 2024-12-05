@@ -340,49 +340,6 @@ int inittimev(struct timev *ev, int freq, int (*cb)(int))
 	return 0;
 }
 
-// Get IMU accelerometer and gyroscope averaged values
-// accumulated for 2.5 second
-//
-// ax -- accelerometer X axis value.
-// ay -- accelerometer Y axis value.
-// az -- accelerometer Z axis value.
-// ax -- gyroscope X axis value.
-// ay -- gyroscope Y axis value.
-// az -- gyroscope Z axis value.
-int averageposition(float *ax, float *ay, float *az, float *gx,
-	float *gy, float *gz)
-{
-	struct mpu_data md;
-	float axt, ayt, azt, gxt, gyt, gzt;
-	int i;
-
-	axt = ayt = azt = gxt = gyt = gzt = 0;
-	for (i = 0; i < 250; ++i) {
-		dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
-			sizeof(struct mpu_data));
-
-		gxt += md.gfx;
-		gyt += md.gfy;
-		gzt += md.gfz;
-
-		axt += md.afx;
-		ayt += md.afy;
-		azt += md.afz;
-
-		HAL_Delay(10);
-	}
-
-	*gx = gxt / 250.0;
-	*gy = gyt / 250.0;
-	*gz = gzt / 250.0;
-
-	*ax = axt / 250.0;
-	*ay = ayt / 250.0;
-	*az = azt / 250.0;
-
-	return 0;
-}
-
 // calculate tilt compensated heading direction using magnetometer
 // readings, roll value and pitch value.
 // 
@@ -631,8 +588,9 @@ int stabilize(int ms)
 			dsp_getlpf(&altlpf) - alt0, dt);
 
 		// then use altitude correction value and climb rate
-		// calculated by differentiating barometer readings to
-		// update climb rate PID controller and get it's next
+		// calculated by complimentary filter (barometer
+		// differentiating and accelerometer Z-axis integration)
+		// to update climb rate PID controller and get it's next
 		// correction value
 		thrustcor = dsp_pid(&cpv, thrustcor,
 			dsp_getcompl(&climbratecompl), dt);
@@ -645,9 +603,18 @@ int stabilize(int ms)
 			dsp_getlpf(&tlpf), dt);
 	}
 	else if (altmode == ALTMODE_SPEED) {
+		// if consttant climb rate mode, first use climb rate
+		// calculated by complimentary filter (barometer
+		// differentiating and accelerometer Z-axis integration)
+		// and target climb rate from ELRS remote to update
+		// climb rate PID controller and get it's next
+		// correction value
 		thrustcor = dsp_pid(&cpv, thrust,
 			dsp_getcompl(&climbratecompl), dt);
 
+		// and next use climb rate correction value to update
+		// vertial acceleration PID controller and get next
+		// thrust correction value
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
 			dsp_getlpf(&tlpf), dt);
 	}
@@ -1311,8 +1278,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// get time passed from last ERLS packet
 	dt = ms / (float) TICKSPERSEC;
 
-	// set pitch/roll/yaw/thrus targets based on
-	// channels 1-4 values (it's joysticks on most remotes)
+	// set pitch/roll targets based on
+	// channels 1-2 values (it's a joystick on most remotes)
 	pitchtarget = -cd->chf[0] * (M_PI / 4.0);
 	rolltarget = -cd->chf[1] * (M_PI / 4.0);
 
