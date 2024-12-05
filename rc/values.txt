@@ -9,7 +9,7 @@ pid yaw mode double
 pid yaw p -2.0
 pid yaw i 0.0
 pid yaw d 0.0
-pid syaw p -0.2
+pid syaw p -0.3
 pid syaw i 0.0
 pid syaw d 0.0
 pid climb p 3.0
@@ -18,8 +18,8 @@ pid climb d 0.001
 pid climbrate p 0.3
 pid climbrate i 0.0
 pid climbrate d 0.0001
-pid altitude p 0.4
-pid altitude i 0.0
+pid altitude p 0.3
+pid altitude i 0.0001
 pid altitude d 0.0
 compl 0.75
 lpf climb 0.25

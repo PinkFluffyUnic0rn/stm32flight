@@ -112,8 +112,7 @@ struct settings {
 				// and Z axes.
 
 	float gx0, gy0, gz0;	// gyroscope offset values for X, Y
-				// and Z axes. Currently unused: these
-				// values determined at power on
+				// and Z axes.
 
 	float roll0, pitch0, yaw0; // roll, pitch and yaw offset values
 
@@ -487,8 +486,6 @@ int readsettings(int slot)
 // alt -- initial quadcopter altitude. Usually 0.0.
 int initstabilize(float alt)
 {
-	float ax, ay, az;
-
 	// set initial altitude. Usually 0.0
 	alt0 = alt;
 
@@ -1316,8 +1313,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 	// set pitch/roll/yaw/thrus targets based on
 	// channels 1-4 values (it's joysticks on most remotes)
-	pitchtarget = -cd->chf[0] * (M_PI / 6.0);
-	rolltarget = -cd->chf[1] * (M_PI / 6.0);
+	pitchtarget = -cd->chf[0] * (M_PI / 4.0);
+	rolltarget = -cd->chf[1] * (M_PI / 4.0);
 
 	if (cd->chf[4] < 0.0) {
 		yawspeedpid = 0;
@@ -1400,14 +1397,6 @@ int main(void)
 	crsfdev_init();
 	w25dev_init();
 
-	// delay here is used as temporary fix. The problem is that
-	// because of layout mistake, barometer is placed on oposite
-	// side from ESP07 chip and gets heat from it. That heat skews
-	// altitude readings, so we wait 1 second before the barometer
-	// initilization to let it heat a little and use that 'skewed'
-	// temperature as reference point.
-	HAL_Delay(1000);
-	
 	hp_init();
 
 	// reading settings from memory slot 0
