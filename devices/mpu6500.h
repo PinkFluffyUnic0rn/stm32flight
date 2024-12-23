@@ -31,6 +31,7 @@ enum MPU_DLPF {
 
 enum MPU_DEVTYPE {
 	MPU_DEV6050 = 0x68,
+	MPU_DEV6050_1 = 0x98,
 	MPU_DEV6500 = 0x70
 };
 
@@ -42,8 +43,18 @@ struct mpu_data {
 	float gfx, gfy, gfz;
 };
 
+struct mpu_stdata {
+	float ax, ay, az;
+	float gx, gy, gz;
+};
+
 struct mpu_device {
 	I2C_HandleTypeDef *hi2c;
+	SPI_HandleTypeDef *hspi;
+
+	GPIO_TypeDef *gpio;
+	uint16_t pin;
+
 	int devtype;
 	enum MPU_ACCELSCALE accelscale;
 	enum MPU_GYROSCALE gyroscale;

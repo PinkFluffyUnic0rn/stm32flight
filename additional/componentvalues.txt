@@ -1,12 +1,13 @@
 main board:
-r1:	10 (9.03) kOhm
-r2:	5.1 (5.08) kOhm
 r3:	10 kOhm
-r4:	10 kOhm
-r5:	1 kOhm
-r6:	1 kOhm
-r7:	2 kOhm
-r8:	2 kOhm
+r4:	10 kOhm (closest to MCU)
+r4:	3.3 kOhm
+r5:	3.3 kOhm
+r6:	10.0 kOhm
+r7:	1 kOhm
+r8:	1 kOhm
+r9:	10 kOhm
+r10:	10 kOhm
 c1:	10 uF
 c2:	0.1 uF
 c3:	0.1 uF
@@ -16,6 +17,12 @@ c6:	0.1 uF
 c7:	0.1 uF
 c8:	18 pF
 c9:	18 pF
+
+c10:	0.1 uF
+c11:	0.1 uF
+c12:	0.01 uF
+c12:	0.1 uF
+
 led1:	orange led
 led2:	blue led
 u1:	AMS1117-3.3
@@ -23,12 +30,13 @@ u2:	STM32F303CBT6
 u3:	ESP07
 u4:	HP206C
 u5:	W25Q128FVSIG
+u6:	MPU6500
 
 dc-dc converter:
-l1:	10 uH
-r9:	10 kOhm
-r10:	3.3 kOhm
-c10:	0.1 uF
-c11:	10 uF
-c12:	100 uF
-u6:	tps5430
+l20:	10 uH
+r20:	10 kOhm
+r20:	3.3 kOhm
+c20:	0.1 uF
+c21:	10 uF
+c22:	100 uF
+u20:	tps5430

@@ -536,7 +536,7 @@ int stabilize(int ms)
 
 	// calcualte yaw value using last magnetometer reading, roll
 	// value and pitch value, offset it by a value from settings.
-	yaw = circf(qmc_heading(-pitch, -roll,
+	yaw = circf(qmc_heading(pitch, roll,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
 
 	if (st.speedpid) {
@@ -631,14 +631,14 @@ int stabilize(int ms)
 	// 3 pairs of motors: left and right for roll, top and bottom
 	// for pitch and two diagonals (spinning in oposite directions)
 	// for yaw.
-	setthrust(en * (thrustcor + 0.5 * rollcor
+	setthrust(en * (thrustcor - 0.5 * rollcor
 			+ 0.5 * pitchcor - 0.5 * yawcor),
 		en * (thrustcor - 0.5 * rollcor
-			+ 0.5 * pitchcor + 0.5 * yawcor),
-		en * (thrustcor - 0.5 * rollcor
+			- 0.5 * pitchcor + 0.5 * yawcor),
+		en * (thrustcor + 0.5 * rollcor
 			- 0.5 * pitchcor - 0.5 * yawcor),
 		en * (thrustcor + 0.5 * rollcor
-			- 0.5 * pitchcor + 0.5 * yawcor));
+			+ 0.5 * pitchcor + 0.5 * yawcor));
 		
 	// update loops counter
 	++loops;
@@ -823,8 +823,8 @@ int sprintqmc(char *s, struct qmc_data *hd)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"heading: %f\r\n", (double) qmc_heading(
-			-(dsp_getcompl(&pitchcompl) - st.pitch0),
-			-(dsp_getcompl(&rollcompl) - st.roll0),
+			(dsp_getcompl(&pitchcompl) - st.pitch0),
+			(dsp_getcompl(&rollcompl) - st.roll0),
 			hd->fx, hd->fy, hd->fz));
 
 	return 0;
@@ -1280,8 +1280,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 	// set pitch/roll targets based on
 	// channels 1-2 values (it's a joystick on most remotes)
-	pitchtarget = -cd->chf[0] * (M_PI / 4.0);
-	rolltarget = -cd->chf[1] * (M_PI / 4.0);
+	rolltarget = cd->chf[0] * (M_PI / 4.0);
+	pitchtarget = -cd->chf[1] * (M_PI / 4.0);
 
 	if (cd->chf[4] < 0.0) {
 		yawspeedpid = 0;
@@ -1475,15 +1475,23 @@ static void gpio_init(void)
 	__HAL_RCC_GPIOD_CLK_ENABLE();
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
+	__HAL_RCC_GPIOC_CLK_ENABLE();
 
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3 | GPIO_PIN_12 | GPIO_PIN_13,
 		GPIO_PIN_RESET);
 
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+	
 	GPIO_InitStruct.Pin = GPIO_PIN_3 | GPIO_PIN_12 | GPIO_PIN_13;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	GPIO_InitStruct.Pin = GPIO_PIN_13;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 }
 
 static void dma_init(void)
@@ -1749,7 +1757,10 @@ static void mpu_init()
 	struct mpu_device d;
 
 	d.hi2c = &hi2c1;
-	d.devtype = MPU_DEV6050;
+	d.hspi = &hspi1;
+	d.gpio = GPIOC;
+	d.pin = GPIO_PIN_13;
+	d.devtype = MPU_DEV6500;
 	d.accelscale = MPU_4G;
 	d.gyroscale = MPU_1000DPS;
 	d.dlpfwidth = MPU_10DLPF;
@@ -1758,6 +1769,9 @@ static void mpu_init()
 		uartprintf("MPU-6050 initilized\r\n");
 	else
 		uartprintf("failed to initilize MPU-6500\r\n");
+
+	dev[MPU_DEV].configure(dev[MPU_DEV].priv, "offset",
+		35, -30, 0, -8532, -5431, 8496);
 }
 
 // Init QMC5883L magnetometer
