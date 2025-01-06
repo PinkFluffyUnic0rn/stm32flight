@@ -363,15 +363,15 @@ float qmc_heading(float r, float p, float x, float y, float z)
 
 /* Set motors thrust
 
-      ltd    rtd
+      ltd    lbd
         \    /
-   x     \  /
+   ^     \  /
    |       
-   v     /  \
+   p     /  \
         /    \
-      lbd    rbd
+      rtd    rbd
         
-         y ->
+         <- r
 */
 // all values should be between 0.0 and 1.0.
 int setthrust(float ltd, float rtd, float rbd, float lbd)

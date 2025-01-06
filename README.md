@@ -21,7 +21,7 @@ Devices
  * Crystall oscillator: 16 Mhz
  * DC-DC converter for control board and camera: TPS5430
  * Control board voltage regulator: AMS1117-3.3
- * Accelerometer/Gyroscope: MPU6050
+ * Accelerometer/Gyroscope: MPU6500
  * Magnetometer: QMC5883L
  * Remote control: ERLS CRSF receiver
  * Telemetry/debug: ESP8266 (ESP-07)
@@ -88,15 +88,15 @@ offset, x/y/z scale or magnetic declination for magnetometer
 
 Quadcopter parameters
 ==========
- * Motors: 1204
+ * Motors: 1204, 5000 kV
  * Props: 3016
- * Battery: 11.1v (3s), 1100 mAh, 60c
+ * Battery: 15.4v (4s), 1100 mAh, 60c
  * Frame: plywood
 
 Quadcopter Weight
 ======
  * PCB and ESCs: ~57g
  * Motors + props: 27g
- * Battery: 67g
- * Frame + wires: ~59g
- * Total weight: 220g 
+ * Battery: 88g
+ * Frame + wires + antenna: ~105g
+ * Total weight: 277g 
