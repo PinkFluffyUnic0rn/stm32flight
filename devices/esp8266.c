@@ -163,9 +163,7 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 
 	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
-		"AT+UART_CUR=921600,8,1,0,0") != ESP_OK)
-		return (-1);
+	esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=921600,8,1,0,0");
 
 	HAL_UART_DeInit(dev->huart);
 	
@@ -176,9 +174,10 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 	
 	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 
+		
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
 		return (-1);
-
+	
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT") != ESP_OK)
 		return (-1);
 
@@ -192,16 +191,18 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, cmd) != ESP_OK)
 		return (-1);
-	
+		
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
 		"AT+CIPAP_CUR=\"192.168.3.1\",\"192.168.3.1\",\"255.255.255.0\"") != ESP_OK)
 		return (-1);
-	
+		
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
 		"AT+CWDHCPS_CUR=1,2880,\"192.168.3.2\",\"192.168.3.2\"") != ESP_OK)
 		return (-1);
 
 	dev->status = ESP_INIT;
+
+	esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CIPCLOSE");
 
 	sprintf(cmd, "AT+CIPSTART=\"UDP\",\"192.168.3.2\",%d,%d,0",
 		port, port);
