@@ -105,6 +105,12 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 			sendcmd(lsfd, rsi, "info qmc\n");
 		else if (event->key.keysym.sym == SDLK_b)
 			sendcmd(lsfd, rsi, "info hp\n");
+		else if (event->key.keysym.sym == SDLK_w)
+			sendcmd(lsfd, rsi, "log start\n");
+		else if (event->key.keysym.sym == SDLK_s)
+			sendcmd(lsfd, rsi, "log stop\n");
+		else if (event->key.keysym.sym == SDLK_g)
+			sendcmd(lsfd, rsi, "log get\n");
 		else if (event->key.keysym.sym == SDLK_SPACE)
 			sendcmd(lsfd, rsi, "c 0.0\n");
 	}
@@ -163,7 +169,7 @@ int main(int argc, char *argv[])
 		if ((rsz = recvfrom(lsfd, buf, BUFSZ, 0,
 			(struct sockaddr *) &rsi, &rsis)) > 0) {
 			buf[rsz] = '\0';
-			printf("%s\n", buf);
+			printf("%s", buf);
 		}
 
 		// process key presses

@@ -47,6 +47,7 @@
 #define HP_FREQ 25
 #define CRSF_FREQ 100
 #define QMC_FREQ 100
+#define LOG_FREQ 64
 
 // MCU flash address where quadcopter settings is stored
 #define USER_FLASH 0x0801f800
@@ -58,8 +59,10 @@
 #define LOG_MAXPACKS \
 	(W25_TOTALSIZE / sizeof(struct logpack))
 
-// telemetry packets for second
-#define LOG_PACKSPERSECOND 32
+// telemetry packets buffer size
+#define LOG_BUFSIZE (W25_PAGESIZE / sizeof(struct logpack))
+
+#define LOG_PACKSIZE 16
 
 // Timer events IDs
 #define TEV_PID 	0
@@ -67,7 +70,8 @@
 #define TEV_CALIB	2
 #define TEV_HP		3
 #define TEV_QMC		4
-#define TEV_COUNT	5
+#define TEV_LOG		5
+#define TEV_COUNT	6
 
 // Debug connection port
 #define SERVPORT 8880
@@ -149,17 +153,7 @@ struct settings {
 
 // telemetry packet stored in onboard flash
 struct logpack {
-	float roll,	pitch,	yaw;	// pitch/roll/yaw
-	float afx,	afy,	afz;	// accelerometer x/y/z readings
-	float gfx,	gfy,	gfz;	// gyroscope x/y/z readings
-	float qfx,	qfy,	qfz;	// magnetometer x/y/z readings
-
-	float rollcor[3];	// all roll PID correction values
-	float pitchcor[3];	// all pitch PID correction values
-	float yawcor[3];	// all roll PID correction values
-	float altcor[3];	// all roll PID correction values
-	
-	float dummy[8];	// dummy fields, to make packet 32 bytes long
+	float data[LOG_PACKSIZE];
 };
 
 // Periodic event's context that holds event's settings
@@ -262,7 +256,6 @@ int yawspeedpid = 0;
 int magcalibmode = 0; // 1 when magnetometer calibration mode
 		      // is enabled, 0 otherwise
 int logen = 0;
-int logpacks = 0;
 int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
 	      // is > 50)
 
@@ -286,7 +279,9 @@ int loopscount = 0;
 // second. If it falls to 0, quadcopter disarms.
 int elrstimeout = ELRS_TIMEOUT;
 
-struct logpack logbuf[sizeof(struct logpack) * LOG_PACKSPERSECOND];
+int logbufpos = 0;
+int logflashpos = 0;
+struct logpack logbuf[LOG_BUFSIZE];
 
 // Get value from ADC, was used to monitor battery voltage
 //
@@ -438,6 +433,13 @@ int readsettings(int slot)
 	return 0;
 }
 
+int logwrite(int pos, float val)
+{
+	logbuf[logbufpos].data[pos] = val;
+
+	return 0;
+}
+
 // Init stabilization loop.
 //
 // alt -- initial quadcopter altitude. Usually 0.0.
@@ -538,6 +540,10 @@ int stabilize(int ms)
 	// value and pitch value, offset it by a value from settings.
 	yaw = circf(qmc_heading(pitch, roll,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
+
+	logwrite(0, roll);
+	logwrite(1, pitch);
+	logwrite(2, yaw);
 
 	if (st.speedpid) {
 		// if in single PID loop mode for tilt
@@ -744,6 +750,23 @@ int qmcupdate(int ms)
 	return 0;
 }
 
+int logupdate(int ms)
+{
+	if (!logen)
+		return 0;
+
+	if (++logbufpos < LOG_BUFSIZE)
+		return 0;
+	
+	flashdev.write(flashdev.priv, logflashpos, logbuf,
+		LOG_BUFSIZE * sizeof(struct logpack));
+	
+	logflashpos += LOG_BUFSIZE * sizeof(struct logpack);
+	logbufpos = 0;
+
+	return 0;
+}
+
 // Parse configureation command got from debug wi-fi connection
 // by just splitting it into tokens by spaces
 //
@@ -936,6 +959,36 @@ int sprintpid(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%s altitude mode\r\n", mode);
+
+	return 0;
+}
+
+int printlog(char *buf)
+{
+	int fp;
+
+//	for (fp = 0; fp < LOG_MAXPACKS; fp += LOG_BUFSIZE) {
+	for (fp = 0; fp < LOG_FREQ * 5; fp += LOG_BUFSIZE) {
+		int bp;
+		
+		flashdev.read(flashdev.priv,
+			fp * sizeof(struct logpack), logbuf,
+			LOG_BUFSIZE * sizeof(struct logpack));
+
+		for (bp = 0; bp < LOG_BUFSIZE; ++bp) {
+			int i;
+
+			buf[0] = '\0';
+			for (i = 0; i < LOG_PACKSIZE; ++i) {
+				sprintf(buf + strlen(buf), "%0.5f ",
+					(double) logbuf[bp].data[i]);
+			}
+
+			sprintf(buf + strlen(buf), "\r\n");
+
+			esp_send(&espdev, buf);
+		}
+	}
 
 	return 0;
 }
@@ -1220,23 +1273,34 @@ int controlcmd(char *cmd)
 		
 			// notify user when erasing is started
 			sprintf(s, "erasing telemetry flash...\r\n");
+			esp_send(&espdev, s);
 
 			// erase telemetry flash no
 			// respond during this process
-			flashdev.eraseall(flashdev.priv);
+			//flashdev.eraseall(flashdev.priv);
+			flashdev.erasesector(flashdev.priv, 0);
 
 			// enable telemetry
 			logen = 1;
-			logpacks = 0;
+			logflashpos = 0;
+			logbufpos = 0;
 
 			// notify user when telemetry flash is erased
 			sprintf(s, "telemetry flash erased\r\n");
+			sprintf(s + strlen(s),
+				"telemetry writing started\r\n");
 			esp_send(&espdev, s);
 		}
 		if (strcmp(toks[1], "stop") == 0) {
 			logen = 0;
+
+			sprintf(s, "telemetry writing stopped\r\n");
+			esp_send(&espdev, s);
 		}
 		if (strcmp(toks[1], "get") == 0) {
+			logen = 0;
+			
+			printlog(s);
 		}
 	}
 	else
@@ -1378,6 +1442,7 @@ int main(void)
 	inittimev(evs + TEV_CALIB, CALIB_FREQ, magcalib);
 	inittimev(evs + TEV_HP, HP_FREQ, hpupdate);
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
+	inittimev(evs + TEV_LOG, LOG_FREQ, logupdate);
 
 	// initilize ERLS timer. For now ERLS polling is not a periodic
 	// event and called as frequently as possible, so it needs this
