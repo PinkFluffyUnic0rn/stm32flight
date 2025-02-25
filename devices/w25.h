@@ -8,7 +8,7 @@
 #define W25_BLOCKSIZE (4096 * 16)
 #define W25_TOTALSIZE (1024 * 1024 * 16)
 
-#define W25_MAXDEVS 4
+#define W25_MAXDEVS 1
 
 struct w25_device {
 	SPI_HandleTypeDef *hspi;

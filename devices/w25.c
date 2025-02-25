@@ -8,6 +8,8 @@
 static struct w25_device devs[W25_MAXDEVS];
 size_t devcount = 0;
 
+#define W25_WTIMEOUT 10
+
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
 static uint32_t w25_getid(struct w25_device *dev)
@@ -17,8 +19,8 @@ static uint32_t w25_getid(struct w25_device *dev)
 	sbuf[0] = 0x9f;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 5000);
-	HAL_SPI_Receive(dev->hspi, rbuf, 3, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 100);
+	HAL_SPI_Receive(dev->hspi, rbuf, 3, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	return ((rbuf[0] << 16) | (rbuf[1] << 8) | rbuf[2]);
@@ -35,7 +37,7 @@ static int w25_init(struct w25_device *dev)
 	sbuf[1] = 0x99;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 2, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 2, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	HAL_Delay(100);
@@ -55,7 +57,7 @@ static int w25_writeenable(struct w25_device *dev)
 	sbuf[0] = 0x06;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	return 0;
@@ -68,7 +70,7 @@ static int w25_writedisable(struct w25_device *dev)
 	sbuf[0] = 0x04;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	return 0;
@@ -77,16 +79,20 @@ static int w25_writedisable(struct w25_device *dev)
 static int w25_waitwrite(struct w25_device *dev)
 {
 	uint8_t sbuf[4], rbuf[4];
+	int retries;
 
 	sbuf[0] = 0x05;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
 
-	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 100);
 
+	retries = 0;
 	do {
-		HAL_SPI_Receive(dev->hspi, rbuf, 1, 5000);
-	} while ((rbuf[0] & 0x01) == 0x01);
+		HAL_Delay(1);
+		HAL_SPI_Receive(dev->hspi, rbuf, 1, 100);
+		++retries;
+	} while ((rbuf[0] & 0x01) == 0x01 && retries < W25_WTIMEOUT);
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
@@ -100,14 +106,14 @@ static int w25_blockprotect(struct w25_device *dev, uint8_t flags)
 	sbuf[0] = 0x50;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	sbuf[0] = 0x01;
 	sbuf[1] = (flags & 0x0f) << 2;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 2, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 2, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	return 0;
@@ -126,8 +132,8 @@ int w25_read(void *d, size_t addr, void *data, size_t sz)
 	sbuf[3] = addr & 0xff;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 5000);
-	HAL_SPI_Receive(dev->hspi, data, sz, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 100);
+	HAL_SPI_Receive(dev->hspi, data, sz, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	return 0;
@@ -151,8 +157,8 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 	sbuf[3] = addr & 0xff;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 5000);
-	HAL_SPI_Transmit(dev->hspi, (uint8_t  *) data, sz, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 100);
+	HAL_SPI_Transmit(dev->hspi, (uint8_t  *) data, sz, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	w25_waitwrite(dev);
@@ -176,7 +182,7 @@ int w25_eraseall(void *d)
 	sbuf[0] = 0xc7;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	w25_waitwrite(dev);
@@ -203,7 +209,7 @@ int w25_erasesector(void *d, size_t addr)
 	sbuf[3] = addr & 0xff;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 5000);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	w25_waitwrite(dev);

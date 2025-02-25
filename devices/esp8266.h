@@ -7,8 +7,9 @@
 enum ESP_DEVSTATUS {
 	ESP_CONNECTED	= 0,
 	ESP_INIT	= 1,
-	ESP_FAILED	= 2,
-	ESP_UNKNOWN	= 3
+	ESP_FIFOINIT	= 2,
+	ESP_FAILED	= 3,
+	ESP_NOINIT	= 4
 };
 
 struct esp_device {

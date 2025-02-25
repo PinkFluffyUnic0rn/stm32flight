@@ -94,6 +94,11 @@
 // s -- time in microseconds after last callback's call.
 #define updatetimev(ev, s) (ev)->ms += (s);
 
+// set value in current log frame
+// pos -- value's position inside the frame
+// val -- value itself
+#define logwrite(pos, val) logbuf[logbufpos].data[(pos)] = (val);
+
 enum ALTMODE {
 	ALTMODE_ACCEL	= 0,
 	ALTMODE_SPEED	= 1,
@@ -202,13 +207,10 @@ static void w25dev_init();
 // STM32 perithery contexts
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
-
 I2C_HandleTypeDef hi2c1;
 SPI_HandleTypeDef hspi1;
-
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
-
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
@@ -306,7 +308,8 @@ uint32_t getadcv(ADC_HandleTypeDef *hadc)
 // huart -- context for UART triggered that callback.
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
 {
-	esp_interrupt(&espdev, huart);
+	if (espdev.status != ESP_FAILED && espdev.status != ESP_NOINIT)
+		esp_interrupt(&espdev, huart);
 	
 	if (dev[CRSF_DEV].status == DEVSTATUS_INIT)
 		dev[CRSF_DEV].interrupt(dev[CRSF_DEV].priv, huart);
@@ -318,7 +321,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 // huart -- context for UART triggered that callback.
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-	esp_error(&espdev, huart);
+	if (espdev.status != ESP_FAILED && espdev.status != ESP_NOINIT)
+		esp_error(&espdev, huart);
 }
 
 // Initilize periodic event's context
@@ -433,13 +437,6 @@ int readsettings(int slot)
 	return 0;
 }
 
-int logwrite(int pos, float val)
-{
-	logbuf[logbufpos].data[pos] = val;
-
-	return 0;
-}
-
 // Init stabilization loop.
 //
 // alt -- initial quadcopter altitude. Usually 0.0.
@@ -507,6 +504,8 @@ int stabilize(int ms)
 	// get accelerometer and gyroscope readings
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 		sizeof(struct mpu_data));
+	
+//	uartprintf("%d %d %d\r\n", md.ax, md.ay, md.az);
 
 	md.afx -= st.ax0;
 	md.afy -= st.ay0;
@@ -540,10 +539,6 @@ int stabilize(int ms)
 	// value and pitch value, offset it by a value from settings.
 	yaw = circf(qmc_heading(pitch, roll,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
-
-	logwrite(0, roll);
-	logwrite(1, pitch);
-	logwrite(2, yaw);
 
 	if (st.speedpid) {
 		// if in single PID loop mode for tilt
@@ -645,7 +640,7 @@ int stabilize(int ms)
 			- 0.5 * pitchcor - 0.5 * yawcor),
 		en * (thrustcor + 0.5 * rollcor
 			+ 0.5 * pitchcor + 0.5 * yawcor));
-		
+
 	// update loops counter
 	++loops;
 
@@ -746,10 +741,13 @@ int qmcupdate(int ms)
 {
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
-
 	return 0;
 }
 
+// Update log frame. If buffer isn't full, just move buffer pointer,
+// otherwise save buffer content into flash and set buffer pointer to 0.
+//
+// ms -- microsecond passed from last callback invocation.
 int logupdate(int ms)
 {
 	if (!logen)
@@ -963,29 +961,36 @@ int sprintpid(char *s)
 	return 0;
 }
 
+// Print all log values into debug connection.
+//
+// s -- string user as buffer.
 int printlog(char *buf)
 {
 	int fp;
 
+	// run through all writable space in the flash
 //	for (fp = 0; fp < LOG_MAXPACKS; fp += LOG_BUFSIZE) {
 	for (fp = 0; fp < LOG_FREQ * 5; fp += LOG_BUFSIZE) {
 		int bp;
-		
+
+		// read batch of log frame into log buffer
 		flashdev.read(flashdev.priv,
 			fp * sizeof(struct logpack), logbuf,
 			LOG_BUFSIZE * sizeof(struct logpack));
 
+		// for every read frame
 		for (bp = 0; bp < LOG_BUFSIZE; ++bp) {
 			int i;
 
+			// put all frame's values into a string
 			buf[0] = '\0';
 			for (i = 0; i < LOG_PACKSIZE; ++i) {
 				sprintf(buf + strlen(buf), "%0.5f ",
 					(double) logbuf[bp].data[i]);
 			}
-
 			sprintf(buf + strlen(buf), "\r\n");
 
+			// send this string into debug connection
 			esp_send(&espdev, buf);
 		}
 	}
@@ -1286,9 +1291,9 @@ int controlcmd(char *cmd)
 			logbufpos = 0;
 
 			// notify user when telemetry flash is erased
-			sprintf(s, "telemetry flash erased\r\n");
-			sprintf(s + strlen(s),
-				"telemetry writing started\r\n");
+			sprintf(s, "%s\r\n%s\r\n",
+				"telemetry flash erased",
+				"telemetry writing started");
 			esp_send(&espdev, s);
 		}
 		if (strcmp(toks[1], "stop") == 0) {
@@ -1399,14 +1404,16 @@ int main(void)
 	// initilize stm32 clocks
 	systemclock_config();
 
-	// wait a little to let stm32 periphery and
-	// board's devices power on
-	HAL_Delay(1000);
-
 	// set initial status for all devices to prevent callback
 	// calls on corresponding events before inittialization
 	for (i = 0; i < DEV_COUNT; ++i)
 		dev[i].status = DEVSTATUS_NOINIT;
+
+	espdev.status = ESP_NOINIT;
+
+	// wait a little to let stm32 periphery and
+	// board's devices power on
+	HAL_Delay(1000);
 
 	// init stm32 periphery
 	gpio_init();
@@ -1419,6 +1426,8 @@ int main(void)
 	usart1_init();
 	usart2_init();
 	usart3_init();
+	
+	HAL_Delay(1000);
 
 	// init board's devices
 	esc_init();
@@ -1427,7 +1436,6 @@ int main(void)
 	espdev_init();
 	crsfdev_init();
 	w25dev_init();
-
 	hp_init();
 
 	// reading settings from memory slot 0
@@ -1550,12 +1558,13 @@ static void gpio_init(void)
 	GPIO_InitStruct.Pin = GPIO_PIN_3 | GPIO_PIN_12 | GPIO_PIN_13;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+//	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_13;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
 	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 }
 
@@ -1600,7 +1609,7 @@ static void spi1_init(void)
 	hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
 	hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
 	hspi1.Init.NSS = SPI_NSS_SOFT;
-	hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+	hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
 	hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
 	hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1821,7 +1830,6 @@ static void mpu_init()
 {
 	struct mpu_device d;
 
-	d.hi2c = &hi2c1;
 	d.hspi = &hspi1;
 	d.gpio = GPIOC;
 	d.pin = GPIO_PIN_13;
@@ -1835,8 +1843,8 @@ static void mpu_init()
 	else
 		uartprintf("failed to initilize MPU-6500\r\n");
 
-	dev[MPU_DEV].configure(dev[MPU_DEV].priv, "offset",
-		35, -30, 0, -8532, -5431, 8496);
+//	dev[MPU_DEV].configure(dev[MPU_DEV].priv, "offset",
+//		60, -20, 20, -6577, -5090, 8355);
 }
 
 // Init QMC5883L magnetometer

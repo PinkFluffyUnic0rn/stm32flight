@@ -63,9 +63,9 @@ int mpu_read(struct mpu_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	uint8_t waddr = addr | 0x80;
-	
+
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	
+
 	HAL_SPI_Transmit(dev->hspi, &waddr, 1, 5000);
 	HAL_SPI_Receive(dev->hspi, data, size, 5000);
 
@@ -106,9 +106,6 @@ int mpu_getdata(void *d, void *dt, size_t sz)
 
 	mpu_getintdata(dev, data);
 
-	data->ax += 7420;
-	data->ay += 1610;
-	
 	data->afx = (data->ax) / (float) accamp[dev->accelscale >> 3];
 	data->afy = (data->ay) / (float) accamp[dev->accelscale >> 3];
 	data->afz = (data->az) / (float) accamp[dev->accelscale >> 3];
@@ -320,20 +317,22 @@ int mpu_init(struct mpu_device *dev)
 	check = 0;	
 	mpu_read(dev, MPU_WHOAMI, &check, 1);
 
-	uartprintf("check: %x\r\n", check);
-	
 	if (check != dev->devtype)
 		return (-1);
 
-	mpu_write(dev, MPU_POWERMANAGEMENT, 0x1);
-	mpu_write(dev, MPU_ACCELCONF, dev->accelscale);
+	mpu_write(dev, MPU_POWERMANAGEMENT, 0x0);
+	mpu_write(dev, 104, 0x07);
 
-	if (dev->devtype == MPU_DEV6500)
+	if (dev->devtype == MPU_DEV6500) {
+		mpu_write(dev, MPU_USERCONTROL, 0x10);
 		mpu_write(dev, MPU_ACCELCONF2, dev->dlpfwidth);
+	}
 	else
 		mpu_write(dev, MPU_CONF, dev->dlpfwidth);
+	
+	mpu_write(dev, MPU_ACCELCONF, dev->accelscale);
 
-	mpu_write(dev, MPU_GYROCONF, dev->gyroscale);
+	mpu_write(dev, MPU_GYROCONF, dev->gyroscale);	
 
 	return 0;
 }

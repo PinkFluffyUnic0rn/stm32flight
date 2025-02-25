@@ -7,7 +7,6 @@
 #include "uartdebug.h"
 #include "esp8266.h"
 
-#define ESP_RESPONSECOUNT 4
 #define ESP_UARTTIMEOUT 100
 #define ESP_TIMEOUT 1000
 #define ESP_JOINTIMEOUT 30000
@@ -17,7 +16,8 @@ enum ESP_RESPONSE {
 	ESP_OK = 0,
 	ESP_FAIL = 1,
 	ESP_ERROR = 2,
-	ESP_ALREADYCONNECTED = 3
+	ESP_ALREADYCONNECTED = 3,
+	ESP_UNKNOWN = 4,
 };
 
 struct fifo {
@@ -27,8 +27,8 @@ struct fifo {
 };
 
 static uint8_t Rxbyte;
-static volatile uint8_t Rxdata[ESP_CMDSIZE];
-static volatile size_t Rxoffset = 0;
+static uint8_t Rxdata[ESP_CMDSIZE];
+static size_t Rxoffset = 0;
 
 static volatile struct fifo fifo;
 
@@ -66,7 +66,7 @@ int esp_dequeque(volatile struct fifo *f, char *out)
 {
 	if (f->bot == f->top)
 		return (-1);
-
+	
 	memcpyv(out, f->cmd[f->bot], ESP_CMDSIZE);
 
 	f->bot = (f->bot + 1) % ESP_FIFOSIZE;
@@ -160,20 +160,27 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 	char cmd[ESP_CMDSIZE];
 	
 	esp_initfifo(&fifo);
+	
+	dev->status = ESP_FIFOINIT;
 
 	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 
 	esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=921600,8,1,0,0");
 
+	dev->status = ESP_NOINIT;
+
 	HAL_UART_DeInit(dev->huart);
-	
+
 	dev->huart->Init.BaudRate = 921600;
+	
+	esp_initfifo(&fifo);
+	
+	dev->status = ESP_FIFOINIT;
 
 	if (HAL_UART_Init(dev->huart) != HAL_OK)
 		return (-1);	
-	
-	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 
+	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 		
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
 		return (-1);
@@ -248,7 +255,7 @@ int esp_interrupt(struct esp_device *dev, const void *h)
 {
 	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
 		return 0;
-
+	
 	Rxdata[Rxoffset] = Rxbyte;
 
 	if (Rxdata[Rxoffset] == '\n') {
