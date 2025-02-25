@@ -1,0 +1,44 @@
+pid tilt mode double
+pid tilt p 7.0
+pid tilt i 0.0001
+pid tilt d 0.0003
+pid stilt p 0.05
+pid stilt i 0.0
+pid stilt d 0.0
+pid yaw mode double
+pid yaw p -2.0
+pid yaw i 0.0
+pid yaw d 0.0
+pid syaw p -0.3
+pid syaw i 0.0
+pid syaw d 0.0
+pid climb p 3.0
+pid climb i 0.0005
+pid climb d 0.001
+pid climbrate p 0.3
+pid climbrate i 0.0
+pid climbrate d 0.0001
+pid altitude p 0.3
+pid altitude i 0.0001
+pid altitude d 0.0
+compl 0.75
+lpf climb 0.25
+lpf climbrate 3.0
+lpf altitude 0.5
+adj roll 0.0
+adj pitch 0.0
+adj yaw 0.0 
+adj acc x 0.0
+adj acc y 0.0
+adj acc z 0.0
+adj mag x0 0.0
+adj mag y0 0.0
+adj mag z0 0.0
+adj mag xscale 0.0
+adj mag yscale 0.0
+adj mag zscale 0.0
+adj mag decl 0.3264
+adj gyro x 0.0
+adj gyro y 0.0
+adj gyro z 0.0
+flash write

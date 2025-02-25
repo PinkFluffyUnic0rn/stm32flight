@@ -33,6 +33,7 @@ struct bdevice {
 
 	int (*eraseall)(void *dev);
 	int (*erasesector)(void *dev, size_t addr);
+	int (*eraseblock)(void *dev, size_t addr);
 	int (*writesector)(void *dev, size_t addr, const void *data,
 		size_t sz);
 	int status;

@@ -209,7 +209,34 @@ int w25_erasesector(void *d, size_t addr)
 	sbuf[3] = addr & 0xff;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 100);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 1000);
+	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
+
+	w25_waitwrite(dev);
+	w25_writedisable(dev);
+	w25_blockprotect(dev, 0x0f);
+
+	return 0;
+}
+
+int w25_eraseblock(void *d, size_t addr)
+{
+	struct w25_device *dev;
+	uint8_t sbuf[4];
+	
+	dev = (struct w25_device *) d;
+
+	w25_waitwrite(dev);
+	w25_blockprotect(dev, 0x00);
+	w25_writeenable(dev);
+
+	sbuf[0] = 0xd8;
+	sbuf[1] = (addr >> 16) & 0xff;
+	sbuf[2] = (addr >> 8) & 0xff;
+	sbuf[3] = addr & 0xff;
+
+	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
+	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 1000);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
 	w25_waitwrite(dev);
@@ -253,6 +280,7 @@ int w25_initdevice(void *is, struct bdevice *dev)
 	dev->ioctl = w25_ioctl;
 	dev->eraseall = w25_eraseall;
 	dev->erasesector = w25_erasesector;
+	dev->eraseblock = w25_eraseblock;
 	dev->writesector = w25_writesector;
 
 	dev->writesize = W25_PAGESIZE;

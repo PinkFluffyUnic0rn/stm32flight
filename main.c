@@ -257,7 +257,6 @@ int yawspeedpid = 0;
 
 int magcalibmode = 0; // 1 when magnetometer calibration mode
 		      // is enabled, 0 otherwise
-int logen = 0;
 int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
 	      // is > 50)
 
@@ -281,8 +280,10 @@ int loopscount = 0;
 // second. If it falls to 0, quadcopter disarms.
 int elrstimeout = ELRS_TIMEOUT;
 
+int logtotal = 0;
 int logbufpos = 0;
 int logflashpos = 0;
+size_t logsize = 0;
 struct logpack logbuf[LOG_BUFSIZE];
 
 // Get value from ADC, was used to monitor battery voltage
@@ -504,6 +505,13 @@ int stabilize(int ms)
 	// get accelerometer and gyroscope readings
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 		sizeof(struct mpu_data));
+
+	logwrite(0, md.afx);
+	logwrite(1, md.afy);
+	logwrite(2, md.afz);
+	logwrite(3, md.gfx);
+	logwrite(4, md.gfy);
+	logwrite(5, md.gfz);
 
 	md.afx -= st.ax0;
 	md.afy -= st.ay0;
@@ -748,11 +756,13 @@ int qmcupdate(int ms)
 // ms -- microsecond passed from last callback invocation.
 int logupdate(int ms)
 {
-	if (!logen)
+	if (logtotal >= logsize)
 		return 0;
 
 	if (++logbufpos < LOG_BUFSIZE)
 		return 0;
+
+	logtotal += sizeof(struct logpack);
 
 	flashdev.write(flashdev.priv, logflashpos, logbuf,
 		LOG_BUFSIZE * sizeof(struct logpack));
@@ -959,19 +969,53 @@ int sprintpid(char *s)
 	return 0;
 }
 
+int eraseflash(size_t size)
+{
+	size_t pos;
+	char s[255];
+
+	if (size == W25_TOTALSIZE) {
+		flashdev.eraseall(flashdev.priv);
+		return 0;
+	}
+
+	for (pos = 0; pos < size; ) {
+		if ((size - pos) >= W25_BLOCKSIZE) {
+			flashdev.eraseblock(flashdev.priv, pos);
+			pos += W25_BLOCKSIZE;
+
+			sprintf(s, "erased block at %u\r\n", pos);
+			esp_send(&espdev, s);
+		}
+		else {
+			flashdev.erasesector(flashdev.priv, pos);
+			pos += W25_SECTORSIZE;
+
+			sprintf(s, "erased sector at %u\r\n", pos);
+			esp_send(&espdev, s);
+		}
+	}
+
+	return 0;
+}
+
 // Print all log values into debug connection.
 //
 // s -- string user as buffer.
-int printlog(char *buf)
+int printlog(char *buf, size_t size)
 {
 	int fp;
+	int frames;
+
+	size = (size > W25_TOTALSIZE) ? W25_TOTALSIZE : size;
+
+	frames = size / sizeof(struct logpack);
 
 	// run through all writable space in the flash
-//	for (fp = 0; fp < LOG_MAXPACKS; fp += LOG_BUFSIZE) {
-	for (fp = 0; fp < LOG_FREQ * 5; fp += LOG_BUFSIZE) {
+	for (fp = 0; fp < frames; fp += LOG_BUFSIZE) {
 		int bp;
 
-		// read batch of log frame into log buffer
+		// read batch of log frames into log buffer
 		flashdev.read(flashdev.priv,
 			fp * sizeof(struct logpack), logbuf,
 			LOG_BUFSIZE * sizeof(struct logpack));
@@ -992,6 +1036,10 @@ int printlog(char *buf)
 			esp_send(&espdev, buf);
 		}
 	}
+			
+	
+	sprintf(buf, "log finished, %u frames written\r\n", frames);
+	esp_send(&espdev, buf);
 
 	return 0;
 }
@@ -1268,43 +1316,41 @@ int controlcmd(char *cmd)
 			goto unknown;
 	}
 	else if (strcmp(toks[0], "log") == 0) {
-		if (strcmp(toks[1], "start") == 0) {
+		if (strcmp(toks[1], "set") == 0) {
 			// flash erasing process takes time and blocks
 			// other actions, so disarm for safety
 			en = 0.0;
 			setthrust(0.0, 0.0, 0.0, 0.0);
 
 			// notify user when erasing is started
-			sprintf(s, "erasing telemetry flash...\r\n");
+			sprintf(s, "erasing flash...\r\n");
 			esp_send(&espdev, s);
+
+			// set log size (0 is valid and
+			// means to disable logging)
+			if (atoi(toks[2]) > W25_TOTALSIZE)
+				goto unknown;
+
+			logsize = atoi(toks[2]);
 
 			// erase telemetry flash no
 			// respond during this process
-			//flashdev.eraseall(flashdev.priv);
-			flashdev.erasesector(flashdev.priv, 0);
-
-			// enable telemetry
-			logen = 1;
-			logflashpos = 0;
-			logbufpos = 0;
+			eraseflash(logsize);
 
 			// notify user when telemetry flash is erased
-			sprintf(s, "%s\r\n%s\r\n",
-				"telemetry flash erased",
-				"telemetry writing started");
+			sprintf(s,"erased %u bytes of flash\r\n",
+				logsize);
 			esp_send(&espdev, s);
-		}
-		if (strcmp(toks[1], "stop") == 0) {
-			logen = 0;
 
-			sprintf(s, "telemetry writing stopped\r\n");
-			esp_send(&espdev, s);
+			// enable telemetry
+			logtotal = 0;
+			logflashpos = 0;
+			logbufpos = 0;
 		}
-		if (strcmp(toks[1], "get") == 0) {
-			logen = 0;
-
-			printlog(s);
-		}
+		else if (strcmp(toks[1], "get") == 0)
+			printlog(s, atoi(toks[2]));
+		else
+			goto unknown;
 	}
 	else
 		goto unknown;
@@ -1424,8 +1470,6 @@ int main(void)
 	usart1_init();
 	usart2_init();
 	usart3_init();
-
-	HAL_Delay(1000);
 
 	// init board's devices
 	esc_init();

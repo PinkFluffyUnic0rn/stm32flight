@@ -7,7 +7,7 @@ r6:	10.0 kOhm
 r7:	1 kOhm
 r8:	1 kOhm
 r9:	10 kOhm
-r10:	10 kOhm
+r10:	none
 c1:	10 uF
 c2:	0.1 uF
 c3:	0.1 uF
