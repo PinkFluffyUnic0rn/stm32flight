@@ -26,6 +26,7 @@ enum MPU_REGISTER {
 	Z_OFFS_USR_H		= 23,
 	Z_OFFS_USR_L		= 24,
 
+	MPU_PATH_SIGNAL_RESET	= 104,
 	MPU_XA_OFFSET_H		= 119,
 	MPU_XA_OFFSET_L		= 120,
 	MPU_YA_OFFSET_H		= 122,
@@ -51,8 +52,8 @@ int mpu_write(struct mpu_device *dev, uint8_t addr, uint8_t val)
 	sbuf[1] = val;
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	
-	HAL_SPI_Transmit(dev->hspi, sbuf, 2, 5000);
+
+	HAL_SPI_Transmit(dev->hspi, sbuf, 2, 100);
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
@@ -66,8 +67,8 @@ int mpu_read(struct mpu_device *dev, uint8_t addr,
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
 
-	HAL_SPI_Transmit(dev->hspi, &waddr, 1, 5000);
-	HAL_SPI_Receive(dev->hspi, data, size, 5000);
+	HAL_SPI_Transmit(dev->hspi, &waddr, 1, 100);
+	HAL_SPI_Receive(dev->hspi, data, size, 100);
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
@@ -276,14 +277,14 @@ int mpu_configure(void *d, const char *cmd, ...)
 	va_list args;
 
 	dev = (struct mpu_device *) d;
-		
+
 	va_start(args, cmd);
 
 
 	if (strcmp(cmd, "self-test") == 0) {
 		struct mpu_stdata *data;
 		size_t sz;
-	
+
 		data = va_arg(args, struct mpu_stdata *);
 		sz = va_arg(args, size_t);
 
@@ -304,7 +305,7 @@ int mpu_configure(void *d, const char *cmd, ...)
 		mpu_acceloffset(dev, va_arg(args, int), MPU_Y);
 		mpu_acceloffset(dev, va_arg(args, int), MPU_Z);
 	}
-		
+
 	va_end(args);
 
 	return 0;
@@ -321,7 +322,7 @@ int mpu_init(struct mpu_device *dev)
 		return (-1);
 
 	mpu_write(dev, MPU_POWERMANAGEMENT, 0x0);
-	mpu_write(dev, 104, 0x07);
+	mpu_write(dev, MPU_PATH_SIGNAL_RESET, 0x07);
 
 	if (dev->devtype == MPU_DEV6500) {
 		mpu_write(dev, MPU_USERCONTROL, 0x10);
@@ -329,7 +330,7 @@ int mpu_init(struct mpu_device *dev)
 	}
 	else
 		mpu_write(dev, MPU_CONF, dev->dlpfwidth);
-	
+
 	mpu_write(dev, MPU_ACCELCONF, dev->accelscale);
 
 	mpu_write(dev, MPU_GYROCONF, dev->gyroscale);	
@@ -342,7 +343,7 @@ int mpu_initdevice(void *is, struct cdevice *dev)
 	int r;
 
 	memmove(mpu_devs + mpu_devcount, is, sizeof(struct mpu_device));
-	
+
 	sprintf(dev->name, "%s%d", "mpu6500", mpu_devcount);
 
 	dev->priv = mpu_devs + mpu_devcount;

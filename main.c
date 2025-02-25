@@ -114,7 +114,7 @@ struct settings {
 	float mxsc, mysc, mzsc;	// megnetormeter scaling values for Z,
 				// Y and Z axes determinted by 
 				// calibration procedure
-	
+
 	float magdecl;	// magnetic declination
 
 	float ax0, ay0, az0;	// accelometer offset values for X, Y
@@ -142,15 +142,15 @@ struct settings {
 
 	float p, i, d;	// P/I/D values for roll/pitch (used only in
 			// double roll/pitch PID loop mode)
-	
+
 	float sp, si, sd;	// P/I/D values for roll/pitch
 				// rotation speed
-	
+
 	float yp, yi, yd; // P/I/D values for yaw (used only in double
 			  // yaw PID loop mode)
 
 	float ysp, ysi, ysd;	// P/I/D values for yaw rotation speed
-	
+
 	float zsp, zsi,	zsd; // P/I/D values for vertical acceleration
 	float cp, ci, cd; // P/I/D values for climbrate
 	float ap, ai, ad; // P/I/D values for altitude
@@ -310,7 +310,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (espdev.status != ESP_FAILED && espdev.status != ESP_NOINIT)
 		esp_interrupt(&espdev, huart);
-	
+
 	if (dev[CRSF_DEV].status == DEVSTATUS_INIT)
 		dev[CRSF_DEV].interrupt(dev[CRSF_DEV].priv, huart);
 }
@@ -465,10 +465,10 @@ int initstabilize(float alt)
 
 	// init vertical acceleration PID controller's context
 	dsp_initpidval(&tpv, st.zsp, st.zsi, st.zsd, 0.0);
-	
+
 	// init climbrate PID controller's context
 	dsp_initpidval(&cpv, st.cp, st.ci, st.cd, 0.0);
-	
+
 	// init altitude PID controller's context
 	dsp_initpidval(&apv, st.ap, st.ai, st.ad, 0.0);
 
@@ -490,7 +490,7 @@ int stabilize(int ms)
 	float rollcor, pitchcor, yawcor, thrustcor;
 	float gy, gx, gz;
 	float dt;
-		
+
 	// get time passed from last invocation of this calback function
 	dt = ms / (float) TICKSPERSEC;
 
@@ -504,8 +504,6 @@ int stabilize(int ms)
 	// get accelerometer and gyroscope readings
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 		sizeof(struct mpu_data));
-	
-//	uartprintf("%d %d %d\r\n", md.ax, md.ay, md.az);
 
 	md.afx -= st.ax0;
 	md.afy -= st.ay0;
@@ -663,7 +661,7 @@ int checkconnection(int ms)
 		setthrust(0.0, 0.0, 0.0, 0.0);
 		en = 0.0;
 	}
-	
+
 	// since it runs every 1 second update loop counter here too
 	loopscount = loops;
 	loops = 0;
@@ -711,9 +709,9 @@ int hpupdate(int ms)
 	float dt;
 
 	dt = ms / (float) TICKSPERSEC;
-	
+
 	dt = (dt < 0.000001) ? 0.000001 : dt;
-	
+
 	if (dev[HP_DEV].status != DEVSTATUS_INIT) 
 		return 0;
 
@@ -755,10 +753,10 @@ int logupdate(int ms)
 
 	if (++logbufpos < LOG_BUFSIZE)
 		return 0;
-	
+
 	flashdev.write(flashdev.priv, logflashpos, logbuf,
 		LOG_BUFSIZE * sizeof(struct logpack));
-	
+
 	logflashpos += LOG_BUFSIZE * sizeof(struct logpack);
 	logbufpos = 0;
 
@@ -895,12 +893,12 @@ int sprintvalues(char *s)
 		"tc: %.6f\r\n", (double) st.tcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel tc: %.6f\r\n", (double) st.ttcoef);
-	
+
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"climb rate tc: %.6f\r\n", (double) st.climbcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"altitude tc: %.6f\r\n", (double) st.atcoef);
-	
+
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"loops count: %d\r\n", loopscount);
 
@@ -948,7 +946,7 @@ int sprintpid(char *s)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%s yaw mode\r\n",
 		yawspeedpid ? "single" : "dual");
-	
+
 	const char *mode;
 
 	if (altmode == ALTMODE_ACCEL)		mode = "single";
@@ -1038,16 +1036,16 @@ int controlcmd(char *cmd)
 
 			dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
 				sizeof(struct qmc_data));
-		
+
 			sprintqmc(s, &hd);	
-		
+
 			esp_send(&espdev, s);
 		}
 		else if (strcmp(toks[1], "hp") == 0) {
 			float alt;
 
 			alt = dsp_getlpf(&altlpf) - alt0;
-			
+
 			snprintf(s, INFOLEN,
 				"temp: %f; alt: %f; climb rate: %f\r\n",
 				(double) temp, (double) alt,
@@ -1090,9 +1088,9 @@ int controlcmd(char *cmd)
 	}
 	else if (strcmp(toks[0], "pid") == 0) {
 		float v;
-	
+
 		v = atof(toks[3]);
-		
+
 		if (strcmp(toks[1], "tilt") == 0) {
 			if (strcmp(toks[2], "mode") == 0) {
 				if (strcmp(toks[3], "double") == 0)
@@ -1110,7 +1108,7 @@ int controlcmd(char *cmd)
 				st.d = v;
 			else
 				goto unknown;
-	
+
 			dsp_setpid(&pitchpv, st.p, st.i, st.d);
 			dsp_setpid(&rollpv, st.p, st.i, st.d);
 		}
@@ -1144,7 +1142,7 @@ int controlcmd(char *cmd)
 				st.yd = v;
 			else
 				goto unknown;
-		
+
 			dsp_setpid(&yawpv, st.yp, st.yi, st.yd);
 		}
 		else if (strcmp(toks[1], "syaw") == 0) {
@@ -1156,7 +1154,7 @@ int controlcmd(char *cmd)
 				st.ysd = v;
 			else
 				goto unknown;
-		
+
 			dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd);
 		}
 		else if (strcmp(toks[1], "climb") == 0) {
@@ -1200,25 +1198,25 @@ int controlcmd(char *cmd)
 	}
 	else if (strcmp(toks[0], "compl") == 0) {
 		st.tcoef = atof(toks[1]);
-		
+
 		dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
 		dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);	
 	}
 	else if (strcmp(toks[0], "lpf") == 0) {
 		if (strcmp(toks[1], "climb") == 0) {
 			st.ttcoef = atof(toks[2]);
-			
+
 			dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 		}
 		else if (strcmp(toks[1], "climbrate") == 0) {
 			st.climbcoef = atof(toks[2]);
-			
+
 			dsp_initcompl(&climbratecompl,
 				st.climbcoef, HP_FREQ);
 		}
 		else if (strcmp(toks[1], "altitude") == 0) {
 			st.atcoef = atof(toks[2]);
-				
+
 			dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
 		}
 		else
@@ -1226,9 +1224,9 @@ int controlcmd(char *cmd)
 	}
 	else if (strcmp(toks[0], "adj") == 0) {
 		float v;
-	
+
 		v = atof(toks[2]);
-		
+
 		if (strcmp(toks[1], "roll") == 0)	st.roll0 = v;
 		else if (strcmp(toks[1], "pitch") == 0)	st.pitch0 = v;
 		else if (strcmp(toks[1], "yaw") == 0)	st.yaw0 = v;
@@ -1275,7 +1273,7 @@ int controlcmd(char *cmd)
 			// other actions, so disarm for safety
 			en = 0.0;
 			setthrust(0.0, 0.0, 0.0, 0.0);
-		
+
 			// notify user when erasing is started
 			sprintf(s, "erasing telemetry flash...\r\n");
 			esp_send(&espdev, s);
@@ -1304,7 +1302,7 @@ int controlcmd(char *cmd)
 		}
 		if (strcmp(toks[1], "get") == 0) {
 			logen = 0;
-			
+
 			printlog(s);
 		}
 	}
@@ -1327,7 +1325,7 @@ unknown:
 int crsfcmd(const struct crsf_data *cd, int ms)
 {
 	float dt;
-	
+
 	// channel to on remote is used to turn on/off
 	// erls control. If this channel has low state, all remote
 	// commands will be ignored, but packet still continue to
@@ -1340,7 +1338,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	if (!elrs) {
 		en = 0.0;
 		setthrust(0.0, 0.0, 0.0, 0.0);
-		
+
 		return 0;
 	}
 
@@ -1378,7 +1376,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// for testing), set reference altitude from current altitude
 	if (cd->chf[8] > 0.0) {
 		dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
-	
+
 		alt0 = dsp_getlpf(&altlpf);
 	}
 
@@ -1426,7 +1424,7 @@ int main(void)
 	usart1_init();
 	usart2_init();
 	usart3_init();
-	
+
 	HAL_Delay(1000);
 
 	// init board's devices
@@ -1515,7 +1513,7 @@ void systemclock_config(void)
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
 	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL3;
-	
+
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
 		error_handler();
 
@@ -1528,7 +1526,7 @@ void systemclock_config(void)
 
 	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
 		error_handler();
-	
+
 	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2
 			      |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_TIM1
 			      |RCC_PERIPHCLK_ADC12;
@@ -1554,11 +1552,10 @@ static void gpio_init(void)
 		GPIO_PIN_RESET);
 
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-	
+
 	GPIO_InitStruct.Pin = GPIO_PIN_3 | GPIO_PIN_12 | GPIO_PIN_13;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-//	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_13;
@@ -1609,14 +1606,14 @@ static void spi1_init(void)
 	hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
 	hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
 	hspi1.Init.NSS = SPI_NSS_SOFT;
-	hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+	hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
 	hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
 	hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
 	hspi1.Init.CRCPolynomial = 10;
 	hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
 	hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-	
+
 	if (HAL_SPI_Init(&hspi1) != HAL_OK)
 		error_handler();
 }
@@ -1680,7 +1677,7 @@ static void tim1_init(void)
 		error_handler();
 
 	HAL_TIM_MspPostInit(&htim1);
-	
+
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
@@ -1712,7 +1709,7 @@ static void tim2_init(void)
 
 	if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
 		error_handler();
-	
+
 	HAL_TIM_Base_Start_IT(&htim2);
 }
 
@@ -1781,7 +1778,7 @@ static void usart2_init()
 	huart2.Init.OverSampling = UART_OVERSAMPLING_16;
 	huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
 	huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-	
+
 	if (HAL_UART_Init(&huart2) != HAL_OK)
 		error_handler();
 }
@@ -1798,7 +1795,7 @@ static void usart3_init()
 	huart3.Init.OverSampling = UART_OVERSAMPLING_16;
 	huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
 	huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-	
+
 	if (HAL_UART_Init(&huart3) != HAL_OK)
 		error_handler();
 }
@@ -1842,9 +1839,6 @@ static void mpu_init()
 		uartprintf("MPU-6050 initilized\r\n");
 	else
 		uartprintf("failed to initilize MPU-6500\r\n");
-
-//	dev[MPU_DEV].configure(dev[MPU_DEV].priv, "offset",
-//		60, -20, 20, -6577, -5090, 8355);
 }
 
 // Init QMC5883L magnetometer
