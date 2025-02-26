@@ -546,6 +546,10 @@ int stabilize(int ms)
 	yaw = circf(qmc_heading(pitch, roll,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
 
+	logwrite(6, qmc_heading(pitch, roll,
+		qmcdata.fx, qmcdata.fy, qmcdata.fz));
+	logwrite(7, yaw);
+
 	if (st.speedpid) {
 		// if in single PID loop mode for tilt
 		// (called accro mode), use only rotation speed values
@@ -747,6 +751,11 @@ int qmcupdate(int ms)
 {
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
+
+	logwrite(8, qmcdata.fx);
+	logwrite(9, qmcdata.fy);
+	logwrite(10, qmcdata.fz);
+
 	return 0;
 }
 
