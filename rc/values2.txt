@@ -31,14 +31,14 @@ adj yaw 0.0
 adj acc x 0.0
 adj acc y 0.0
 adj acc z 0.0
-adj mag x0 0.0
-adj mag y0 0.0
-adj mag z0 0.0
-adj mag xscale 0.0
-adj mag yscale 0.0
-adj mag zscale 0.0
+adj mag x0 540.0
+adj mag y0 80.0
+adj mag z0 -35.0
+adj mag xscale 1.0
+adj mag yscale 0.9732
+adj mag zscale 0.9933
 adj mag decl 0.3264
-adj gyro x 0.0
-adj gyro y 0.0
-adj gyro z 0.0
+adj gyro x -1.486150
+adj gyro y 0.500969
+adj gyro z -0.767898
 flash write

@@ -522,8 +522,8 @@ int stabilize(int ms)
 
 	// offset gyroscope readings by values, calculater
 	// at power on and convert result into radians
-	gy = deg2rad((md.gfy - st.gy0));
 	gx = deg2rad((md.gfx - st.gx0));
+	gy = deg2rad((md.gfy - st.gy0));
 	gz = deg2rad((md.gfz - st.gz0));
 
 	// update complimenraty filter for roll axis and get next roll
@@ -810,6 +810,17 @@ int sprintpos(char *s, struct mpu_data *md, struct qmc_data *hd)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "gyro: ",
 		(double) md->gfx, (double) md->gfy, (double) md->gfz);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		"accel corrected: ", (double) (md->afx - st.ax0),
+		(double) (md->afy - st.ay0),
+		(double) (md->afz - st.az0));
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		"gyro corrected: ", (double) (md->gfx - st.gx0),
+		(double) (md->gfy - st.gy0),
+		(double) (md->gfz - st.gz0));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
