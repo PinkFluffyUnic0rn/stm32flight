@@ -82,12 +82,7 @@
 
 // check if enough time passed to call periodic event again.
 // ev -- periodic event's context.
-#define checktimev(ev) ((ev)->ms > TICKSPERSEC / (ev)->freq)
-
-// reset periodic event's counter. Used after every
-// event's callback call.
-// ev -- periodic event's context.
-#define resettimev(ev) (ev)->ms = 0;
+#define checktimev(ev) ((ev)->ms > (TICKSPERSEC / (ev)->freq - (ev)->rem))
 
 // update periodic event's counter.
 // ev -- periodic event's context.
@@ -166,6 +161,7 @@ struct logpack {
 struct timev {
 	int ms;			// microseconds passed from
 				// last triggering
+	int rem;
 	int freq;		// event frequency
 	int (*cb)(int);		// event callback
 };
@@ -334,8 +330,20 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 int inittimev(struct timev *ev, int freq, int (*cb)(int))
 {
 	ev->ms = 0;
+	ev->rem = 0;
 	ev->freq = freq;
 	ev->cb = cb;
+
+	return 0;
+}
+
+// reset periodic event's counter. Used after every
+// event's callback call.
+// ev -- periodic event's context.
+int resettimev(struct timev *ev)
+{
+	ev->rem = ev->ms - TICKSPERSEC / (ev)->freq;
+	ev->ms = 0;
 
 	return 0;
 }
