@@ -342,7 +342,7 @@ int inittimev(struct timev *ev, int freq, int (*cb)(int))
 // ev -- periodic event's context.
 int resettimev(struct timev *ev)
 {
-	ev->rem = ev->ms - TICKSPERSEC / (ev)->freq;
+	ev->rem += ev->ms - TICKSPERSEC / (ev)->freq;
 	ev->ms = 0;
 
 	return 0;
