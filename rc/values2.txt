@@ -27,7 +27,7 @@ lpf climbrate 3.0
 lpf altitude 0.5
 adj roll 0.0
 adj pitch 0.0
-adj yaw 0.0 
+adj yaw 1.57 
 adj acc x 0.0
 adj acc y 0.0
 adj acc z 0.0

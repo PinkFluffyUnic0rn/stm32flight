@@ -62,7 +62,23 @@
 // telemetry packets buffer size
 #define LOG_BUFSIZE (W25_PAGESIZE / sizeof(struct logpack))
 
-#define LOG_PACKSIZE 16
+#define LOG_PACKSIZE	16
+#define LOG_ACC_X	0
+#define LOG_ACC_Y	1
+#define LOG_ACC_Z	2
+#define LOG_GYRO_X	3
+#define LOG_GYRO_Y	4
+#define LOG_GYRO_Z	5
+#define LOG_MAG_X	6
+#define LOG_MAG_Y	7
+#define LOG_MAG_Z	8
+#define LOG_BAR_TEMP	9
+#define LOG_BAR_ALT	10
+#define LOG_ROLL	11
+#define LOG_PITCH	12
+#define LOG_YAW		13
+#define LOG_CLIMBRATE	14
+#define LOG_ALT		15
 
 // Timer events IDs
 #define TEV_PID 	0
@@ -276,6 +292,7 @@ int loopscount = 0;
 // second. If it falls to 0, quadcopter disarms.
 int elrstimeout = ELRS_TIMEOUT;
 
+// Log bufferization controlling variables
 int logtotal = 0;
 int logbufpos = 0;
 int logflashpos = 0;
@@ -514,12 +531,13 @@ int stabilize(int ms)
 	dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 		sizeof(struct mpu_data));
 
-	logwrite(0, md.afx);
-	logwrite(1, md.afy);
-	logwrite(2, md.afz);
-	logwrite(3, md.gfx);
-	logwrite(4, md.gfy);
-	logwrite(5, md.gfz);
+	// write accelerometer and gyroscope values into log
+	logwrite(LOG_ACC_X, md.afx);
+	logwrite(LOG_ACC_Y, md.afy);
+	logwrite(LOG_ACC_Z, md.afz);
+	logwrite(LOG_GYRO_X, md.gfx);
+	logwrite(LOG_GYRO_Y, md.gfy);
+	logwrite(LOG_GYRO_Z, md.gfz);
 
 	md.afx -= st.ax0;
 	md.afy -= st.ay0;
@@ -554,9 +572,10 @@ int stabilize(int ms)
 	yaw = circf(qmc_heading(pitch, roll,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
 
-	logwrite(6, qmc_heading(pitch, roll,
-		qmcdata.fx, qmcdata.fy, qmcdata.fz));
-	logwrite(7, yaw);
+	// write roll, pitch and yaw values into log
+	logwrite(LOG_ROLL, roll);
+	logwrite(LOG_PITCH, pitch);
+	logwrite(LOG_YAW, yaw);
 
 	if (st.speedpid) {
 		// if in single PID loop mode for tilt
@@ -739,6 +758,10 @@ int hpupdate(int ms)
 	dev[HP_DEV].read(dev[HP_DEV].priv, &hd,
 		sizeof(struct hp_data));
 
+	// write barometer temperature and altitude values into log
+	logwrite(LOG_BAR_TEMP, hd.tempf);
+	logwrite(LOG_BAR_ALT, hd.altf);
+
 	prevalt = dsp_getlpf(&altlpf);
 
 	// upate altitude low-pass filter and temperature reading
@@ -749,6 +772,9 @@ int hpupdate(int ms)
 		9.80665 * (dsp_getlpf(&tlpf) - 1.0) * dt,
 		(dsp_getlpf(&altlpf) - prevalt) / dt);
 
+	logwrite(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
+	logwrite(LOG_ALT, dsp_getlpf(&altlpf));
+	
 	return 0;
 }
 
@@ -760,9 +786,10 @@ int qmcupdate(int ms)
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
 
-	logwrite(8, qmcdata.fx);
-	logwrite(9, qmcdata.fy);
-	logwrite(10, qmcdata.fz);
+	// write magnetometer values into log
+	logwrite(LOG_MAG_X, qmcdata.fx);
+	logwrite(LOG_MAG_Y, qmcdata.fy);
+	logwrite(LOG_MAG_Z, qmcdata.fz);
 
 	return 0;
 }
@@ -997,17 +1024,27 @@ int sprintpid(char *s)
 	return 0;
 }
 
+// Erase log flash to prepare at for writing,
+// erasing starts from address 0.
+//
+// size -- bytes count to erase.
 int eraseflash(size_t size)
 {
 	size_t pos;
 	char s[255];
 
+	// if erase size equals total flash size,
+	// use chip erase command
 	if (size == W25_TOTALSIZE) {
 		flashdev.eraseall(flashdev.priv);
 		return 0;
 	}
 
+	// else erase flash block-by-block, sector-by-sector
 	for (pos = 0; pos < size; ) {
+		// if remained size is more than block size
+		// use block erase command,
+		// use sector erase command otherwise
 		if ((size - pos) >= W25_BLOCKSIZE) {
 			flashdev.eraseblock(flashdev.priv, pos);
 			pos += W25_BLOCKSIZE;
@@ -1361,7 +1398,7 @@ int controlcmd(char *cmd)
 
 			logsize = atoi(toks[2]);
 
-			// erase telemetry flash no
+			// erase log flash no
 			// respond during this process
 			eraseflash(logsize);
 
@@ -1558,7 +1595,9 @@ int main(void)
 		}
 
 		// get microseconds passed in this iteration
-		c = __HAL_TIM_GET_COUNTER(&htim2);
+		// one iteration duration should take at least
+		// some time, 100us was choosen
+		while ((c = __HAL_TIM_GET_COUNTER(&htim2)) < 100);
 
 		// update periodic events timers
 		for (i = 0; i < TEV_COUNT; ++i)
