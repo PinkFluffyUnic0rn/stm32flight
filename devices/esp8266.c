@@ -165,26 +165,26 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 
 	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
 
-	esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=921600,8,1,0,0");
+	esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=460800,8,1,0,0");
 
 	dev->status = ESP_NOINIT;
 
 	HAL_UART_DeInit(dev->huart);
 
-	dev->huart->Init.BaudRate = 921600;
+	dev->huart->Init.BaudRate = 460800;
 	
+	if (HAL_UART_Init(dev->huart) != HAL_OK)
+		return (-1);	
+
 	esp_initfifo(&fifo);
 	
 	dev->status = ESP_FIFOINIT;
 
-	if (HAL_UART_Init(dev->huart) != HAL_OK)
-		return (-1);	
-
 	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
-		
+
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
 		return (-1);
-	
+
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT") != ESP_OK)
 		return (-1);
 

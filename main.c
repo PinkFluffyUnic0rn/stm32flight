@@ -43,6 +43,7 @@
 
 // Periodic events frequencies
 #define PID_FREQ 1000
+#define CHECK_FREQ 1
 #define CALIB_FREQ 25
 #define HP_FREQ 25
 #define CRSF_FREQ 100
@@ -1553,7 +1554,7 @@ int main(void)
 
 	// initilize periodic events
 	inittimev(evs + TEV_PID, PID_FREQ, stabilize);
-	inittimev(evs + TEV_CHECK, 1, checkconnection);
+	inittimev(evs + TEV_CHECK, CHECK_FREQ, checkconnection);
 	inittimev(evs + TEV_CALIB, CALIB_FREQ, magcalib);
 	inittimev(evs + TEV_HP, HP_FREQ, hpupdate);
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);

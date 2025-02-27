@@ -8,7 +8,10 @@
 static struct w25_device devs[W25_MAXDEVS];
 size_t devcount = 0;
 
-#define W25_WTIMEOUT 10
+#define W25_WTIMEOUT 100
+#define W25_CETIMEOUT 100000
+#define W25_SETIMEOUT 400
+#define W25_BETIMEOUT 1600
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
@@ -76,7 +79,7 @@ static int w25_writedisable(struct w25_device *dev)
 	return 0;
 }
 
-static int w25_waitwrite(struct w25_device *dev)
+static int w25_waitwrite(struct w25_device *dev, int timeout)
 {
 	uint8_t sbuf[4], rbuf[4];
 	int retries;
@@ -92,7 +95,7 @@ static int w25_waitwrite(struct w25_device *dev)
 		HAL_Delay(1);
 		HAL_SPI_Receive(dev->hspi, rbuf, 1, 100);
 		++retries;
-	} while ((rbuf[0] & 0x01) == 0x01 && retries < W25_WTIMEOUT);
+	} while ((rbuf[0] & 0x01) == 0x01 && retries < timeout);
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
@@ -146,7 +149,7 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 	
 	dev = (struct w25_device *) d;
 
-	w25_waitwrite(dev);
+	w25_waitwrite(dev, W25_WTIMEOUT);
 
 	w25_blockprotect(dev, 0x00);
 	w25_writeenable(dev);
@@ -161,7 +164,7 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 	HAL_SPI_Transmit(dev->hspi, (uint8_t  *) data, sz, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
-	w25_waitwrite(dev);
+	w25_waitwrite(dev, W25_WTIMEOUT);
 	w25_writedisable(dev);
 	w25_blockprotect(dev, 0x0f);
 
@@ -175,7 +178,7 @@ int w25_eraseall(void *d)
 	
 	dev = (struct w25_device *) d;
 
-	w25_waitwrite(dev);
+	w25_waitwrite(dev, W25_WTIMEOUT);
 	w25_blockprotect(dev, 0x00);
 	w25_writeenable(dev);
 
@@ -185,7 +188,7 @@ int w25_eraseall(void *d)
 	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
-	w25_waitwrite(dev);
+	w25_waitwrite(dev, W25_CETIMEOUT);
 	w25_writedisable(dev);
 	w25_blockprotect(dev, 0x0f);
 
@@ -199,7 +202,7 @@ int w25_erasesector(void *d, size_t addr)
 	
 	dev = (struct w25_device *) d;
 
-	w25_waitwrite(dev);
+	w25_waitwrite(dev, W25_WTIMEOUT);
 	w25_blockprotect(dev, 0x00);
 	w25_writeenable(dev);
 
@@ -212,7 +215,7 @@ int w25_erasesector(void *d, size_t addr)
 	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 1000);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
-	w25_waitwrite(dev);
+	w25_waitwrite(dev, W25_SETIMEOUT);
 	w25_writedisable(dev);
 	w25_blockprotect(dev, 0x0f);
 
@@ -226,7 +229,7 @@ int w25_eraseblock(void *d, size_t addr)
 	
 	dev = (struct w25_device *) d;
 
-	w25_waitwrite(dev);
+	w25_waitwrite(dev, W25_WTIMEOUT);
 	w25_blockprotect(dev, 0x00);
 	w25_writeenable(dev);
 
@@ -239,7 +242,7 @@ int w25_eraseblock(void *d, size_t addr)
 	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 1000);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
-	w25_waitwrite(dev);
+	w25_waitwrite(dev, W25_BETIMEOUT);
 	w25_writedisable(dev);
 	w25_blockprotect(dev, 0x0f);
 
