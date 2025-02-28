@@ -27,8 +27,6 @@ struct fifo {
 };
 
 static uint8_t Rxbyte;
-static uint8_t Rxdata[ESP_CMDSIZE];
-static size_t Rxoffset = 0;
 
 static volatile struct fifo fifo;
 
@@ -54,7 +52,6 @@ int esp_enqueque(volatile struct fifo *f, const char *in, size_t len)
 
 	len = (len > ESP_CMDSIZE) ? ESP_CMDSIZE : len;
 
-	memcpyv(f->cmd[f->top], in, len);
 	f->cmd[f->top][len - 1] = '\0';
 
 	f->top = (f->top + 1) % ESP_FIFOSIZE;
@@ -158,7 +155,7 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 	int port)
 {
 	char cmd[ESP_CMDSIZE];
-	
+
 	esp_initfifo(&fifo);
 	
 	dev->status = ESP_FIFOINIT;
@@ -172,7 +169,7 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 	HAL_UART_DeInit(dev->huart);
 
 	dev->huart->Init.BaudRate = 460800;
-	
+
 	if (HAL_UART_Init(dev->huart) != HAL_OK)
 		return (-1);	
 
@@ -181,7 +178,7 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 	dev->status = ESP_FIFOINIT;
 
 	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
-
+	
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
 		return (-1);
 
@@ -253,14 +250,17 @@ int esp_disconnect(struct esp_device *dev)
 
 int esp_interrupt(struct esp_device *dev, const void *h)
 {
+	static size_t Rxoffset = 0;
+
 	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
 		return 0;
 	
-	Rxdata[Rxoffset] = Rxbyte;
+	fifo.cmd[fifo.top][Rxoffset] = Rxbyte;
 
-	if (Rxdata[Rxoffset] == '\n') {
-		Rxdata[Rxoffset] = '\0';
-		esp_enqueque(&fifo, (char *) Rxdata, Rxoffset + 1);
+	if (fifo.cmd[fifo.top][Rxoffset] == '\n') {
+		fifo.cmd[fifo.top][Rxoffset] = '\0';
+	
+		esp_enqueque(&fifo, NULL, Rxoffset + 1);
 		Rxoffset = 0;
 	}
 	else if (Rxoffset++ == (ESP_CMDSIZE - 1))

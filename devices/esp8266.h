@@ -14,7 +14,7 @@ enum ESP_DEVSTATUS {
 
 struct esp_device {
 	UART_HandleTypeDef *huart;
-	int status;
+	volatile int status;
 };
 
 int esp_init(struct esp_device *dev, const char *ssid,

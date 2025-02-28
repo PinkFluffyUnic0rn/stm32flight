@@ -773,6 +773,7 @@ int hpupdate(int ms)
 		9.80665 * (dsp_getlpf(&tlpf) - 1.0) * dt,
 		(dsp_getlpf(&altlpf) - prevalt) / dt);
 
+	// write climbrate and altitude values into log
 	logwrite(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
 	logwrite(LOG_ALT, dsp_getlpf(&altlpf));
 	
