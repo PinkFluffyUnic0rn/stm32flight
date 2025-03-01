@@ -7,6 +7,7 @@
 #include "uartdebug.h"
 #include "esp8266.h"
 
+#define ESP_BAUDRATE 921600
 #define ESP_UARTTIMEOUT 100
 #define ESP_TIMEOUT 1000
 #define ESP_JOINTIMEOUT 30000
@@ -41,20 +42,6 @@ void memcpyv(volatile void *dest, const volatile void *src, size_t n)
 int esp_initfifo(volatile struct fifo *f)
 {
 	f->bot = f->top = 0;
-
-	return 0;
-}
-
-int esp_enqueque(volatile struct fifo *f, const char *in, size_t len)
-{
-	if ((f->top + 1) % ESP_FIFOSIZE == f->bot)
-		return (-1);
-
-	len = (len > ESP_CMDSIZE) ? ESP_CMDSIZE : len;
-
-	f->cmd[f->top][len - 1] = '\0';
-
-	f->top = (f->top + 1) % ESP_FIFOSIZE;
 
 	return 0;
 }
@@ -160,15 +147,16 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 	
 	dev->status = ESP_FIFOINIT;
 
-	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
+	HAL_UART_Receive_DMA(dev->huart, &Rxbyte, 1);
 
-	esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+UART_CUR=460800,8,1,0,0");
+	sprintf(cmd, "AT+UART_CUR=%d,8,1,0,0", ESP_BAUDRATE);
+	esp_cmd(dev, NULL, ESP_TIMEOUT, cmd);
 
 	dev->status = ESP_NOINIT;
 
 	HAL_UART_DeInit(dev->huart);
 
-	dev->huart->Init.BaudRate = 460800;
+	dev->huart->Init.BaudRate = ESP_BAUDRATE;
 
 	if (HAL_UART_Init(dev->huart) != HAL_OK)
 		return (-1);	
@@ -177,7 +165,7 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 	
 	dev->status = ESP_FIFOINIT;
 
-	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
+	HAL_UART_Receive_DMA(dev->huart, &Rxbyte, 1);
 	
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
 		return (-1);
@@ -192,7 +180,6 @@ int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
 		return (-1);
 
 	sprintf(cmd, "AT+CWSAP_CUR=\"%s\",\"%s\",5,0", ssid, pass);
-
 	if (esp_cmd(dev, NULL, ESP_TIMEOUT, cmd) != ESP_OK)
 		return (-1);
 		
@@ -254,19 +241,22 @@ int esp_interrupt(struct esp_device *dev, const void *h)
 
 	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
 		return 0;
-	
+
 	fifo.cmd[fifo.top][Rxoffset] = Rxbyte;
 
 	if (fifo.cmd[fifo.top][Rxoffset] == '\n') {
 		fifo.cmd[fifo.top][Rxoffset] = '\0';
 	
-		esp_enqueque(&fifo, NULL, Rxoffset + 1);
+		if ((fifo.top + 1) % ESP_FIFOSIZE != fifo.bot) {
+			fifo.cmd[fifo.top][Rxoffset] = '\0';
+
+			fifo.top = (fifo.top + 1) % ESP_FIFOSIZE;
+		}
+
 		Rxoffset = 0;
 	}
 	else if (Rxoffset++ == (ESP_CMDSIZE - 1))
 		Rxoffset = 0;
-
-	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1); 
 
 	return 0;
 }
@@ -276,15 +266,17 @@ int esp_error(struct esp_device *dev, const void *h)
 	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
 		return 0;
 
-	__HAL_UART_CLEAR_OREFLAG(dev->huart);
-	__HAL_UART_CLEAR_NEFLAG(dev->huart);
-	__HAL_UART_CLEAR_FEFLAG(dev->huart);
+	if (dev->huart->ErrorCode) {
+		__HAL_UART_CLEAR_OREFLAG(dev->huart);
+		__HAL_UART_CLEAR_NEFLAG(dev->huart);
+		__HAL_UART_CLEAR_FEFLAG(dev->huart);
 
-	HAL_UART_DeInit(dev->huart);
-	
-	HAL_UART_Init(dev->huart);
+		HAL_UART_DeInit(dev->huart);
 
-	HAL_UART_Receive_IT(dev->huart, &Rxbyte, 1);
+		HAL_UART_Init(dev->huart);
+
+		HAL_UART_Receive_DMA(dev->huart, &Rxbyte, 1);
+	}
 
 	return 0;
 }

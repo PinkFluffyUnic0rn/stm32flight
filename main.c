@@ -27,10 +27,10 @@
 #define DEV_COUNT 4
 
 // timers prescaler
-#define PRESCALER 48
+#define PRESCALER 64
 
 // clock frequency
-#define OCSFREQ 48000000
+#define OCSFREQ 64000000
 
 // period for main timer (used to timing periodic events)
 #define TIMPERIOD 0xfff
@@ -227,6 +227,7 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart2_rx;
 
 // Flight controller board's devices drivers
@@ -1625,7 +1626,7 @@ void systemclock_config(void)
 	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL3;
+	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL4;
 
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
 		error_handler();
@@ -1665,7 +1666,7 @@ static void gpio_init(void)
 		GPIO_PIN_RESET);
 
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-
+	
 	GPIO_InitStruct.Pin = GPIO_PIN_3 | GPIO_PIN_12 | GPIO_PIN_13;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -1684,6 +1685,9 @@ static void dma_init(void)
 
 	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
 	HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
