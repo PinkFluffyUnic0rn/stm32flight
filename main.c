@@ -15,7 +15,7 @@
 #include "dsp.h"
 #include "crsf.h"
 #include "w25.h"
-#include "nmea.h"
+#include "m10.h"
 
 // Max length for info packet
 // sent back to operator
@@ -26,7 +26,7 @@
 #define HP_DEV 1
 #define QMC_DEV 2
 #define CRSF_DEV 3
-#define NMEA_DEV 4
+#define M10_DEV 4
 #define DEV_COUNT 5
 
 // timers prescaler
@@ -221,7 +221,7 @@ static void crsfdev_init();
 static void w25dev_init();
 
 // Init GPS module
-static void nmeadev_init();
+static void m10dev_init();
 
 // STM32 perithery contexts
 ADC_HandleTypeDef hadc1;
@@ -372,8 +372,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (espdev.status != ESP_FAILED && espdev.status != ESP_NOINIT)
 		esp_interrupt(&espdev, huart);
 	
-	if (DEVITENABLED(dev[NMEA_DEV].status))
-		dev[NMEA_DEV].interrupt(dev[NMEA_DEV].priv, huart);
+	if (DEVITENABLED(dev[M10_DEV].status))
+		dev[M10_DEV].interrupt(dev[M10_DEV].priv, huart);
 	
 	if (DEVITENABLED(dev[CRSF_DEV].status))
 		dev[CRSF_DEV].interrupt(dev[CRSF_DEV].priv, huart);
@@ -1586,9 +1586,9 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	return 0;
 }
 
-int nmeamsg(struct nmea_data *nd)
+int m10msg(struct m10_data *nd)
 {
-	if (nd->type == NMEA_TYPE_GGA) {
+	if (nd->type == M10_TYPE_GGA) {
 		gnss.altitude = nd->gga.alt;
 		gnss.quality = nd->gga.quality;
 		gnss.satellites = nd->gga.sats;
@@ -1596,7 +1596,7 @@ int nmeamsg(struct nmea_data *nd)
 		return 0;
 	}
 
-	if (nd->type != NMEA_TYPE_RMC)
+	if (nd->type != M10_TYPE_RMC)
 		return 0;
 
 	gnss.time = nd->rmc.time;
@@ -1664,7 +1664,7 @@ int main(void)
 	espdev_init();
 	crsfdev_init();
 	w25dev_init();
-	nmeadev_init();
+	m10dev_init();
 	hp_init();
 
 	// reading settings from memory slot 0
@@ -1690,7 +1690,7 @@ int main(void)
 	while (1) {
 		char cmd[ESP_CMDSIZE];
 		struct crsf_data cd;
-		struct nmea_data nd;
+		struct m10_data nd;
 		int c, i;
 
 		// reset iteration time counter
@@ -1708,10 +1708,10 @@ int main(void)
 			elrsus = 0;
 		}
 
-		// check the NMEA messages
-		if (dev[NMEA_DEV].read(dev[NMEA_DEV].priv, &nd,
-			sizeof(struct nmea_data)) >= 0) {
-			nmeamsg(&nd);
+		// check the M10 messages
+		if (dev[M10_DEV].read(dev[M10_DEV].priv, &nd,
+			sizeof(struct m10_data)) >= 0) {
+			m10msg(&nd);
 		}
 
 		// check all periodic events context's and run callbacks
@@ -2144,13 +2144,13 @@ static void w25dev_init()
 }
 
 // Init GPS module
-static void nmeadev_init()
+static void m10dev_init()
 {
-	struct nmea_device d;
+	struct m10_device d;
 
 	d.huart = &huart3;
 	
-	if (nmea_initdevice(&d, dev + NMEA_DEV) < 0) {
+	if (m10_initdevice(&d, dev + M10_DEV) < 0) {
 		uartprintf("failed to initilize GPS device\r\n");
 		return;
 	}

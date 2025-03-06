@@ -1,36 +1,36 @@
-#ifndef NMEA_H
-#define NMEA_H
+#ifndef M10_H
+#define M10_H
 
 #include "device.h"
 
-#define NMEA_MAXDEVS 1
+#define M10_MAXDEVS 1
 
-struct nmea_device {
+struct m10_device {
 	UART_HandleTypeDef *huart;
 };
 
-enum NMEA_QUALITY
+enum M10_QUALITY
 {
-	NMEA_QUAL_NOFIX = 0,
-	NMEA_QUAL_SINGLE = 1,
-	NMEA_QUAL_PSEUDORANGE = 2,
-	NMEA_QUAL_FIXEDAMB = 4,
-	NMEA_QUAL_FLOATAMB = 5,
-	NMEA_QUAL_DEADRECK = 6,
-	NMEA_QUAL_MANUALINP = 7,
-	NMEA_QUAL_SIMULATOR = 8,
-	NMEA_QUAL_WAAS = 9
+	M10_QUAL_NOFIX = 0,
+	M10_QUAL_SINGLE = 1,
+	M10_QUAL_PSEUDORANGE = 2,
+	M10_QUAL_FIXEDAMB = 4,
+	M10_QUAL_FLOATAMB = 5,
+	M10_QUAL_DEADRECK = 6,
+	M10_QUAL_MANUALINP = 7,
+	M10_QUAL_SIMULATOR = 8,
+	M10_QUAL_WAAS = 9
 };
 
-enum nmea_type
+enum M10_TYPE
 {
-	NMEA_TYPE_GGA = 0,
-	NMEA_TYPE_RMC = 1,
-	NMEA_TYPE_OTHER = 2
+	M10_TYPE_GGA = 0,
+	M10_TYPE_RMC = 1,
+	M10_TYPE_OTHER = 2
 };
 
-struct nmea_data {
-	enum nmea_type type;
+struct m10_data {
+	enum M10_TYPE type;
 	
 	char msg[83];
 	union {
@@ -42,7 +42,7 @@ struct nmea_data {
 			uint8_t lon;
 			char londir;
 			float lonmin;
-			enum NMEA_QUALITY quality;
+			enum M10_QUALITY quality;
 			uint8_t sats;
 			float alt;
 		} gga;
@@ -65,6 +65,6 @@ struct nmea_data {
 	};
 };
 
-int nmea_initdevice(void *is, struct cdevice *dev);
+int m10_initdevice(void *is, struct cdevice *dev);
 
 #endif
