@@ -238,20 +238,20 @@ int esp_disconnect(struct esp_device *dev)
 int esp_interrupt(struct esp_device *dev, const void *h)
 {
 	static size_t Rxoffset = 0;
+	volatile char *cmd;
 
 	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
 		return 0;
 
-	fifo.cmd[fifo.top][Rxoffset] = Rxbyte;
+	cmd = fifo.cmd[fifo.top] + Rxoffset;
 
-	if (fifo.cmd[fifo.top][Rxoffset] == '\n') {
-		fifo.cmd[fifo.top][Rxoffset] = '\0';
+	*cmd = Rxbyte;
+
+	if (*cmd == '\n') {
+		*cmd = '\0';
 	
-		if ((fifo.top + 1) % ESP_FIFOSIZE != fifo.bot) {
-			fifo.cmd[fifo.top][Rxoffset] = '\0';
-
+		if ((fifo.top + 1) % ESP_FIFOSIZE != fifo.bot)
 			fifo.top = (fifo.top + 1) % ESP_FIFOSIZE;
-		}
 
 		Rxoffset = 0;
 	}
@@ -328,6 +328,18 @@ int esp_send(struct esp_device *dev, const char *data)
 		return (-1);
 
 	return 0;
+}
+
+int esp_printf(struct esp_device *dev, const char *format, ...)
+{
+	char buf[1024];
+	va_list args;
+
+	va_start(args, format);
+
+	vsnprintf(buf, 1024, format, args);
+
+	return esp_send(dev, buf);
 }
 
 int esp_poll(struct esp_device *dev, char *outdata)

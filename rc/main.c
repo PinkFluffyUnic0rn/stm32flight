@@ -105,12 +105,14 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 			sendcmd(lsfd, rsi, "info qmc\n");
 		else if (event->key.keysym.sym == SDLK_b)
 			sendcmd(lsfd, rsi, "info hp\n");
+		else if (event->key.keysym.sym == SDLK_g)
+			sendcmd(lsfd, rsi, "info gnss\n");
 		else if (event->key.keysym.sym == SDLK_w)
-			sendcmd(lsfd, rsi, "log set 65536\n");
+			sendcmd(lsfd, rsi, "log set 10485760\n");
 		else if (event->key.keysym.sym == SDLK_s)
 			sendcmd(lsfd, rsi, "log set 0\n");
-		else if (event->key.keysym.sym == SDLK_g)
-			sendcmd(lsfd, rsi, "log get 65536\n");
+		else if (event->key.keysym.sym == SDLK_r)
+			sendcmd(lsfd, rsi, "log get 10485760\n");
 		else if (event->key.keysym.sym == SDLK_SPACE)
 			sendcmd(lsfd, rsi, "c 0.0\n");
 	}

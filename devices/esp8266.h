@@ -32,6 +32,8 @@ int esp_error(struct esp_device *dev, const void *huart);
 
 int esp_send(struct esp_device *dev, const char *data);
 
+int esp_printf(struct esp_device *dev, const char *format, ...);
+
 int esp_poll(struct esp_device *dev, char *outdata);
 
 #endif

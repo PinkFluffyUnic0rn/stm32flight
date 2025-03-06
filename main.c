@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "main.h"
 #include "device.h"
@@ -14,6 +15,7 @@
 #include "dsp.h"
 #include "crsf.h"
 #include "w25.h"
+#include "nmea.h"
 
 // Max length for info packet
 // sent back to operator
@@ -24,7 +26,8 @@
 #define HP_DEV 1
 #define QMC_DEV 2
 #define CRSF_DEV 3
-#define DEV_COUNT 4
+#define NMEA_DEV 4
+#define DEV_COUNT 5
 
 // timers prescaler
 #define PRESCALER 64
@@ -217,6 +220,9 @@ static void crsfdev_init();
 // Init W25Q onboard flash memory
 static void w25dev_init();
 
+// Init GPS module
+static void nmeadev_init();
+
 // STM32 perithery contexts
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
@@ -229,6 +235,7 @@ UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart2_rx;
+DMA_HandleTypeDef hdma_usart3_rx;
 
 // Flight controller board's devices drivers
 struct cdevice dev[DEV_COUNT];
@@ -257,6 +264,44 @@ struct dsp_pidval yawspv;
 struct dsp_pidval tpv;
 struct dsp_pidval cpv;
 struct dsp_pidval apv;
+
+struct gnss_data {
+	enum GNSSSTATUS {
+		GNSSSTATUS_VALID = 0,
+		GNSSSTATUS_INVALID = 1
+	} status;
+
+	float time;
+	char date[10];
+	
+	float latmin;
+	uint8_t lat;
+	enum LATDIR {
+		LATDIR_N = 0,
+		LATDIR_S = 1
+	} latdir;
+
+	float lonmin;
+	uint8_t lon;
+	enum LONDIR {
+		LONDIR_E = 0,
+		LONDIR_W = 1
+	} londir;
+
+	float magvar;
+	enum MAGVARDIR {
+		MAGVARDIR_E = 0,
+		MAGVARDIR_W = 1
+	} magvardir;
+
+	float speed;
+	float course;
+	float altitude;
+
+	int quality;
+	uint8_t satellites;
+
+} gnss;
 
 // Control values
 float thrust = 0.0; // motors basic thrust
@@ -326,8 +371,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (espdev.status != ESP_FAILED && espdev.status != ESP_NOINIT)
 		esp_interrupt(&espdev, huart);
-
-	if (dev[CRSF_DEV].status == DEVSTATUS_INIT)
+	
+	if (DEVITENABLED(dev[NMEA_DEV].status))
+		dev[NMEA_DEV].interrupt(dev[NMEA_DEV].priv, huart);
+	
+	if (DEVITENABLED(dev[CRSF_DEV].status))
 		dev[CRSF_DEV].interrupt(dev[CRSF_DEV].priv, huart);
 }
 
@@ -1027,6 +1075,36 @@ int sprintpid(char *s)
 	return 0;
 }
 
+
+// Print all GNSS values into a string.
+//
+// s -- output string.
+int sprintgnss(char *s) {
+	s[0] = '\0';
+
+	sprintf(s, "%s: %f\n%s: %hd\n%s: %hd %f %c\n%s: %hd %f %c\n%s: %f\n%s: %f\n\
+%s: %d\n%s: %d\n%s: %f\n%s: %s\n%s: %f\n%s: %c\n\n",
+		"time", (double) gnss.time,
+		"status", gnss.status,
+		"latitude", gnss.lat,
+		(double) gnss.latmin,
+		(gnss.latdir == LATDIR_N) ? 'N' : 'S',
+		"longitude", gnss.lon,
+		(double) gnss.lonmin,
+		(gnss.londir == LONDIR_W) ? 'W' : 'E',
+		"speed", (double) gnss.speed,
+		"course", (double) gnss.course,
+		"quality", gnss.quality,
+		"satellites", gnss.satellites,
+		"altitude", (double) gnss.altitude,
+		"date", gnss.date,
+		"magvar", (double) gnss.magvar,
+		"magverdir",
+		(gnss.magvardir == MAGVARDIR_W) ? 'W' : 'E');
+
+	return 0;
+}
+
 // Erase log flash to prepare at for writing,
 // erasing starts from address 0.
 //
@@ -1175,6 +1253,10 @@ int controlcmd(char *cmd)
 		}
 		else if (strcmp(toks[1], "pid") == 0) {
 			sprintpid(s);
+			esp_send(&espdev, s);
+		}
+		else if (strcmp(toks[1], "gnss") == 0) {
+			sprintgnss(s);
 			esp_send(&espdev, s);
 		}
 	}
@@ -1504,6 +1586,42 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	return 0;
 }
 
+int nmeamsg(struct nmea_data *nd)
+{
+	if (nd->type == NMEA_TYPE_GGA) {
+		gnss.altitude = nd->gga.alt;
+		gnss.quality = nd->gga.quality;
+		gnss.satellites = nd->gga.sats;
+
+		return 0;
+	}
+
+	if (nd->type != NMEA_TYPE_RMC)
+		return 0;
+
+	gnss.time = nd->rmc.time;
+	memcpy(gnss.date, nd->rmc.date, 10);
+
+	gnss.latmin = nd->rmc.latmin;
+	gnss.lat = nd->rmc.lat;
+	gnss.latdir = (tolower(nd->rmc.latdir) == 'n')
+		? LATDIR_N : LATDIR_S;
+	
+	gnss.lonmin = nd->gga.lonmin;
+	gnss.lon = nd->rmc.lon;
+	gnss.londir = (tolower(nd->rmc.londir) == 'e')
+		? LONDIR_E : LONDIR_W;
+
+	gnss.magvar = nd->rmc.magvar;
+	gnss.magvardir = (tolower(nd->rmc.magvardir) == 'e')
+		? MAGVARDIR_E : MAGVARDIR_W;
+	
+	gnss.speed = nd->rmc.speed;
+	gnss.course = nd->rmc.course;
+
+	return 0;
+}
+
 // Entry point
 int main(void)
 {
@@ -1546,6 +1664,7 @@ int main(void)
 	espdev_init();
 	crsfdev_init();
 	w25dev_init();
+	nmeadev_init();
 	hp_init();
 
 	// reading settings from memory slot 0
@@ -1571,6 +1690,7 @@ int main(void)
 	while (1) {
 		char cmd[ESP_CMDSIZE];
 		struct crsf_data cd;
+		struct nmea_data nd;
 		int c, i;
 
 		// reset iteration time counter
@@ -1580,12 +1700,18 @@ int main(void)
 		// from from debug wifi connection
 		if (esp_poll(&espdev, cmd) >= 0) 
 			controlcmd(cmd);
-
+		
 		// read the ELRS remote's packet
 		if (dev[CRSF_DEV].read(dev[CRSF_DEV].priv, &cd,
 			sizeof(struct crsf_data)) >= 0) {
 			crsfcmd(&cd, elrsus);
 			elrsus = 0;
+		}
+
+		// check the NMEA messages
+		if (dev[NMEA_DEV].read(dev[NMEA_DEV].priv, &nd,
+			sizeof(struct nmea_data)) >= 0) {
+			nmeamsg(&nd);
 		}
 
 		// check all periodic events context's and run callbacks
@@ -1641,7 +1767,7 @@ void systemclock_config(void)
 	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
 		error_handler();
 
-	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2
+	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_USART3
 			      |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_TIM1
 			      |RCC_PERIPHCLK_ADC12;
 	PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
@@ -1685,6 +1811,9 @@ static void dma_init(void)
 
 	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
 
 	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
@@ -1903,7 +2032,7 @@ static void usart2_init()
 static void usart3_init()
 {
 	huart3.Instance = USART3;
-	huart3.Init.BaudRate = 921600;
+	huart3.Init.BaudRate = 115200;
 	huart3.Init.WordLength = UART_WORDLENGTH_8B;
 	huart3.Init.StopBits = UART_STOPBITS_1;
 	huart3.Init.Parity = UART_PARITY_NONE;
@@ -1997,6 +2126,7 @@ static void crsfdev_init()
 	crsf_initdevice(&d, dev + CRSF_DEV);
 }
 
+// Init ERLS receiver driver
 static void w25dev_init()
 {
 	struct w25_device d;
@@ -2011,6 +2141,21 @@ static void w25dev_init()
 	}
 
 	uartprintf("W25Q initilized\r\n");
+}
+
+// Init GPS module
+static void nmeadev_init()
+{
+	struct nmea_device d;
+
+	d.huart = &huart3;
+	
+	if (nmea_initdevice(&d, dev + NMEA_DEV) < 0) {
+		uartprintf("failed to initilize GPS device\r\n");
+		return;
+	}
+	
+	uartprintf("GPS device initilized\r\n");
 }
 
 // MCU hardware errors handler. Disarm immediately
