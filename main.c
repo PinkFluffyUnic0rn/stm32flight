@@ -128,6 +128,26 @@ enum ALTMODE {
 	ALTMODE_POS	= 2
 };
 
+enum GNSSSTATUS {
+	GNSSSTATUS_VALID = 0,
+	GNSSSTATUS_INVALID = 1
+};
+
+enum LATDIR {
+	LATDIR_N = 0,
+	LATDIR_S = 1
+};
+
+enum LONDIR {
+	LONDIR_E = 0,
+	LONDIR_W = 1
+};
+
+enum MAGVARDIR {
+	MAGVARDIR_E = 0,
+	MAGVARDIR_W = 1
+};
+
 // Quadcopter settings structure stored in MCU's flash
 struct settings {
 	float mx0, my0, mz0;	// magnetometer offset values for X, Y
@@ -138,7 +158,7 @@ struct settings {
 				// Y and Z axes determinted by 
 				// calibration procedure
 
-	float magdecl;	// magnetic declination
+	float magdecl;		// magnetic declination
 
 	float ax0, ay0, az0;	// accelometer offset values for X, Y
 				// and Z axes.
@@ -181,40 +201,35 @@ struct settings {
 
 // Values got from GNSS module using NMEA protocol
 struct gnss_data {
-	enum GNSSSTATUS {
-		GNSSSTATUS_VALID = 0,
-		GNSSSTATUS_INVALID = 1
-	} status;
-
-	float time;
-	char date[10];
+	enum GNSSSTATUS status;		// GNSS data status
+					// 1 if valid, 0 otherwise
 	
-	float latmin;
-	uint8_t lat;
-	enum LATDIR {
-		LATDIR_N = 0,
-		LATDIR_S = 1
-	} latdir;
+	float time;			// seconds passed from 00:00 UTC
+	char date[10];			// date in format dd.mm.yy
+	
+	uint8_t lat;			// latitude
+	float latmin;			// latitude minutes
+	enum LATDIR latdir;		// latitude direction, 1 if
+					// south, 0 if north
 
-	float lonmin;
-	uint8_t lon;
-	enum LONDIR {
-		LONDIR_E = 0,
-		LONDIR_W = 1
-	} londir;
+	uint8_t lon;			// longitude
+	float lonmin;			// longitude minutes
+	enum LONDIR londir;		// longitude direction, 1 if
+					// west, 0 if east
 
-	float magvar;
-	enum MAGVARDIR {
-		MAGVARDIR_E = 0,
-		MAGVARDIR_W = 1
-	} magvardir;
+	float magvar;			// magnetic declination in
+					// degrees
+	enum MAGVARDIR  magvardir;	// magnetic declination
+					// direction, 0 if east, 1 if
+					// west
 
-	float speed;
-	float course;
-	float altitude;
+	float speed;			// speed in knots
+	float course;			// course toward north pole
+					// in degrees
+	float altitude;			// altitude in meters
 
-	int quality;
-	uint8_t satellites;
+	int quality;			// link quality
+	uint8_t satellites;		// satellites count
 };
 
 // telemetry packet stored in onboard flash
@@ -223,7 +238,7 @@ struct logpack {
 };
 
 
-// debug command hadler structure
+// debug command handler structure
 struct command {
 	const char *name;
 	int (*func)(const char **);
@@ -328,7 +343,8 @@ float en = 0.0; // 1.0 when motors turned on, 0.0 otherwise
 enum ALTMODE altmode = 0; // ALTMODE_POS if in altitude hold mode,
 			  // ALTMODE_SPEED if climbrate control mode,
 			  // ALTMODE_ACCEL if acceleration control mode
-int yawspeedpid = 0;
+int yawspeedpid = 0;	// 1 if only gyroscope if used for yaw
+			// stabilization, 0 if magnetometer is used
 
 int magcalibmode = 0; // 1 when magnetometer calibration mode
 		      // is enabled, 0 otherwise
@@ -366,6 +382,10 @@ struct logpack logbuf[LOG_BUFSIZE];
 struct command commtable[MAX_COMMANDS];
 size_t commcount;
 
+// Add debug command with it's handler.
+//
+// name -- command name
+// func -- command handler
 int addcommand(const char *name, int (*func)(const char **))
 {
 	commtable[commcount].name = name;
@@ -376,7 +396,7 @@ int addcommand(const char *name, int (*func)(const char **))
 	return 0;
 }
 
-// Get value from ADC, was used to monitor battery voltage
+// Get value from ADC, was used to monitor battery voltage.
 //
 // hadc -- ADC context.
 uint32_t getadcv(ADC_HandleTypeDef *hadc)
@@ -1113,8 +1133,9 @@ int sprintpid(char *s)
 int sprintgnss(char *s) {
 	s[0] = '\0';
 
-	sprintf(s, "%s: %f\n%s: %hd\n%s: %hd %f %c\n%s: %hd %f %c\n%s: %f\n%s: %f\n\
-%s: %d\n%s: %d\n%s: %f\n%s: %s\n%s: %f\n%s: %c\n\n",
+	sprintf(s, "%s: %f\r\n%s: %hd\r\n%s: %hd %f %c\r\n\
+%s: %hd %f %c\r\n%s: %f\r\n%s: %f\r\n\
+%s: %d\r\n%s: %d\r\n%s: %f\r\n%s: %s\r\n%s: %f\r\n%s: %c\r\n",
 		"time", (double) gnss.time,
 		"status", gnss.status,
 		"latitude", gnss.lat,
@@ -1225,6 +1246,9 @@ int printlog(char *buf, size_t size)
 	return 0;
 }
 
+// Disarm command handler.
+//
+// toks -- list of parsed command tokens.
 int rcmd(const char **toks)
 {
 	en = 0.0;
@@ -1232,6 +1256,9 @@ int rcmd(const char **toks)
 	return 0;
 }
 
+// Arm command handler.
+//
+// toks -- list of parsed command tokens.
 int ecmd(const char **toks)
 {
 	en = 1.0;
@@ -1239,6 +1266,9 @@ int ecmd(const char **toks)
 	return 0;
 }
 
+// Recalibrate command handler.
+//
+// toks -- list of parsed command tokens.
 int ccmd(const char **toks)
 {
 	initstabilize(atof(toks[1]));
@@ -1246,6 +1276,9 @@ int ccmd(const char **toks)
 	return 0;
 }
 
+// "info" command handler. Print various sensor and control values.
+//
+// toks -- list of parsed command tokens.
 int infocmd(const char **toks)
 {
 	char s[INFOLEN];
@@ -1265,9 +1298,6 @@ int infocmd(const char **toks)
 		md.afz -= st.az0;
 
 		sprintpos(s, &md, &hd);
-
-		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-			strlen(s));
 	}
 	else if (strcmp(toks[1], "qmc") == 0) {
 		struct qmc_data hd;
@@ -1276,9 +1306,6 @@ int infocmd(const char **toks)
 			sizeof(struct qmc_data));
 
 		sprintqmc(s, &hd);	
-
-		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-			strlen(s));
 	}
 	else if (strcmp(toks[1], "hp") == 0) {
 		float alt;
@@ -1289,31 +1316,24 @@ int infocmd(const char **toks)
 			"temp: %f; alt: %f; climb rate: %f\r\n",
 			(double) temp, (double) alt,
 			(double) dsp_getcompl(&climbratecompl));
-
-		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-			strlen(s));
 	}
-	else if (strcmp(toks[1], "values") == 0) {
+	else if (strcmp(toks[1], "values") == 0)
 		sprintvalues(s);
-		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-			strlen(s));
-	}
-	else if (strcmp(toks[1], "pid") == 0) {
+	else if (strcmp(toks[1], "pid") == 0)
 		sprintpid(s);
-		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-			strlen(s));
-	}
-	else if (strcmp(toks[1], "gnss") == 0) {
+	else if (strcmp(toks[1], "gnss") == 0)
 		sprintgnss(s);
-		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-			strlen(s));
-	}
 	else
 		return (-1);
+
+	dev[ESP_DEV].write(dev[ESP_DEV].priv, s, strlen(s));
 
 	return 0;
 }
 
+// "pid" command handler. Configure PID values.
+//
+// toks -- list of parsed command tokens.
 int pidcmd(const char **toks)
 {
 	float v;
@@ -1400,6 +1420,9 @@ int pidcmd(const char **toks)
 	return 0;
 }
 
+// "calib" command handler. Turn on/off devices calibration modes.
+//
+// toks -- list of parsed command tokens.
 int calibcmd(const char **toks)
 {
 	if (strcmp(toks[1], "mag") == 0) {
@@ -1416,6 +1439,10 @@ int calibcmd(const char **toks)
 	return 0;
 }
 
+// "flash" command handler. Write/read MCU's internal flash
+// used for storing configuraton.
+//
+// toks -- list of parsed command tokens.
 int flashcmd(const char **toks)
 {
 	if (strcmp(toks[1], "write") == 0)
@@ -1428,6 +1455,9 @@ int flashcmd(const char **toks)
 	return 0;
 }
 
+// "compl" command handler. Configure pitch/roll complimentary filters.
+//
+// toks -- list of parsed command tokens.
 int complcmd(const char **toks)
 {
 	st.tcoef = atof(toks[1]);
@@ -1438,6 +1468,9 @@ int complcmd(const char **toks)
 	return 0;
 }
 
+// "lpf" command handler. Configure low-pass filters.
+//
+// toks -- list of parsed command tokens.
 int lpfcmd(const char **toks)
 {
 	if (strcmp(toks[1], "climb") == 0) {
@@ -1462,6 +1495,9 @@ int lpfcmd(const char **toks)
 	return 0;
 }
 
+// "adj" command handler. Configure various offset/scale values.
+//
+// toks -- list of parsed command tokens.
 int adjcmd(const char **toks)
 {
 	float v;
@@ -1511,6 +1547,9 @@ int adjcmd(const char **toks)
 	return 0;
 }
 
+// "log" command handler. Start/stop/get flight log.
+//
+// toks -- list of parsed command tokens.
 int logcmd(const char **toks)
 {
 	char s[INFOLEN];
@@ -1663,8 +1702,12 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	return 0;
 }
 
+// Store data got from NMEA message.
+//
+// nd -- data got from GNSS device through NMEA protocol.
 int m10msg(struct m10_data *nd)
 {
+	// got only altitude and signal quality data from GGA messages.
 	if (nd->type == M10_TYPE_GGA) {
 		gnss.altitude = nd->gga.alt;
 		gnss.quality = nd->gga.quality;
@@ -1673,6 +1716,8 @@ int m10msg(struct m10_data *nd)
 		return 0;
 	}
 
+	// other needed data is got RMC messages. Discard
+	// all other messages.
 	if (nd->type != M10_TYPE_RMC)
 		return 0;
 
