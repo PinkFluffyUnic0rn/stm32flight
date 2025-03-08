@@ -34,7 +34,7 @@ u6:	MPU6500
 dc-dc converter:
 l20:	10 uH
 r20:	10 kOhm
-r20:	3.3 kOhm
+r21:	3.3 kOhm
 c20:	0.1 uF
 c21:	10 uF
 c22:	100 uF

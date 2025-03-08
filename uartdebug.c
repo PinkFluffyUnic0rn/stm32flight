@@ -12,7 +12,7 @@ extern UART_HandleTypeDef huart3;
 
 int uartprintf(const char *format, ...)
 {
-/*	
+/*
 	char buf[1024];
 	va_list args;
 

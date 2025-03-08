@@ -9,6 +9,7 @@
 
 #define ESP_BAUDRATE 921600
 #define ESP_UARTTIMEOUT 100
+#define ESP_CONNRETRIES 10
 #define ESP_TIMEOUT 1000
 #define ESP_JOINTIMEOUT 30000
 #define ESP_FIFOSIZE 8
@@ -27,8 +28,10 @@ struct fifo {
 	size_t top;
 };
 
-static uint8_t Rxbyte;
+static struct esp_device esp_devs[ESP_MAXDEVS];
+static size_t esp_devcount = 0;
 
+static uint8_t Rxbyte;
 static volatile struct fifo fifo;
 
 void memcpyv(volatile void *dest, const volatile void *src, size_t n)
@@ -138,75 +141,15 @@ int esp_getip(struct esp_device *dev, char *ipout)
 	return 0;
 }
 
-int esp_init(struct esp_device *dev, const char *ssid, const char *pass,
-	int port)
+static int esp_disconnect(struct esp_device *dev)
 {
-	char cmd[ESP_CMDSIZE];
-
-	esp_initfifo(&fifo);
-	
-	dev->status = ESP_FIFOINIT;
-
-	HAL_UART_Receive_DMA(dev->huart, &Rxbyte, 1);
-
-	sprintf(cmd, "AT+UART_CUR=%d,8,1,0,0", ESP_BAUDRATE);
-	esp_cmd(dev, NULL, ESP_TIMEOUT, cmd);
-
-	dev->status = ESP_NOINIT;
-
-	HAL_UART_DeInit(dev->huart);
-
-	dev->huart->Init.BaudRate = ESP_BAUDRATE;
-
-	if (HAL_UART_Init(dev->huart) != HAL_OK)
-		return (-1);	
-
-	esp_initfifo(&fifo);
-	
-	dev->status = ESP_FIFOINIT;
-
-	HAL_UART_Receive_DMA(dev->huart, &Rxbyte, 1);
-	
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CIPCLOSE") != ESP_OK)
 		return (-1);
-
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT") != ESP_OK)
-		return (-1);
-
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CWMODE=2") != ESP_OK)
-		return (-1);
-
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CWDHCP=0,1") != ESP_OK)
-		return (-1);
-
-	sprintf(cmd, "AT+CWSAP_CUR=\"%s\",\"%s\",5,0", ssid, pass);
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, cmd) != ESP_OK)
-		return (-1);
-		
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
-		"AT+CIPAP_CUR=\"192.168.3.1\",\"192.168.3.1\",\"255.255.255.0\"") != ESP_OK)
-		return (-1);
-		
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
-		"AT+CWDHCPS_CUR=1,2880,\"192.168.3.2\",\"192.168.3.2\"") != ESP_OK)
-		return (-1);
-
-	dev->status = ESP_INIT;
-
-	esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CIPCLOSE");
-
-	sprintf(cmd, "AT+CIPSTART=\"UDP\",\"192.168.3.2\",%d,%d,0",
-		port, port);
-
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, cmd) != ESP_OK)
-		return (-1);
-
-	dev->status = ESP_CONNECTED;
 
 	return 0;
 }
 
-int esp_connect(struct esp_device *dev, const char *ip, int port)
+static int esp_connect(struct esp_device *dev, const char *ip, int port)
 {
 	char s[ESP_CMDSIZE];
 	int i;
@@ -227,26 +170,21 @@ int esp_connect(struct esp_device *dev, const char *ip, int port)
 	return 0;
 }
 
-int esp_disconnect(struct esp_device *dev)
+int esp_interrupt(void *dev, const void *h)
 {
-	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CIPCLOSE") != ESP_OK)
-		return (-1);
-
-	return 0;
-}
-
-int esp_interrupt(struct esp_device *dev, const void *h)
-{
+	struct esp_device *d;
 	static size_t Rxoffset = 0;
 	volatile char *cmd;
 
-	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
-		return 0;
+	d = dev;
 
+	if (((UART_HandleTypeDef *)h)->Instance != d->huart->Instance)
+		return 0;
+	
 	cmd = fifo.cmd[fifo.top] + Rxoffset;
 
 	*cmd = Rxbyte;
-
+	
 	if (*cmd == '\n') {
 		*cmd = '\0';
 	
@@ -261,21 +199,25 @@ int esp_interrupt(struct esp_device *dev, const void *h)
 	return 0;
 }
 
-int esp_error(struct esp_device *dev, const void *h)
+int esp_error(void *dev, const void *h)
 {
-	if (((UART_HandleTypeDef *)h)->Instance != dev->huart->Instance)
+	struct esp_device *d;
+	
+	d = dev;
+	
+	if (((UART_HandleTypeDef *)h)->Instance != d->huart->Instance)
 		return 0;
 
-	if (dev->huart->ErrorCode) {
-		__HAL_UART_CLEAR_OREFLAG(dev->huart);
-		__HAL_UART_CLEAR_NEFLAG(dev->huart);
-		__HAL_UART_CLEAR_FEFLAG(dev->huart);
+	if (d->huart->ErrorCode) {
+		__HAL_UART_CLEAR_OREFLAG(d->huart);
+		__HAL_UART_CLEAR_NEFLAG(d->huart);
+		__HAL_UART_CLEAR_FEFLAG(d->huart);
 
-		HAL_UART_DeInit(dev->huart);
+		HAL_UART_DeInit(d->huart);
 
-		HAL_UART_Init(dev->huart);
+		HAL_UART_Init(d->huart);
 
-		HAL_UART_Receive_DMA(dev->huart, &Rxbyte, 1);
+		HAL_UART_Receive_DMA(d->huart, &Rxbyte, 1);
 	}
 
 	return 0;
@@ -322,9 +264,13 @@ static enum ESP_RESPONSE _esp_send(struct esp_device *dev, int timeout,
 	return ESP_UNKNOWN;
 }
 
-int esp_send(struct esp_device *dev, const char *data)
+int esp_send(void *dev, void *dt, size_t sz)
 {
-	if (_esp_send(dev, ESP_TIMEOUT, data) != ESP_OK)
+	struct esp_device *d;
+
+	d = dev;
+	
+	if (_esp_send(d, ESP_TIMEOUT, dt) != ESP_OK)
 		return (-1);
 
 	return 0;
@@ -339,10 +285,10 @@ int esp_printf(struct esp_device *dev, const char *format, ...)
 
 	vsnprintf(buf, 1024, format, args);
 
-	return esp_send(dev, buf);
+	return esp_send(dev, buf, strlen(buf));
 }
 
-int esp_poll(struct esp_device *dev, char *outdata)
+int esp_read(void *dev, void *dt, size_t sz)
 {
 	char res[ESP_CMDSIZE];
 	char *ssz, *data;
@@ -366,7 +312,119 @@ int esp_poll(struct esp_device *dev, char *outdata)
 	if (strlen(data) >= ESP_CMDSIZE)
 		return (-1);
 
-	memcpy(outdata, data, strlen(data) + 1);
+	memcpy(dt, data, strlen(data) + 1);
 
 	return 0;
+}
+
+int esp_configure(void *dev, const char *cmd, ...)
+{
+	struct esp_device *d;
+	va_list args;
+
+	d = (struct esp_device *) dev;
+
+	va_start(args, cmd);
+
+	if (strcmp(cmd, "connect") == 0) {
+		const char *ip;
+		int port;
+
+		ip = va_arg(args, const char *);
+		port = va_arg(args, int);
+
+		esp_connect(d, ip, port);
+	}
+	else if (strcmp(cmd, "disconnect") == 0)
+		esp_disconnect(d);
+
+	va_end(args);
+
+	return 0;
+}
+
+int esp_init(struct esp_device *dev, volatile enum DEVSTATUS *status)
+{
+	char cmd[ESP_CMDSIZE];
+
+	esp_initfifo(&fifo);
+	
+	*status = DEVSTATUS_IT;
+
+	HAL_UART_Receive_DMA(dev->huart, &Rxbyte, 1);
+
+	sprintf(cmd, "AT+UART_CUR=%d,8,1,0,0", ESP_BAUDRATE);
+	esp_cmd(dev, NULL, ESP_TIMEOUT, cmd);
+
+	*status = DEVSTATUS_NOINIT;
+
+	HAL_UART_DeInit(dev->huart);
+
+	dev->huart->Init.BaudRate = ESP_BAUDRATE;
+
+	if (HAL_UART_Init(dev->huart) != HAL_OK)
+		return (-1);	
+
+	esp_initfifo(&fifo);
+	
+	*status = DEVSTATUS_IT;
+
+	HAL_UART_Receive_DMA(dev->huart, &Rxbyte, 1);
+	
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "ATE0") != ESP_OK)
+		return (-1);
+
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT") != ESP_OK)
+		return (-1);
+
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CWMODE=2") != ESP_OK)
+		return (-1);
+
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CWDHCP=0,1") != ESP_OK)
+		return (-1);
+
+	sprintf(cmd, "AT+CWSAP_CUR=\"%s\",\"%s\",5,0", dev->ssid,
+		dev->pass);
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, cmd) != ESP_OK)
+		return (-1);
+		
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
+		"AT+CIPAP_CUR=\"192.168.3.1\",\"192.168.3.1\",\"255.255.255.0\"") != ESP_OK)
+		return (-1);
+		
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT,
+		"AT+CWDHCPS_CUR=1,2880,\"192.168.3.2\",\"192.168.3.2\"") != ESP_OK)
+		return (-1);
+
+	esp_cmd(dev, NULL, ESP_TIMEOUT, "AT+CIPCLOSE");
+
+	sprintf(cmd, "AT+CIPSTART=\"UDP\",\"192.168.3.2\",%d,%d,0",
+		dev->port, dev->port);
+
+	if (esp_cmd(dev, NULL, ESP_TIMEOUT, cmd) != ESP_OK)
+		return (-1);
+
+	return 0;
+}
+
+int esp_initdevice(void *is, struct cdevice *dev)
+{
+	int r;
+
+	memmove(esp_devs + esp_devcount, is, sizeof(struct esp_device));
+
+	sprintf(dev->name, "%s%d", "esp8266", esp_devcount);
+
+	dev->priv = esp_devs + esp_devcount;
+	dev->read = esp_read;
+	dev->configure = esp_configure;
+	dev->write = esp_send;
+	dev->interrupt = esp_interrupt;
+	dev->error = esp_error;
+
+	r = esp_init(esp_devs + esp_devcount++, &(dev->status));
+
+	dev->status = (r == 0) ? DEVSTATUS_INIT : DEVSTATUS_FAILED;
+
+	return r;
 }

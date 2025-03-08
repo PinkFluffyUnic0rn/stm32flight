@@ -22,8 +22,9 @@ struct cdevice {
 	int (*read)(void *dev, void *data, size_t sz);
 	int (*write)(void *dev, void *data, size_t sz);
 	int (*interrupt)(void *dev, const void *h);
+	int (*error)(void *dev, const void *h);
 	int (*configure)(void *dev, const char *cmd, ...);
-	int status;
+	volatile enum DEVSTATUS status;
 
 	void *priv;
 };

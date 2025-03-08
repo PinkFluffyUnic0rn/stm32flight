@@ -22,12 +22,13 @@
 #define INFOLEN 512
 
 // device numbers
-#define MPU_DEV 0
-#define HP_DEV 1
-#define QMC_DEV 2
-#define CRSF_DEV 3
-#define M10_DEV 4
-#define DEV_COUNT 5
+#define MPU_DEV		0
+#define HP_DEV		1
+#define QMC_DEV		2
+#define CRSF_DEV	3
+#define M10_DEV		4
+#define ESP_DEV		5
+#define DEV_COUNT	6
 
 // timers prescaler
 #define PRESCALER 64
@@ -63,9 +64,10 @@
 #define LOG_MAXPACKS \
 	(W25_TOTALSIZE / sizeof(struct logpack))
 
-// telemetry packets buffer size
+// log packets buffer size
 #define LOG_BUFSIZE (W25_PAGESIZE / sizeof(struct logpack))
 
+// log packet values positions
 #define LOG_PACKSIZE	16
 #define LOG_ACC_X	0
 #define LOG_ACC_Y	1
@@ -171,6 +173,45 @@ struct settings {
 	float ap, ai, ad; // P/I/D values for altitude
 };
 
+// Values got from GNSS module using NMEA protocol
+struct gnss_data {
+	enum GNSSSTATUS {
+		GNSSSTATUS_VALID = 0,
+		GNSSSTATUS_INVALID = 1
+	} status;
+
+	float time;
+	char date[10];
+	
+	float latmin;
+	uint8_t lat;
+	enum LATDIR {
+		LATDIR_N = 0,
+		LATDIR_S = 1
+	} latdir;
+
+	float lonmin;
+	uint8_t lon;
+	enum LONDIR {
+		LONDIR_E = 0,
+		LONDIR_W = 1
+	} londir;
+
+	float magvar;
+	enum MAGVARDIR {
+		MAGVARDIR_E = 0,
+		MAGVARDIR_W = 1
+	} magvardir;
+
+	float speed;
+	float course;
+	float altitude;
+
+	int quality;
+	uint8_t satellites;
+
+} gnss;
+
 // telemetry packet stored in onboard flash
 struct logpack {
 	float data[LOG_PACKSIZE];
@@ -220,7 +261,7 @@ static void crsfdev_init();
 // Init W25Q onboard flash memory
 static void w25dev_init();
 
-// Init GPS module
+// Init GNSS module
 static void m10dev_init();
 
 // STM32 perithery contexts
@@ -240,15 +281,10 @@ DMA_HandleTypeDef hdma_usart3_rx;
 // Flight controller board's devices drivers
 struct cdevice dev[DEV_COUNT];
 struct bdevice flashdev;
-struct esp_device espdev;
-struct crsf_device crsfdev;
 
 // DSP contexts
 struct dsp_lpf tlpf;
 struct dsp_lpf altlpf;
-float temp;
-struct qmc_data qmcdata;
-float climbrate;
 
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
@@ -265,43 +301,11 @@ struct dsp_pidval tpv;
 struct dsp_pidval cpv;
 struct dsp_pidval apv;
 
-struct gnss_data {
-	enum GNSSSTATUS {
-		GNSSSTATUS_VALID = 0,
-		GNSSSTATUS_INVALID = 1
-	} status;
+float temp;
 
-	float time;
-	char date[10];
-	
-	float latmin;
-	uint8_t lat;
-	enum LATDIR {
-		LATDIR_N = 0,
-		LATDIR_S = 1
-	} latdir;
+struct qmc_data qmcdata;
 
-	float lonmin;
-	uint8_t lon;
-	enum LONDIR {
-		LONDIR_E = 0,
-		LONDIR_W = 1
-	} londir;
-
-	float magvar;
-	enum MAGVARDIR {
-		MAGVARDIR_E = 0,
-		MAGVARDIR_W = 1
-	} magvardir;
-
-	float speed;
-	float course;
-	float altitude;
-
-	int quality;
-	uint8_t satellites;
-
-} gnss;
+struct gnss_data  gnss;
 
 // Control values
 float thrust = 0.0; // motors basic thrust
@@ -369,8 +373,8 @@ uint32_t getadcv(ADC_HandleTypeDef *hadc)
 // huart -- context for UART triggered that callback.
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
 {
-	if (espdev.status != ESP_FAILED && espdev.status != ESP_NOINIT)
-		esp_interrupt(&espdev, huart);
+	if (DEVITENABLED(dev[ESP_DEV].status))
+		dev[ESP_DEV].interrupt(dev[ESP_DEV].priv, huart);
 	
 	if (DEVITENABLED(dev[M10_DEV].status))
 		dev[M10_DEV].interrupt(dev[M10_DEV].priv, huart);
@@ -385,8 +389,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 // huart -- context for UART triggered that callback.
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-	if (espdev.status != ESP_FAILED && espdev.status != ESP_NOINIT)
-		esp_error(&espdev, huart);
+	if (DEVITENABLED(dev[ESP_DEV].status))
+		dev[ESP_DEV].error(dev[ESP_DEV].priv, huart);
 }
 
 // Initilize periodic event's context
@@ -783,7 +787,7 @@ int magcalib(int ms)
 		(double) (st.mysc * (hd.fy + st.my0)),
 		(double) (st.mzsc * (hd.fz + st.mz0)));
 
-	esp_send(&espdev, s);
+	dev[ESP_DEV].write(dev[ESP_DEV].priv, s, strlen(s));
 
 	return 0;
 }
@@ -1131,14 +1135,16 @@ int eraseflash(size_t size)
 			pos += W25_BLOCKSIZE;
 
 			sprintf(s, "erased block at %u\r\n", pos);
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 		}
 		else {
 			flashdev.erasesector(flashdev.priv, pos);
 			pos += W25_SECTORSIZE;
 
 			sprintf(s, "erased sector at %u\r\n", pos);
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 		}
 	}
 
@@ -1179,13 +1185,15 @@ int printlog(char *buf, size_t size)
 			sprintf(buf + strlen(buf), "\r\n");
 
 			// send this string into debug connection
-			esp_send(&espdev, buf);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, buf,
+				strlen(buf));
+
 		}
 	}
 			
 	
 	sprintf(buf, "log finished, %u frames written\r\n", frames);
-	esp_send(&espdev, buf);
+	dev[ESP_DEV].write(dev[ESP_DEV].priv, buf, strlen(buf));
 
 	return 0;
 }
@@ -1223,7 +1231,8 @@ int controlcmd(char *cmd)
 
 			sprintpos(s, &md, &hd);
 
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 		}
 		else if (strcmp(toks[1], "qmc") == 0) {
 			struct qmc_data hd;
@@ -1233,7 +1242,8 @@ int controlcmd(char *cmd)
 
 			sprintqmc(s, &hd);	
 
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 		}
 		else if (strcmp(toks[1], "hp") == 0) {
 			float alt;
@@ -1245,19 +1255,23 @@ int controlcmd(char *cmd)
 				(double) temp, (double) alt,
 				(double) dsp_getcompl(&climbratecompl));
 
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 		}
 		else if (strcmp(toks[1], "values") == 0) {
 			sprintvalues(s);
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 		}
 		else if (strcmp(toks[1], "pid") == 0) {
 			sprintpid(s);
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 		}
 		else if (strcmp(toks[1], "gnss") == 0) {
 			sprintgnss(s);
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 		}
 	}
 	else if (strcmp(toks[0], "r") == 0)
@@ -1474,7 +1488,8 @@ int controlcmd(char *cmd)
 
 			// notify user when erasing is started
 			sprintf(s, "erasing flash...\r\n");
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 
 			// set log size (0 is valid and
 			// means to disable logging)
@@ -1490,7 +1505,8 @@ int controlcmd(char *cmd)
 			// notify user when telemetry flash is erased
 			sprintf(s,"erased %u bytes of flash\r\n",
 				logsize);
-			esp_send(&espdev, s);
+			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+				strlen(s));
 
 			// enable telemetry
 			logtotal = 0;
@@ -1509,7 +1525,7 @@ int controlcmd(char *cmd)
 
 unknown:
 	snprintf(s, INFOLEN, "Unknown command: %s\r\n", cmd);
-	esp_send(&espdev, s);
+	dev[ESP_DEV].write(dev[ESP_DEV].priv, s, strlen(s));
 
 	return (-1);
 }
@@ -1639,8 +1655,6 @@ int main(void)
 	for (i = 0; i < DEV_COUNT; ++i)
 		dev[i].status = DEVSTATUS_NOINIT;
 
-	espdev.status = ESP_NOINIT;
-
 	// wait a little to let stm32 periphery and
 	// board's devices power on
 	HAL_Delay(1000);
@@ -1698,9 +1712,11 @@ int main(void)
 
 		// poll for configureation and telemetry commands
 		// from from debug wifi connection
-		if (esp_poll(&espdev, cmd) >= 0) 
+		if (dev[ESP_DEV].read(dev[ESP_DEV].priv, &cmd,
+			ESP_CMDSIZE) >= 0) {
 			controlcmd(cmd);
-		
+		}
+
 		// read the ELRS remote's packet
 		if (dev[CRSF_DEV].read(dev[CRSF_DEV].priv, &cd,
 			sizeof(struct crsf_data)) >= 0) {
@@ -2106,9 +2122,14 @@ static void qmc_init()
 // Init ESP07
 static void espdev_init()
 {
-	espdev.huart = &huart1;
+	struct esp_device d;
 
-	if (esp_init(&espdev, "copter", "", SERVPORT) < 0) {
+	d.huart = &huart1;
+	d.ssid = "copter";
+	d.pass = "";
+	d.port = SERVPORT;
+
+	if (esp_initdevice(&d, dev + ESP_DEV) < 0) {
 		uartprintf("failed to initilize ESP8266\r\n");
 		return;
 	}
