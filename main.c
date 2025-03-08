@@ -86,6 +86,12 @@
 #define LOG_CLIMBRATE	14
 #define LOG_ALT		15
 
+// debug commands maximum count
+#define MAX_COMMANDS 32
+
+// debug commands maximum token count
+#define MAX_CMDTOKS 12
+
 // Timer events IDs
 #define TEV_PID 	0
 #define TEV_CHECK 	1
@@ -209,12 +215,18 @@ struct gnss_data {
 
 	int quality;
 	uint8_t satellites;
-
-} gnss;
+};
 
 // telemetry packet stored in onboard flash
 struct logpack {
 	float data[LOG_PACKSIZE];
+};
+
+
+// debug command hadler structure
+struct command {
+	const char *name;
+	int (*func)(const char **);
 };
 
 // Periodic event's context that holds event's settings
@@ -349,6 +361,20 @@ int logbufpos = 0;
 int logflashpos = 0;
 size_t logsize = 0;
 struct logpack logbuf[LOG_BUFSIZE];
+
+// Debug commands handlers
+struct command commtable[MAX_COMMANDS];
+size_t commcount;
+
+int addcommand(const char *name, int (*func)(const char **))
+{
+	commtable[commcount].name = name;
+	commtable[commcount].func = func;
+
+	++commcount;
+
+	return 0;
+}
 
 // Get value from ADC, was used to monitor battery voltage
 //
@@ -593,6 +619,7 @@ int stabilize(int ms)
 	logwrite(LOG_GYRO_Y, md.gfy);
 	logwrite(LOG_GYRO_Z, md.gfz);
 
+	// apply accelerometer offsets
 	md.afx -= st.ax0;
 	md.afy -= st.ay0;
 	md.afz -= st.az0;
@@ -1198,328 +1225,362 @@ int printlog(char *buf, size_t size)
 	return 0;
 }
 
+int rcmd(const char **toks)
+{
+	en = 0.0;
+	
+	return 0;
+}
+
+int ecmd(const char **toks)
+{
+	en = 1.0;
+
+	return 0;
+}
+
+int ccmd(const char **toks)
+{
+	initstabilize(atof(toks[1]));
+
+	return 0;
+}
+
+int infocmd(const char **toks)
+{
+	char s[INFOLEN];
+	
+	if (strcmp(toks[1], "mpu") == 0) {
+		struct mpu_data md;
+		struct qmc_data hd;
+
+		dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
+			sizeof(struct mpu_data));
+
+		dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
+			sizeof(struct qmc_data));
+
+		md.afx -= st.ax0;
+		md.afy -= st.ay0;
+		md.afz -= st.az0;
+
+		sprintpos(s, &md, &hd);
+
+		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+			strlen(s));
+	}
+	else if (strcmp(toks[1], "qmc") == 0) {
+		struct qmc_data hd;
+
+		dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
+			sizeof(struct qmc_data));
+
+		sprintqmc(s, &hd);	
+
+		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+			strlen(s));
+	}
+	else if (strcmp(toks[1], "hp") == 0) {
+		float alt;
+
+		alt = dsp_getlpf(&altlpf) - alt0;
+
+		snprintf(s, INFOLEN,
+			"temp: %f; alt: %f; climb rate: %f\r\n",
+			(double) temp, (double) alt,
+			(double) dsp_getcompl(&climbratecompl));
+
+		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+			strlen(s));
+	}
+	else if (strcmp(toks[1], "values") == 0) {
+		sprintvalues(s);
+		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+			strlen(s));
+	}
+	else if (strcmp(toks[1], "pid") == 0) {
+		sprintpid(s);
+		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+			strlen(s));
+	}
+	else if (strcmp(toks[1], "gnss") == 0) {
+		sprintgnss(s);
+		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+			strlen(s));
+	}
+	else
+		return (-1);
+
+	return 0;
+}
+
+int pidcmd(const char **toks)
+{
+	float v;
+
+	v = atof(toks[3]);
+
+	if (strcmp(toks[1], "tilt") == 0) {
+		if (strcmp(toks[2], "mode") == 0) {
+			if (strcmp(toks[3], "double") == 0)
+				st.speedpid = 0;
+			else if (strcmp(toks[3], "single") == 0)
+				st.speedpid = 1;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "p") == 0)	st.p = v;
+		else if (strcmp(toks[2], "i") == 0)	st.i = v;
+		else if (strcmp(toks[2], "d") == 0)	st.d = v;
+		else					return (-1);
+
+		dsp_setpid(&pitchpv, st.p, st.i, st.d);
+		dsp_setpid(&rollpv, st.p, st.i, st.d);
+	}
+	else if (strcmp(toks[1], "stilt") == 0) {
+		if (strcmp(toks[2], "p") == 0)		st.sp = v;
+		else if (strcmp(toks[2], "i") == 0)	st.si = v;
+		else if (strcmp(toks[2], "d") == 0)	st.sd = v;
+		else					return (-1);
+
+		dsp_setpid(&pitchspv, st.sp, st.si, st.sd);
+		dsp_setpid(&rollspv, st.sp, st.si, st.sd);
+	}
+	else if (strcmp(toks[1], "yaw") == 0) {
+		if (strcmp(toks[2], "mode") == 0) {
+			if (strcmp(toks[3], "double") == 0)
+				st.yawspeedpid = 0;
+			else if (strcmp(toks[3], "single") == 0)
+				st.yawspeedpid = 1;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "p") == 0)	st.yp = v;
+		else if (strcmp(toks[2], "i") == 0)	st.yi = v;
+		else if (strcmp(toks[2], "d") == 0)	st.yd = v;
+		else					return (-1);
+
+		dsp_setpid(&yawpv, st.yp, st.yi, st.yd);
+	}
+	else if (strcmp(toks[1], "syaw") == 0) {
+		if (strcmp(toks[2], "p") == 0)		st.ysp = v;
+		else if (strcmp(toks[2], "i") == 0)	st.ysi = v;
+		else if (strcmp(toks[2], "d") == 0)	st.ysd = v;
+		else					return (-1);
+
+		dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd);
+	}
+	else if (strcmp(toks[1], "climb") == 0) {
+		if (strcmp(toks[2], "p") == 0)		st.zsp = v;
+		else if (strcmp(toks[2], "i") == 0)	st.zsi = v;
+		else if (strcmp(toks[2], "d") == 0)	st.zsd = v;
+		else					return (-1);
+
+		dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd);
+	}
+	else if (strcmp(toks[1], "climbrate") == 0) {
+		if (strcmp(toks[2], "p") == 0)		st.cp = v;
+		else if (strcmp(toks[2], "i") == 0)	st.ci = v;
+		else if (strcmp(toks[2], "d") == 0)	st.cd = v;
+		else					return (-1);
+
+		dsp_setpid(&cpv, st.cp, st.ci, st.cd);
+	}
+	else if (strcmp(toks[1], "altitude") == 0) {
+		if (strcmp(toks[2], "p") == 0)		st.ap = v;
+		else if (strcmp(toks[2], "i") == 0)	st.ai = v;
+		else if (strcmp(toks[2], "d") == 0)	st.ad = v;
+		else					return (-1);
+
+		dsp_setpid(&apv, st.ap, st.ai, st.ad);
+	}
+	else
+		return (-1);
+	
+	return 0;
+}
+
+int calibcmd(const char **toks)
+{
+	if (strcmp(toks[1], "mag") == 0) {
+		if (strcmp(toks[2], "on") == 0)
+			magcalibmode = 1;
+		else if (strcmp(toks[2], "off") == 0)
+			magcalibmode = 0;
+		else
+			return (-1);
+	}
+	else
+		return (-1);
+
+	return 0;
+}
+
+int flashcmd(const char **toks)
+{
+	if (strcmp(toks[1], "write") == 0)
+		writesettings(atoi(toks[2]));	
+	else if (strcmp(toks[1], "read") == 0)
+		readsettings(atoi(toks[2]));
+	else
+		return (-1);
+	
+	return 0;
+}
+
+int complcmd(const char **toks)
+{
+	st.tcoef = atof(toks[1]);
+
+	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
+	dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);	
+
+	return 0;
+}
+
+int lpfcmd(const char **toks)
+{
+	if (strcmp(toks[1], "climb") == 0) {
+		st.ttcoef = atof(toks[2]);
+
+		dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
+	}
+	else if (strcmp(toks[1], "climbrate") == 0) {
+		st.climbcoef = atof(toks[2]);
+
+		dsp_initcompl(&climbratecompl,
+			st.climbcoef, HP_FREQ);
+	}
+	else if (strcmp(toks[1], "altitude") == 0) {
+		st.atcoef = atof(toks[2]);
+
+		dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
+	}
+	else
+		return (-1);
+
+	return 0;
+}
+
+int adjcmd(const char **toks)
+{
+	float v;
+
+	v = atof(toks[2]);
+
+	if (strcmp(toks[1], "roll") == 0)	st.roll0 = v;
+	else if (strcmp(toks[1], "pitch") == 0)	st.pitch0 = v;
+	else if (strcmp(toks[1], "yaw") == 0)	st.yaw0 = v;
+	else if (strcmp(toks[1], "acc") == 0) {
+		if (strcmp(toks[2], "x") == 0)
+			st.ax0 = atof(toks[3]);
+		else if (strcmp(toks[2], "y") == 0)
+			st.ay0 = atof(toks[3]);
+		else if (strcmp(toks[2], "z") == 0)
+			st.az0 = atof(toks[3]);
+	}
+	else if (strcmp(toks[1], "gyro") == 0) {
+		if (strcmp(toks[2], "x") == 0)
+			st.gx0 = atof(toks[3]);
+		else if (strcmp(toks[2], "y") == 0)
+			st.gy0 = atof(toks[3]);
+		else if (strcmp(toks[2], "z") == 0)
+			st.gz0 = atof(toks[3]);
+	}
+	else if (strcmp(toks[1], "mag") == 0) {
+		if (strcmp(toks[2], "x0") == 0)
+			st.mx0 = atof(toks[3]);
+		else if (strcmp(toks[2], "y0") == 0)
+			st.my0 = atof(toks[3]);
+		else if (strcmp(toks[2], "z0") == 0)
+			st.mz0 = atof(toks[3]);
+		else if (strcmp(toks[2], "xscale") == 0)
+			st.mxsc = atof(toks[3]);
+		else if (strcmp(toks[2], "yscale") == 0)
+			st.mysc = atof(toks[3]);
+		else if (strcmp(toks[2], "zscale") == 0)
+			st.mzsc = atof(toks[3]);
+		else if (strcmp(toks[2], "decl") == 0)
+			st.magdecl = atof(toks[3]);
+		else
+			return (-1);
+	}
+	else
+		return (-1);
+
+	return 0;
+}
+
+int logcmd(const char **toks)
+{
+	char s[INFOLEN];
+	
+	if (strcmp(toks[1], "set") == 0) {
+		// flash erasing process takes time and blocks
+		// other actions, so disarm for safety
+		en = 0.0;
+		setthrust(0.0, 0.0, 0.0, 0.0);
+
+		// notify user when erasing is started
+		sprintf(s, "erasing flash...\r\n");
+		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+			strlen(s));
+
+		// set log size (0 is valid and
+		// means to disable logging)
+		if (atoi(toks[2]) > W25_TOTALSIZE)
+			return (-1);
+
+		logsize = atoi(toks[2]);
+
+		// erase log flash no
+		// respond during this process
+		eraseflash(logsize);
+
+		// notify user when telemetry flash is erased
+		sprintf(s,"erased %u bytes of flash\r\n",
+			logsize);
+		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+			strlen(s));
+
+		// enable telemetry
+		logtotal = 0;
+		logflashpos = 0;
+		logbufpos = 0;
+	}
+	else if (strcmp(toks[1], "get") == 0)
+		printlog(s, atoi(toks[2]));
+	else
+		return (-1);
+
+	return 0;
+}
+
+
 // Parse and execute control command bot from debug wifi-connetion.
 //
 // cmd -- command to be executed.
-int controlcmd(char *cmd)
+int runcommand(char *cmd)
 {
 	char s[INFOLEN];
-	char *toks[12];
+	char *toks[MAX_CMDTOKS];
+	int i;
 
 	if (cmd[0] == '\0')
 		return 0;
 
 	// split a command into tokens by spaces
-	parsecommand(toks, 12, cmd);
+	parsecommand(toks, MAX_CMDTOKS, cmd);
 
-	// perform corresponding action. Here is simple
-	// recursive descent is used.
-	if (strcmp(toks[0], "info") == 0) {
-		if (strcmp(toks[1], "mpu") == 0) {
-			struct mpu_data md;
-			struct qmc_data hd;
+	// perform corresponding action
+	for (i = 0; i < commcount; ++i) {
+		if (strcmp(toks[0], commtable[i].name) == 0) {
+			if (commtable[i].func((const char **) toks) < 0)
+				goto unknown;
 
-			dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
-				sizeof(struct mpu_data));
-
-			dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
-				sizeof(struct qmc_data));
-
-			md.afx -= st.ax0;
-			md.afy -= st.ay0;
-			md.afz -= st.az0;
-
-			sprintpos(s, &md, &hd);
-
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-				strlen(s));
-		}
-		else if (strcmp(toks[1], "qmc") == 0) {
-			struct qmc_data hd;
-
-			dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
-				sizeof(struct qmc_data));
-
-			sprintqmc(s, &hd);	
-
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-				strlen(s));
-		}
-		else if (strcmp(toks[1], "hp") == 0) {
-			float alt;
-
-			alt = dsp_getlpf(&altlpf) - alt0;
-
-			snprintf(s, INFOLEN,
-				"temp: %f; alt: %f; climb rate: %f\r\n",
-				(double) temp, (double) alt,
-				(double) dsp_getcompl(&climbratecompl));
-
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-				strlen(s));
-		}
-		else if (strcmp(toks[1], "values") == 0) {
-			sprintvalues(s);
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-				strlen(s));
-		}
-		else if (strcmp(toks[1], "pid") == 0) {
-			sprintpid(s);
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-				strlen(s));
-		}
-		else if (strcmp(toks[1], "gnss") == 0) {
-			sprintgnss(s);
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-				strlen(s));
+			return 0;
 		}
 	}
-	else if (strcmp(toks[0], "r") == 0)
-		en = 0.0;
-	else if (strcmp(toks[0], "e") == 0)
-		en = 1.0;
-	else if (strcmp(toks[0], "c") == 0)
-		initstabilize(atof(toks[1]));
-	else if (strcmp(toks[0], "calib") == 0) {
-		if (strcmp(toks[1], "mag") == 0) {
-			if (strcmp(toks[2], "on") == 0)
-				magcalibmode = 1;
-			else if (strcmp(toks[2], "off") == 0)
-				magcalibmode = 0;
-			else
-				goto unknown;
-		}
-		else
-			goto unknown;
-	}
-	else if (strcmp(toks[0], "flash") == 0) {
-		if (strcmp(toks[1], "write") == 0)
-			writesettings(atoi(toks[2]));	
-		else if (strcmp(toks[1], "read") == 0)
-			readsettings(atoi(toks[2]));
-	}
-	else if (strcmp(toks[0], "pid") == 0) {
-		float v;
-
-		v = atof(toks[3]);
-
-		if (strcmp(toks[1], "tilt") == 0) {
-			if (strcmp(toks[2], "mode") == 0) {
-				if (strcmp(toks[3], "double") == 0)
-					st.speedpid = 0;
-				else if (strcmp(toks[3], "single") == 0)
-					st.speedpid = 1;
-				else
-					goto unknown;
-			}
-			else if (strcmp(toks[2], "p") == 0)
-				st.p = v;
-			else if (strcmp(toks[2], "i") == 0)
-				st.i = v;
-			else if (strcmp(toks[2], "d") == 0)
-				st.d = v;
-			else
-				goto unknown;
-
-			dsp_setpid(&pitchpv, st.p, st.i, st.d);
-			dsp_setpid(&rollpv, st.p, st.i, st.d);
-		}
-		else if (strcmp(toks[1], "stilt") == 0) {
-			if (strcmp(toks[2], "p") == 0)
-				st.sp = v;
-			else if (strcmp(toks[2], "i") == 0)
-				st.si = v;
-			else if (strcmp(toks[2], "d") == 0)
-				st.sd = v;
-			else
-				goto unknown;
-
-			dsp_setpid(&pitchspv, st.sp, st.si, st.sd);
-			dsp_setpid(&rollspv, st.sp, st.si, st.sd);
-		}
-		else if (strcmp(toks[1], "yaw") == 0) {
-			if (strcmp(toks[2], "mode") == 0) {
-				if (strcmp(toks[3], "double") == 0)
-					st.yawspeedpid = 0;
-				else if (strcmp(toks[3], "single") == 0)
-					st.yawspeedpid = 1;
-				else
-					goto unknown;
-			}
-			else if (strcmp(toks[2], "p") == 0)
-				st.yp = v;
-			else if (strcmp(toks[2], "i") == 0)
-				st.yi = v;
-			else if (strcmp(toks[2], "d") == 0)
-				st.yd = v;
-			else
-				goto unknown;
-
-			dsp_setpid(&yawpv, st.yp, st.yi, st.yd);
-		}
-		else if (strcmp(toks[1], "syaw") == 0) {
-			if (strcmp(toks[2], "p") == 0)
-				st.ysp = v;
-			else if (strcmp(toks[2], "i") == 0)
-				st.ysi = v;
-			else if (strcmp(toks[2], "d") == 0)
-				st.ysd = v;
-			else
-				goto unknown;
-
-			dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd);
-		}
-		else if (strcmp(toks[1], "climb") == 0) {
-			if (strcmp(toks[2], "p") == 0)
-				st.zsp = v;
-			else if (strcmp(toks[2], "i") == 0)
-				st.zsi = v;
-			else if (strcmp(toks[2], "d") == 0)
-				st.zsd = v;
-			else
-				goto unknown;
-
-			dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd);
-		}
-		else if (strcmp(toks[1], "climbrate") == 0) {
-			if (strcmp(toks[2], "p") == 0)
-				st.cp = v;
-			else if (strcmp(toks[2], "i") == 0)
-				st.ci = v;
-			else if (strcmp(toks[2], "d") == 0)
-				st.cd = v;
-			else
-				goto unknown;
-
-			dsp_setpid(&cpv, st.cp, st.ci, st.cd);
-		}
-		else if (strcmp(toks[1], "altitude") == 0) {
-			if (strcmp(toks[2], "p") == 0)
-				st.ap = v;
-			else if (strcmp(toks[2], "i") == 0)
-				st.ai = v;
-			else if (strcmp(toks[2], "d") == 0)
-				st.ad = v;
-			else
-				goto unknown;
-
-			dsp_setpid(&apv, st.ap, st.ai, st.ad);
-		}
-		else
-			goto unknown;
-	}
-	else if (strcmp(toks[0], "compl") == 0) {
-		st.tcoef = atof(toks[1]);
-
-		dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
-		dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);	
-	}
-	else if (strcmp(toks[0], "lpf") == 0) {
-		if (strcmp(toks[1], "climb") == 0) {
-			st.ttcoef = atof(toks[2]);
-
-			dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
-		}
-		else if (strcmp(toks[1], "climbrate") == 0) {
-			st.climbcoef = atof(toks[2]);
-
-			dsp_initcompl(&climbratecompl,
-				st.climbcoef, HP_FREQ);
-		}
-		else if (strcmp(toks[1], "altitude") == 0) {
-			st.atcoef = atof(toks[2]);
-
-			dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
-		}
-		else
-			goto unknown;
-	}
-	else if (strcmp(toks[0], "adj") == 0) {
-		float v;
-
-		v = atof(toks[2]);
-
-		if (strcmp(toks[1], "roll") == 0)	st.roll0 = v;
-		else if (strcmp(toks[1], "pitch") == 0)	st.pitch0 = v;
-		else if (strcmp(toks[1], "yaw") == 0)	st.yaw0 = v;
-		else if (strcmp(toks[1], "acc") == 0) {
-			if (strcmp(toks[2], "x") == 0)
-				st.ax0 = atof(toks[3]);
-			else if (strcmp(toks[2], "y") == 0)
-				st.ay0 = atof(toks[3]);
-			else if (strcmp(toks[2], "z") == 0)
-				st.az0 = atof(toks[3]);
-		}
-		else if (strcmp(toks[1], "gyro") == 0) {
-			if (strcmp(toks[2], "x") == 0)
-				st.gx0 = atof(toks[3]);
-			else if (strcmp(toks[2], "y") == 0)
-				st.gy0 = atof(toks[3]);
-			else if (strcmp(toks[2], "z") == 0)
-				st.gz0 = atof(toks[3]);
-		}
-		else if (strcmp(toks[1], "mag") == 0) {
-			if (strcmp(toks[2], "x0") == 0)
-				st.mx0 = atof(toks[3]);
-			else if (strcmp(toks[2], "y0") == 0)
-				st.my0 = atof(toks[3]);
-			else if (strcmp(toks[2], "z0") == 0)
-				st.mz0 = atof(toks[3]);
-			else if (strcmp(toks[2], "xscale") == 0)
-				st.mxsc = atof(toks[3]);
-			else if (strcmp(toks[2], "yscale") == 0)
-				st.mysc = atof(toks[3]);
-			else if (strcmp(toks[2], "zscale") == 0)
-				st.mzsc = atof(toks[3]);
-			else if (strcmp(toks[2], "decl") == 0)
-				st.magdecl = atof(toks[3]);
-			else
-				goto unknown;
-		}
-		else
-			goto unknown;
-	}
-	else if (strcmp(toks[0], "log") == 0) {
-		if (strcmp(toks[1], "set") == 0) {
-			// flash erasing process takes time and blocks
-			// other actions, so disarm for safety
-			en = 0.0;
-			setthrust(0.0, 0.0, 0.0, 0.0);
-
-			// notify user when erasing is started
-			sprintf(s, "erasing flash...\r\n");
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-				strlen(s));
-
-			// set log size (0 is valid and
-			// means to disable logging)
-			if (atoi(toks[2]) > W25_TOTALSIZE)
-				goto unknown;
-
-			logsize = atoi(toks[2]);
-
-			// erase log flash no
-			// respond during this process
-			eraseflash(logsize);
-
-			// notify user when telemetry flash is erased
-			sprintf(s,"erased %u bytes of flash\r\n",
-				logsize);
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-				strlen(s));
-
-			// enable telemetry
-			logtotal = 0;
-			logflashpos = 0;
-			logbufpos = 0;
-		}
-		else if (strcmp(toks[1], "get") == 0)
-			printlog(s, atoi(toks[2]));
-		else
-			goto unknown;
-	}
-	else
-		goto unknown;
 
 	return 0;
 
@@ -1695,6 +1756,19 @@ int main(void)
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
 	inittimev(evs + TEV_LOG, LOG_FREQ, logupdate);
 
+	// initilize debug commands
+	addcommand("r", rcmd);
+	addcommand("e", ecmd);
+	addcommand("c", ccmd);
+	addcommand("info", infocmd);
+	addcommand("pid", infocmd);
+	addcommand("calib", calibcmd);
+	addcommand("flash", flashcmd);
+	addcommand("compl", complcmd);
+	addcommand("lpf", lpfcmd);
+	addcommand("adj", adjcmd);
+	addcommand("log", logcmd);
+
 	// initilize ERLS timer. For now ERLS polling is not a periodic
 	// event and called as frequently as possible, so it needs this
 	// separate timer.
@@ -1714,7 +1788,7 @@ int main(void)
 		// from from debug wifi connection
 		if (dev[ESP_DEV].read(dev[ESP_DEV].priv, &cmd,
 			ESP_CMDSIZE) >= 0) {
-			controlcmd(cmd);
+			runcommand(cmd);
 		}
 
 		// read the ELRS remote's packet
