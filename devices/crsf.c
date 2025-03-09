@@ -19,6 +19,26 @@ struct packet {
 	uint8_t crc;
 };
 
+struct __attribute__ ((packed)) gps {
+	int32_t lat;
+	int32_t lon;
+	int16_t speed;
+	int16_t course;
+	uint16_t alt;
+	uint8_t sats;
+};
+
+struct __attribute__ ((packed)) baroaltitude {
+	uint16_t balt;
+	int16_t vspeed;
+};
+
+struct __attribute__ ((packed)) attitude {
+	int16_t pitch;
+	int16_t roll;
+	int16_t yaw;
+};
+
 static struct crsf_device crsf_devs[CRSF_MAXDEVS];
 static size_t crsf_devcount = 0;
 
@@ -182,36 +202,47 @@ int crsf_write(void *dev, void *dt, size_t sz)
 {
 	struct crsf_device *d;
 	struct crsf_tele *tele;
+	struct gps *gpspack;
+	struct baroaltitude *baltpack;
+	struct attitude *attpack;
 	uint8_t buf[64];
 
 	d = dev;
 	tele = dt;
+	gpspack =  (struct gps *) (buf + 3);
+	baltpack = (struct baroaltitude *) (buf + 3);
+	attpack = (struct attitude *) (buf + 3);
 
 	buf[0] = 0xc8;
+	
 	buf[1] = 17;
 	buf[2] = 0x02;
-	
-	*((int32_t *)(buf + 3)) = endian4((uint32_t)(tele->lat * 1e7));
-	*((int32_t *)(buf + 7)) = endian4((uint32_t)(tele->lon * 1e7));
-	*((int16_t *)(buf + 11)) = endian2((uint16_t)(tele->speed * 10.0));
-	*((int16_t *)(buf + 13)) = endian2((uint16_t)(tele->course * 100.0));
-	*((uint16_t *)(buf + 15)) = endian2((uint16_t)(tele->alt + 1000.0));
-	*((int8_t *)(buf + 17)) = tele->sats;
-
+	gpspack->lat = endian4((int32_t)(tele->lat * 1e7));
+	gpspack->lon = endian4((int32_t)(tele->lon * 1e7));
+	gpspack->speed = endian2((int16_t)(tele->speed * 10.0));
+	gpspack->course = endian2((int16_t)(tele->course * 100.0));
+	gpspack->alt = endian2((uint16_t)(tele->alt + 1000.0));
+	gpspack->sats = tele->sats;
 	buf[18] = crsf_crc8(buf + 2, 16);
 
 	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 19, 1000);
 
-	buf[0] = 0xc8;
-	buf[1] = 5;
+	buf[1] = 6;
 	buf[2] = 0x09;
-	
-	*((int16_t *)(buf + 3)) = endian2((uint16_t)(tele->balt * 10.0 + 10000.0));
-	*((int16_t *)(buf + 5)) = endian2((uint16_t)(tele->vspeed * 100.0));
+	baltpack->balt = endian2((uint16_t)(tele->balt * 10.0 + 1e4));
+	baltpack->vspeed = endian2((int16_t)(tele->vspeed * 100.0));
+	buf[7] = crsf_crc8(buf + 2, 4);
 
-	buf[6] = crsf_crc8(buf + 2, 4);
+	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 8, 1000);
 
-	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 7, 1000);
+	buf[1] = 8;
+	buf[2] = 0x1e;
+	attpack->pitch = endian2((int16_t)(tele->pitch * 1e4));
+	attpack->roll = endian2((int16_t)(tele->roll * 1e4));
+	attpack->yaw = endian2((int16_t)(tele->yaw * 1e4));
+	buf[9] = crsf_crc8(buf + 2, 7);
+
+	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 10, 1000);
 
 	return 0;
 }

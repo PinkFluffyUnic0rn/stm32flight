@@ -23,6 +23,9 @@ struct crsf_tele {
 	float balt;
 	float vspeed;
 	uint8_t sats;
+	float pitch;
+	float roll;
+	float yaw;
 };
 
 int crsf_initdevice(void *is, struct cdevice *dev);

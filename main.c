@@ -52,6 +52,7 @@
 #define HP_FREQ 25
 #define CRSF_FREQ 100
 #define QMC_FREQ 100
+#define TELE_FREQ 10
 #define LOG_FREQ 64
 
 // MCU flash address where quadcopter settings is stored
@@ -99,7 +100,8 @@
 #define TEV_HP		3
 #define TEV_QMC		4
 #define TEV_LOG		5
-#define TEV_COUNT	6
+#define TEV_TELE	6
+#define TEV_COUNT	7
 
 // Debug connection port
 #define SERVPORT 8880
@@ -736,7 +738,6 @@ int stabilize(int ms)
 		thrustcor = dsp_pid(&cpv, thrustcor,
 			dsp_getcompl(&climbratecompl), dt);
 
-
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
@@ -879,12 +880,6 @@ int hpupdate(int ms)
 	logwrite(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
 	logwrite(LOG_ALT, dsp_getlpf(&altlpf));
 
-
-	tele.balt = dsp_getlpf(&altlpf);
-	tele.vspeed = dsp_getcompl(&climbratecompl);
-	dev[CRSF_DEV].write(dev[CRSF_DEV].priv, &tele,
-		sizeof(struct crsf_tele));
-
 	return 0;
 }
 
@@ -927,6 +922,30 @@ int logupdate(int ms)
 	return 0;
 }
 
+// Send telemetry through ELRS.
+//
+// ms -- microsecond passed from last callback invocation.
+int telesend(int ms)
+{
+	tele.lat = gnss.lat + gnss.latmin / 60.0;
+	tele.lon = gnss.lon + gnss.lonmin / 60.0;
+	tele.speed = gnss.speed;
+	tele.course = gnss.course;
+	tele.alt = gnss.altitude;
+	tele.sats = gnss.satellites;
+	tele.balt = dsp_getlpf(&altlpf) - alt0;
+	tele.vspeed = dsp_getcompl(&climbratecompl);
+	tele.roll = dsp_getcompl(&rollcompl);
+	tele.pitch = dsp_getcompl(&pitchcompl);
+	tele.yaw = circf(qmc_heading(tele.pitch, tele.roll,
+		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
+
+	dev[CRSF_DEV].write(dev[CRSF_DEV].priv, &tele,
+		sizeof(struct crsf_tele));
+
+	return 0;
+}
+
 // Parse configureation command got from debug wi-fi connection
 // by just splitting it into tokens by spaces
 //
@@ -954,7 +973,7 @@ int parsecommand(char **toks, int maxtoks, char *data)
 // s -- output string.
 // md -- accelerometer and gyroscope data.
 // hd -- magnetometer data.
-int sprintpos(char *s, struct mpu_data *md, struct qmc_data *hd)
+int sprintpos(char *s, struct mpu_data *md)
 {
 	s[0] = '\0';
 
@@ -981,9 +1000,9 @@ int sprintpos(char *s, struct mpu_data *md, struct qmc_data *hd)
 		(double) (dsp_getcompl(&rollcompl) - st.roll0),
 		(double) (dsp_getcompl(&pitchcompl) - st.pitch0),
 		(double) circf(qmc_heading(
-			-(dsp_getcompl(&pitchcompl) - st.pitch0),
-			-(dsp_getcompl(&rollcompl) - st.roll0),
-			hd->fx, hd->fy, hd->fz) - st.yaw0));
+			dsp_getcompl(&pitchcompl) - st.pitch0,
+			dsp_getcompl(&rollcompl) - st.roll0,
+			qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"z acceleration: %f\r\n",
@@ -1017,8 +1036,8 @@ int sprintqmc(char *s, struct qmc_data *hd)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"heading: %f\r\n", (double) qmc_heading(
-			(dsp_getcompl(&pitchcompl) - st.pitch0),
-			(dsp_getcompl(&rollcompl) - st.roll0),
+			dsp_getcompl(&pitchcompl) - st.pitch0,
+			dsp_getcompl(&rollcompl) - st.roll0,
 			hd->fx, hd->fy, hd->fz));
 
 	return 0;
@@ -1329,19 +1348,15 @@ int infocmd(const char **toks)
 	
 	if (strcmp(toks[1], "mpu") == 0) {
 		struct mpu_data md;
-		struct qmc_data hd;
 
 		dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
 			sizeof(struct mpu_data));
-
-		dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
-			sizeof(struct qmc_data));
 
 		md.afx -= st.ax0;
 		md.afy -= st.ay0;
 		md.afz -= st.az0;
 
-		sprintpos(s, &md, &hd);
+		sprintpos(s, &md);
 	}
 	else if (strcmp(toks[1], "qmc") == 0) {
 		struct qmc_data hd;
@@ -1786,16 +1801,6 @@ int m10msg(struct m10_data *nd)
 	gnss.speed = nd->rmc.speed;
 	gnss.course = nd->rmc.course;
 
-	tele.lat = gnss.lat + gnss.latmin / 60.0;
-	tele.lon = gnss.lon + gnss.lonmin / 60.0;
-	tele.speed = gnss.speed;
-	tele.course = gnss.course;
-	tele.alt = gnss.altitude;
-	tele.sats = gnss.satellites;
-
-	dev[CRSF_DEV].write(dev[CRSF_DEV].priv, &tele,
-		sizeof(struct crsf_tele));
-
 	return 0;
 }
 
@@ -1855,6 +1860,7 @@ int main(void)
 	inittimev(evs + TEV_HP, HP_FREQ, hpupdate);
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
 	inittimev(evs + TEV_LOG, LOG_FREQ, logupdate);
+	inittimev(evs + TEV_TELE, TELE_FREQ, telesend);
 
 	// initilize debug commands
 	addcommand("r", rcmd);
