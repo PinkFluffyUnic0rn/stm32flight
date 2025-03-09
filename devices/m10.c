@@ -24,6 +24,9 @@
 #define UBX_MSGOUT_NMEAGSV	0x209100c5
 #define UBX_MSGOUT_NMEAGLL	0x209100ca
 
+#define ubx_valset1(m10, id, v) _ubx_valset1(m10, id, v, 0)
+#define ubx_valset1na(m10, id, v) _ubx_valset1(m10, id, v, 1)
+
 enum M10_MSGTYPE {
 	M10_MSGTYPE_UBX,
 	M10_MSGTYPE_NMEA
@@ -331,7 +334,7 @@ static int ubx_receivemsgs(struct m10_msg *m, const uint8_t **msg,
 }
 
 static int ubx_send(struct m10_device *m10, uint8_t class, uint8_t id,
-	uint16_t size, const uint8_t *data)
+	uint16_t size, const uint8_t *data, int noack)
 {
 	uint8_t ack[8] = {
 		0xb5, 0x62, 0x05, 0x01,
@@ -367,10 +370,13 @@ static int ubx_send(struct m10_device *m10, uint8_t class, uint8_t id,
 	msg[1] = nack;
 	msglen[0] = 8;
 	msglen[1] = 8;
-	
-	HAL_UART_Transmit(m10->huart, buf, 6 + size + 2, 1000);
 
 	for (i = 0; i < UBX_RETRIES; ++i) {
+		HAL_UART_Transmit(m10->huart, buf, 6 + size + 2, 1000);
+	
+		if (noack)
+			return 0;
+
 		if (ubx_receivemsgs(&m, msg, msglen,
 				2, UBX_TIMEOUT) == 0)
 			return 0;
@@ -379,7 +385,8 @@ static int ubx_send(struct m10_device *m10, uint8_t class, uint8_t id,
 	return (-1);
 }
 
-static int ubx_valset1(struct m10_device *m10, uint32_t id, uint8_t v)
+static int _ubx_valset1(struct m10_device *m10, uint32_t id, uint8_t v,
+	int noack)
 {
 	uint8_t buf[16];
 	
@@ -394,7 +401,7 @@ static int ubx_valset1(struct m10_device *m10, uint32_t id, uint8_t v)
 	buf[7] = (id >> 24);
 	buf[8] = v;
 
-	return ubx_send(m10, 0x06, 0x8a, 0x9, buf);
+	return ubx_send(m10, 0x06, 0x8a, 0x9, buf, noack);
 }
 
 static float m10_time(const char *p)
@@ -494,7 +501,7 @@ int m10_read(void *dev, void *dt, size_t sz)
 		return (-1);
 	
 	if (m.xorgot != m.xorshould)
-		return (-1);	
+		return (-1);
 
 	if (strcmp(m.msg + m.field[0], "GNGGA") == 0 ) {
 		data->type = M10_TYPE_GGA;
@@ -557,12 +564,24 @@ int m10_init(struct m10_device *m10)
 	Msgw = Msgr = 0;
 	
 	HAL_UART_Receive_DMA(m10->huart, &Rxbuf, 1);
-	
-	ubx_valset1(m10, UBX_MSGOUT_NMEAVTG, 0);
-	ubx_valset1(m10, UBX_MSGOUT_NMEAGSA, 0);
-	ubx_valset1(m10, UBX_MSGOUT_NMEAGSV, 0);
-	ubx_valset1(m10, UBX_MSGOUT_NMEAGLL, 0);
-	ubx_valset1(m10, UBX_UART1OUTPROT_UBX, 0);
+
+	if (ubx_valset1na(m10, UBX_UART1OUTPROT_UBX, 1) < 0)
+		return (-1);
+
+	if (ubx_valset1(m10, UBX_MSGOUT_NMEAVTG, 0) < 0)
+		return (-1);
+
+	if (ubx_valset1(m10, UBX_MSGOUT_NMEAGSA, 0) < 0)
+		return (-1);
+
+	if (ubx_valset1(m10, UBX_MSGOUT_NMEAGSV, 0) < 0)
+		return (-1);
+
+	if (ubx_valset1(m10, UBX_MSGOUT_NMEAGLL, 0) < 0)
+		return (-1);
+
+	if (ubx_valset1(m10, UBX_UART1OUTPROT_UBX, 0) < 0)
+		return (-1);
 
 	return 0;
 }
@@ -573,7 +592,7 @@ int m10_initdevice(void *is, struct cdevice *dev)
 
 	memmove(m10_devs + m10_devcount, is, sizeof(struct m10_device));
 	
-	sprintf(dev->name, "%s%d", "m10", m10_devcount);
+	sprintf(dev->name, "%s_%d", "m10", m10_devcount);
 
 	dev->priv = m10_devs + m10_devcount;
 	dev->read = m10_read;

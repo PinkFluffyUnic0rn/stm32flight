@@ -78,7 +78,7 @@ int hp_initdevice(void *is, struct cdevice *dev)
 
 	memmove(hp_devs + hp_devcount, is, sizeof(struct hp_device));
 	
-	sprintf(dev->name, "%s%d", "HP206C", hp_devcount);
+	sprintf(dev->name, "%s_%d", "hp206c", hp_devcount);
 
 	dev->priv = hp_devs + hp_devcount;
 	dev->read = hp_getdata;

@@ -274,7 +274,7 @@ int w25_initdevice(void *is, struct bdevice *dev)
 
 	memmove(devs + devcount, is, sizeof(struct w25_device));
 	
-	sprintf(dev->name, "%s%d", "w25q", devcount);
+	sprintf(dev->name, "%s_%d", "w25q", devcount);
 
 	dev->priv = devs + devcount;
 

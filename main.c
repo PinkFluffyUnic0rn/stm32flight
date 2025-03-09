@@ -1157,6 +1157,40 @@ int sprintgnss(char *s) {
 	return 0;
 }
 
+int sprintdevs(char *s)
+{
+	int i;
+
+	s[0] = '\0';
+
+	for (i = 0; i < DEV_COUNT; ++i) {
+		const char *strstatus;
+
+		switch (dev[i].status) {
+		case DEVSTATUS_IT:
+			strstatus = "interrupts enabled";
+			break;
+		case DEVSTATUS_INIT:
+			strstatus = "initilized";
+			break;
+		case DEVSTATUS_FAILED:
+			strstatus = "failed";
+			break;
+		case DEVSTATUS_NOINIT:
+			strstatus = "not initilized";
+			break;
+		default:
+			strstatus = "unknown";
+			break;
+		}
+
+		sprintf(s + strlen(s), "%-15s: %s\r\n",
+			dev[i].name, strstatus);
+	}
+
+	return 0;
+}
+
 // Erase log flash to prepare at for writing,
 // erasing starts from address 0.
 //
@@ -1235,7 +1269,6 @@ int printlog(char *buf, size_t size)
 			// send this string into debug connection
 			dev[ESP_DEV].write(dev[ESP_DEV].priv, buf,
 				strlen(buf));
-
 		}
 	}
 			
@@ -1317,6 +1350,8 @@ int infocmd(const char **toks)
 			(double) temp, (double) alt,
 			(double) dsp_getcompl(&climbratecompl));
 	}
+	else if (strcmp(toks[1], "dev") == 0)
+		sprintdevs(s);
 	else if (strcmp(toks[1], "values") == 0)
 		sprintvalues(s);
 	else if (strcmp(toks[1], "pid") == 0)
@@ -1594,7 +1629,6 @@ int logcmd(const char **toks)
 
 	return 0;
 }
-
 
 // Parse and execute control command bot from debug wifi-connetion.
 //

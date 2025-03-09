@@ -344,7 +344,7 @@ int mpu_initdevice(void *is, struct cdevice *dev)
 
 	memmove(mpu_devs + mpu_devcount, is, sizeof(struct mpu_device));
 
-	sprintf(dev->name, "%s%d", "mpu6500", mpu_devcount);
+	sprintf(dev->name, "%s_%d", "mpu6500", mpu_devcount);
 
 	dev->priv = mpu_devs + mpu_devcount;
 	dev->read = mpu_getdata;

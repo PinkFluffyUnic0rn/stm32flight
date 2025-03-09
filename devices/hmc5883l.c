@@ -93,7 +93,7 @@ int hmc_initdevice(void *is, struct cdevice *dev)
 
 	memmove(hmc_devs + hmc_devcount, is, sizeof(struct hmc_device));
 	
-	sprintf(dev->name, "%s%d", "hmc5883l", hmc_devcount);
+	sprintf(dev->name, "%s_%d", "hmc5883l", hmc_devcount);
 
 	dev->priv = hmc_devs + hmc_devcount;
 	dev->read = hmc_getdata;

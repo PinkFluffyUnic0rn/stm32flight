@@ -413,7 +413,7 @@ int esp_initdevice(void *is, struct cdevice *dev)
 
 	memmove(esp_devs + esp_devcount, is, sizeof(struct esp_device));
 
-	sprintf(dev->name, "%s%d", "esp8266", esp_devcount);
+	sprintf(dev->name, "%s_%d", "esp8266", esp_devcount);
 
 	dev->priv = esp_devs + esp_devcount;
 	dev->read = esp_read;

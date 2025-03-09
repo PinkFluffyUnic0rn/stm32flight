@@ -163,7 +163,7 @@ int bmp_initdevice(void *is, struct cdevice *dev)
 
 	memmove(bmp_devs + bmp_devcount, is, sizeof(struct bmp_device));
 	
-	sprintf(dev->name, "%s%d", "bmp280", bmp_devcount);
+	sprintf(dev->name, "%s_%d", "bmp280", bmp_devcount);
 
 	dev->priv = bmp_devs + bmp_devcount;
 	dev->read = bmp_getdata;

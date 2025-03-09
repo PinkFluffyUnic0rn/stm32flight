@@ -190,7 +190,7 @@ int crsf_initdevice(void *is, struct cdevice *dev)
 
 	memmove(crsf_devs + crsf_devcount, is, sizeof(struct crsf_device));
 	
-	sprintf(dev->name, "%s%d", "crsf", crsf_devcount);
+	sprintf(dev->name, "%s_%d", "crsf", crsf_devcount);
 
 	dev->priv = crsf_devs + crsf_devcount;
 	dev->read = crsf_read;

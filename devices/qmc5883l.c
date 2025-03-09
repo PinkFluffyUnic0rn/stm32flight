@@ -70,6 +70,14 @@ int qmc_getdata(void *d, void *dt, size_t sz)
 
 int qmc_init(struct qmc_device *dev)
 {
+	uint8_t check;
+
+	check = 0;	
+	qmc_read(dev, QMC_ID, &check, 1);
+
+	if (check != 0xff)
+		return (-1);
+
 	qmc_write(dev, QMC_SETRESET, 0x01);
 
 	qmc_write(dev, QMC_CONF,
@@ -84,7 +92,7 @@ int qmc_initdevice(void *is, struct cdevice *dev)
 
 	memmove(qmc_devs + qmc_devcount, is, sizeof(struct qmc_device));
 	
-	sprintf(dev->name, "%s%d", "qmc5883l", qmc_devcount);
+	sprintf(dev->name, "%s_%d", "qmc5883l", qmc_devcount);
 
 	dev->priv = qmc_devs + qmc_devcount;
 	dev->read = qmc_getdata;
