@@ -14,6 +14,17 @@ struct crsf_data {
 	float chf[CRSF_CHANNELCOUNT];
 };
 
+struct crsf_tele {
+	float lat;
+	float lon;
+	float speed;
+	float course;
+	float alt;
+	float balt;
+	float vspeed;
+	uint8_t sats;
+};
+
 int crsf_initdevice(void *is, struct cdevice *dev);
 
 #endif

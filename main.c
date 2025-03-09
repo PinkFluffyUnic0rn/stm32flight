@@ -334,6 +334,8 @@ struct qmc_data qmcdata;
 
 struct gnss_data  gnss;
 
+struct crsf_tele tele;
+
 // Control values
 float thrust = 0.0; // motors basic thrust
 float rolltarget = 0.0; // roll PID target
@@ -851,7 +853,7 @@ int hpupdate(int ms)
 	dt = ms / (float) TICKSPERSEC;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
-
+	
 	if (dev[HP_DEV].status != DEVSTATUS_INIT) 
 		return 0;
 
@@ -876,7 +878,13 @@ int hpupdate(int ms)
 	// write climbrate and altitude values into log
 	logwrite(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
 	logwrite(LOG_ALT, dsp_getlpf(&altlpf));
-	
+
+
+	tele.balt = dsp_getlpf(&altlpf);
+	tele.vspeed = dsp_getcompl(&climbratecompl);
+	dev[CRSF_DEV].write(dev[CRSF_DEV].priv, &tele,
+		sizeof(struct crsf_tele));
+
 	return 0;
 }
 
@@ -1777,6 +1785,16 @@ int m10msg(struct m10_data *nd)
 	
 	gnss.speed = nd->rmc.speed;
 	gnss.course = nd->rmc.course;
+
+	tele.lat = gnss.lat + gnss.latmin / 60.0;
+	tele.lon = gnss.lon + gnss.lonmin / 60.0;
+	tele.speed = gnss.speed;
+	tele.course = gnss.course;
+	tele.alt = gnss.altitude;
+	tele.sats = gnss.satellites;
+
+	dev[CRSF_DEV].write(dev[CRSF_DEV].priv, &tele,
+		sizeof(struct crsf_tele));
 
 	return 0;
 }

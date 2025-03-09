@@ -7,6 +7,11 @@
 
 #define RXCIRCSIZE 16
 
+#define endian4(v) ((v & 0xff) << 24 | (v & 0xff00) << 8 \
+	| (v & 0xff0000) >> 8 | (v & 0xff000000) >> 24 )
+
+#define endian2(v) ((v & 0xff) << 8 | (v & 0xff00) >> 8)
+
 struct packet {
 	uint8_t len;
 	uint8_t type;
@@ -173,6 +178,44 @@ int crsf_read(void *dev, void *dt, size_t sz)
 	return 0;
 }
 
+int crsf_write(void *dev, void *dt, size_t sz)
+{
+	struct crsf_device *d;
+	struct crsf_tele *tele;
+	uint8_t buf[64];
+
+	d = dev;
+	tele = dt;
+
+	buf[0] = 0xc8;
+	buf[1] = 17;
+	buf[2] = 0x02;
+	
+	*((int32_t *)(buf + 3)) = endian4((uint32_t)(tele->lat * 1e7));
+	*((int32_t *)(buf + 7)) = endian4((uint32_t)(tele->lon * 1e7));
+	*((int16_t *)(buf + 11)) = endian2((uint16_t)(tele->speed * 10.0));
+	*((int16_t *)(buf + 13)) = endian2((uint16_t)(tele->course * 100.0));
+	*((uint16_t *)(buf + 15)) = endian2((uint16_t)(tele->alt + 1000.0));
+	*((int8_t *)(buf + 17)) = tele->sats;
+
+	buf[18] = crsf_crc8(buf + 2, 16);
+
+	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 19, 1000);
+
+	buf[0] = 0xc8;
+	buf[1] = 5;
+	buf[2] = 0x09;
+	
+	*((int16_t *)(buf + 3)) = endian2((uint16_t)(tele->balt * 10.0 + 10000.0));
+	*((int16_t *)(buf + 5)) = endian2((uint16_t)(tele->vspeed * 100.0));
+
+	buf[6] = crsf_crc8(buf + 2, 4);
+
+	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 7, 1000);
+
+	return 0;
+}
+
 int crsf_init(struct crsf_device *crsf)
 {
 	HAL_UART_Receive_DMA(crsf->huart, &Rxbuf, 1);
@@ -194,7 +237,7 @@ int crsf_initdevice(void *is, struct cdevice *dev)
 
 	dev->priv = crsf_devs + crsf_devcount;
 	dev->read = crsf_read;
-	dev->write = NULL;
+	dev->write = crsf_write;
 	dev->interrupt = crsf_interrupt;
 
 	r = crsf_init(crsf_devs + crsf_devcount++);
