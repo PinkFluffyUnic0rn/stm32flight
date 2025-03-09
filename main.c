@@ -1157,6 +1157,9 @@ int sprintgnss(char *s) {
 	return 0;
 }
 
+// Print all devices statuses into a string
+//
+// s -- output string.
 int sprintdevs(char *s)
 {
 	int i;
