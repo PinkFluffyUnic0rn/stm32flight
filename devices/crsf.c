@@ -219,7 +219,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	buf[2] = 0x02;
 	gpspack->lat = endian4((int32_t)(tele->lat * 1e7));
 	gpspack->lon = endian4((int32_t)(tele->lon * 1e7));
-	gpspack->speed = endian2((int16_t)(tele->speed * 10.0));
+	gpspack->speed = endian2((int16_t)(tele->speed * 18.52));
 	gpspack->course = endian2((int16_t)(tele->course * 100.0));
 	gpspack->alt = endian2((uint16_t)(tele->alt + 1000.0));
 	gpspack->sats = tele->sats;
@@ -231,7 +231,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	buf[2] = 0x09;
 	baltpack->balt = endian2((uint16_t)(tele->balt * 10.0 + 1e4));
 	baltpack->vspeed = endian2((int16_t)(tele->vspeed * 100.0));
-	buf[7] = crsf_crc8(buf + 2, 4);
+	buf[7] = crsf_crc8(buf + 2, 5);
 
 	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 8, 1000);
 
