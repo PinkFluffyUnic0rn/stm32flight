@@ -174,6 +174,8 @@ struct settings {
 				// complimentary filter
 	float ttcoef;		// time coefficient for vertical axis
 				// acceleration pow-pass filter
+	float vatcoef;		// time coefficient for vertical
+				// acceleration pow-pass filter
 	float atcoef;		// time coefficient for pressure
 				// low-pass filter
 	float climbcoef;	// time coefficient for climb rate
@@ -312,6 +314,7 @@ struct cdevice dev[DEV_COUNT];
 struct bdevice flashdev;
 
 // DSP contexts
+struct dsp_lpf valpf;
 struct dsp_lpf tlpf;
 struct dsp_lpf altlpf;
 
@@ -605,6 +608,7 @@ int initstabilize(float alt)
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
 	dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
+	dsp_initlpf(&valpf, st.vatcoef, PID_FREQ);
 
 	return 0;
 }
@@ -618,6 +622,7 @@ int stabilize(int ms)
 	struct mpu_data md;
 	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
+	float vx, vy, vz;
 	float gy, gx, gz;
 	float dt;
 
@@ -676,6 +681,17 @@ int stabilize(int ms)
 	// value and pitch value, offset it by a value from settings.
 	yaw = circf(qmc_heading(pitch, roll,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
+	
+	// calculate gravity direction vector in IMU coordination system
+	// using pitch and roll values;
+	vx = cos(-pitch) * sin(-roll);
+	vy = -sin(-pitch);
+	vz = cos(-pitch) * cos(-roll);
+
+	// update vertical acceleration using acceleration
+	// vector to gravity vector projection
+	dsp_updatelpf(&valpf, (vx * md.afx + vy * md.afy + vz * md.afz)
+		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
 	// write roll, pitch and yaw values into log
 	logwrite(LOG_ROLL, roll);
@@ -868,12 +884,12 @@ int hpupdate(int ms)
 
 	prevalt = dsp_getlpf(&altlpf);
 
-	// upate altitude low-pass filter and temperature reading
+	// update altitude low-pass filter and temperature reading
 	dsp_updatelpf(&altlpf, hd.altf);
 	temp = hd.tempf;
 
 	dsp_updatecompl(&climbratecompl,
-		9.80665 * (dsp_getlpf(&tlpf) - 1.0) * dt,
+		9.80665 * (dsp_getlpf(&valpf) - 1.0) * dt,
 		(dsp_getlpf(&altlpf) - prevalt) / dt);
 
 	// write climbrate and altitude values into log
@@ -1009,6 +1025,10 @@ int sprintpos(char *s, struct mpu_data *md)
 		(double) dsp_getlpf(&tlpf));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"vertival acceleration: %f\r\n",
+		(double) dsp_getlpf(&valpf));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"battery: %0.3f\n\r",
 		getadcv(&hadc1) / (double) 0xfff * (double) 9.9276);
 
@@ -1088,6 +1108,8 @@ int sprintvalues(char *s)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel tc: %.6f\r\n", (double) st.ttcoef);
 
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"vertical accel tc: %.6f\r\n", (double) st.vatcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"climb rate tc: %.6f\r\n", (double) st.climbcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
@@ -1521,10 +1543,15 @@ int flashcmd(const char **toks)
 // toks -- list of parsed command tokens.
 int complcmd(const char **toks)
 {
-	st.tcoef = atof(toks[1]);
-
-	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
-	dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);	
+	if (strcmp(toks[1], "attitude") == 0) {
+		st.tcoef = atof(toks[2]);
+		dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);	
+		dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
+	}
+	else if (strcmp(toks[1], "climbrate") == 0) {
+		st.climbcoef = atof(toks[2]);
+		dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
+	}
 
 	return 0;
 }
@@ -1539,11 +1566,10 @@ int lpfcmd(const char **toks)
 
 		dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 	}
-	else if (strcmp(toks[1], "climbrate") == 0) {
-		st.climbcoef = atof(toks[2]);
+	else if (strcmp(toks[1], "vaccel") == 0) {
+		st.vatcoef = atof(toks[2]);
 
-		dsp_initcompl(&climbratecompl,
-			st.climbcoef, HP_FREQ);
+		dsp_initlpf(&valpf, st.vatcoef, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		st.atcoef = atof(toks[2]);
@@ -1867,7 +1893,7 @@ int main(void)
 	addcommand("e", ecmd);
 	addcommand("c", ccmd);
 	addcommand("info", infocmd);
-	addcommand("pid", infocmd);
+	addcommand("pid", pidcmd);
 	addcommand("calib", calibcmd);
 	addcommand("flash", flashcmd);
 	addcommand("compl", complcmd);
