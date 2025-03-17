@@ -23,10 +23,10 @@ pid altitude i 0.0001
 pid altitude d 0.0
 compl attitude 0.75
 compl climbrate 1.5
-compl altitude 1.0
+compl altitude 2.0
 lpf climb 0.25
 lpf vaccel 0.25
-lpf altitude 0.5
+lpf altitude 1.0
 adj roll 0.0
 adj pitch 0.0
 adj yaw 1.57 

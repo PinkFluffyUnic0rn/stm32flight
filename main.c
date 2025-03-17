@@ -892,11 +892,14 @@ int hpupdate(int ms)
 	dsp_updatelpf(&altlpf, hd.altf);
 	temp = hd.tempf;
 
-	// calculate climbrate using complimentary filter
+	// calculate climb rate from vertical acceleration and
+	// barometric altitude defference using complimentary filter
 	dsp_updatecompl(&climbratecompl,
 		9.80665 * (dsp_getlpf(&valpf) - 1.0) * dt,
 		(dsp_getlpf(&altlpf) - prevalt) / dt);
 
+	// calculate presice altitiude from climb rate and
+	// barometric altitude using complimentary filter
 	dsp_updatecompl(&altcompl, dsp_getcompl(&climbratecompl) * dt,
 		prevalt);
 
@@ -1037,9 +1040,8 @@ int sprintpos(char *s, struct mpu_data *md)
 		(double) dsp_getlpf(&valpf));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"filtered altitude: %f\r\n",
+		"presice  altitude: %f\r\n",
 		(double) (dsp_getcompl(&altcompl) - alt0));
-
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"battery: %0.3f\n\r",
