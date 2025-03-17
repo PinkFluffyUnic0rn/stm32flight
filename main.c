@@ -179,7 +179,9 @@ struct settings {
 	float atcoef;		// time coefficient for pressure
 				// low-pass filter
 	float climbcoef;	// time coefficient for climb rate
-				// low-pass filter
+				// complimentary filter
+	float acomplcoef;	// time coefficient for altitude
+				// complimentary filter
 
 	int speedpid;	// 1 if single PID loop for roll/pitch is used,
 			// 0 if double loop is used
@@ -322,6 +324,7 @@ struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
 
 struct dsp_compl climbratecompl;
+struct dsp_compl altcompl;
 
 struct dsp_pidval pitchpv;
 struct dsp_pidval rollpv;
@@ -583,6 +586,7 @@ int initstabilize(float alt)
 	dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);
 
 	dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
+	dsp_initcompl(&altcompl, st.acomplcoef, HP_FREQ);
 
 	// init roll and pitch position PID controller contexts
 	dsp_initpidval(&pitchpv, st.p, st.i, st.d, 0.0);
@@ -888,9 +892,13 @@ int hpupdate(int ms)
 	dsp_updatelpf(&altlpf, hd.altf);
 	temp = hd.tempf;
 
+	// calculate climbrate using complimentary filter
 	dsp_updatecompl(&climbratecompl,
 		9.80665 * (dsp_getlpf(&valpf) - 1.0) * dt,
 		(dsp_getlpf(&altlpf) - prevalt) / dt);
+
+	dsp_updatecompl(&altcompl, dsp_getcompl(&climbratecompl) * dt,
+		prevalt);
 
 	// write climbrate and altitude values into log
 	logwrite(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
@@ -1029,6 +1037,11 @@ int sprintpos(char *s, struct mpu_data *md)
 		(double) dsp_getlpf(&valpf));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"filtered altitude: %f\r\n",
+		(double) (dsp_getcompl(&altcompl) - alt0));
+
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"battery: %0.3f\n\r",
 		getadcv(&hadc1) / (double) 0xfff * (double) 9.9276);
 
@@ -1114,6 +1127,8 @@ int sprintvalues(char *s)
 		"climb rate tc: %.6f\r\n", (double) st.climbcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"altitude tc: %.6f\r\n", (double) st.atcoef);
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"altitude compl tc: %.6f\r\n", (double) st.acomplcoef);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"loops count: %d\r\n", loopscount);
@@ -1551,6 +1566,10 @@ int complcmd(const char **toks)
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		st.climbcoef = atof(toks[2]);
 		dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
+	}
+	else if (strcmp(toks[1], "altitude") == 0) {
+		st.acomplcoef = atof(toks[2]);
+		dsp_initcompl(&altcompl, st.acomplcoef, HP_FREQ);
 	}
 
 	return 0;
