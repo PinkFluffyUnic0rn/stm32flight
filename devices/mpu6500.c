@@ -13,7 +13,7 @@ enum MPU_REGISTER {
 	MPU_WHOAMI		= 117,
 	MPU_POWERMANAGEMENT	= 107,
 	MPU_USERCONTROL		= 106,
-	MPU_CONF		= 26,	// MPU6050 only
+	MPU_CONF		= 26,
 	MPU_GYROCONF		= 27,
 	MPU_ACCELCONF		= 28,
 	MPU_ACCELCONF2		= 29,	// MPU6500 only
@@ -328,8 +328,8 @@ int mpu_init(struct mpu_device *dev)
 		mpu_write(dev, MPU_USERCONTROL, 0x10);
 		mpu_write(dev, MPU_ACCELCONF2, dev->dlpfwidth);
 	}
-	else
-		mpu_write(dev, MPU_CONF, dev->dlpfwidth);
+	
+	mpu_write(dev, MPU_CONF, dev->dlpfwidth);
 
 	mpu_write(dev, MPU_ACCELCONF, dev->accelscale);
 

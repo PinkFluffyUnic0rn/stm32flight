@@ -2322,7 +2322,7 @@ static void mpu_init()
 	d.devtype = MPU_DEV6500;
 	d.accelscale = MPU_4G;
 	d.gyroscale = MPU_1000DPS;
-	d.dlpfwidth = MPU_10DLPF;
+	d.dlpfwidth = MPU_184DLPF;
 
 	if (mpu_initdevice(&d, dev + MPU_DEV) >= 0)
 		uartprintf("MPU-6050 initilized\r\n");
