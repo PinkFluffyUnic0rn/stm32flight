@@ -119,7 +119,12 @@ int dsp_initcompl(struct dsp_compl *comp, float tc, int freq);
 // comp -- complimentary filter's context.
 float dsp_getcompl(struct dsp_compl *comp);
 
-// unused, should be removed.
+// calculate next complimentary filter's value in circular way
+// ([-2Pi:2Pi] range is used) and get the result.
+//
+// comp -- complimentary filter's context.
+// v0 -- new value of first signal to be filtered and merged.
+// v1 -- new value of second signal to be filtered and merged.
 float dsp_updatecirccompl(struct dsp_compl *comp, float v0, float v1);
 
 // calculate next complimentary filter's value and get the result.

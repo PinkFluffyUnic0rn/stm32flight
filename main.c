@@ -172,6 +172,8 @@ struct settings {
 
 	float tcoef;		// time coefficient for pitch/roll
 				// complimentary filter
+	float ytcoef;		// time coefficient for yaw
+				// complimentary filter
 	float ttcoef;		// time coefficient for vertical axis
 				// acceleration pow-pass filter
 	float vatcoef;		// time coefficient for vertical
@@ -322,6 +324,7 @@ struct dsp_lpf altlpf;
 
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
+struct dsp_compl yawcompl;
 
 struct dsp_compl climbratecompl;
 struct dsp_compl altcompl;
@@ -584,6 +587,7 @@ int initstabilize(float alt)
 	// init complementary filters contexts
 	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
 	dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);
+	dsp_initcompl(&yawcompl, st.ytcoef, PID_FREQ);
 
 	dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
 	dsp_initcompl(&altcompl, st.acomplcoef, HP_FREQ);
@@ -681,11 +685,14 @@ int stabilize(int ms)
 		atan2f(md.afy,
 		sqrt(md.afx * md.afx + md.afz * md.afz))) - st.pitch0;
 
-	// calcualte yaw value using last magnetometer reading, roll
-	// value and pitch value, offset it by a value from settings.
-	yaw = circf(qmc_heading(pitch, roll,
-		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
-	
+	// update complimenraty filter for yaw axis and get next yaw
+	// value. First signal is the speed of the rotation around Z
+	// axis. Second signal is the heading value that is
+	// calculated from magnetometer readings.
+	yaw = circf(dsp_updatecirccompl(&yawcompl, -gz * dt,
+		qmc_heading(pitch, roll,
+			qmcdata.fx, qmcdata.fy, qmcdata.fz)) - st.yaw0);
+
 	// calculate gravity direction vector in IMU coordination system
 	// using pitch and roll values;
 	vx = cos(-pitch) * sin(-roll);
@@ -962,8 +969,8 @@ int telesend(int ms)
 	tele.sats = gnss.satellites;
 	tele.balt = dsp_getlpf(&altlpf) - alt0;
 	tele.vspeed = dsp_getcompl(&climbratecompl);
-	tele.roll = dsp_getcompl(&rollcompl);
-	tele.pitch = dsp_getcompl(&pitchcompl);
+	tele.roll = dsp_getcompl(&rollcompl) - st.roll0;
+	tele.pitch = dsp_getcompl(&pitchcompl) - st.pitch0;
 	tele.yaw = circf(qmc_heading(tele.pitch, tele.roll,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
 
@@ -1026,10 +1033,7 @@ int sprintpos(char *s, struct mpu_data *md)
 		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
 		(double) (dsp_getcompl(&rollcompl) - st.roll0),
 		(double) (dsp_getcompl(&pitchcompl) - st.pitch0),
-		(double) circf(qmc_heading(
-			dsp_getcompl(&pitchcompl) - st.pitch0,
-			dsp_getcompl(&rollcompl) - st.roll0,
-			qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0));
+		(double) circf(dsp_getcompl(&yawcompl) - st.yaw0));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"z acceleration: %f\r\n",
@@ -1120,6 +1124,8 @@ int sprintvalues(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"tc: %.6f\r\n", (double) st.tcoef);
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw tc: %.6f\r\n", (double) st.ytcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel tc: %.6f\r\n", (double) st.ttcoef);
 
@@ -1564,6 +1570,10 @@ int complcmd(const char **toks)
 		st.tcoef = atof(toks[2]);
 		dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);	
 		dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
+	}
+	else if (strcmp(toks[1], "yaw") == 0) {
+		st.ytcoef = atof(toks[2]);
+		dsp_initcompl(&yawcompl, st.ytcoef, PID_FREQ);	
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		st.climbcoef = atof(toks[2]);

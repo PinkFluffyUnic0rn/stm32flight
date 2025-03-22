@@ -1,7 +1,7 @@
 pid tilt mode double
-pid tilt p 7.0
+pid tilt p 15.0
 pid tilt i 0.0001
-pid tilt d 0.0003
+pid tilt d 0.001
 pid stilt p 0.05
 pid stilt i 0.0
 pid stilt d 0.0
@@ -22,25 +22,26 @@ pid altitude p 0.3
 pid altitude i 0.0001
 pid altitude d 0.0
 compl attitude 0.75
+compl yaw 1.5
 compl climbrate 1.5
 compl altitude 2.0
 lpf climb 0.25
 lpf vaccel 0.25
 lpf altitude 1.0
-adj roll -0.07
-adj pitch 0.07
+adj roll -0.03
+adj pitch 0.03
 adj yaw 1.57 
 adj acc x 0.0
 adj acc y 0.0
 adj acc z 0.0
-adj mag x0 540.0
-adj mag y0 80.0
-adj mag z0 -35.0
+adj mag x0 349.0
+adj mag y0 33.0
+adj mag z0 9.5
 adj mag xscale 1.0
-adj mag yscale 0.9732
-adj mag zscale 0.9933
+adj mag yscale 1.0
+adj mag zscale 1.0
 adj mag decl 0.3264
-adj gyro x -1.486150
-adj gyro y 0.500969
-adj gyro z -0.767898
+adj gyro x -1.686150
+adj gyro y 0.60
+adj gyro z -0.65
 flash write

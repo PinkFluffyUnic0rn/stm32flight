@@ -155,3 +155,25 @@ float dsp_updatecompl(struct dsp_compl *comp, float v0, float v1)
 
 	return comp->s;
 }
+
+// calculate next complimentary filter's value in circular way
+// ([-2Pi:2Pi] range is used) and get the result.
+//
+// comp -- complimentary filter's context.
+// v0 -- new value of first signal to be filtered and merged.
+// v1 -- new value of second signal to be filtered and merged.
+float dsp_updatecirccompl(struct dsp_compl *comp, float v0, float v1)
+{
+	float s;
+
+	s = circf(comp->s + v0);
+
+	if (fabsf(s - v1) > M_PI) {
+		if (s < 0)	s += 2.0 * M_PI;
+		if (v1 < 0)	v1 += 2.0 * M_PI;
+	}
+
+	comp->s = circf(comp->coef * s + (1.0 - comp->coef) * v1);
+
+	return comp->s;
+}
