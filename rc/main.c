@@ -110,11 +110,11 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 		else if (event->key.keysym.sym == SDLK_d)
 			sendcmd(lsfd, rsi, "info dev\n");
 		else if (event->key.keysym.sym == SDLK_w)
-			sendcmd(lsfd, rsi, "log set 10485760\n");
+			sendcmd(lsfd, rsi, "log set 4194304\n");
 		else if (event->key.keysym.sym == SDLK_s)
 			sendcmd(lsfd, rsi, "log set 0\n");
 		else if (event->key.keysym.sym == SDLK_r)
-			sendcmd(lsfd, rsi, "log get 10485760\n");
+			sendcmd(lsfd, rsi, "log get 4194304\n");
 		else if (event->key.keysym.sym == SDLK_SPACE)
 			sendcmd(lsfd, rsi, "c 0.0\n");
 	}
