@@ -12,9 +12,9 @@ pid yaw d 0.0
 pid syaw p -0.3
 pid syaw i 0.0
 pid syaw d 0.0
-pid climb p 3.0
-pid climb i 0.0005
-pid climb d 0.001
+pid throttle p 3.0
+pid throttle i 0.0005
+pid throttle d 0.001
 pid climbrate p 0.3
 pid climbrate i 0.0
 pid climbrate d 0.0001
@@ -28,7 +28,7 @@ compl altitude 2.0
 lpf climb 0.25
 lpf vaccel 0.25
 lpf altitude 1.0
-adj roll -0.03
+adj roll -0.07
 adj pitch 0.03
 adj yaw 1.57 
 adj acc x 0.0

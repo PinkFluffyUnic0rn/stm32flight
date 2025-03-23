@@ -92,7 +92,7 @@ float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd);
 float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt);
 
 // calculate next PID controller's correction value
-// 	in circular way: [-2Pi:2Pi] range is used, correction's
+// 	in circular way: [-Pi:Pi] range is used, correction's
 // 	direction is determined by shortest arc from current value to
 // 	target. It's used only for yaw axis where full 360 degrees
 // 	rotaion is needed.
@@ -120,7 +120,7 @@ int dsp_initcompl(struct dsp_compl *comp, float tc, int freq);
 float dsp_getcompl(struct dsp_compl *comp);
 
 // calculate next complimentary filter's value in circular way
-// ([-2Pi:2Pi] range is used) and get the result.
+// ([-Pi:Pi] range is used) and get the result.
 //
 // comp -- complimentary filter's context.
 // v0 -- new value of first signal to be filtered and merged.

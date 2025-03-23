@@ -170,19 +170,19 @@ struct settings {
 
 	float roll0, pitch0, yaw0; // roll, pitch and yaw offset values
 
-	float tcoef;		// time coefficient for pitch/roll
+	float atctcoef;		// time coefficient for pitch/roll
 				// complimentary filter
-	float ytcoef;		// time coefficient for yaw
+	float yctcoef;		// time coefficient for yaw
 				// complimentary filter
 	float ttcoef;		// time coefficient for vertical axis
 				// acceleration pow-pass filter
 	float vatcoef;		// time coefficient for vertical
 				// acceleration pow-pass filter
-	float atcoef;		// time coefficient for pressure
+	float atcoef;		// time coefficient for altitude
 				// low-pass filter
-	float climbcoef;	// time coefficient for climb rate
+	float cctcoef;		// time coefficient for climb rate
 				// complimentary filter
-	float acomplcoef;	// time coefficient for altitude
+	float actcoef;		// time coefficient for altitude
 				// complimentary filter
 
 	int speedpid;	// 1 if single PID loop for roll/pitch is used,
@@ -203,7 +203,7 @@ struct settings {
 	float ysp, ysi, ysd;	// P/I/D values for yaw rotation speed
 
 	float zsp, zsi,	zsd; // P/I/D values for vertical acceleration
-	float cp, ci, cd; // P/I/D values for climbrate
+	float cp, ci, cd; // P/I/D values for climb rate
 	float ap, ai, ad; // P/I/D values for altitude
 };
 
@@ -585,12 +585,12 @@ int initstabilize(float alt)
 	alt0 = alt;
 
 	// init complementary filters contexts
-	dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
-	dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);
-	dsp_initcompl(&yawcompl, st.ytcoef, PID_FREQ);
+	dsp_initcompl(&pitchcompl, st.atctcoef, PID_FREQ);
+	dsp_initcompl(&rollcompl, st.atctcoef, PID_FREQ);
+	dsp_initcompl(&yawcompl, st.yctcoef, PID_FREQ);
 
-	dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
-	dsp_initcompl(&altcompl, st.acomplcoef, HP_FREQ);
+	dsp_initcompl(&climbratecompl, st.cctcoef, HP_FREQ);
+	dsp_initcompl(&altcompl, st.actcoef, HP_FREQ);
 
 	// init roll and pitch position PID controller contexts
 	dsp_initpidval(&pitchpv, st.p, st.i, st.d, 0.0);
@@ -1020,12 +1020,14 @@ int sprintpos(char *s, struct mpu_data *md)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
-		"accel corrected: ", (double) (md->afx - st.ax0),
+		"accel corrected: ",
+		(double) (md->afx - st.ax0),
 		(double) (md->afy - st.ay0),
 		(double) (md->afz - st.az0));
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
-		"gyro corrected: ", (double) (md->gfx - st.gx0),
+		"gyro corrected: ",
+		(double) (md->gfx - st.gx0),
 		(double) (md->gfy - st.gy0),
 		(double) (md->gfz - st.gz0));
 
@@ -1123,20 +1125,20 @@ int sprintvalues(char *s)
 		"motors state: %.3f\r\n", (double) en);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"tc: %.6f\r\n", (double) st.tcoef);
+		"attitude tc: %.6f\r\n", (double) st.atctcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw tc: %.6f\r\n", (double) st.ytcoef);
+		"yaw tc: %.6f\r\n", (double) st.yctcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel tc: %.6f\r\n", (double) st.ttcoef);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"vertical accel tc: %.6f\r\n", (double) st.vatcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"climb rate tc: %.6f\r\n", (double) st.climbcoef);
+		"climb rate tc: %.6f\r\n", (double) st.cctcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"altitude tc: %.6f\r\n", (double) st.atcoef);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"altitude compl tc: %.6f\r\n", (double) st.acomplcoef);
+		"altitude compl tc: %.6f\r\n", (double) st.actcoef);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"loops count: %d\r\n", loopscount);
@@ -1172,7 +1174,7 @@ int sprintpid(char *s)
 		(double) st.zsp, (double) st.zsi, (double) st.zsd);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"climbrate PID: %.5f,%.5f,%.5f\r\n",
+		"climb rate PID: %.5f,%.5f,%.5f\r\n",
 		(double) st.cp, (double) st.ci, (double) st.cd);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
@@ -1364,16 +1366,6 @@ int rcmd(const char **toks)
 	return 0;
 }
 
-// Arm command handler.
-//
-// toks -- list of parsed command tokens.
-int ecmd(const char **toks)
-{
-	en = 1.0;
-
-	return 0;
-}
-
 // Recalibrate command handler.
 //
 // toks -- list of parsed command tokens.
@@ -1496,7 +1488,7 @@ int pidcmd(const char **toks)
 
 		dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd);
 	}
-	else if (strcmp(toks[1], "climb") == 0) {
+	else if (strcmp(toks[1], "throttle") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.zsp = v;
 		else if (strcmp(toks[2], "i") == 0)	st.zsi = v;
 		else if (strcmp(toks[2], "d") == 0)	st.zsd = v;
@@ -1567,21 +1559,21 @@ int flashcmd(const char **toks)
 int complcmd(const char **toks)
 {
 	if (strcmp(toks[1], "attitude") == 0) {
-		st.tcoef = atof(toks[2]);
-		dsp_initcompl(&rollcompl, st.tcoef, PID_FREQ);	
-		dsp_initcompl(&pitchcompl, st.tcoef, PID_FREQ);
+		st.atctcoef = atof(toks[2]);
+		dsp_initcompl(&rollcompl, st.atctcoef, PID_FREQ);	
+		dsp_initcompl(&pitchcompl, st.atctcoef, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
-		st.ytcoef = atof(toks[2]);
-		dsp_initcompl(&yawcompl, st.ytcoef, PID_FREQ);	
+		st.yctcoef = atof(toks[2]);
+		dsp_initcompl(&yawcompl, st.yctcoef, PID_FREQ);	
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
-		st.climbcoef = atof(toks[2]);
-		dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
+		st.cctcoef = atof(toks[2]);
+		dsp_initcompl(&climbratecompl, st.cctcoef, HP_FREQ);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
-		st.acomplcoef = atof(toks[2]);
-		dsp_initcompl(&altcompl, st.acomplcoef, HP_FREQ);
+		st.actcoef = atof(toks[2]);
+		dsp_initcompl(&altcompl, st.actcoef, HP_FREQ);
 	}
 
 	return 0;
@@ -1804,7 +1796,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// if channel 9 is active (it's no-fix button on remote used
 	// for testing), set reference altitude from current altitude
 	if (cd->chf[8] > 0.0) {
-		dsp_initcompl(&climbratecompl, st.climbcoef, HP_FREQ);
+		dsp_initcompl(&climbratecompl, st.cctcoef, HP_FREQ);
 
 		alt0 = dsp_getlpf(&altlpf);
 	}
@@ -1921,7 +1913,6 @@ int main(void)
 
 	// initilize debug commands
 	addcommand("r", rcmd);
-	addcommand("e", ecmd);
 	addcommand("c", ccmd);
 	addcommand("info", infocmd);
 	addcommand("pid", pidcmd);
