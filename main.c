@@ -163,10 +163,14 @@ struct settings {
 	float magdecl;		// magnetic declination
 
 	float ax0, ay0, az0;	// accelometer offset values for X, Y
-				// and Z axes.
+				// and Z axes
 
 	float gx0, gy0, gz0;	// gyroscope offset values for X, Y
-				// and Z axes.
+				// and Z axes
+
+	float rsc, psc;		// motor thrust scaling for roll and
+				// pitch side motors, because not all
+				// motors are abolutely equal
 
 	float roll0, pitch0, yaw0; // roll, pitch and yaw offset values
 
@@ -352,6 +356,10 @@ float thrust = 0.0; // motors basic thrust
 float rolltarget = 0.0; // roll PID target
 float pitchtarget = 0.0; // pitch PID target
 float yawtarget = 0.0; // yaw PID target
+float ltm = 1.0; // left-top motor thrust scaling
+float lbm = 1.0; // left-bot motor thrust scaling
+float rtm = 1.0; // right-top motor thrust scaling
+float rbm = 1.0; // right-bot motor thrust scaling
 float en = 0.0; // 1.0 when motors turned on, 0.0 otherwise
 enum ALTMODE altmode = 0; // ALTMODE_POS if in altitude hold mode,
 			  // ALTMODE_SPEED if climbrate control mode,
@@ -501,18 +509,18 @@ float qmc_heading(float r, float p, float x, float y, float z)
 
 /* Set motors thrust
 
-      ltd    lbd
+      ltd    rtd
         \    /
    ^     \  /
    |       
    p     /  \
         /    \
-      rtd    rbd
+      lbd    rbd
         
          <- r
 */
 // all values should be between 0.0 and 1.0.
-int setthrust(float ltd, float rtd, float rbd, float lbd)
+int setthrust(float ltd, float lbd, float rbd, float rtd)
 {
 	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
 		|| isnan(lbd) || !elrs)
@@ -520,11 +528,11 @@ int setthrust(float ltd, float rtd, float rbd, float lbd)
 
 	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.05 + 0.049)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR2 = (uint16_t) ((trimuf(rtd) * 0.05 + 0.049)
+	TIM1->CCR2 = (uint16_t) ((trimuf(lbd) * 0.05 + 0.049)
 		* (float) PWM_MAXCOUNT);
 	TIM1->CCR3 = (uint16_t) ((trimuf(rbd) * 0.05 + 0.049)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR4 = (uint16_t) ((trimuf(lbd) * 0.05 + 0.049)
+	TIM1->CCR4 = (uint16_t) ((trimuf(rtd) * 0.05 + 0.049)
 		* (float) PWM_MAXCOUNT);
 
 	return 0;
@@ -628,6 +636,7 @@ int initstabilize(float alt)
 int stabilize(int ms)
 {
 	struct mpu_data md;
+	float ltm, lbm, rbm, rtm;
 	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
 	float vx, vy, vz;
@@ -795,18 +804,23 @@ int stabilize(int ms)
 			dsp_getlpf(&tlpf), dt);
 	}
 
+	ltm = (1.0 - st.rsc / 2) * (1.0 + st.psc / 2);
+	lbm = (1.0 - st.rsc / 2) * (1.0 - st.psc / 2);
+	rbm = (1.0 + st.rsc / 2) * (1.0 - st.psc / 2);
+	rtm = (1.0 + st.rsc / 2) * (1.0 + st.psc / 2);
+
 	// update motors thrust based on calculated values. For
 	// quadcopter it's enought to split correction in half for 
 	// 3 pairs of motors: left and right for roll, top and bottom
 	// for pitch and two diagonals (spinning in oposite directions)
 	// for yaw.
-	setthrust(en * (thrustcor - 0.5 * rollcor
+	setthrust(en * ltm * (thrustcor - 0.5 * rollcor
 			+ 0.5 * pitchcor - 0.5 * yawcor),
-		en * (thrustcor - 0.5 * rollcor
+		en * lbm * (thrustcor - 0.5 * rollcor
 			- 0.5 * pitchcor + 0.5 * yawcor),
-		en * (thrustcor + 0.5 * rollcor
+		en * rbm * (thrustcor + 0.5 * rollcor
 			- 0.5 * pitchcor - 0.5 * yawcor),
-		en * (thrustcor + 0.5 * rollcor
+		en * rtm * (thrustcor + 0.5 * rollcor
 			+ 0.5 * pitchcor + 0.5 * yawcor));
 
 	// update loops counter
@@ -1095,6 +1109,10 @@ int sprintvalues(char *s)
 		"t: %.3f; r: %.3f; p: %.3f; y: %.3f\r\n",
 		(double) thrust, (double) rolltarget,
 		(double) pitchtarget, (double) yawtarget);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"roll thrust: %.3f; pitch thrust %.3f\r\n",
+		(double) st.rsc, (double) st.psc);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"mag off: %.3f; %.3f; %.3f\r\n",
@@ -1614,9 +1632,11 @@ int adjcmd(const char **toks)
 
 	v = atof(toks[2]);
 
-	if (strcmp(toks[1], "roll") == 0)	st.roll0 = v;
-	else if (strcmp(toks[1], "pitch") == 0)	st.pitch0 = v;
-	else if (strcmp(toks[1], "yaw") == 0)	st.yaw0 = v;
+	if (strcmp(toks[1], "rollthrust") == 0)		st.rsc = v;
+	else if (strcmp(toks[1], "pitchthrust") == 0)	st.psc = v;
+	else if (strcmp(toks[1], "roll") == 0)		st.roll0 = v;
+	else if (strcmp(toks[1], "pitch") == 0)		st.pitch0 = v;
+	else if (strcmp(toks[1], "yaw") == 0)		st.yaw0 = v;
 	else if (strcmp(toks[1], "acc") == 0) {
 		if (strcmp(toks[2], "x") == 0)
 			st.ax0 = atof(toks[3]);
@@ -1773,7 +1793,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 	if (cd->chf[4] < 0.0) {
 		yawspeedpid = 0;
-		yawtarget = circf(yawtarget + cd->chf[3] * dt * M_PI);
+		yawtarget = circf(yawtarget
+			+ cd->chf[3] * dt * M_PI * 2.0);
 	}
 	else {
 		yawspeedpid = 1;
