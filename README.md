@@ -17,11 +17,11 @@ accelerometer/gyroscope readings.
 
 Devices
 =======
- * MCU: STM32F303CBT6
- * Crystall oscillator: 16 Mhz
+ * MCU: STM32F405GRT6
+ * Crystall oscillator: 20 Mhz
  * DC-DC converter for control board and camera: TPS5430
  * Control board voltage regulator: AMS1117-3.3
- * Accelerometer/Gyroscope: MPU6500
+ * Accelerometer/Gyroscope: ICM42688P
  * Magnetometer: QMC5883L
  * Remote control: ERLS CRSF receiver
  * Telemetry/debug: ESP8266 (ESP-07)
@@ -53,6 +53,11 @@ magnetometer (currently unused).
 IMUs (accelerometer + gyroscope).
     * `qmc5883l.c` and `qmc5883l.h` -- driver for an QMC5883L
 magnetometer.
+    * `icm42688.c` and `icm42688.h` -- driver for an icm42688
+IMU (accelerometer + gyroscope).
+    * `m10.c` and `m10.h` -- driver for a M10 GNSS module.
+    * `w25.c` and `w25.h` -- driver for a w25q SPI flash.
+
 * `main.c` -- all routines related to flight control.
 * `dsp.c` and `dsp.h` -- functions for PID control and data filtering
 like low-pass filtering and complimentary filtering.
@@ -71,7 +76,6 @@ by this UAV. Listed commands should be sent using UDP/IP to address
  * `info (mpu | qmc | hp | values | pid)` -- mpu6050/qmc5883L/hp206c/control
 values/PID data
  * `r` -- turn off motors
- * `e` -- turn on motors
  * `c [altitude]` -- recalibrate
  * `calib mag (on|off)` -- enter/escape magnetometer calibration mode
  * `pid (tilt|stilt|yaw|syaw|sclimb) (p|i|d) {val}` -- set tilt/tilt
