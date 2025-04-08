@@ -28,22 +28,22 @@ compl altitude 2.0
 lpf climb 0.25
 lpf vaccel 0.25
 lpf altitude 1.0
-adj rollthrust -0.06
-adj pitchthrust 0.06
-adj roll -0.01
-adj pitch 0.01
+adj rollthrust 0.0
+adj pitchthrust 0.0
+adj roll 0.0
+adj pitch 0.0
 adj yaw 1.57 
 adj acc x 0.0
 adj acc y 0.0
 adj acc z 0.0
-adj mag x0 349.0
-adj mag y0 33.0
-adj mag z0 9.5
-adj mag xscale 1.0
-adj mag yscale 1.0
+adj mag x0 -830.0
+adj mag y0 709.0
+adj mag z0 -108.0
+adj mag xscale 1.002
+adj mag yscale 1.042
 adj mag zscale 1.0
 adj mag decl 0.3264
-adj gyro x -1.686150
-adj gyro y 0.60
-adj gyro z -0.65
+adj gyro x -0.55
+adj gyro y -0.2
+adj gyro z 0.27
 flash write

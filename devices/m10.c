@@ -1,4 +1,4 @@
-#include "stm32f3xx_hal.h"
+#include "stm32f4xx_hal.h"
 #include "esp8266.h"
 
 #include <stdint.h>

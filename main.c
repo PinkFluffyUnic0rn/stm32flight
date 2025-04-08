@@ -8,7 +8,7 @@
 #include "main.h"
 #include "device.h"
 #include "uartdebug.h"
-#include "mpu6500.h"
+#include "icm42688.h"
 #include "hp206c.h"
 #include "esp8266.h"
 #include "qmc5883l.h"
@@ -22,7 +22,7 @@
 #define INFOLEN 512
 
 // device numbers
-#define MPU_DEV		0
+#define ICM_DEV		0
 #define HP_DEV		1
 #define QMC_DEV		2
 #define CRSF_DEV	3
@@ -31,10 +31,10 @@
 #define DEV_COUNT	6
 
 // timers prescaler
-#define PRESCALER 64
+#define PRESCALER 128
 
 // clock frequency
-#define OCSFREQ 64000000
+#define OCSFREQ 128000000
 
 // period for main timer (used to timing periodic events)
 #define TIMPERIOD 0xfff
@@ -50,13 +50,12 @@
 #define CHECK_FREQ 1
 #define CALIB_FREQ 25
 #define HP_FREQ 25
-#define CRSF_FREQ 100
 #define QMC_FREQ 100
 #define TELE_FREQ 10
 #define LOG_FREQ 64
 
 // MCU flash address where quadcopter settings is stored
-#define USER_FLASH 0x0801f800
+#define USER_FLASH 0x080e0000
 
 // quadcopter setting's slot
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
@@ -273,11 +272,12 @@ static void i2c_init();
 static void spi1_init();
 static void dma_init();
 static void tim1_init();
-static void tim2_init();
+static void tim8_init();
 static void adc1_init(void);
 static void usart1_init();
 static void usart2_init();
 static void usart3_init();
+static void uart4_init();
 
 // Init ESC's
 static void esc_init();
@@ -285,8 +285,8 @@ static void esc_init();
 // Init HP206c barometer
 static void hp_init();
 
-// Init MPU6050 IMU
-static void mpu_init();
+// Init ICM-42688 IMU
+static void icm_init();
 
 // Init QMC5883L magnetometer
 static void qmc_init();
@@ -309,10 +309,11 @@ DMA_HandleTypeDef hdma_adc1;
 I2C_HandleTypeDef hi2c1;
 SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim8;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
+UART_HandleTypeDef huart4;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart3_rx;
@@ -543,8 +544,6 @@ int setthrust(float ltd, float lbd, float rbd, float rtd)
 // slot -- offset in settings array in flash.
 int writesettings(int slot)
 {
-	FLASH_EraseInitTypeDef ferase;
-	uint32_t serror;
 	uint32_t sz;
 	uint32_t *pt;
 	uint32_t addr;
@@ -553,10 +552,7 @@ int writesettings(int slot)
 	__disable_irq();
 	HAL_FLASH_Unlock();
 
-	ferase.TypeErase = FLASH_TYPEERASE_PAGES;
-	ferase.PageAddress = USER_FLASH;
-	ferase.NbPages = 1;
-	HAL_FLASHEx_Erase(&ferase, &serror);
+	FLASH_Erase_Sector(FLASH_SECTOR_11,  VOLTAGE_RANGE_3);
 
 	sz = sizeof(struct settings);
 	pt = (uint32_t *) &st;
@@ -635,7 +631,7 @@ int initstabilize(float alt)
 // ms -- microsecond passed from last callback invocation.
 int stabilize(int ms)
 {
-	struct mpu_data md;
+	struct icm_data id;
 	float ltm, lbm, rbm, rtm;
 	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
@@ -650,34 +646,36 @@ int stabilize(int ms)
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 	// toggle arming indication led
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12,
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,
 		en ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
 	// get accelerometer and gyroscope readings
-	dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
-		sizeof(struct mpu_data));
+	dev[ICM_DEV].read(dev[ICM_DEV].priv, &id,
+		sizeof(struct icm_data));
+
+
 
 	// write accelerometer and gyroscope values into log
-	logwrite(LOG_ACC_X, md.afx);
-	logwrite(LOG_ACC_Y, md.afy);
-	logwrite(LOG_ACC_Z, md.afz);
-	logwrite(LOG_GYRO_X, md.gfx);
-	logwrite(LOG_GYRO_Y, md.gfy);
-	logwrite(LOG_GYRO_Z, md.gfz);
+	logwrite(LOG_ACC_X, id.afx);
+	logwrite(LOG_ACC_Y, id.afy);
+	logwrite(LOG_ACC_Z, id.afz);
+	logwrite(LOG_GYRO_X, id.gfx);
+	logwrite(LOG_GYRO_Y, id.gfy);
+	logwrite(LOG_GYRO_Z, id.gfz);
 
 	// apply accelerometer offsets
-	md.afx -= st.ax0;
-	md.afy -= st.ay0;
-	md.afz -= st.az0;
+	id.afx -= st.ax0;
+	id.afy -= st.ay0;
+	id.afz -= st.az0;
 
 	// update vertical acceleration low-pass filter
-	dsp_updatelpf(&tlpf, md.afz);
+	dsp_updatelpf(&tlpf, id.afz);
 
 	// offset gyroscope readings by values, calculater
 	// at power on and convert result into radians
-	gx = deg2rad((md.gfx - st.gx0));
-	gy = deg2rad((md.gfy - st.gy0));
-	gz = deg2rad((md.gfz - st.gz0));
+	gx = deg2rad((id.gfx - st.gx0));
+	gy = deg2rad((id.gfy - st.gy0));
+	gz = deg2rad((id.gfz - st.gz0));
 
 	// update complimenraty filter for roll axis and get next roll
 	// value. First signal (value) is signal to be integrated: it's
@@ -686,20 +684,20 @@ int stabilize(int ms)
 	// calculated from acceleromer readings through some
 	// trigonometry.
 	roll = dsp_updatecompl(&rollcompl, gy * dt,
-		atan2f(-md.afx,
-		sqrt(md.afy * md.afy + md.afz * md.afz))) - st.roll0;
+		atan2f(-id.afx,
+		sqrt(id.afy * id.afy + id.afz * id.afz))) - st.roll0;
 
 	// same as for roll but for different axes
 	pitch = dsp_updatecompl(&pitchcompl, gx * dt,
-		atan2f(md.afy,
-		sqrt(md.afx * md.afx + md.afz * md.afz))) - st.pitch0;
+		atan2f(id.afy,
+		sqrt(id.afx * id.afx + id.afz * id.afz))) - st.pitch0;
 
 	// update complimenraty filter for yaw axis and get next yaw
 	// value. First signal is the speed of the rotation around Z
 	// axis. Second signal is the heading value that is
 	// calculated from magnetometer readings.
 	yaw = circf(dsp_updatecirccompl(&yawcompl, -gz * dt,
-		qmc_heading(pitch, roll,
+		qmc_heading(roll, -pitch,
 			qmcdata.fx, qmcdata.fy, qmcdata.fz)) - st.yaw0);
 
 	// calculate gravity direction vector in IMU coordination system
@@ -710,7 +708,7 @@ int stabilize(int ms)
 
 	// update vertical acceleration using acceleration
 	// vector to gravity vector projection
-	dsp_updatelpf(&valpf, (vx * md.afx + vy * md.afy + vz * md.afz)
+	dsp_updatelpf(&valpf, (vx * id.afx + vy * id.afy + vz * id.afz)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
 	// write roll, pitch and yaw values into log
@@ -939,6 +937,10 @@ int qmcupdate(int ms)
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
 
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8,
+		!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8));
+
+
 	// write magnetometer values into log
 	logwrite(LOG_MAG_X, qmcdata.fx);
 	logwrite(LOG_MAG_Y, qmcdata.fy);
@@ -985,7 +987,7 @@ int telesend(int ms)
 	tele.vspeed = dsp_getcompl(&climbratecompl);
 	tele.roll = dsp_getcompl(&rollcompl) - st.roll0;
 	tele.pitch = dsp_getcompl(&pitchcompl) - st.pitch0;
-	tele.yaw = circf(qmc_heading(tele.pitch, tele.roll,
+	tele.yaw = circf(qmc_heading(tele.roll, -tele.pitch,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
 
 	dev[CRSF_DEV].write(dev[CRSF_DEV].priv, &tele,
@@ -1021,29 +1023,29 @@ int parsecommand(char **toks, int maxtoks, char *data)
 // s -- output string.
 // md -- accelerometer and gyroscope data.
 // hd -- magnetometer data.
-int sprintpos(char *s, struct mpu_data *md)
+int sprintpos(char *s, struct icm_data *id)
 {
 	s[0] = '\0';
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "accel: ",
-		(double) md->afx, (double) md->afy, (double) md->afz);
+		(double) id->afx, (double) id->afy, (double) id->afz);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "gyro: ",
-		(double) md->gfx, (double) md->gfy, (double) md->gfz);
+		(double) id->gfx, (double) id->gfy, (double) id->gfz);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
 		"accel corrected: ",
-		(double) (md->afx - st.ax0),
-		(double) (md->afy - st.ay0),
-		(double) (md->afz - st.az0));
+		(double) (id->afx - st.ax0),
+		(double) (id->afy - st.ay0),
+		(double) (id->afz - st.az0));
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
 		"gyro corrected: ",
-		(double) (md->gfx - st.gx0),
-		(double) (md->gfy - st.gy0),
-		(double) (md->gfz - st.gz0));
+		(double) (id->gfx - st.gx0),
+		(double) (id->gfy - st.gy0),
+		(double) (id->gfz - st.gz0));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
@@ -1091,8 +1093,8 @@ int sprintqmc(char *s, struct qmc_data *hd)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"heading: %f\r\n", (double) qmc_heading(
-			dsp_getcompl(&pitchcompl) - st.pitch0,
 			dsp_getcompl(&rollcompl) - st.roll0,
+			-(dsp_getcompl(&pitchcompl) - st.pitch0),
 			hd->fx, hd->fy, hd->fz));
 
 	return 0;
@@ -1402,16 +1404,18 @@ int infocmd(const char **toks)
 	char s[INFOLEN];
 	
 	if (strcmp(toks[1], "mpu") == 0) {
-		struct mpu_data md;
+		struct icm_data id;
 
-		dev[MPU_DEV].read(dev[MPU_DEV].priv, &md,
-			sizeof(struct mpu_data));
+		dev[ICM_DEV].read(dev[ICM_DEV].priv, &id,
+			sizeof(struct icm_data));
 
-		md.afx -= st.ax0;
-		md.afy -= st.ay0;
-		md.afz -= st.az0;
 
-		sprintpos(s, &md);
+
+		id.afx -= st.ax0;
+		id.afy -= st.ay0;
+		id.afz -= st.az0;
+
+		sprintpos(s, &id);
 	}
 	else if (strcmp(toks[1], "qmc") == 0) {
 		struct qmc_data hd;
@@ -1898,7 +1902,7 @@ int main(void)
 	// init stm32 periphery
 	gpio_init();
 	tim1_init();
-	tim2_init();
+	tim8_init();
 	dma_init();
 	i2c_init();
 	spi1_init();
@@ -1906,10 +1910,11 @@ int main(void)
 	usart1_init();
 	usart2_init();
 	usart3_init();
+	uart4_init();
 
 	// init board's devices
 	esc_init();
-	mpu_init();
+	icm_init();
 	qmc_init();
 	espdev_init();
 	crsfdev_init();
@@ -1957,7 +1962,7 @@ int main(void)
 		int c, i;
 
 		// reset iteration time counter
-		__HAL_TIM_SET_COUNTER(&htim2, 0);
+		__HAL_TIM_SET_COUNTER(&htim8, 0);
 
 		// poll for configureation and telemetry commands
 		// from from debug wifi connection
@@ -1991,7 +1996,7 @@ int main(void)
 		// get microseconds passed in this iteration
 		// one iteration duration should take at least
 		// some time, 100us was choosen
-		while ((c = __HAL_TIM_GET_COUNTER(&htim2)) < 100);
+		while ((c = __HAL_TIM_GET_COUNTER(&htim8)) < 100);
 
 		// update periodic events timers
 		for (i = 0; i < TEV_COUNT; ++i)
@@ -2008,39 +2013,32 @@ void systemclock_config(void)
 {
 	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
 	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-	RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
+	__HAL_RCC_PWR_CLK_ENABLE();
+	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
 	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-	RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
-	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL4;
+	RCC_OscInitStruct.PLL.PLLM = 10;
+	RCC_OscInitStruct.PLL.PLLN = 128;
+	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+	RCC_OscInitStruct.PLL.PLLQ = 4;
 
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
 		error_handler();
 
-	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-			      |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK
+		| RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1
+		| RCC_CLOCKTYPE_PCLK2;
 	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
 	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
-		error_handler();
-
-	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_USART3
-			      |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_TIM1
-			      |RCC_PERIPHCLK_ADC12;
-	PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
-	PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
-	PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV256;
-	PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
-	PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
-	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct,
+			FLASH_LATENCY_4) != HAL_OK)
 		error_handler();
 }
 
@@ -2053,17 +2051,18 @@ static void gpio_init(void)
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3 | GPIO_PIN_12 | GPIO_PIN_13,
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3,
 		GPIO_PIN_RESET);
 
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8
+		| GPIO_PIN_13, GPIO_PIN_RESET);
 	
-	GPIO_InitStruct.Pin = GPIO_PIN_3 | GPIO_PIN_12 | GPIO_PIN_13;
+	GPIO_InitStruct.Pin = GPIO_PIN_3;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin = GPIO_PIN_13;
+	GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_13;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -2072,39 +2071,35 @@ static void gpio_init(void)
 
 static void dma_init(void)
 {
+	__HAL_RCC_DMA2_CLK_ENABLE();
 	__HAL_RCC_DMA1_CLK_ENABLE();
 
-	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+	HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+	
+	HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
-	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+	HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 
-	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-
-	HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+	HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 }
 
 static void i2c_init(void)
 {
 	hi2c1.Instance = I2C1;
-	hi2c1.Init.Timing = 0x0000020B;
+	hi2c1.Init.ClockSpeed = 100000;
+	hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
 	hi2c1.Init.OwnAddress1 = 0;
 	hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
 	hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
 	hi2c1.Init.OwnAddress2 = 0;
-	hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
 	hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
 	hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+	
 	if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-		error_handler();
-
-	if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-		error_handler();
-
-	if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
 		error_handler();
 }
 
@@ -2117,13 +2112,11 @@ static void spi1_init(void)
 	hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
 	hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
 	hspi1.Init.NSS = SPI_NSS_SOFT;
-	hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+	hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
 	hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
 	hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
 	hspi1.Init.CRCPolynomial = 10;
-	hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-	hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
 
 	if (HAL_SPI_Init(&hspi1) != HAL_OK)
 		error_handler();
@@ -2140,10 +2133,11 @@ static void tim1_init(void)
 	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim1.Init.Period = PWM_MAXCOUNT;
 	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	htim1.Init.RepetitionCounter = 0;
-	htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 
 	if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+		error_handler();
+
+	if (HAL_TIM_OC_Init(&htim1) != HAL_OK)
 		error_handler();
 
 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
@@ -2178,10 +2172,6 @@ static void tim1_init(void)
 	sBreakDeadTimeConfig.DeadTime = 0;
 	sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
 	sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-	sBreakDeadTimeConfig.BreakFilter = 0;
-	sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
-	sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
-	sBreakDeadTimeConfig.Break2Filter = 0;
 	sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
 	if (HAL_TIMEx_ConfigBreakDeadTime(&htim1,
 			&sBreakDeadTimeConfig) != HAL_OK)
@@ -2195,44 +2185,44 @@ static void tim1_init(void)
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 }
 
-static void tim2_init(void)
+static void tim8_init(void)
 {
 	TIM_ClockConfigTypeDef sClockSourceConfig = {0};
 	TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-	htim2.Instance = TIM2;
-	htim2.Init.Prescaler = PRESCALER - 1;
-	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim2.Init.Period = TIMPERIOD - 1;
-	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	htim8.Instance = TIM8;
+	htim8.Init.Prescaler = PRESCALER - 1;
+	htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim8.Init.Period = TIMPERIOD - 1;
+	htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	htim8.Init.RepetitionCounter = 0;
+	htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 
-	if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+	if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
 		error_handler();
 
 	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
 
-	if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+	if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
 		error_handler();
 
 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
 	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
 
-	if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+	if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
 		error_handler();
 
-	HAL_TIM_Base_Start_IT(&htim2);
+	HAL_TIM_Base_Start_IT(&htim8);
 }
 
 static void adc1_init(void)
 {
-	ADC_MultiModeTypeDef multimode = {0};
 	ADC_ChannelConfTypeDef sConfig = {0};
 
 	hadc1.Instance = ADC1;
-	hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+	hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
 	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-	hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+	hadc1.Init.ScanConvMode = DISABLE;
 	hadc1.Init.ContinuousConvMode = ENABLE;
 	hadc1.Init.DiscontinuousConvMode = DISABLE;
 	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -2241,21 +2231,12 @@ static void adc1_init(void)
 	hadc1.Init.NbrOfConversion = 1;
 	hadc1.Init.DMAContinuousRequests = ENABLE;
 	hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-	hadc1.Init.LowPowerAutoWait = DISABLE;
-	hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
 	if (HAL_ADC_Init(&hadc1) != HAL_OK)
 		error_handler();
 
-	multimode.Mode = ADC_MODE_INDEPENDENT;
-	if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
-		error_handler();
-
-	sConfig.Channel = ADC_CHANNEL_2;
-	sConfig.Rank = ADC_REGULAR_RANK_1;
-	sConfig.SingleDiff = ADC_SINGLE_ENDED;
-	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	sConfig.OffsetNumber = ADC_OFFSET_NONE;
-	sConfig.Offset = 0;
+	sConfig.Channel = ADC_CHANNEL_1;
+	sConfig.Rank = 1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 		error_handler();
 }
@@ -2270,8 +2251,6 @@ static void usart1_init()
 	huart1.Init.Mode = UART_MODE_TX_RX;
 	huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
 	huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-	huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-	huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
 	if (HAL_UART_Init(&huart1) != HAL_OK)
 		error_handler();
@@ -2287,8 +2266,6 @@ static void usart2_init()
 	huart2.Init.Mode = UART_MODE_TX_RX;
 	huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
 	huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-	huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-	huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
 	if (HAL_UART_Init(&huart2) != HAL_OK)
 		error_handler();
@@ -2304,10 +2281,23 @@ static void usart3_init()
 	huart3.Init.Mode = UART_MODE_TX_RX;
 	huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
 	huart3.Init.OverSampling = UART_OVERSAMPLING_16;
-	huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-	huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
 	if (HAL_UART_Init(&huart3) != HAL_OK)
+		error_handler();
+}
+
+static void uart4_init()
+{
+	huart4.Instance = UART4;
+	huart4.Init.BaudRate = 921600;
+	huart4.Init.WordLength = UART_WORDLENGTH_8B;
+	huart4.Init.StopBits = UART_STOPBITS_1;
+	huart4.Init.Parity = UART_PARITY_NONE;
+	huart4.Init.Mode = UART_MODE_TX_RX;
+	huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart4.Init.OverSampling = UART_OVERSAMPLING_16;
+
+	if (HAL_UART_Init(&huart4) != HAL_OK)
 		error_handler();
 }
 
@@ -2333,23 +2323,27 @@ static void hp_init()
 		uartprintf("failed to initilize HP206C\r\n");
 }
 
-// Init MPU6050 IMU
-static void mpu_init()
+static void icm_init()
 {
-	struct mpu_device d;
+	struct icm_device d;
 
 	d.hspi = &hspi1;
 	d.gpio = GPIOC;
 	d.pin = GPIO_PIN_13;
-	d.devtype = MPU_DEV6500;
-	d.accelscale = MPU_4G;
-	d.gyroscale = MPU_1000DPS;
-	d.dlpfwidth = MPU_184DLPF;
 
-	if (mpu_initdevice(&d, dev + MPU_DEV) >= 0)
-		uartprintf("MPU-6050 initilized\r\n");
+	d.gyroscale = ICM_1000DPS;
+	d.gyrorate = ICM_GYRO1K;
+	d.gyroorder = ICM_GYROORDER3;
+	d.gyrolpf = ICM_GYROLPF4;
+	d.accelscale = ICM_4G;
+	d.accelrate = ICM_ACCEL1K;
+	d.accellpf = ICM_ACCELLPF4;
+	d.accelorder = ICM_ACCELORDER3;
+
+	if (icm_initdevice(&d, dev + ICM_DEV) >= 0)
+		uartprintf("ICM-42688 initilized\r\n");
 	else
-		uartprintf("failed to initilize MPU-6500\r\n");
+		uartprintf("failed to initilize ICM-42688\r\n");
 }
 
 // Init QMC5883L magnetometer
