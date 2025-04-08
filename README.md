@@ -17,7 +17,7 @@ accelerometer/gyroscope readings.
 
 Devices
 =======
- * MCU: STM32F405GRT6
+ * MCU: STM32F405RGT6
  * Crystall oscillator: 20 Mhz
  * DC-DC converter for control board and camera: TPS5430
  * Control board voltage regulator: AMS1117-3.3
