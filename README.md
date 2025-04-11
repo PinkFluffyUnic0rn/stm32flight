@@ -103,4 +103,4 @@ Quadcopter Weight
  * Motors + props: 53g
  * Battery: 88g
  * Frame + wires + antenna: ~105g
- * Total weight: 203g 
+ * Total weight: 303g 
