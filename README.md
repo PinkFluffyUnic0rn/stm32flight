@@ -92,7 +92,7 @@ offset, x/y/z scale or magnetic declination for magnetometer
 
 Quadcopter parameters
 ==========
- * Motors: 1204, 5000 kV
+ * Motors: 1404, 4600 kV
  * Props: 3016
  * Battery: 15.4v (4s), 1100 mAh, 60c
  * Frame: plywood
@@ -100,7 +100,7 @@ Quadcopter parameters
 Quadcopter Weight
 ======
  * PCB and ESCs: ~57g
- * Motors + props: 27g
+ * Motors + props: 53g
  * Battery: 88g
  * Frame + wires + antenna: ~105g
- * Total weight: 277g 
+ * Total weight: 203g 

@@ -1,5 +1,5 @@
 pid tilt mode double
-pid tilt p 15.0
+pid tilt p 12.0
 pid tilt i 0.0001
 pid tilt d 0.001
 pid stilt p 0.05
@@ -9,7 +9,7 @@ pid yaw mode double
 pid yaw p -2.0
 pid yaw i 0.0
 pid yaw d 0.0
-pid syaw p -0.3
+pid syaw p -1.0
 pid syaw i 0.0
 pid syaw d 0.0
 pid throttle p 3.0
@@ -31,7 +31,7 @@ lpf altitude 1.0
 adj rollthrust 0.0
 adj pitchthrust 0.0
 adj roll 0.0
-adj pitch 0.0
+adj pitch 0.03
 adj yaw 1.57 
 adj acc x 0.0
 adj acc y 0.0
@@ -43,7 +43,7 @@ adj mag xscale 1.002
 adj mag yscale 1.042
 adj mag zscale 1.0
 adj mag decl 0.3264
-adj gyro x -0.55
+adj gyro x -0.6
 adj gyro y -0.2
 adj gyro z 0.27
 flash write
