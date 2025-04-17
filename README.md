@@ -99,8 +99,12 @@ Quadcopter parameters
 
 Quadcopter Weight
 ======
- * PCB and ESCs: ~57g
- * Motors + props: 53g
+ * PCB: ~30g
+ * ESCs: ~27g
+ * Motors + props: ~53g
  * Battery: 88g
- * Frame + wires + antenna: ~105g
+ * BEC: ~5g
+ * Antenna: ~10g
+ * Frame: ~60g
+ * Wires: ~30g
  * Total weight: 303g 
