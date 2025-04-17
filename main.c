@@ -43,7 +43,8 @@
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
-#define PWM_MAXCOUNT 2500
+//#define PWM_MAXCOUNT 2500
+#define PWM_MAXCOUNT 32000
 
 // Periodic events frequencies
 #define PID_FREQ 1000
@@ -172,6 +173,19 @@ struct settings {
 				// motors are abolutely equal
 
 	float roll0, pitch0, yaw0; // roll, pitch and yaw offset values
+
+	float rollmax, pitchmax; // maximum roll and pitch angles in Pi
+
+	float yawspeed;		// yaw rotation speed in Pi for
+				// single loop yaw mode
+	float yawtargetspeed;	// yaw target change speed in Pi for
+				// dual loop yaw mode
+	float accelmax;		// maximum acceleration in g for
+				// single loop throttle mode
+	float climbratemax;	// maximum climbrate in m/s for
+				// dual loop throttle mode
+	float altmax;		// maximum altitude in m for triple
+				// loop mode (altitude hold mode)
 
 	float atctcoef;		// time coefficient for pitch/roll
 				// complimentary filter
@@ -527,13 +541,13 @@ int setthrust(float ltd, float lbd, float rbd, float rtd)
 		|| isnan(lbd) || !elrs)
 		ltd = rtd = rbd = lbd = 0.0;
 
-	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.05 + 0.049)
+	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.5 + 0.49)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR2 = (uint16_t) ((trimuf(lbd) * 0.05 + 0.049)
+	TIM1->CCR2 = (uint16_t) ((trimuf(lbd) * 0.5 + 0.49)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR3 = (uint16_t) ((trimuf(rbd) * 0.05 + 0.049)
+	TIM1->CCR3 = (uint16_t) ((trimuf(rbd) * 0.5 + 0.49)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR4 = (uint16_t) ((trimuf(rtd) * 0.05 + 0.049)
+	TIM1->CCR4 = (uint16_t) ((trimuf(rtd) * 0.5 + 0.49)
 		* (float) PWM_MAXCOUNT);
 
 	return 0;
@@ -1145,23 +1159,39 @@ int sprintvalues(char *s)
 		"motors state: %.3f\r\n", (double) en);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"attitude tc: %.6f\r\n", (double) st.atctcoef);
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw tc: %.6f\r\n", (double) st.yctcoef);
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"accel tc: %.6f\r\n", (double) st.ttcoef);
+		"loops count: %d\r\n", loopscount);
+
+	return 0;
+}
+
+
+// Print filters coefficients into a string.
+//
+// s -- output string.
+int sprintffilters(char *s)
+{
+	s[0] = '\0';
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"vertical accel tc: %.6f\r\n", (double) st.vatcoef);
+		"attitude compl tc: %.6f\r\n", (double) st.atctcoef);
+	
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"climb rate tc: %.6f\r\n", (double) st.cctcoef);
+		"yaw compl tc: %.6f\r\n", (double) st.yctcoef);
+
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"altitude tc: %.6f\r\n", (double) st.atcoef);
+		"accel lpf tc: %.6f\r\n", (double) st.ttcoef);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"vertical accel lpf tc: %.6f\r\n", (double) st.vatcoef);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"climb rate compl tc: %.6f\r\n", (double) st.cctcoef);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"altitude lpf tc: %.6f\r\n", (double) st.atcoef);
+
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"altitude compl tc: %.6f\r\n", (double) st.actcoef);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"loops count: %d\r\n", loopscount);
 
 	return 0;
 }
@@ -1284,6 +1314,42 @@ int sprintdevs(char *s)
 		sprintf(s + strlen(s), "%-15s: %s\r\n",
 			dev[i].name, strstatus);
 	}
+
+	return 0;
+}
+
+// Print all control scaling values
+//
+// s -- output string.
+int sprintfctrl(char *s)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum roll: %.5f\r\n", (double) st.rollmax);
+	
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum pitch: %.5f\r\n", (double) st.pitchmax);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw speed: %.5f\r\n", 
+		(double) st.yawspeed);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw target change speed: %.5f\r\n",
+		(double) st.yawtargetspeed);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum acceleration: %.5f\r\n",
+		(double) st.accelmax);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum climbrate: %.5f\r\n",
+		(double) st.climbratemax);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum altitude: %.5f\r\n",
+		(double) st.altmax);
 
 	return 0;
 }
@@ -1443,6 +1509,10 @@ int infocmd(const char **toks)
 		sprintpid(s);
 	else if (strcmp(toks[1], "gnss") == 0)
 		sprintgnss(s);
+	else if (strcmp(toks[1], "ctrl") == 0)
+		sprintfctrl(s);
+	else if (strcmp(toks[1], "filter") == 0)
+		sprintffilters(s);
 	else
 		return (-1);
 
@@ -1729,6 +1799,36 @@ int logcmd(const char **toks)
 	return 0;
 }
 
+
+// "ctrl" command handler. Start/stop/get flight log.
+//
+// toks -- list of parsed command tokens.
+int ctrlcmd(const char **toks)
+{
+	float v;
+
+	v = atof(toks[2]);
+
+	if (strcmp(toks[1], "roll") == 0)
+		st.rollmax = v;
+	else if (strcmp(toks[1], "pitch") == 0)
+		st.pitchmax = v;
+	else if (strcmp(toks[1], "syaw") == 0)
+		st.yawspeed = v;
+	else if (strcmp(toks[1], "yaw") == 0)
+		st.yawtargetspeed = v;
+	else if (strcmp(toks[1], "accel") == 0)	
+		st.accelmax = v;
+	else if (strcmp(toks[1], "climbrate") == 0)
+		st.climbratemax = v;
+	else if (strcmp(toks[1], "altmax") == 0)
+		st.altmax = v;
+	else
+		return (-1);
+
+	return 0;
+}
+
 // Parse and execute control command bot from debug wifi-connetion.
 //
 // cmd -- command to be executed.
@@ -1792,30 +1892,30 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 	// set pitch/roll targets based on
 	// channels 1-2 values (it's a joystick on most remotes)
-	rolltarget = cd->chf[0] * (M_PI / 4.0);
-	pitchtarget = -cd->chf[1] * (M_PI / 4.0);
+	rolltarget = cd->chf[0] * (M_PI * st.rollmax);
+	pitchtarget = -cd->chf[1] * (M_PI * st.pitchmax);
 
 	if (cd->chf[4] < 0.0) {
 		yawspeedpid = 0;
 		yawtarget = circf(yawtarget
-			+ cd->chf[3] * dt * M_PI * 2.0);
+			+ cd->chf[3] * dt * M_PI * st.yawtargetspeed);
 	}
 	else {
 		yawspeedpid = 1;
-		yawtarget = -cd->chf[3] * M_PI;
+		yawtarget = -cd->chf[3] * M_PI * st.yawspeed;
 	}
 
 	if (cd->chf[6] < -0.25) {
 		altmode = ALTMODE_ACCEL;
-		thrust = (cd->chf[2] + 0.75) / 3.5;
+		thrust = (cd->chf[2] + 0.75) / 1.75 * st.accelmax;;
 	}
 	else if (cd->chf[6] > 0.25) {
 		altmode = ALTMODE_POS;
-		thrust = (cd->chf[2] + 1.0) * 2.0;
+		thrust = (cd->chf[2] + 1.0) / 2.0 * st.altmax;
 	}
 	else {
 		altmode = ALTMODE_SPEED;
-		thrust = cd->chf[2] * 1.5;
+		thrust = cd->chf[2] * st.climbratemax;
 	}
 
 	// if channel 9 is active (it's no-fix button on remote used
@@ -1948,6 +2048,7 @@ int main(void)
 	addcommand("lpf", lpfcmd);
 	addcommand("adj", adjcmd);
 	addcommand("log", logcmd);
+	addcommand("ctrl", ctrlcmd);
 
 	// initilize ERLS timer. For now ERLS polling is not a periodic
 	// event and called as frequently as possible, so it needs this
@@ -2129,7 +2230,7 @@ static void tim1_init(void)
 	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
 	htim1.Instance = TIM1;
-	htim1.Init.Prescaler = PRESCALER - 1;
+	htim1.Init.Prescaler = 0;//PRESCALER - 1;
 	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim1.Init.Period = PWM_MAXCOUNT;
 	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -2305,7 +2406,7 @@ static void uart4_init()
 static void esc_init()
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4
-		= (uint16_t) (0.05 * (float) PWM_MAXCOUNT);
+		= (uint16_t) (0.5 * (float) PWM_MAXCOUNT);
 	HAL_Delay(2000);
 }
 

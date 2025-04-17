@@ -109,6 +109,10 @@ int handlekeys(SDL_Event *event, int lsfd, const struct sockaddr_in *rsi)
 			sendcmd(lsfd, rsi, "info gnss\n");
 		else if (event->key.keysym.sym == SDLK_d)
 			sendcmd(lsfd, rsi, "info dev\n");
+		else if (event->key.keysym.sym == SDLK_c)
+			sendcmd(lsfd, rsi, "info ctrl\n");
+		else if (event->key.keysym.sym == SDLK_f)
+			sendcmd(lsfd, rsi, "info filter\n");
 		else if (event->key.keysym.sym == SDLK_w)
 			sendcmd(lsfd, rsi, "log set 4194304\n");
 		else if (event->key.keysym.sym == SDLK_s)
