@@ -39,6 +39,7 @@ u3:	ESP07
 u4:	HP206C
 u5:	W25Q128FVSIG
 u6:	ICM-42688-P
+u7:	QMC5883L
 
 dc-dc converter:
 l20:	10 uH
