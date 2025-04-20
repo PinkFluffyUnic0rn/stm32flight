@@ -43,7 +43,6 @@
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
-//#define PWM_MAXCOUNT 2500
 #define PWM_MAXCOUNT 32000
 
 // Periodic events frequencies
