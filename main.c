@@ -43,7 +43,7 @@
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
-#define PWM_MAXCOUNT 32000
+#define PWM_MAXCOUNT 3200
 
 // Periodic events frequencies
 #define PID_FREQ 1000
@@ -540,13 +540,13 @@ int setthrust(float ltd, float lbd, float rbd, float rtd)
 		|| isnan(lbd) || !elrs)
 		ltd = rtd = rbd = lbd = 0.0;
 
-	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.5 + 0.49)
+	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.8 + 0.19)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR2 = (uint16_t) ((trimuf(lbd) * 0.5 + 0.49)
+	TIM1->CCR2 = (uint16_t) ((trimuf(lbd) * 0.8 + 0.19)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR3 = (uint16_t) ((trimuf(rbd) * 0.5 + 0.49)
+	TIM1->CCR3 = (uint16_t) ((trimuf(rbd) * 0.8 + 0.19)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR4 = (uint16_t) ((trimuf(rtd) * 0.5 + 0.49)
+	TIM1->CCR4 = (uint16_t) ((trimuf(rtd) * 0.8 + 0.19)
 		* (float) PWM_MAXCOUNT);
 
 	return 0;
@@ -2405,7 +2405,7 @@ static void uart4_init()
 static void esc_init()
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4
-		= (uint16_t) (0.5 * (float) PWM_MAXCOUNT);
+		= (uint16_t) (0.2 * (float) PWM_MAXCOUNT);
 	HAL_Delay(2000);
 }
 
