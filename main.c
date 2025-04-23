@@ -298,7 +298,7 @@ static void esc_init();
 // Init HP206c barometer
 static void hp_init();
 
-// Init ICM-42688 IMU
+// Init ICM-42688-P IMU
 static void icm_init();
 
 // Init QMC5883L magnetometer
@@ -357,6 +357,8 @@ struct dsp_pidval tpv;
 struct dsp_pidval cpv;
 struct dsp_pidval apv;
 
+// Global storage for sensor data
+// that aquired in separate events
 float temp;
 
 struct qmc_data qmcdata;
@@ -666,8 +668,6 @@ int stabilize(int ms)
 	dev[ICM_DEV].read(dev[ICM_DEV].priv, &id,
 		sizeof(struct icm_data));
 
-
-
 	// write accelerometer and gyroscope values into log
 	logwrite(LOG_ACC_X, id.afx);
 	logwrite(LOG_ACC_Y, id.afy);
@@ -815,6 +815,8 @@ int stabilize(int ms)
 			dsp_getlpf(&tlpf), dt);
 	}
 
+	// calculate weights for motors
+	// thrust calibration values
 	ltm = (1.0 - st.rsc / 2) * (1.0 + st.psc / 2);
 	lbm = (1.0 - st.rsc / 2) * (1.0 - st.psc / 2);
 	rbm = (1.0 + st.rsc / 2) * (1.0 - st.psc / 2);
@@ -2229,7 +2231,7 @@ static void tim1_init(void)
 	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
 	htim1.Instance = TIM1;
-	htim1.Init.Prescaler = 0;//PRESCALER - 1;
+	htim1.Init.Prescaler = 0;
 	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim1.Init.Period = PWM_MAXCOUNT;
 	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;

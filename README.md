@@ -13,7 +13,7 @@ accelerometer/gyroscope readings.
 * yaw stabilization using magnetometer/gyroscope readings.
 * acceleration stabilization using accelerometer readings.
 * configuration through wi-fi.
-* altitude hold (kind of, yet tested only within 2.5 meters range)
+* altitude hold.
 
 Devices
 =======
@@ -21,7 +21,7 @@ Devices
  * Crystall oscillator: 20 Mhz
  * DC-DC converter for control board and camera: TPS5430
  * Control board voltage regulator: AMS1117-3.3
- * Accelerometer/Gyroscope: ICM42688P
+ * Accelerometer/Gyroscope: ICM-42688-P
  * Magnetometer: QMC5883L
  * Remote control: ERLS CRSF receiver
  * Telemetry/debug: ESP8266 (ESP-07)
@@ -78,17 +78,30 @@ values/PID data
  * `r` -- turn off motors
  * `c [altitude]` -- recalibrate
  * `calib mag (on|off)` -- enter/escape magnetometer calibration mode
- * `pid (tilt|stilt|yaw|syaw|sclimb) (p|i|d) {val}` -- set tilt/tilt
-speed/yaw/yaw speed/climb speed PID P/I/D value
+ * `pid (tilt|stilt|yaw|syaw|throttle/climbrate/altitude) (p|i|d) {val}`
+-- set tilt/tilt speed/yaw/yaw speed/throttle/climb rate/altitude PID
+P/I/D value.
  * `pid (tilt|yaw) (single/double)` -- switch to single/double PID loop
 mode for tilt/yaw
- * `compl {val}` -- set complimentary filter's time constant for tilt
- * `lpf (climb|pressure) {val}` -- set low-pass filter's time constant
-for climb speed/pressure
+ * `compl (attitude/yaw/climbrate/altitude) {val}` -- set complimentary
+filter's time constant for attitude/yaw/climb rate/altitude.
+ * `lpf (climb|vaccel/altitude) {val}` -- set low-pass filter's time
+constant for climb speed/vertical acceleration/altitude.
+ * `adj (rollthrust/pitchthrust) {val}` -- adjust motors thrust.
  * `adj (roll|pitch|yaw) {val}` -- set offset for roll/pitch/yaw
-(only for dual PID loop mode)
+(only for dual PID loop mode).
+ * `adj acc (x|y|z) {val}` -- set x/y/z offset for acceleromter
+ * `adj gyro (x|y|z) {val}` -- set x/y/z offset for gyroscope
  * `adj mag (x0|y0|z0|xscale|yscale|zscale|decl) {val}` -- set x/y/z
 offset, x/y/z scale or magnetic declination for magnetometer 
+ * `ctrl (roll|pitch) {val}` -- set maximum roll/pitch tilt value
+in radians.
+ * `ctrl (syaw|yaw) {val}` -- set yaw rotation speed for single/double
+loop mode in radians.
+ * `ctrl accel {val}` -- set maximum acceleration for throttle loop.
+ * `ctrl climbrate {val}` -- set maximum climb rate in m/s.
+ * `ctrl altmax {val}` -- set maximum altitude in meters.
+ * `flash write` -- write settings into MCU's internal flash.
 
 Quadcopter parameters
 ==========
