@@ -14,6 +14,7 @@ accelerometer/gyroscope readings.
 * acceleration stabilization using accelerometer readings.
 * configuration through wi-fi.
 * altitude hold.
+* telemetry through eLRS.
 
 Devices
 =======
