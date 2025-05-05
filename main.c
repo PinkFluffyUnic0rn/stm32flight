@@ -283,6 +283,7 @@ void systemclock_config();
 static void gpio_init();
 static void i2c_init();
 static void spi1_init();
+static void spi2_init();
 static void dma_init();
 static void tim1_init();
 static void tim8_init();
@@ -321,6 +322,7 @@ ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 I2C_HandleTypeDef hi2c1;
 SPI_HandleTypeDef hspi1;
+SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim8;
 UART_HandleTypeDef huart1;
@@ -450,15 +452,20 @@ uint32_t getadcv(ADC_HandleTypeDef *hadc)
 	return v;
 }
 
+// external interrupt callback. It calls interrupt hadlers from
+// drivers for devices that use external interrupts.
+void HAL_GPIO_EXTI_Callback(uint16_t pin)
+{
+	if (DEVITENABLED(dev[ESP_DEV].status))
+		dev[ESP_DEV].interrupt(dev[ESP_DEV].priv, &pin);
+}
+
 // UART receive callback. It calls interrupt handlers from
 // drivers for devices working through UART.
 //
 // huart -- context for UART triggered that callback.
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
 {
-	if (DEVITENABLED(dev[ESP_DEV].status))
-		dev[ESP_DEV].interrupt(dev[ESP_DEV].priv, huart);
-	
 	if (DEVITENABLED(dev[M10_DEV].status))
 		dev[M10_DEV].interrupt(dev[M10_DEV].priv, huart);
 	
@@ -1020,6 +1027,9 @@ int telesend(int ms)
 int parsecommand(char **toks, int maxtoks, char *data)
 {
 	int i;
+
+	if (data[strlen(data) - 1] == '\n')
+		data[strlen(data) - 1] = '\0';
 
 	for (i = 0; i < maxtoks; ++i)
 		toks[i] = "";
@@ -1838,7 +1848,7 @@ int runcommand(char *cmd)
 	char s[INFOLEN];
 	char *toks[MAX_CMDTOKS];
 	int i;
-
+	
 	if (cmd[0] == '\0')
 		return 0;
 
@@ -2007,6 +2017,7 @@ int main(void)
 	dma_init();
 	i2c_init();
 	spi1_init();
+	spi2_init();
 	adc1_init();
 	usart1_init();
 	usart2_init();
@@ -2153,22 +2164,37 @@ static void gpio_init(void)
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3,
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7
+		| GPIO_PIN_8 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15,
 		GPIO_PIN_RESET);
 
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8
-		| GPIO_PIN_13, GPIO_PIN_RESET);
-	
+/*
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0 | GPIO_PIN_13 | GPIO_PIN_6
+		| GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_13 | GPIO_PIN_14
+		| GPIO_PIN_15, GPIO_PIN_RESET);
+*/	
+
 	GPIO_InitStruct.Pin = GPIO_PIN_3;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_13;
+	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7
+		| GPIO_PIN_8 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
 	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+	GPIO_InitStruct.Pin = GPIO_PIN_1;
+	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+	HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 }
 
 static void dma_init(void)
@@ -2221,6 +2247,25 @@ static void spi1_init(void)
 	hspi1.Init.CRCPolynomial = 10;
 
 	if (HAL_SPI_Init(&hspi1) != HAL_OK)
+		error_handler();
+}
+
+static void spi2_init(void)
+{
+	hspi2.Instance = SPI2;
+	hspi2.Init.Mode = SPI_MODE_MASTER;
+	hspi2.Init.Direction = SPI_DIRECTION_2LINES;
+	hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+	hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+	hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+	hspi2.Init.NSS = SPI_NSS_SOFT;
+	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+	hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+	hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+	hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+	hspi2.Init.CRCPolynomial = 10;
+
+	if (HAL_SPI_Init(&hspi2) != HAL_OK)
 		error_handler();
 }
 
@@ -2469,10 +2514,14 @@ static void espdev_init()
 {
 	struct esp_device d;
 
-	d.huart = &huart1;
-	d.ssid = "copter";
-	d.pass = "";
-	d.port = SERVPORT;
+	d.hspi = &hspi2;
+	d.csgpio = GPIOC;
+	d.cspin = GPIO_PIN_0;
+	d.rstgpio = GPIOC;
+	d.rstpin = GPIO_PIN_14;
+	d.bootgpio = GPIOC;
+	d.bootpin = GPIO_PIN_15;
+	d.intpin = GPIO_PIN_1;
 
 	if (esp_initdevice(&d, dev + ESP_DEV) < 0) {
 		uartprintf("failed to initilize ESP8266\r\n");
