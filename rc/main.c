@@ -8,8 +8,8 @@
 #include <limits.h>
 #include <libgen.h>
 
-#define LOCAL_PORT 8880
-#define REMOTE_PORT 8880
+#define LOCAL_PORT 3333
+#define REMOTE_PORT 3333
 #define REMOTE_ADDR "192.168.3.1"
 
 #define BUFSZ 1024
