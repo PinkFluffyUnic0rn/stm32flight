@@ -25,7 +25,7 @@ Devices
  * Accelerometer/Gyroscope: ICM-42688-P
  * Magnetometer: QMC5883L
  * Remote control: ERLS CRSF receiver
- * Telemetry/debug: ESP8266 (ESP-07)
+ * Telemetry/debug/config: ESP8285
  * Barometer: HP206C
 
 Project structure
