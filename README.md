@@ -32,10 +32,10 @@ Project structure
 =========
 * `additional` -- the directory containing schematics for the flight
 controller and BEC:
-    * `side1.png` -- first side of flight controller board that is
-faced down.
-    * `side2.png` -- second side of flight controller board that is
-faced up.
+    * `bottom.png` -- bottom side of flight controller board.
+    * `top.png` -- top side of flight controller board.
+    * `ground.png` -- ground layer of flight controller board.
+    * `power.png` -- power layer of flight controller board.
     * `tps5430.JPG` -- DC-DC conveter used to convert battery voltage to
 5 volts used by main board's input LDO and FPV camera.
 * `devices` -- drivers for devices used by the flight controller:
