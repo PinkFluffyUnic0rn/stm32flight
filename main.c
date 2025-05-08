@@ -46,7 +46,7 @@
 #define PWM_MAXCOUNT 3200
 
 // Periodic events frequencies
-#define PID_FREQ 1000
+#define PID_FREQ 4000
 #define CHECK_FREQ 1
 #define CALIB_FREQ 25
 #define HP_FREQ 25
@@ -553,9 +553,9 @@ int setthrust(float ltd, float lbd, float rbd, float rtd)
 		* (float) PWM_MAXCOUNT);
 	TIM1->CCR2 = (uint16_t) ((trimuf(lbd) * 0.8 + 0.19)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR3 = (uint16_t) ((trimuf(rbd) * 0.8 + 0.19)
+	TIM1->CCR3 = (uint16_t) ((trimuf(rtd) * 0.8 + 0.19)
 		* (float) PWM_MAXCOUNT);
-	TIM1->CCR4 = (uint16_t) ((trimuf(rtd) * 0.8 + 0.19)
+	TIM1->CCR4 = (uint16_t) ((trimuf(rbd) * 0.8 + 0.19)
 		* (float) PWM_MAXCOUNT);
 
 	return 0;
@@ -2479,11 +2479,11 @@ static void icm_init()
 	d.pin = GPIO_PIN_13;
 
 	d.gyroscale = ICM_1000DPS;
-	d.gyrorate = ICM_GYRO1K;
+	d.gyrorate = ICM_GYRO4K;
 	d.gyroorder = ICM_GYROORDER3;
 	d.gyrolpf = ICM_GYROLPF4;
 	d.accelscale = ICM_4G;
-	d.accelrate = ICM_ACCEL1K;
+	d.accelrate = ICM_ACCEL4K;
 	d.accellpf = ICM_ACCELLPF4;
 	d.accelorder = ICM_ACCELORDER3;
 
