@@ -2170,12 +2170,6 @@ static void gpio_init(void)
 		| GPIO_PIN_8 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15,
 		GPIO_PIN_RESET);
 
-/*
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0 | GPIO_PIN_13 | GPIO_PIN_6
-		| GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_13 | GPIO_PIN_14
-		| GPIO_PIN_15, GPIO_PIN_RESET);
-*/	
-
 	GPIO_InitStruct.Pin = GPIO_PIN_3;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
