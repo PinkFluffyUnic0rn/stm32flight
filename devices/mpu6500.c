@@ -3,8 +3,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "uartdebug.h"
-
 #include "mpu6500.h"
 
 #define MPU_ADDR 0x68

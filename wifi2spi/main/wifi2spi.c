@@ -34,9 +34,10 @@
 #define BUF_SIZE 256
 
 #define INT_GPIO 4
+#define GOT_GPIO 0
 
-#define RBUF_MAX_SIZE	256
-#define WBUF_MAX_SIZE	512
+#define RBUF_MAX_SIZE	1024
+#define WBUF_MAX_SIZE	2048
 
 #define WIFI_SSID "copter"
 #define WIFI_PASS "copter12"
@@ -140,8 +141,6 @@ static void transfrombuf(BaseType_t *xHigherPriorityTaskWoken)
 
 	trans.bits.miso = 64 * 8;
 	
-	uart_write_bytes(UART_NUM_0, "sending\r\n", strlen("sending\r\n"));
-
 	spi_trans(HSPI_HOST, &trans);
 	gpio_set_level(INT_GPIO, 1);
 }
@@ -150,6 +149,8 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 {
 	uint32_t trans_done;
 	BaseType_t xHigherPriorityTaskWoken;
+		
+	gpio_set_level(GOT_GPIO, 1);
 
 	if (event != SPI_TRANS_DONE_EVENT)
 		return;
@@ -165,7 +166,7 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 		uint8_t crc;
 		uint8_t id;
 		int i;
-
+		
 		for (i = 0; i < 16; ++i)
 			((uint32_t *) (data))[i] = SPI1.data_buf[i];
 
@@ -173,12 +174,17 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 		size = *((uint16_t *) (data + 2));
 		crc = data[1];
 
-		if (size > (64 - 4) || crc8(data + 2, size + 2) != crc || id != 0xaa)
+		if (size > (64 - 4) || crc8(data + 2, size + 2) != crc
+				|| id != 0xaa) {
+			gpio_set_level(GOT_GPIO, 0);
 			return;
+		}
 
 		xStreamBufferSendFromISR(Rxbuf, (void*) data + 4, size,
 			&xHigherPriorityTaskWoken);
 	}
+		
+	gpio_set_level(GOT_GPIO, 0);
 
 	if (xHigherPriorityTaskWoken == pdTRUE)
 		taskYIELD();
@@ -202,10 +208,10 @@ static void udp_server_task_w(void *pvParameters)
 		saddr.sin_family = AF_INET;
 		saddr.sin_port = htons(PORT);
 	
-		ESP_LOGI("LOG", "sending!\r\n");
-
 		sendto(Sock, buf, len, 0, (struct sockaddr *) &saddr,
 			sizeof(saddr));
+		
+		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
 
 	vTaskDelete(NULL);
@@ -232,6 +238,8 @@ static void udp_server_task_r(void *pvParameters)
 			transfrombuf(NULL);
 
 		portEXIT_CRITICAL();
+	
+		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
 
 	vTaskDelete(NULL);
@@ -243,11 +251,12 @@ void gpio_init()
 	
 	io_conf.intr_type = GPIO_INTR_DISABLE;
 	io_conf.mode = GPIO_MODE_OUTPUT;
-	io_conf.pin_bit_mask = (1ULL << INT_GPIO);
+	io_conf.pin_bit_mask = (1ULL << INT_GPIO | 1ULL << GOT_GPIO);
 	io_conf.pull_down_en = 1;
 	io_conf.pull_up_en = 0;
 	gpio_config(&io_conf);
 	gpio_set_level(INT_GPIO, 0);
+	gpio_set_level(GOT_GPIO, 0);
 }
 
 void uart_init()
@@ -361,6 +370,8 @@ void app_main()
 		return;
 
 	s_connect_event_group = xEventGroupCreate();
+
+	vTaskDelay(1000 / portTICK_PERIOD_MS);
 
 	gpio_init();
 

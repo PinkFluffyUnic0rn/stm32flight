@@ -7,7 +7,7 @@
 
 #include "main.h"
 #include "device.h"
-#include "uartdebug.h"
+#include "util.h"
 #include "icm42688.h"
 #include "hp206c.h"
 #include "esp8266.h"
@@ -16,6 +16,7 @@
 #include "crsf.h"
 #include "w25.h"
 #include "m10.h"
+#include "uartconf.h"
 
 // Max length for info packet
 // sent back to operator
@@ -28,7 +29,8 @@
 #define CRSF_DEV	3
 #define M10_DEV		4
 #define ESP_DEV		5
-#define DEV_COUNT	6
+#define UART_DEV	6
+#define DEV_COUNT	7
 
 // timers prescaler
 #define PRESCALER 128
@@ -265,7 +267,7 @@ struct logpack {
 // debug command handler structure
 struct command {
 	const char *name;
-	int (*func)(const char **);
+	int (*func)(const struct cdevice*, const char **);
 };
 
 // Periodic event's context that holds event's settings
@@ -317,6 +319,9 @@ static void w25dev_init();
 // Init GNSS module
 static void m10dev_init();
 
+// Init UART config connection
+static void uartdev_init();
+
 // STM32 perithery contexts
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
@@ -332,6 +337,7 @@ UART_HandleTypeDef huart4;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart3_rx;
+DMA_HandleTypeDef hdma_uart4_rx;
 
 // Flight controller board's devices drivers
 struct cdevice dev[DEV_COUNT];
@@ -425,7 +431,8 @@ size_t commcount;
 //
 // name -- command name
 // func -- command handler
-int addcommand(const char *name, int (*func)(const char **))
+int addcommand(const char *name,
+	int (*func)(const struct cdevice *, const char **))
 {
 	commtable[commcount].name = name;
 	commtable[commcount].func = func;
@@ -471,6 +478,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	
 	if (DEVITENABLED(dev[CRSF_DEV].status))
 		dev[CRSF_DEV].interrupt(dev[CRSF_DEV].priv, huart);
+
+	if (DEVITENABLED(dev[UART_DEV].status))
+		dev[UART_DEV].interrupt(dev[UART_DEV].priv, huart);
 }
 
 // UART error callback. Calls UART error handlers from
@@ -1369,7 +1379,7 @@ int sprintfctrl(char *s)
 // erasing starts from address 0.
 //
 // size -- bytes count to erase.
-int eraseflash(size_t size)
+int eraseflash(const struct cdevice *d, size_t size)
 {
 	size_t pos;
 	char s[255];
@@ -1391,7 +1401,7 @@ int eraseflash(size_t size)
 			pos += W25_BLOCKSIZE;
 
 			sprintf(s, "erased block at %u\r\n", pos);
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
+			d->write(d->priv, s,
 				strlen(s));
 		}
 		else {
@@ -1410,7 +1420,7 @@ int eraseflash(size_t size)
 // Print all log values into debug connection.
 //
 // s -- string user as buffer.
-int printlog(char *buf, size_t size)
+int printlog(const struct cdevice *d, char *buf, size_t size)
 {
 	int fp;
 	int frames;
@@ -1441,14 +1451,12 @@ int printlog(char *buf, size_t size)
 			sprintf(buf + strlen(buf), "\r\n");
 
 			// send this string into debug connection
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, buf,
-				strlen(buf));
+			d->write(d->priv, buf, strlen(buf));
 		}
 	}
 			
-	
 	sprintf(buf, "log finished, %u frames written\r\n", frames);
-	dev[ESP_DEV].write(dev[ESP_DEV].priv, buf, strlen(buf));
+	d->write(d->priv, buf, strlen(buf));
 
 	return 0;
 }
@@ -1456,7 +1464,7 @@ int printlog(char *buf, size_t size)
 // Disarm command handler.
 //
 // toks -- list of parsed command tokens.
-int rcmd(const char **toks)
+int rcmd(const struct cdevice *dev, const char **toks)
 {
 	en = 0.0;
 	
@@ -1466,7 +1474,7 @@ int rcmd(const char **toks)
 // Recalibrate command handler.
 //
 // toks -- list of parsed command tokens.
-int ccmd(const char **toks)
+int ccmd(const struct cdevice *dev, const char **toks)
 {
 	initstabilize(atof(toks[1]));
 
@@ -1476,7 +1484,7 @@ int ccmd(const char **toks)
 // "info" command handler. Print various sensor and control values.
 //
 // toks -- list of parsed command tokens.
-int infocmd(const char **toks)
+int infocmd(const struct cdevice *d, const char **toks)
 {
 	char s[INFOLEN];
 	
@@ -1485,8 +1493,6 @@ int infocmd(const char **toks)
 
 		dev[ICM_DEV].read(dev[ICM_DEV].priv, &id,
 			sizeof(struct icm_data));
-
-
 
 		id.afx -= st.ax0;
 		id.afy -= st.ay0;
@@ -1527,7 +1533,7 @@ int infocmd(const char **toks)
 	else
 		return (-1);
 
-	dev[ESP_DEV].write(dev[ESP_DEV].priv, s, strlen(s));
+	d->write(d->priv, s, strlen(s));
 
 	return 0;
 }
@@ -1535,7 +1541,7 @@ int infocmd(const char **toks)
 // "pid" command handler. Configure PID values.
 //
 // toks -- list of parsed command tokens.
-int pidcmd(const char **toks)
+int pidcmd(const struct cdevice *dev, const char **toks)
 {
 	float v;
 
@@ -1624,7 +1630,7 @@ int pidcmd(const char **toks)
 // "calib" command handler. Turn on/off devices calibration modes.
 //
 // toks -- list of parsed command tokens.
-int calibcmd(const char **toks)
+int calibcmd(const struct cdevice *dev, const char **toks)
 {
 	if (strcmp(toks[1], "mag") == 0) {
 		if (strcmp(toks[2], "on") == 0)
@@ -1644,7 +1650,7 @@ int calibcmd(const char **toks)
 // used for storing configuraton.
 //
 // toks -- list of parsed command tokens.
-int flashcmd(const char **toks)
+int flashcmd(const struct cdevice *dev, const char **toks)
 {
 	if (strcmp(toks[1], "write") == 0)
 		writesettings(atoi(toks[2]));	
@@ -1659,7 +1665,7 @@ int flashcmd(const char **toks)
 // "compl" command handler. Configure pitch/roll complimentary filters.
 //
 // toks -- list of parsed command tokens.
-int complcmd(const char **toks)
+int complcmd(const struct cdevice *dev, const char **toks)
 {
 	if (strcmp(toks[1], "attitude") == 0) {
 		st.atctcoef = atof(toks[2]);
@@ -1685,7 +1691,7 @@ int complcmd(const char **toks)
 // "lpf" command handler. Configure low-pass filters.
 //
 // toks -- list of parsed command tokens.
-int lpfcmd(const char **toks)
+int lpfcmd(const struct cdevice *dev, const char **toks)
 {
 	if (strcmp(toks[1], "climb") == 0) {
 		st.ttcoef = atof(toks[2]);
@@ -1711,7 +1717,7 @@ int lpfcmd(const char **toks)
 // "adj" command handler. Configure various offset/scale values.
 //
 // toks -- list of parsed command tokens.
-int adjcmd(const char **toks)
+int adjcmd(const struct cdevice *dev, const char **toks)
 {
 	float v;
 
@@ -1765,7 +1771,7 @@ int adjcmd(const char **toks)
 // "log" command handler. Start/stop/get flight log.
 //
 // toks -- list of parsed command tokens.
-int logcmd(const char **toks)
+int logcmd(const struct cdevice *d, const char **toks)
 {
 	char s[INFOLEN];
 	
@@ -1789,13 +1795,12 @@ int logcmd(const char **toks)
 
 		// erase log flash no
 		// respond during this process
-		eraseflash(logsize);
+		eraseflash(d, logsize);
 
 		// notify user when telemetry flash is erased
 		sprintf(s,"erased %u bytes of flash\r\n",
 			logsize);
-		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-			strlen(s));
+		d->write(d->priv, s, strlen(s));
 
 		// enable telemetry
 		logtotal = 0;
@@ -1803,7 +1808,7 @@ int logcmd(const char **toks)
 		logbufpos = 0;
 	}
 	else if (strcmp(toks[1], "get") == 0)
-		printlog(s, atoi(toks[2]));
+		printlog(d, s, atoi(toks[2]));
 	else
 		return (-1);
 
@@ -1811,10 +1816,10 @@ int logcmd(const char **toks)
 }
 
 
-// "ctrl" command handler. Start/stop/get flight log.
+// "ctrl" command handler. Configure control ranges scaling.
 //
 // toks -- list of parsed command tokens.
-int ctrlcmd(const char **toks)
+int ctrlcmd(const struct cdevice *d, const char **toks)
 {
 	float v;
 
@@ -1840,10 +1845,29 @@ int ctrlcmd(const char **toks)
 	return 0;
 }
 
-// Parse and execute control command bot from debug wifi-connetion.
+// "system" command handler. Run system commands.
+//
+// toks -- list of parsed command tokens.
+int systemcmd(const struct cdevice *d, const char **toks)
+{
+	if (strcmp(toks[1], "esp") == 0) {
+		if (strcmp(toks[2], "flash") == 0)
+			dev[ESP_DEV].configure(dev[ESP_DEV].priv, "flash");
+		else if (strcmp(toks[2], "run") == 0)
+			dev[ESP_DEV].configure(dev[ESP_DEV].priv, "run");
+		else
+			return (-1);
+	}
+	else
+		return (-1);
+
+	return 0;
+}
+
+// Parse and execute control command got from debug wifi-connection.
 //
 // cmd -- command to be executed.
-int runcommand(char *cmd)
+int runcommand(const struct cdevice *d, char *cmd)
 {
 	char s[INFOLEN];
 	char *toks[MAX_CMDTOKS];
@@ -1858,8 +1882,11 @@ int runcommand(char *cmd)
 	// perform corresponding action
 	for (i = 0; i < commcount; ++i) {
 		if (strcmp(toks[0], commtable[i].name) == 0) {
-			if (commtable[i].func((const char **) toks) < 0)
+			if (commtable[i].func(d, (const char **) toks) < 0)
 				goto unknown;
+
+			snprintf(s, INFOLEN, "OK\r\n");
+			d->write(d->priv, s, strlen(s));
 
 			return 0;
 		}
@@ -1869,7 +1896,7 @@ int runcommand(char *cmd)
 
 unknown:
 	snprintf(s, INFOLEN, "Unknown command: %s\r\n", cmd);
-	dev[ESP_DEV].write(dev[ESP_DEV].priv, s, strlen(s));
+	d->write(d->priv, s, strlen(s));
 
 	return (-1);
 }
@@ -2032,6 +2059,7 @@ int main(void)
 	crsfdev_init();
 	w25dev_init();
 	m10dev_init();
+	uartdev_init();
 	hp_init();
 
 	// reading settings from memory slot 0
@@ -2061,6 +2089,7 @@ int main(void)
 	addcommand("adj", adjcmd);
 	addcommand("log", logcmd);
 	addcommand("ctrl", ctrlcmd);
+	addcommand("system", systemcmd);
 
 	// initilize ERLS timer. For now ERLS polling is not a periodic
 	// event and called as frequently as possible, so it needs this
@@ -2077,11 +2106,16 @@ int main(void)
 		// reset iteration time counter
 		__HAL_TIM_SET_COUNTER(&htim8, 0);
 
-		// poll for configureation and telemetry commands
+		// poll for configuration and telemetry commands
 		// from from debug wifi connection
 		if (dev[ESP_DEV].read(dev[ESP_DEV].priv, &cmd,
 			ESP_CMDSIZE) >= 0) {
-			runcommand(cmd);
+			runcommand(dev + ESP_DEV, cmd);
+		}
+
+		if (dev[UART_DEV].read(dev[UART_DEV].priv, &cmd,
+			UART_CMDSIZE) >= 0) {
+			runcommand(dev + UART_DEV, cmd);
 		}
 
 		// read the ELRS remote's packet
@@ -2199,6 +2233,9 @@ static void dma_init(void)
 	HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
 	
+	HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
+	
 	HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
@@ -2253,7 +2290,7 @@ static void spi2_init(void)
 	hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
 	hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
 	hspi2.Init.NSS = SPI_NSS_SOFT;
-	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
 	hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
 	hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -2565,6 +2602,21 @@ static void m10dev_init()
 	}
 	
 	uartprintf("GPS device initilized\r\n");
+}
+
+// Init UART config connection
+static void uartdev_init()
+{
+	struct uart_device d;
+
+	d.huart = &huart4;
+	
+	if (uart_initdevice(&d, dev + UART_DEV) < 0) {
+		uartprintf("failed to initilize UART device\r\n");
+		return;
+	}
+	
+	uartprintf("UART device initilized\r\n");
 }
 
 // MCU hardware errors handler. Disarm immediately

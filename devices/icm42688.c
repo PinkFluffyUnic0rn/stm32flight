@@ -4,8 +4,6 @@
 #include <stdarg.h>
 #include <math.h>
 
-#include "uartdebug.h"
-
 #include "icm42688.h"
 
 enum ICM_REGISTER {
