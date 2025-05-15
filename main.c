@@ -267,7 +267,7 @@ struct logpack {
 // debug command handler structure
 struct command {
 	const char *name;
-	int (*func)(const struct cdevice*, const char **);
+	int (*func)(const struct cdevice*, const char **, char *);
 };
 
 // Periodic event's context that holds event's settings
@@ -432,7 +432,7 @@ size_t commcount;
 // name -- command name
 // func -- command handler
 int addcommand(const char *name,
-	int (*func)(const struct cdevice *, const char **))
+	int (*func)(const struct cdevice *, const char **, char *))
 {
 	commtable[commcount].name = name;
 	commtable[commcount].func = func;
@@ -1464,7 +1464,7 @@ int printlog(const struct cdevice *d, char *buf, size_t size)
 // Disarm command handler.
 //
 // toks -- list of parsed command tokens.
-int rcmd(const struct cdevice *dev, const char **toks)
+int rcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	en = 0.0;
 	
@@ -1474,7 +1474,7 @@ int rcmd(const struct cdevice *dev, const char **toks)
 // Recalibrate command handler.
 //
 // toks -- list of parsed command tokens.
-int ccmd(const struct cdevice *dev, const char **toks)
+int ccmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	initstabilize(atof(toks[1]));
 
@@ -1484,10 +1484,8 @@ int ccmd(const struct cdevice *dev, const char **toks)
 // "info" command handler. Print various sensor and control values.
 //
 // toks -- list of parsed command tokens.
-int infocmd(const struct cdevice *d, const char **toks)
+int infocmd(const struct cdevice *d, const char **toks, char *out)
 {
-	char s[INFOLEN];
-	
 	if (strcmp(toks[1], "mpu") == 0) {
 		struct icm_data id;
 
@@ -1498,7 +1496,7 @@ int infocmd(const struct cdevice *d, const char **toks)
 		id.afy -= st.ay0;
 		id.afz -= st.az0;
 
-		sprintpos(s, &id);
+		sprintpos(out, &id);
 	}
 	else if (strcmp(toks[1], "qmc") == 0) {
 		struct qmc_data hd;
@@ -1506,34 +1504,32 @@ int infocmd(const struct cdevice *d, const char **toks)
 		dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
 			sizeof(struct qmc_data));
 
-		sprintqmc(s, &hd);	
+		sprintqmc(out, &hd);	
 	}
 	else if (strcmp(toks[1], "hp") == 0) {
 		float alt;
 
 		alt = dsp_getlpf(&altlpf) - alt0;
 
-		snprintf(s, INFOLEN,
+		snprintf(out, INFOLEN,
 			"temp: %f; alt: %f; climb rate: %f\r\n",
 			(double) temp, (double) alt,
 			(double) dsp_getcompl(&climbratecompl));
 	}
 	else if (strcmp(toks[1], "dev") == 0)
-		sprintdevs(s);
+		sprintdevs(out);
 	else if (strcmp(toks[1], "values") == 0)
-		sprintvalues(s);
+		sprintvalues(out);
 	else if (strcmp(toks[1], "pid") == 0)
-		sprintpid(s);
+		sprintpid(out);
 	else if (strcmp(toks[1], "gnss") == 0)
-		sprintgnss(s);
+		sprintgnss(out);
 	else if (strcmp(toks[1], "ctrl") == 0)
-		sprintfctrl(s);
+		sprintfctrl(out);
 	else if (strcmp(toks[1], "filter") == 0)
-		sprintffilters(s);
+		sprintffilters(out);
 	else
 		return (-1);
-
-	d->write(d->priv, s, strlen(s));
 
 	return 0;
 }
@@ -1541,7 +1537,7 @@ int infocmd(const struct cdevice *d, const char **toks)
 // "pid" command handler. Configure PID values.
 //
 // toks -- list of parsed command tokens.
-int pidcmd(const struct cdevice *dev, const char **toks)
+int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	float v;
 
@@ -1630,7 +1626,7 @@ int pidcmd(const struct cdevice *dev, const char **toks)
 // "calib" command handler. Turn on/off devices calibration modes.
 //
 // toks -- list of parsed command tokens.
-int calibcmd(const struct cdevice *dev, const char **toks)
+int calibcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "mag") == 0) {
 		if (strcmp(toks[2], "on") == 0)
@@ -1650,7 +1646,7 @@ int calibcmd(const struct cdevice *dev, const char **toks)
 // used for storing configuraton.
 //
 // toks -- list of parsed command tokens.
-int flashcmd(const struct cdevice *dev, const char **toks)
+int flashcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "write") == 0)
 		writesettings(atoi(toks[2]));	
@@ -1665,7 +1661,7 @@ int flashcmd(const struct cdevice *dev, const char **toks)
 // "compl" command handler. Configure pitch/roll complimentary filters.
 //
 // toks -- list of parsed command tokens.
-int complcmd(const struct cdevice *dev, const char **toks)
+int complcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "attitude") == 0) {
 		st.atctcoef = atof(toks[2]);
@@ -1691,7 +1687,7 @@ int complcmd(const struct cdevice *dev, const char **toks)
 // "lpf" command handler. Configure low-pass filters.
 //
 // toks -- list of parsed command tokens.
-int lpfcmd(const struct cdevice *dev, const char **toks)
+int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "climb") == 0) {
 		st.ttcoef = atof(toks[2]);
@@ -1717,7 +1713,7 @@ int lpfcmd(const struct cdevice *dev, const char **toks)
 // "adj" command handler. Configure various offset/scale values.
 //
 // toks -- list of parsed command tokens.
-int adjcmd(const struct cdevice *dev, const char **toks)
+int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	float v;
 
@@ -1771,7 +1767,7 @@ int adjcmd(const struct cdevice *dev, const char **toks)
 // "log" command handler. Start/stop/get flight log.
 //
 // toks -- list of parsed command tokens.
-int logcmd(const struct cdevice *d, const char **toks)
+int logcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	char s[INFOLEN];
 	
@@ -1819,7 +1815,7 @@ int logcmd(const struct cdevice *d, const char **toks)
 // "ctrl" command handler. Configure control ranges scaling.
 //
 // toks -- list of parsed command tokens.
-int ctrlcmd(const struct cdevice *d, const char **toks)
+int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	float v;
 
@@ -1848,7 +1844,7 @@ int ctrlcmd(const struct cdevice *d, const char **toks)
 // "system" command handler. Run system commands.
 //
 // toks -- list of parsed command tokens.
-int systemcmd(const struct cdevice *d, const char **toks)
+int systemcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "esp") == 0) {
 		if (strcmp(toks[2], "flash") == 0)
@@ -1869,24 +1865,40 @@ int systemcmd(const struct cdevice *d, const char **toks)
 // cmd -- command to be executed.
 int runcommand(const struct cdevice *d, char *cmd)
 {
-	char s[INFOLEN];
+	char buf[ESP_CMDSIZE];
+	char out[INFOLEN];
 	char *toks[MAX_CMDTOKS];
+	uint8_t crc;
 	int i;
 	
 	if (cmd[0] == '\0')
 		return 0;
 
+	memcpy(buf, cmd, ESP_CMDSIZE);
+
 	// split a command into tokens by spaces
-	parsecommand(toks, MAX_CMDTOKS, cmd);
+	parsecommand(toks, MAX_CMDTOKS, buf);
+
+	crc = crc8((uint8_t *) cmd + 4, strlen(cmd) - 4);
+
+	if (atoi(toks[0]) != crc)
+		goto crcfail;
 
 	// perform corresponding action
 	for (i = 0; i < commcount; ++i) {
-		if (strcmp(toks[0], commtable[i].name) == 0) {
-			if (commtable[i].func(d, (const char **) toks) < 0)
+		if (strcmp(toks[1], commtable[i].name) == 0) {
+			char header[ESP_CMDSIZE];
+		
+			out[0] = '\0';
+
+			if (commtable[i].func(d, (const char **) toks + 1, out) < 0)
 				goto unknown;
 
-			snprintf(s, INFOLEN, "OK\r\n");
-			d->write(d->priv, s, strlen(s));
+			memcpy(header, cmd, ESP_CMDSIZE);
+			d->write(d->priv, header, strlen(header));
+
+			if (strlen(out) != 0)
+				d->write(d->priv, out, strlen(out));
 
 			return 0;
 		}
@@ -1895,8 +1907,16 @@ int runcommand(const struct cdevice *d, char *cmd)
 	return 0;
 
 unknown:
-	snprintf(s, INFOLEN, "Unknown command: %s\r\n", cmd);
-	d->write(d->priv, s, strlen(s));
+	snprintf(out, INFOLEN, "Unknown command: %s\r\n", cmd + 4);
+	d->write(d->priv, out, strlen(out));
+
+	return (-1);
+
+crcfail:
+	snprintf(out, INFOLEN, "CRC check fail, got %hu: %s\r\n", crc,
+		cmd + 4);
+
+	d->write(d->priv, out, strlen(out));
 
 	return (-1);
 }
