@@ -193,10 +193,18 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 static void udp_server_task_w(void *pvParameters)
 {
 	char buf[WBUF_MAX_SIZE];
+	int ms;
 
+	ms = 0;
 	while (1) {
 		struct sockaddr_in saddr;
 		int len;
+
+		if (xStreamBufferBytesAvailable(Rxbuf) < 512 && ms < 100) {
+			ms += 10;
+			vTaskDelay(10 / portTICK_PERIOD_MS);
+			continue;
+		}
 
 		len = xStreamBufferReceive(Rxbuf, buf, WBUF_MAX_SIZE,
 			portMAX_DELAY);
@@ -212,6 +220,8 @@ static void udp_server_task_w(void *pvParameters)
 			sizeof(saddr));
 		
 		vTaskDelay(10 / portTICK_PERIOD_MS);
+
+		ms = 0;
 	}
 
 	vTaskDelete(NULL);

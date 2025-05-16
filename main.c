@@ -1425,8 +1425,8 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 	if (from > to)
 		return (-1);
 
-	if (from % LOG_BUFSIZE != 0 || to % LOG_BUFSIZE != 0)
-		return (-1);
+//	if (from % LOG_BUFSIZE != 0 || to % LOG_BUFSIZE != 0)
+//		return (-1);
 
 	// run through all writable space in the flash
 	for (fp = from; fp < to; fp += LOG_BUFSIZE) {
@@ -1441,6 +1441,9 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 		for (bp = 0; bp < LOG_BUFSIZE; ++bp) {
 			char *data;
 			int i;
+
+			if (fp + bp < from || fp + bp >= to)
+				continue;
 
 			data = buf + 4;
 
@@ -1462,6 +1465,10 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 			d->write(d->priv, buf, strlen(buf));
 		}
 	}
+			
+	
+	sprintf(buf, "-end-\r\n");
+	d->write(d->priv, buf, strlen(buf));
 
 	return 1;
 }

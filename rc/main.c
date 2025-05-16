@@ -90,7 +90,7 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi)
 	lsi.sin_port = htons(LOCAL_PORT);
 
 	tv.tv_sec = 0;
-	tv.tv_usec = 100000;
+	tv.tv_usec = 500000;
 	if (setsockopt(*lsfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
 		fprintf(stderr, "cannot open set local socket option\n");
 		exit(1);
@@ -204,6 +204,24 @@ int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 			break;
 		}
 
+		size_t offset;
+		char c;
+		char *s;
+
+		c = d->logbuf[d->logsz + rsz];
+
+		d->logbuf[d->logsz + rsz] = '\0';
+
+		offset = (d->logsz < strlen("-end"))
+			? d->logsz : (d->logsz - strlen("-end"));
+
+		s = strstr(d->logbuf + offset, "-end-");
+		
+		d->logbuf[d->logsz + rsz] = c;
+
+		if (s != NULL)
+			break;		
+
 		if (d->logsz + rsz > d->logmaxsz)
 			break;
 
@@ -290,14 +308,11 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 
 	for (i = 0; i < LOGSIZE;) {
 		if (records[i] == NULL) {
-			size_t rb;
 
 			d.logbuf = logbuf + logtotalsz + 1;
 			d.logmaxsz = LOGMAXSZ - (logtotalsz + 1);
 
-			rb = (i / 4) * 4;
-
-			sprintf(cmd, "log get %lu %lu\n", rb, rb + 4);
+			sprintf(cmd, "log get %d %d\n", i, i + 1);
 			sendcmd(lsfd, rsi, cmd, logget, &d);
 			d.logbuf[d.logsz] = '\0';
 
