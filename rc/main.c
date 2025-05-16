@@ -13,7 +13,10 @@
 #define REMOTE_PORT 3333
 #define REMOTE_ADDR "192.168.3.1"
 
-#define BUFSZ 1024
+#define CMDMAXSZ 58
+#define RECVBUFSZ 1024
+#define LOGSIZE (1024 * 64)
+#define LOGMAXSZ (1024 * 1024 * 128)
 
 SDL_Surface *screen;
 SDL_Renderer *render;
@@ -86,8 +89,8 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi)
 	lsi.sin_addr.s_addr = INADDR_ANY;
 	lsi.sin_port = htons(LOCAL_PORT);
 
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
+	tv.tv_sec = 0;
+	tv.tv_usec = 10000;
 	if (setsockopt(*lsfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
 		fprintf(stderr, "cannot open set local socket option\n");
 		exit(1);
@@ -117,13 +120,11 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi)
 // lsfd -- UDP socket for configuration connection.
 // rsi -- quadcopter's esp07 IP address.
 // fmt, ... -- format line and arguments, like in printf function.
-int sendcmd(int lsfd, const struct sockaddr_in *rsi,
-	const char *cmd , int (*serverfunc)(const char *))
+int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
+	int (*serverfunc)(int, const struct sockaddr_in *,
+		const char *, void *), void *data)
 {
-	char scmd[BUFSZ];
-	char out[BUFSZ];
-	socklen_t rsis;
-	int rsz;
+	char scmd[RECVBUFSZ];
 
 	sprintf(scmd, "%03hu %s", crc8((uint8_t *) cmd,
 		strlen(cmd)), cmd);
@@ -133,29 +134,180 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi,
 			(const struct sockaddr *) rsi,
 			sizeof(struct sockaddr_in));
 
-		serverfunc(scmd);
-
-		rsis = sizeof(rsi);
-
-		if ((rsz = recvfrom(lsfd, out, BUFSZ, 0,
-			(struct sockaddr *) &rsi, &rsis)) > 0) {
-			out[rsz] = '\0';
-			printf("%s", out);
-		
-			if (strncmp(scmd, out, strlen(scmd)) == 0)
-				break;
-		}
-		else if (rsz < 0)
-			printf("error: %s; %d\r\n", strerror(errno), errno);
+		if (serverfunc(lsfd, rsi, scmd, data) >= 0)
+			break;
 	} while (1);
 
 	return 0;
 }
 
-int waitfunc(const char *cmd)
+int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
+	void *data)
 {
-//	printf("in serverside function! |%s|\r\n", cmd);
-	usleep(1000);
+	char out[RECVBUFSZ];
+	socklen_t rsis;
+	int rsz;
+
+	usleep(10000);
+	
+	rsis = sizeof(rsi);
+
+	if ((rsz = recvfrom(lsfd, out, RECVBUFSZ, 0,
+			(struct sockaddr *) &rsi, &rsis)) < 0) {
+		printf("error: %s; %d\r\n", strerror(errno), errno);
+		return (-1);
+	}
+
+	out[rsz] = '\0';
+	printf("%s", out);
+
+	if (strncmp(cmd, out, strlen(cmd)) != 0)
+		return (-1);
+
+	return 0;
+}
+
+int dummyfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
+	void *data)
+{
+	return 0;
+}
+	
+char logbuf[1024 * 1024 * 64];
+size_t logtotalsz;
+
+struct loggetdata {
+	int records;
+	char *logbuf;
+	size_t logsz;
+	size_t logmaxsz;
+};
+
+int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
+	void *data)
+{
+	struct loggetdata *d;
+	int i;
+
+	d = data;
+
+	// read requested log lines through UDP
+	d->logsz = 0;
+	for (i = 0; i < d->records; ++i) {
+		socklen_t rsis;
+		int rsz;
+		
+		rsis = sizeof(rsi);
+
+		if ((rsz = recvfrom(lsfd, d->logbuf + d->logsz, RECVBUFSZ, 0,
+				(struct sockaddr *) &rsi, &rsis)) < 0) {
+			break;
+		}
+
+		if (d->logsz + rsz > d->logmaxsz)
+			break;
+
+		d->logsz += rsz;
+	}
+
+	return 0;
+}
+
+int parserecords(char *logbuf, char **records)
+{	
+	char *b, *e;
+	
+	e = b = logbuf;
+	while ((e = strchr(e, '\n')) != NULL) {
+		char *num, *val;
+		uint8_t crc;
+		size_t n;
+	
+		crc = crc8((uint8_t *) b + 4, e - b - 4 + 1);
+
+		*(e++) = '\0';
+
+		b[3] = '\0';
+		num = b + 4;
+
+		val = strchr(num, ' ');
+
+		if (val == NULL) {
+			b = e;
+			continue;
+		}
+
+		*(val++) = '\0';
+
+		if (atoi(b) != crc) {
+			b = e;
+			continue;
+		}
+
+		n = atoi(num);
+
+		records[n] = val;
+
+		b = e;
+	}
+
+	return 0;
+}
+
+int getlog(int lsfd, const struct sockaddr_in *rsi)
+{
+	struct loggetdata d;
+	char *records[LOGSIZE];
+	char cmd[CMDMAXSZ];
+	int i;
+
+	d.records = LOGSIZE;
+	d.logbuf = logbuf;
+	d.logsz = 0;
+	d.logmaxsz = LOGMAXSZ;
+
+	sprintf(cmd, "log get 0 %d\r\n", LOGSIZE);
+	sendcmd(lsfd, rsi, cmd, logget, &d);
+	d.logbuf[d.logsz] = '\0';
+	
+	logtotalsz = d.logsz;
+
+	for (i = 0; i < LOGSIZE; ++i)
+		records[i] = NULL;
+		
+	parserecords(logbuf, records);
+
+	for (i = 0; i < LOGSIZE;) {
+		if (records[i] == NULL) {
+			size_t rb;
+
+			d.logbuf = logbuf + logtotalsz + 1;
+			d.logmaxsz = LOGMAXSZ - (logtotalsz + 1);
+
+			rb = (i / 4) * 4;
+
+			sprintf(cmd, "log get %lu %lu\n", rb, rb + 4);
+			sendcmd(lsfd, rsi, cmd, logget, &d);
+			d.logbuf[d.logsz] = '\0';
+
+			logtotalsz += d.logsz;	
+	
+			parserecords(d.logbuf, records);
+		}
+		else
+			++i;
+	}
+
+	for (i = 0; i < LOGSIZE; ++i) {
+		if (records[i] == NULL) {
+			printf("NULL\n");
+			continue;
+		}
+
+		printf("%d %s\n", i, records[i]);
+	}
+
+	fflush(stdout);
 
 	return 0;
 }
@@ -164,35 +316,39 @@ int waitfunc(const char *cmd)
 //
 // event -- key press event.
 // lsfd -- UDP socket for configuration connection.
-// rsi -- quadcopter's esp07 IP address.
-int handlekeys(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
+// rsi -- quadcopter's esp8285 IP address.
+int handlecmd(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 {
+	if (strncmp(cmd, "exit", strlen("exit")) == 0)
+		return 1;
 	if (strncmp(cmd, "m", strlen("m")) == 0)
-		sendcmd(lsfd, rsi, "info mpu\n", waitfunc);
+		sendcmd(lsfd, rsi, "info mpu\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "p", strlen("p")) == 0)
-		sendcmd(lsfd, rsi, "info pid\n", waitfunc);
+		sendcmd(lsfd, rsi, "info pid\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "v", strlen("v")) == 0)
-		sendcmd(lsfd, rsi, "info values\n", waitfunc);
+		sendcmd(lsfd, rsi, "info values\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "h", strlen("h")) == 0)
-		sendcmd(lsfd, rsi, "info qmc\n", waitfunc);
+		sendcmd(lsfd, rsi, "info qmc\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "b", strlen("b")) == 0)
-		sendcmd(lsfd, rsi, "info hp\n", waitfunc);
+		sendcmd(lsfd, rsi, "info hp\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "g", strlen("g")) == 0)
-		sendcmd(lsfd, rsi, "info gnss\n", waitfunc);
+		sendcmd(lsfd, rsi, "info gnss\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "d", strlen("d")) == 0)
-		sendcmd(lsfd, rsi, "info dev\n", waitfunc);
+		sendcmd(lsfd, rsi, "info dev\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "c", strlen("c")) == 0)
-		sendcmd(lsfd, rsi, "info ctrl\n", waitfunc);
+		sendcmd(lsfd, rsi, "info ctrl\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "f", strlen("f")) == 0)
-		sendcmd(lsfd, rsi, "info filter\n", waitfunc);
+		sendcmd(lsfd, rsi, "info filter\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "w", strlen("w")) == 0)
-		sendcmd(lsfd, rsi, "log set 4194304\n", waitfunc);
+		sendcmd(lsfd, rsi, "log set 4194304\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "s", strlen("s")) == 0)
-		sendcmd(lsfd, rsi, "log set 0\n", waitfunc);
-	else if (strncmp(cmd, "r", strlen("r")) == 0)
-		sendcmd(lsfd, rsi, "log get 4194304\n", waitfunc);
+		sendcmd(lsfd, rsi, "log set 0\n", dummyfunc, NULL);
+	else if (strncmp(cmd, "r", strlen("r")) == 0) 
+		getlog(lsfd, rsi);
 	else if (strncmp(cmd, "c", strlen("c")) == 0)
-		sendcmd(lsfd, rsi, "c 0.0\n", waitfunc);
+		sendcmd(lsfd, rsi, "c 0.0\n", conffunc, NULL);
+	else
+		sendcmd(lsfd, rsi, cmd, dummyfunc, NULL);
 
 	return 0;
 }
@@ -201,6 +357,8 @@ int handlekeys(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 int main(int argc, char *argv[])
 {
 	struct sockaddr_in rsi;
+	char *buf;
+	size_t bufsz;
 	int lsfd;
 
 	// initilize connection sockets
@@ -218,10 +376,12 @@ int main(int argc, char *argv[])
 		}
 
 		while (fgets(s, 256, f) != NULL) {
-			sendcmd(lsfd, &rsi, s, waitfunc);
+			sendcmd(lsfd, &rsi, s, conffunc, NULL);
 		}
 	}
 
+	buf = NULL;
+	bufsz = 0;
 	while (1) {
 		fd_set rfds;
 
@@ -231,15 +391,14 @@ int main(int argc, char *argv[])
 
 		if (select(lsfd + 1, &rfds, NULL, NULL, NULL) > 0) {
 			if (FD_ISSET(0, &rfds)) {
-				char buf[BUFSZ];
-				
-				scanf("%s", buf);
+				getline(&buf, &bufsz, stdin);
 
-				handlekeys(buf, lsfd, &rsi);
+				if (handlecmd(buf, lsfd, &rsi) != 0)
+					break;
 			}
 			
 			if (FD_ISSET(lsfd, &rfds)) {
-				char buf[BUFSZ];
+				char buf[RECVBUFSZ];
 				socklen_t rsis;
 				int rsz;
 
@@ -247,7 +406,7 @@ int main(int argc, char *argv[])
 
 				// if got data on configuration
 				// connection print it to stdout
-				if ((rsz = recvfrom(lsfd, buf, BUFSZ, 0,
+				if ((rsz = recvfrom(lsfd, buf, RECVBUFSZ, 0,
 					(struct sockaddr *) &rsi, &rsis)) > 0) {
 					buf[rsz] = '\0';
 					printf("%s", buf);
@@ -255,6 +414,8 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+
+	free(buf);
 
 	return 0;
 }

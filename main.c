@@ -1420,17 +1420,18 @@ int eraseflash(const struct cdevice *d, size_t size)
 // Print all log values into debug connection.
 //
 // s -- string user as buffer.
-int printlog(const struct cdevice *d, char *buf, size_t size)
+int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 {
 	int fp;
-	int frames;
 
-	size = (size > W25_TOTALSIZE) ? W25_TOTALSIZE : size;
+	if (from > to)
+		return (-1);
 
-	frames = size / sizeof(struct logpack);
+	if (from % LOG_BUFSIZE != 0 || to % LOG_BUFSIZE != 0)
+		return (-1);
 
 	// run through all writable space in the flash
-	for (fp = 0; fp < frames; fp += LOG_BUFSIZE) {
+	for (fp = from; fp < to; fp += LOG_BUFSIZE) {
 		int bp;
 
 		// read batch of log frames into log buffer
@@ -1440,25 +1441,34 @@ int printlog(const struct cdevice *d, char *buf, size_t size)
 
 		// for every read frame
 		for (bp = 0; bp < LOG_BUFSIZE; ++bp) {
+			char *data;
 			int i;
 
+			data = buf + 4;
+
 			// put all frame's values into a string
-			buf[0] = '\0';
+			sprintf(data, "%d ", fp + bp);
+			
 			for (i = 0; i < LOG_PACKSIZE; ++i) {
-				sprintf(buf + strlen(buf), "%0.5f ",
+				sprintf(data + strlen(data), "%0.5f ",
 					(double) logbuf[bp].data[i]);
 			}
-			sprintf(buf + strlen(buf), "\r\n");
+
+			sprintf(data + strlen(data), "\r\n");
+
+			sprintf(buf, "%03hu",
+				crc8((uint8_t *) data, strlen(data)));
+			buf[3] = ' ';
 
 			// send this string into debug connection
 			d->write(d->priv, buf, strlen(buf));
 		}
 	}
 			
-	sprintf(buf, "log finished, %u frames written\r\n", frames);
+	sprintf(buf, "log finished, %u frames written\r\n", to - from);
 	d->write(d->priv, buf, strlen(buf));
 
-	return 0;
+	return 1;
 }
 
 // Disarm command handler.
@@ -1531,7 +1541,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	else
 		return (-1);
 
-	return 0;
+	return 1;
 }
 
 // "pid" command handler. Configure PID values.
@@ -1804,7 +1814,7 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		logbufpos = 0;
 	}
 	else if (strcmp(toks[1], "get") == 0)
-		printlog(d, s, atoi(toks[2]));
+		return printlog(d, s, atoi(toks[2]), atoi(toks[3]));
 	else
 		return (-1);
 
@@ -1887,15 +1897,21 @@ int runcommand(const struct cdevice *d, char *cmd)
 	// perform corresponding action
 	for (i = 0; i < commcount; ++i) {
 		if (strcmp(toks[1], commtable[i].name) == 0) {
-			char header[ESP_CMDSIZE];
+			int r;
 		
 			out[0] = '\0';
 
-			if (commtable[i].func(d, (const char **) toks + 1, out) < 0)
+			if ((r = commtable[i].func(d, (const char **) toks + 1, out)) < 0)
 				goto unknown;
 
-			memcpy(header, cmd, ESP_CMDSIZE);
-			d->write(d->priv, header, strlen(header));
+			// r > 0, then it's a printing command and
+			// it does not transmission confirm
+			if (r == 0) {
+				char hdr[ESP_CMDSIZE];
+
+				memcpy(hdr, cmd, ESP_CMDSIZE);
+				d->write(d->priv, hdr, strlen(hdr));
+			}
 
 			if (strlen(out) != 0)
 				d->write(d->priv, out, strlen(out));
