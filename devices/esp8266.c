@@ -95,7 +95,7 @@ static int _esp_send(struct esp_device *dev, int timeout,
 		uint16_t size;
 		uint8_t buf[64];
 		uint8_t b;
-
+		
 		// need timeout
 		while (HAL_GPIO_ReadPin(dev->bootgpio,
 				dev->bootpin) == GPIO_PIN_SET);

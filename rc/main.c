@@ -90,7 +90,7 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi)
 	lsi.sin_port = htons(LOCAL_PORT);
 
 	tv.tv_sec = 0;
-	tv.tv_usec = 10000;
+	tv.tv_usec = 100000;
 	if (setsockopt(*lsfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
 		fprintf(stderr, "cannot open set local socket option\n");
 		exit(1);
@@ -225,6 +225,9 @@ int parserecords(char *logbuf, char **records)
 	
 		crc = crc8((uint8_t *) b + 4, e - b - 4 + 1);
 
+		if (*e == '\0')
+			goto skip;
+
 		*(e++) = '\0';
 
 		b[3] = '\0';
@@ -232,24 +235,32 @@ int parserecords(char *logbuf, char **records)
 
 		val = strchr(num, ' ');
 
-		if (val == NULL) {
-			b = e;
-			continue;
-		}
+		if (val == NULL)
+			goto skip;
 
 		*(val++) = '\0';
 
-		if (atoi(b) != crc) {
-			b = e;
-			continue;
-		}
+		if (atoi(b) != crc)
+			goto skip;
 
 		n = atoi(num);
 
 		records[n] = val;
 
+skip:
 		b = e;
 	}
+
+	return 0;
+}
+
+int startlog(int lsfd, const struct sockaddr_in *rsi)
+{
+	char cmd[CMDMAXSZ];
+	
+	sprintf(cmd, "log set %d\r\n", 256);
+
+	sendcmd(lsfd, rsi, cmd, dummyfunc, NULL);
 
 	return 0;
 }
@@ -340,7 +351,7 @@ int handlecmd(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 	else if (strncmp(cmd, "f", strlen("f")) == 0)
 		sendcmd(lsfd, rsi, "info filter\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "w", strlen("w")) == 0)
-		sendcmd(lsfd, rsi, "log set 4194304\n", dummyfunc, NULL);
+		startlog(lsfd, rsi);
 	else if (strncmp(cmd, "s", strlen("s")) == 0)
 		sendcmd(lsfd, rsi, "log set 0\n", dummyfunc, NULL);
 	else if (strncmp(cmd, "r", strlen("r")) == 0) 

@@ -1401,16 +1401,14 @@ int eraseflash(const struct cdevice *d, size_t size)
 			pos += W25_BLOCKSIZE;
 
 			sprintf(s, "erased block at %u\r\n", pos);
-			d->write(d->priv, s,
-				strlen(s));
+			d->write(d->priv, s, strlen(s));
 		}
 		else {
 			flashdev.erasesector(flashdev.priv, pos);
 			pos += W25_SECTORSIZE;
 
 			sprintf(s, "erased sector at %u\r\n", pos);
-			dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-				strlen(s));
+			d->write(d->priv, s, strlen(s));
 		}
 	}
 
@@ -1464,9 +1462,6 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 			d->write(d->priv, buf, strlen(buf));
 		}
 	}
-			
-	sprintf(buf, "log finished, %u frames written\r\n", to - from);
-	d->write(d->priv, buf, strlen(buf));
 
 	return 1;
 }
@@ -1789,23 +1784,21 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 
 		// notify user when erasing is started
 		sprintf(s, "erasing flash...\r\n");
-		dev[ESP_DEV].write(dev[ESP_DEV].priv, s,
-			strlen(s));
+		d->write(d->priv, s, strlen(s));
 
 		// set log size (0 is valid and
 		// means to disable logging)
 		if (atoi(toks[2]) > W25_TOTALSIZE)
 			return (-1);
 
-		logsize = atoi(toks[2]);
+		logsize = atoi(toks[2]) * sizeof(struct logpack);
 
 		// erase log flash no
 		// respond during this process
 		eraseflash(d, logsize);
 
 		// notify user when telemetry flash is erased
-		sprintf(s,"erased %u bytes of flash\r\n",
-			logsize);
+		sprintf(s,"erased %u bytes of flash\r\n", logsize);
 		d->write(d->priv, s, strlen(s));
 
 		// enable telemetry
@@ -1879,6 +1872,7 @@ int runcommand(const struct cdevice *d, char *cmd)
 	char out[INFOLEN];
 	char *toks[MAX_CMDTOKS];
 	uint8_t crc;
+	int toksoff;
 	int i;
 	
 	if (cmd[0] == '\0')
@@ -1889,19 +1883,27 @@ int runcommand(const struct cdevice *d, char *cmd)
 	// split a command into tokens by spaces
 	parsecommand(toks, MAX_CMDTOKS, buf);
 
-	crc = crc8((uint8_t *) cmd + 4, strlen(cmd) - 4);
+	toksoff = 0;
 
-	if (atoi(toks[0]) != crc)
-		goto crcfail;
+	if (d == dev + ESP_DEV) {
+		toksoff = 1;
+
+		crc = crc8((uint8_t *) cmd + 4, strlen(cmd) - 4);
+
+		if (atoi(toks[0]) != crc)
+			goto crcfail;
+	}
 
 	// perform corresponding action
 	for (i = 0; i < commcount; ++i) {
-		if (strcmp(toks[1], commtable[i].name) == 0) {
+		if (strcmp(toks[toksoff], commtable[i].name) == 0) {
 			int r;
 		
 			out[0] = '\0';
 
-			if ((r = commtable[i].func(d, (const char **) toks + 1, out)) < 0)
+			if ((r = commtable[i].func(d,
+					(const char **) toks + toksoff,
+					out)) < 0)
 				goto unknown;
 
 			// r > 0, then it's a printing command and

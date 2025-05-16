@@ -36,7 +36,7 @@
 #define INT_GPIO 4
 #define GOT_GPIO 0
 
-#define RBUF_MAX_SIZE	1024
+#define RBUF_MAX_SIZE	2048
 #define WBUF_MAX_SIZE	2048
 
 #define WIFI_SSID "copter"
@@ -184,10 +184,10 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 			&xHigherPriorityTaskWoken);
 	}
 		
-	gpio_set_level(GOT_GPIO, 0);
-
 	if (xHigherPriorityTaskWoken == pdTRUE)
 		taskYIELD();
+	
+	gpio_set_level(GOT_GPIO, 0);
 }
 
 static void udp_server_task_w(void *pvParameters)
@@ -252,7 +252,7 @@ void gpio_init()
 	io_conf.intr_type = GPIO_INTR_DISABLE;
 	io_conf.mode = GPIO_MODE_OUTPUT;
 	io_conf.pin_bit_mask = (1ULL << INT_GPIO | 1ULL << GOT_GPIO);
-	io_conf.pull_down_en = 1;
+	io_conf.pull_down_en = 0;
 	io_conf.pull_up_en = 0;
 	gpio_config(&io_conf);
 	gpio_set_level(INT_GPIO, 0);
@@ -388,8 +388,8 @@ void app_main()
 	ESP_LOGI("LOG", "HELLO!\r\n");
 
 	xTaskCreate(udp_server_task_r, "udp_server_read",
-		4096, NULL, 4, NULL);
+		8192, NULL, 4, NULL);
 
 	xTaskCreate(udp_server_task_w, "udp_server_write",
-		4096, NULL, 4, NULL);
+		8192, NULL, 4, NULL);
 }
