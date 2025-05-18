@@ -148,7 +148,7 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	socklen_t rsis;
 	int rsz;
 
-	usleep(10000);
+	usleep(15000);
 	
 	rsis = sizeof(rsi);
 
@@ -219,8 +219,10 @@ int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 		
 		d->logbuf[d->logsz + rsz] = c;
 
-		if (s != NULL)
-			break;		
+		if (s != NULL) {
+			d->logsz += rsz;
+			break;	
+		}	
 
 		if (d->logsz + rsz > d->logmaxsz)
 			break;

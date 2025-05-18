@@ -96,7 +96,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 	}
 }
 
-static uint8_t crc8(const volatile uint8_t *data, uint8_t len)
+static uint8_t IRAM_ATTR crc8(const volatile uint8_t *data, uint8_t len)
 {
 	uint8_t crc;
 	int i;
@@ -108,7 +108,7 @@ static uint8_t crc8(const volatile uint8_t *data, uint8_t len)
 	return crc;
 }
 
-static void transfrombuf(BaseType_t *xHigherPriorityTaskWoken)
+static void IRAM_ATTR transfrombuf(BaseType_t *xHigherPriorityTaskWoken)
 {
 	static uint8_t data[64];
 	static uint16_t cmd;
@@ -190,7 +190,7 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 	gpio_set_level(GOT_GPIO, 0);
 }
 
-static void udp_server_task_w(void *pvParameters)
+static void IRAM_ATTR udp_server_task_w(void *pvParameters)
 {
 	char buf[WBUF_MAX_SIZE];
 	int ms;
@@ -227,7 +227,7 @@ static void udp_server_task_w(void *pvParameters)
 	vTaskDelete(NULL);
 }
 
-static void udp_server_task_r(void *pvParameters)
+static void IRAM_ATTR udp_server_task_r(void *pvParameters)
 {
 	char buf[RBUF_MAX_SIZE];
 
