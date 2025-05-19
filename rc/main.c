@@ -13,10 +13,11 @@
 #define REMOTE_PORT 3333
 #define REMOTE_ADDR "192.168.3.1"
 
-#define CMDMAXSZ 58
+#define CMDMAXSZ 60
 #define RECVBUFSZ 1024
 #define LOGSIZE (1024 * 64)
-#define LOGMAXSZ (1024 * 1024 * 128)
+#define LOGMAXSZ (1024 * 1024 * 1024)
+#define BATCHSIZE 7
 
 SDL_Surface *screen;
 SDL_Renderer *render;
@@ -90,12 +91,11 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi)
 	lsi.sin_port = htons(LOCAL_PORT);
 
 	tv.tv_sec = 0;
-	tv.tv_usec = 500000;
+	tv.tv_usec = 200000;
 	if (setsockopt(*lsfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
 		fprintf(stderr, "cannot open set local socket option\n");
 		exit(1);
 	}
-
 
 	if (bind(*lsfd, (const struct sockaddr *) &lsi, sizeof(lsi)) < 0) {
 		fprintf(stderr, "cannot bind local socket\n");
@@ -126,8 +126,9 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 {
 	char scmd[RECVBUFSZ];
 
-	sprintf(scmd, "%03hu %s", crc8((uint8_t *) cmd,
+	snprintf(scmd, RECVBUFSZ, "%03hu %s", crc8((uint8_t *) cmd,
 		strlen(cmd)), cmd);
+	scmd[RECVBUFSZ - 1] = '\0';
 
 	do {
 		sendto(lsfd, scmd, strlen(scmd), MSG_CONFIRM,
@@ -144,17 +145,20 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void *data)
 {
-	char out[RECVBUFSZ];
+	char out[RECVBUFSZ + 1];
+	static int wait = 5000;
 	socklen_t rsis;
 	int rsz;
 
-	usleep(15000);
+	usleep(wait);
 	
 	rsis = sizeof(rsi);
 
 	if ((rsz = recvfrom(lsfd, out, RECVBUFSZ, 0,
 			(struct sockaddr *) &rsi, &rsis)) < 0) {
-		printf("error: %s; %d\r\n", strerror(errno), errno);
+	
+		wait = (wait < 500000) ? wait * 1.5 : wait;
+
 		return (-1);
 	}
 
@@ -173,12 +177,10 @@ int dummyfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	return 0;
 }
 	
-char logbuf[1024 * 1024 * 64];
-size_t logtotalsz;
-
 struct loggetdata {
 	int records;
 	char *logbuf;
+	size_t logbufoffset;
 	size_t logsz;
 	size_t logmaxsz;
 };
@@ -187,45 +189,49 @@ int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void *data)
 {
 	struct loggetdata *d;
+	char *logbuf;
 	int i;
 
 	d = data;
-
+		
 	// read requested log lines through UDP
 	d->logsz = 0;
 	for (i = 0; i < d->records; ++i) {
 		socklen_t rsis;
-		int rsz;
-		
-		rsis = sizeof(rsi);
-
-		if ((rsz = recvfrom(lsfd, d->logbuf + d->logsz, RECVBUFSZ, 0,
-				(struct sockaddr *) &rsi, &rsis)) < 0) {
-			break;
-		}
-
 		size_t offset;
 		char c;
 		char *s;
+		int rsz;
 
-		c = d->logbuf[d->logsz + rsz];
+		if (d->logsz + d->logbufoffset + RECVBUFSZ >= d->logmaxsz) {
+			d->logmaxsz = (d->logbufoffset + d->logsz + RECVBUFSZ) * 2;
+			d->logbuf = realloc(d->logbuf, d->logmaxsz);
+		}
+	
+		logbuf = d->logbuf + d->logbufoffset;
 
-		d->logbuf[d->logsz + rsz] = '\0';
+		rsis = sizeof(rsi);
+		if ((rsz = recvfrom(lsfd, logbuf + d->logsz,
+				RECVBUFSZ, 0, (struct sockaddr *) &rsi,
+				&rsis)) < 0) {
+			break;
+		}
+
+		c = logbuf[d->logsz + rsz];
+
+		logbuf[d->logsz + rsz] = '\0';
 
 		offset = (d->logsz < strlen("-end"))
 			? d->logsz : (d->logsz - strlen("-end"));
 
-		s = strstr(d->logbuf + offset, "-end-");
+		s = strstr(logbuf + offset, "-end-");
 		
-		d->logbuf[d->logsz + rsz] = c;
+		logbuf[d->logsz + rsz] = c;
 
 		if (s != NULL) {
 			d->logsz += rsz;
 			break;	
 		}	
-
-		if (d->logsz + rsz > d->logmaxsz)
-			break;
 
 		d->logsz += rsz;
 	}
@@ -233,22 +239,23 @@ int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	return 0;
 }
 
-int parserecords(char *logbuf, char **records)
+int parserecords(char *logbuf, size_t logbufoffset, int *records)
 {	
 	char *b, *e;
 	
-	e = b = logbuf;
+	e = b = logbuf + logbufoffset;
 	while ((e = strchr(e, '\n')) != NULL) {
 		char *num, *val;
 		uint8_t crc;
 		size_t n;
-	
-		crc = crc8((uint8_t *) b + 4, e - b - 4 + 1);
 
-		if (*e == '\0')
+		if (e - b < 5)
 			goto skip;
 
-		*(e++) = '\0';
+		crc = crc8((uint8_t *) b + 4, e - b - 4 + 1);
+
+		if (*e != '\0')
+			*(e++) = '\0';
 
 		b[3] = '\0';
 		num = b + 4;
@@ -265,7 +272,8 @@ int parserecords(char *logbuf, char **records)
 
 		n = atoi(num);
 
-		records[n] = val;
+		if (n >= 0 && n < LOGSIZE)
+			records[n] = val - logbuf;
 
 skip:
 		b = e;
@@ -288,54 +296,74 @@ int startlog(int lsfd, const struct sockaddr_in *rsi)
 int getlog(int lsfd, const struct sockaddr_in *rsi)
 {
 	struct loggetdata d;
-	char *records[LOGSIZE];
+	int records[LOGSIZE];
 	char cmd[CMDMAXSZ];
+	int reccount;
+	int needcheck;
+	size_t logtotalsz;
 	int i;
 
 	d.records = LOGSIZE;
-	d.logbuf = logbuf;
+	d.logbuf = NULL;
 	d.logsz = 0;
-	d.logmaxsz = LOGMAXSZ;
+	d.logmaxsz = 0;
+	d.logbufoffset = 0;
 
-	sprintf(cmd, "log get 0 %d\r\n", LOGSIZE);
+	sprintf(cmd, "log rget 0 %d\r\n", LOGSIZE);
 	sendcmd(lsfd, rsi, cmd, logget, &d);
-	d.logbuf[d.logsz] = '\0';
+	d.logbuf[d.logbufoffset + d.logsz] = '\0';
 	
-	logtotalsz = d.logsz;
+	logtotalsz = d.logsz + 1;
 
 	for (i = 0; i < LOGSIZE; ++i)
-		records[i] = NULL;
-		
-	parserecords(logbuf, records);
-
-	for (i = 0; i < LOGSIZE;) {
-		if (records[i] == NULL) {
-
-			d.logbuf = logbuf + logtotalsz + 1;
-			d.logmaxsz = LOGMAXSZ - (logtotalsz + 1);
-
-			sprintf(cmd, "log get %d %d\n", i, i + 1);
-			sendcmd(lsfd, rsi, cmd, logget, &d);
-			d.logbuf[d.logsz] = '\0';
-
-			logtotalsz += d.logsz;	
+		records[i] = -1;
 	
-			parserecords(d.logbuf, records);
+	parserecords(d.logbuf, d.logbufoffset, records);
+
+	needcheck = 1;
+	while (needcheck) {
+		needcheck = 0;
+		reccount = 0;
+
+		sprintf(cmd, "log bget");
+
+		for (i = 0; i < LOGSIZE; ++i) {
+			if (records[i] < 0) {
+				snprintf(cmd + strlen(cmd),
+					CMDMAXSZ, " %d", i);
+				needcheck = 1;
+				++reccount;
+			}
+			if (reccount == BATCHSIZE || (i == (LOGSIZE - 1) && needcheck)) {
+				d.logbufoffset = logtotalsz;
+
+				sprintf(cmd + strlen(cmd), "\n");
+
+				sendcmd(lsfd, rsi, cmd, logget, &d);
+				d.logbuf[d.logbufoffset + d.logsz] = '\0';
+
+				parserecords(d.logbuf, d.logbufoffset, records);
+				
+				logtotalsz += d.logsz + 1;
+
+				sprintf(cmd, "log bget");
+				reccount = 0;
+			}
 		}
-		else
-			++i;
 	}
 
 	for (i = 0; i < LOGSIZE; ++i) {
-		if (records[i] == NULL) {
+		if (records[i] < 0) {
 			printf("NULL\n");
 			continue;
 		}
 
-		printf("%d %s\n", i, records[i]);
+		printf("%d %s\n", i, d.logbuf + records[i]);
 	}
 
 	fflush(stdout);
+
+	free(d.logbuf);
 
 	return 0;
 }
@@ -426,7 +454,7 @@ int main(int argc, char *argv[])
 			}
 			
 			if (FD_ISSET(lsfd, &rfds)) {
-				char buf[RECVBUFSZ];
+				char buf[RECVBUFSZ + 1];
 				socklen_t rsis;
 				int rsz;
 

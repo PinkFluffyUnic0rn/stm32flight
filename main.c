@@ -1029,7 +1029,8 @@ int telesend(int ms)
 }
 
 // Parse configureation command got from debug wi-fi connection
-// by just splitting it into tokens by spaces
+// by just splitting it into tokens by spaces. Last token is
+// the terminating token and always is an empty string.
 //
 // toks -- result array of command tokens (it's a paring result).
 // maxtoks -- maximum number of tokens posible.
@@ -1048,7 +1049,8 @@ int parsecommand(char **toks, int maxtoks, char *data)
 
 	toks[i++] = strtok((char *) data, " ");
 
-	while (i < maxtoks && (toks[i++] = strtok(NULL, " ")) != NULL);
+	while (i < (maxtoks - 1)
+		&& (toks[i++] = strtok(NULL, " ")) != NULL);
 
 	return (i - 1);
 }
@@ -1425,9 +1427,6 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 	if (from > to)
 		return (-1);
 
-//	if (from % LOG_BUFSIZE != 0 || to % LOG_BUFSIZE != 0)
-//		return (-1);
-
 	// run through all writable space in the flash
 	for (fp = from; fp < to; fp += LOG_BUFSIZE) {
 		int bp;
@@ -1466,10 +1465,6 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 		}
 	}
 			
-	
-	sprintf(buf, "-end-\r\n");
-	d->write(d->priv, buf, strlen(buf));
-
 	return 1;
 }
 
@@ -1813,12 +1808,28 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		logflashpos = 0;
 		logbufpos = 0;
 	}
-	else if (strcmp(toks[1], "get") == 0)
-		return printlog(d, s, atoi(toks[2]), atoi(toks[3]));
+	else if (strcmp(toks[1], "rget") == 0) {
+		if (printlog(d, s, atoi(toks[2]), atoi(toks[3])) < 0)
+			return (-1);
+
+		sprintf(s, "-end-\r\n");
+		d->write(d->priv, s, strlen(s));
+	}
+	else if (strcmp(toks[1], "bget") == 0) {
+		const char **p;
+
+		for (p = toks + 2; strlen(*p) != 0; ++p) {
+			if (printlog(d, s, atoi(*p), atoi(*p) + 1) < 0)
+				return (-1);
+		}
+	
+		sprintf(s, "-end-\r\n");
+		d->write(d->priv, s, strlen(s));
+	}
 	else
 		return (-1);
 
-	return 0;
+	return 1;
 }
 
 
