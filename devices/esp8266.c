@@ -10,7 +10,9 @@
 #include "esp8266.h"
 
 #define ESP_TIMEOUT 1000
-#define ESP_PAYLOADSZ (64 - 4)
+#define ESP_SPITIMEOUTUS 10
+#define ESP_SPIPACKSIZE 64
+#define ESP_PAYLOADSZ (ESP_SPIPACKSIZE - 4)
 #define ESP_FIFOSIZE 8
 
 struct fifo {
@@ -24,14 +26,14 @@ static size_t esp_devcount = 0;
 
 static volatile struct fifo fifo;
 
-int esp_initfifo(volatile struct fifo *f)
+static int esp_initfifo(volatile struct fifo *f)
 {
 	f->bot = f->top = 0;
 
 	return 0;
 }
 
-int esp_dequeque(volatile struct fifo *f, char *out)
+static int esp_dequeque(volatile struct fifo *f, char *out)
 {
 	if (f->bot == f->top)
 		return (-1);
@@ -50,7 +52,7 @@ int esp_interrupt(void *dev, const void *p)
 	uint8_t id;
 	uint8_t crc;
 	uint16_t size;
-	uint8_t buf[128];
+	uint8_t buf[ESP_SPIPACKSIZE];
 
 	d = dev;
 	
@@ -65,14 +67,16 @@ int esp_interrupt(void *dev, const void *p)
 	b = 0x0;
 	HAL_SPI_Transmit(d->hspi, &b, 1, 1000);
 
-	HAL_SPI_Receive(d->hspi, buf, 64, 1000);
+	HAL_SPI_Receive(d->hspi, buf, ESP_SPIPACKSIZE, 1000);
 	HAL_GPIO_WritePin(d->csgpio, d->cspin, GPIO_PIN_SET);
 
 	id = buf[0];
 	crc = buf[1];
 	size = *((uint16_t *) (buf + 2));
 
-	if (size > (64 - 4) || crc8(buf + 2, size + 2) != crc || id != 0xaa)
+	if (size > (ESP_SPIPACKSIZE - 4)
+			|| crc8(buf + 2, size + 2) != crc
+			|| id != 0xaa)
 		return 0;
 
 	memcpyv(fifo.cmd[fifo.top], buf + 4, size);
@@ -85,22 +89,31 @@ int esp_interrupt(void *dev, const void *p)
 	return 0;
 }
 
-static int _esp_send(struct esp_device *dev, int timeout,
-	const char *data)
+int esp_send(void *d, void *dt, size_t sz)
 {
+	struct esp_device *dev;
 	int pos;
 	size_t l;
+	char *data;
+	
+	dev = d;
+	data = dt;
 
 	l = strlen(data);
 
 	for (pos = 0; pos < l; pos += ESP_PAYLOADSZ) {
+		uint8_t buf[ESP_SPIPACKSIZE];
 		uint16_t size;
-		uint8_t buf[64];
+		int t;
 		uint8_t b;
 		
-		// need timeout
+		t = 0;
 		while (HAL_GPIO_ReadPin(dev->bootgpio,
-				dev->bootpin) == GPIO_PIN_SET);
+				dev->bootpin) == GPIO_PIN_SET
+				&& t / 1000 < ESP_SPITIMEOUTUS) {
+			ndelay(100);
+			t += 100;
+		}
 
 		size = ((l - pos) < ESP_PAYLOADSZ)
 			? (l - pos) : ESP_PAYLOADSZ;
@@ -111,7 +124,8 @@ static int _esp_send(struct esp_device *dev, int timeout,
 		*((uint16_t *) (buf + 2)) = size;
 		buf[1] = crc8(buf + 2, size + 2);
 
-		HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(dev->csgpio, dev->cspin,
+			GPIO_PIN_RESET);
 
 		b = 0x2;
 		HAL_SPI_Transmit(dev->hspi, &b, 1, 1000);
@@ -119,36 +133,13 @@ static int _esp_send(struct esp_device *dev, int timeout,
 		b = 0x0;
 		HAL_SPI_Transmit(dev->hspi, &b, 1, 1000);
 
-		HAL_SPI_Transmit(dev->hspi, buf, 64, 1000);
+		HAL_SPI_Transmit(dev->hspi, buf, ESP_SPIPACKSIZE, 1000);
 
-		HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(dev->csgpio, dev->cspin,
+			GPIO_PIN_SET);
 	}
 
 	return 0;
-}
-
-int esp_send(void *dev, void *dt, size_t sz)
-{
-	struct esp_device *d;
-
-	d = dev;
-	
-	if (_esp_send(d, ESP_TIMEOUT, dt) < 0)
-		return (-1);
-	
-	return 0;
-}
-
-int esp_printf(struct esp_device *dev, const char *format, ...)
-{
-	char buf[1024];
-	va_list args;
-
-	va_start(args, format);
-
-	vsnprintf(buf, 1024, format, args);
-
-	return esp_send(dev, buf, strlen(buf));
 }
 
 int esp_read(void *dev, void *dt, size_t sz)
@@ -159,64 +150,10 @@ int esp_read(void *dev, void *dt, size_t sz)
 	return 0;
 }
 
-int esp_configure(void *d, const char *cmd, ...)
-{
-	GPIO_InitTypeDef GPIO_InitStruct = {0};
-	struct esp_device *dev;
-	va_list args;
-
-	dev = (struct esp_device *) d;
-
-	va_start(args, cmd);
-
-	if (strcmp(cmd, "flash") == 0) {
-		GPIO_InitStruct.Pin = dev->bootpin;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-		HAL_GPIO_Init(dev->bootgpio, &GPIO_InitStruct);
-
-		HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(dev->bootgpio, dev->bootpin, GPIO_PIN_RESET);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_RESET);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_SET);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_SET);
-	}
-	else if (strcmp(cmd, "run") == 0) {
-		GPIO_InitStruct.Pin = dev->bootpin;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-		HAL_GPIO_Init(dev->bootgpio, &GPIO_InitStruct);
-
-		HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(dev->bootgpio, dev->bootpin, GPIO_PIN_SET);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_RESET);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_SET);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_SET);
-
-		GPIO_InitStruct.Pin = dev->bootpin;
-		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		HAL_GPIO_Init(dev->bootgpio, &GPIO_InitStruct);
-	}
-
-	va_end(args);
-
-	return 0;
-}
-static int esp_init(struct esp_device *dev)
+static int esp_run(struct esp_device *dev)
 {
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 	
-	esp_initfifo(&fifo);
-
 	GPIO_InitStruct.Pin = dev->bootpin;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -236,6 +173,55 @@ static int esp_init(struct esp_device *dev)
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(dev->bootgpio, &GPIO_InitStruct);
+
+	return 0;
+}
+
+static int esp_flash(struct esp_device *dev)
+{
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	
+	GPIO_InitStruct.Pin = dev->bootpin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+	HAL_GPIO_Init(dev->bootgpio, &GPIO_InitStruct);
+
+	HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(dev->bootgpio, dev->bootpin, GPIO_PIN_RESET);
+	HAL_Delay(250);
+	HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_RESET);
+	HAL_Delay(250);
+	HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_SET);
+	HAL_Delay(250);
+	HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_SET);
+
+	return 0;
+}
+
+int esp_configure(void *d, const char *cmd, ...)
+{
+	struct esp_device *dev;
+	va_list args;
+
+	dev = (struct esp_device *) d;
+
+	va_start(args, cmd);
+
+	if (strcmp(cmd, "flash") == 0)
+		esp_flash(dev);
+	else if (strcmp(cmd, "run") == 0)
+		esp_run(dev);
+
+	va_end(args);
+
+	return 0;
+}
+static int esp_init(struct esp_device *dev)
+{	
+	esp_initfifo(&fifo);
+
+	esp_run(dev);
 
 	return 0;
 }

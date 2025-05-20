@@ -62,34 +62,45 @@ int runcommand(const struct cdevice *d, char *cmd)
 	char *toks[MAX_CMDTOKS];
 	uint8_t crc;
 	int toksoff;
+	int isuart;
 	int i;
 
+	// set special flag if device that
+	// sent that command is an UART device
+	isuart = (strncmp(d->name, "uart", strlen("uart")) == 0);
+
+	// if command is empty, do nothing
 	if (cmd[0] == '\0')
 		return 0;
 
-	memcpy(buf, cmd, CMDSIZE);
 
 	// split a command into tokens by spaces
+	memcpy(buf, cmd, CMDSIZE);
 	parsecommand(toks, MAX_CMDTOKS, buf);
 
-	toksoff = 0;
 
-	if (strncmp(d->name, "uart", strlen("uart")) != 0) {
-		toksoff = 1;
+	// if command wasn't got through UART device, first
+	// token is CRC sum, so offset command tokens by 1
+	toksoff = isuart ? 0 : 1;
 
+	// if command wasn't got through UART device, calculate CRC
+	// localy and compare it's to CRC got from remote. If they
+	// dont match, send back CRC fail error.
+	if (!isuart) {
 		crc = crc8((uint8_t *) cmd + 4, strlen(cmd) - 4);
 
 		if (atoi(toks[0]) != crc)
 			goto crcfail;
 	}
 
-	// perform corresponding action
+	// for every command in commands table
 	for (i = 0; i < commcount; ++i) {
+		// if command name matches talbe's command name
 		if (strcmp(toks[toksoff], commtable[i].name) == 0) {
 			int r;
 
+			// run tables's command corresponding action
 			out[0] = '\0';
-
 			if ((r = commtable[i].func(d,
 					(const char **) toks + toksoff,
 					out)) < 0)
@@ -97,13 +108,15 @@ int runcommand(const struct cdevice *d, char *cmd)
 
 			// r > 0, then it's a printing command and
 			// it does not transmission confirm
-			if (r == 0) {
+			if (r == 0 && !isuart) {
 				char hdr[CMDSIZE];
 
 				memcpy(hdr, cmd, CMDSIZE);
 				d->write(d->priv, hdr, strlen(hdr));
 			}
 
+			// if table's command action output
+			// isn't empty, send it back to remote
 			if (strlen(out) != 0)
 				d->write(d->priv, out, strlen(out));
 
@@ -114,14 +127,14 @@ int runcommand(const struct cdevice *d, char *cmd)
 	return 0;
 
 unknown:
-	snprintf(out, INFOLEN, "Unknown command: %s\r\n", cmd + 4);
+	snprintf(out, INFOLEN, "Unknown command: %s\r\n", cmd);
 	d->write(d->priv, out, strlen(out));
 
 	return (-1);
 
 crcfail:
-	snprintf(out, INFOLEN, "CRC check fail, got %hu: %s\r\n", crc,
-		cmd + 4);
+	snprintf(out, INFOLEN, "CRC check fail, got %hu: %s\r\n",
+		crc, cmd);
 
 	d->write(d->priv, out, strlen(out));
 

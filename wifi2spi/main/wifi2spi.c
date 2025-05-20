@@ -1,5 +1,9 @@
 #include <string.h>
-#include <sys/param.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "freertos/stream_buffer.h"
 
 #include "sdkconfig.h"
 #include "esp_event.h"
@@ -8,27 +12,19 @@
 #include "esp_event_loop.h"
 #include "esp_system.h"
 #include "esp_netif.h"
-#include "nvs.h"
 #include "nvs_flash.h"
 #include "tcpip_adapter.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-#include "freertos/stream_buffer.h"
 
-#include "esp8266/spi_struct.h"
-
-
-#include "lwip/err.h"
-#include "lwip/sys.h"
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
-#include <lwip/netdb.h>
 
+#include "esp8266/spi_struct.h"
+#include "esp8266/gpio_struct.h"
+
+#include "driver/gpio.h"
 #include "driver/uart.h"
 #include "driver/spi.h"
-#include "driver/hspi_logic_layer.h"
 
 #include "crc.h"
 
@@ -37,34 +33,35 @@
 #define INT_GPIO 4
 #define GOT_GPIO 0
 
-#define RBUF_MAX_SIZE	2048
-#define WBUF_MAX_SIZE	2048
+#define BUFSIZE	2048
 
-#define WIFI_SSID "copter"
-#define WIFI_PASS "copter12"
+#define WIFISSID "copter"
+#define WIFIPASS "copter12"
 
 #define SERVIP "192.168.3.1"
 #define CLIENTIP "192.168.3.2"
-#define PORT 3333
+#define PORT 8880
+
+#define SPIPACKSIZE 64
+#define UDPPACKMIN 512
+
+#define STREAMBUFSIZE 4096
 
 static EventGroupHandle_t s_connect_event_group;
 
 static StreamBufferHandle_t Txbuf;
 static StreamBufferHandle_t Rxbuf;
-static int sending_flag = 0;
+static volatile int sending_flag = 0;
 volatile int Sock;
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 {
-	if (event_id == WIFI_EVENT_AP_STACONNECTED) {
-	
-	}
 }
 
 static void IRAM_ATTR transfrombuf(BaseType_t *xHigherPriorityTaskWoken)
 {
-	static uint8_t data[64];
+	static uint8_t data[SPIPACKSIZE];
 	static uint16_t cmd;
 	uint32_t len;
 	spi_trans_t trans;
@@ -75,7 +72,7 @@ static void IRAM_ATTR transfrombuf(BaseType_t *xHigherPriorityTaskWoken)
 	}
 
 	len = xStreamBufferReceiveFromISR(Txbuf,
-		data + 4, 64 - 4, xHigherPriorityTaskWoken);
+		data + 4, SPIPACKSIZE - 4, xHigherPriorityTaskWoken);
 
 	data[0] = 0xaa;
 	*((uint16_t *) (data + 2)) = len;
@@ -93,7 +90,7 @@ static void IRAM_ATTR transfrombuf(BaseType_t *xHigherPriorityTaskWoken)
 	if (len == 0)
 		return;
 
-	trans.bits.miso = 64 * 8;
+	trans.bits.miso = SPIPACKSIZE * 8;
 	
 	spi_trans(HSPI_HOST, &trans);
 	gpio_set_level(INT_GPIO, 1);
@@ -115,7 +112,7 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 	if (trans_done & SPI_SLV_RD_BUF_DONE)
 		transfrombuf(&xHigherPriorityTaskWoken);
 	else if (trans_done & SPI_SLV_WR_BUF_DONE) {
-		uint8_t data[64];
+		uint8_t data[SPIPACKSIZE];
 		uint16_t size;
 		uint8_t crc;
 		uint8_t id;
@@ -128,7 +125,8 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 		size = *((uint16_t *) (data + 2));
 		crc = data[1];
 
-		if (size > (64 - 4) || crc8(data + 2, size + 2) != crc
+		if (size > (SPIPACKSIZE - 4)
+				|| crc8(data + 2, size + 2) != crc
 				|| id != 0xaa) {
 			gpio_set_level(GOT_GPIO, 0);
 			return;
@@ -146,7 +144,7 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 
 static void IRAM_ATTR udp_server_task_w(void *pvParameters)
 {
-	char buf[WBUF_MAX_SIZE];
+	char buf[BUFSIZE];
 	int ms;
 
 	ms = 0;
@@ -154,13 +152,14 @@ static void IRAM_ATTR udp_server_task_w(void *pvParameters)
 		struct sockaddr_in saddr;
 		int len;
 
-		if (xStreamBufferBytesAvailable(Rxbuf) < 512 && ms < 100) {
+		if (xStreamBufferBytesAvailable(Rxbuf) < UDPPACKMIN
+				&& ms < 100) {
 			ms += 10;
 			vTaskDelay(10 / portTICK_PERIOD_MS);
 			continue;
 		}
 
-		len = xStreamBufferReceive(Rxbuf, buf, WBUF_MAX_SIZE,
+		len = xStreamBufferReceive(Rxbuf, buf, BUFSIZE,
 			portMAX_DELAY);
 
 		if (len == 0)
@@ -183,7 +182,7 @@ static void IRAM_ATTR udp_server_task_w(void *pvParameters)
 
 static void IRAM_ATTR udp_server_task_r(void *pvParameters)
 {
-	char buf[RBUF_MAX_SIZE];
+	char buf[BUFSIZE];
 
 	while (1) {
 		int len;
@@ -287,9 +286,9 @@ void wifi_init()
 	ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT,
 		ESP_EVENT_ANY_ID, wifi_event_handler, NULL));
 
-	strcpy((char *) &(wifi_config.ap.ssid), WIFI_SSID);
-	wifi_config.ap.ssid_len = strlen(WIFI_SSID);
-	strcpy((char *) &(wifi_config.ap.password), WIFI_PASS);
+	strcpy((char *) &(wifi_config.ap.ssid), WIFISSID);
+	wifi_config.ap.ssid_len = strlen(WIFISSID);
+	strcpy((char *) &(wifi_config.ap.password), WIFIPASS);
 	wifi_config.ap.max_connection = 1;
 	wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
 	wifi_config.ap.channel = 0;
@@ -327,8 +326,8 @@ void app_main()
 	ESP_ERROR_CHECK(esp_netif_init());
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-	Txbuf = xStreamBufferCreate(4096, 1);
-	Rxbuf = xStreamBufferCreate(4096, 1);
+	Txbuf = xStreamBufferCreate(STREAMBUFSIZE, 1);
+	Rxbuf = xStreamBufferCreate(STREAMBUFSIZE, 1);
 	
 	if (s_connect_event_group != NULL)
 		return;

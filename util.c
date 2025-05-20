@@ -3,8 +3,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "global.h"
 #include "util.h"
 
+#define NSECPERTICK (1000 / (OCSFREQ / DELAYPRESCALER / 1000000))
+
+extern TIM_HandleTypeDef htim10;
 extern UART_HandleTypeDef huart4;
 
 void memcpyv(volatile void *dest, const volatile void *src, size_t n)
@@ -25,6 +29,20 @@ int uartprintf(const char *format, ...)
 	vsprintf(buf, format, args);
 
 	HAL_UART_Transmit(&huart4, (uint8_t *) buf, strlen(buf), 100);
+
+	return 0;
+}
+
+int ndelay(int ns)
+{
+	int ticks;
+	int c;
+
+	ticks = ns / NSECPERTICK + 1;
+
+	__HAL_TIM_SET_COUNTER(&htim10, 0);
+		
+	while ((c = __HAL_TIM_GET_COUNTER(&htim10)) < ticks);
 
 	return 0;
 }

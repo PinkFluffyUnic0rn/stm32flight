@@ -14,7 +14,7 @@
 #include "../crc.h"
 
 // UDP connection port
-#define PORT 3333
+#define PORT 8880
 
 // UDP connection address
 #define ADDR "192.168.3.1"

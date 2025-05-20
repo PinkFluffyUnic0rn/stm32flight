@@ -1,17 +1,20 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
-// timers prescaler
-#define PRESCALER 128
-
 // clock frequency
 #define OCSFREQ 128000000
 
-// period for main timer (used to timing periodic events)
+// periodic event timer prescaler
+#define PRESCALER 128
+
+// periodic event timer period
 #define TIMPERIOD 0xfff
 
-// main timer ticks per second
+// periodic event timer ticks per second
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
+
+// delay timer prescaler
+#define DELAYPRESCALER 2
 
 // maximum length for info packet
 // sent back to operator

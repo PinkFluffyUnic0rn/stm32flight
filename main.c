@@ -244,6 +244,7 @@ static void spi2_init();
 static void dma_init();
 static void tim1_init();
 static void tim8_init();
+static void tim10_init();
 static void adc1_init(void);
 static void usart1_init();
 static void usart2_init();
@@ -258,6 +259,7 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim8;
+TIM_HandleTypeDef htim10;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
@@ -2013,6 +2015,7 @@ int main(void)
 	gpio_init();
 	tim1_init();
 	tim8_init();
+	tim10_init();
 	dma_init();
 	i2c_init();
 	spi1_init();
@@ -2264,7 +2267,7 @@ static void spi2_init(void)
 	hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
 	hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
 	hspi2.Init.NSS = SPI_NSS_SOFT;
-	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
 	hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
 	hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -2365,6 +2368,21 @@ static void tim8_init(void)
 		error_handler();
 
 	HAL_TIM_Base_Start_IT(&htim8);
+}
+
+static void tim10_init(void)
+{
+	htim10.Instance = TIM10;
+	htim10.Init.Prescaler = DELAYPRESCALER - 1;
+	htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim10.Init.Period = 0xffff;
+	htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	
+	if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+		error_handler();
+
+	HAL_TIM_Base_Start_IT(&htim10);
 }
 
 static void adc1_init(void)
