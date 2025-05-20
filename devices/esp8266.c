@@ -3,7 +3,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "util.h"
+#include "crc.h"
 
 #include "esp8266.h"
 

@@ -6,21 +6,23 @@
 #include <ctype.h>
 
 #include "main.h"
-#include "device.h"
+
+#include "dsp.h"
+#include "crc.h"
+#include "global.h"
+#include "timev.h"
+#include "command.h"
 #include "util.h"
+
+#include "device.h"
 #include "icm42688.h"
 #include "hp206c.h"
 #include "esp8266.h"
 #include "qmc5883l.h"
-#include "dsp.h"
 #include "crsf.h"
 #include "w25.h"
 #include "m10.h"
 #include "uartconf.h"
-
-// Max length for info packet
-// sent back to operator
-#define INFOLEN 512
 
 // device numbers
 #define ICM_DEV		0
@@ -31,18 +33,6 @@
 #define ESP_DEV		5
 #define UART_DEV	6
 #define DEV_COUNT	7
-
-// timers prescaler
-#define PRESCALER 128
-
-// clock frequency
-#define OCSFREQ 128000000
-
-// period for main timer (used to timing periodic events)
-#define TIMPERIOD 0xfff
-
-// main timer ticks per second
-#define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // PWM settings
 #define PWM_MAXCOUNT 3200
@@ -88,12 +78,6 @@
 #define LOG_CLIMBRATE	14
 #define LOG_ALT		15
 
-// debug commands maximum count
-#define MAX_COMMANDS 32
-
-// debug commands maximum token count
-#define MAX_CMDTOKS 12
-
 // Timer events IDs
 #define TEV_PID 	0
 #define TEV_CHECK 	1
@@ -104,21 +88,9 @@
 #define TEV_TELE	6
 #define TEV_COUNT	7
 
-// Debug connection port
-#define SERVPORT 8880
-
 // Timeout in seconds before quadcopter disarm
 // when got no data from ERLS receiver
 #define ELRS_TIMEOUT 2
-
-// check if enough time passed to call periodic event again.
-// ev -- periodic event's context.
-#define checktimev(ev) ((ev)->ms > (TICKSPERSEC / (ev)->freq - (ev)->rem))
-
-// update periodic event's counter.
-// ev -- periodic event's context.
-// s -- time in microseconds after last callback's call.
-#define updatetimev(ev, s) (ev)->ms += (s);
 
 // set value in current log frame
 // pos -- value's position inside the frame
@@ -263,23 +235,6 @@ struct logpack {
 	float data[LOG_PACKSIZE];
 };
 
-
-// debug command handler structure
-struct command {
-	const char *name;
-	int (*func)(const struct cdevice*, const char **, char *);
-};
-
-// Periodic event's context that holds event's settings
-// and data needed beetween calls
-struct timev {
-	int ms;			// microseconds passed from
-				// last triggering
-	int rem;
-	int freq;		// event frequency
-	int (*cb)(int);		// event callback
-};
-
 // STM32 clocks and periphery devices initilization
 void systemclock_config();
 static void gpio_init();
@@ -294,33 +249,6 @@ static void usart1_init();
 static void usart2_init();
 static void usart3_init();
 static void uart4_init();
-
-// Init ESC's
-static void esc_init();
-
-// Init HP206c barometer
-static void hp_init();
-
-// Init ICM-42688-P IMU
-static void icm_init();
-
-// Init QMC5883L magnetometer
-static void qmc_init();
-
-// Init ESP07
-static void espdev_init();
-
-// Init ERLS receiver driver
-static void crsfdev_init();
-
-// Init W25Q onboard flash memory
-static void w25dev_init();
-
-// Init GNSS module
-static void m10dev_init();
-
-// Init UART config connection
-static void uartdev_init();
 
 // STM32 perithery contexts
 ADC_HandleTypeDef hadc1;
@@ -368,11 +296,8 @@ struct dsp_pidval apv;
 // Global storage for sensor data
 // that aquired in separate events
 float temp;
-
 struct qmc_data qmcdata;
-
 struct gnss_data  gnss;
-
 struct crsf_tele tele;
 
 // Control values
@@ -422,25 +347,6 @@ int logbufpos = 0;
 int logflashpos = 0;
 size_t logsize = 0;
 struct logpack logbuf[LOG_BUFSIZE];
-
-// Debug commands handlers
-struct command commtable[MAX_COMMANDS];
-size_t commcount;
-
-// Add debug command with it's handler.
-//
-// name -- command name
-// func -- command handler
-int addcommand(const char *name,
-	int (*func)(const struct cdevice *, const char **, char *))
-{
-	commtable[commcount].name = name;
-	commtable[commcount].func = func;
-
-	++commcount;
-
-	return 0;
-}
 
 // Get value from ADC, was used to monitor battery voltage.
 //
@@ -493,82 +399,145 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		dev[ESP_DEV].error(dev[ESP_DEV].priv, huart);
 }
 
-// Initilize periodic event's context
-//
-// ev -- periodic event's context.
-// freq -- periodic event's frequency in Hz (calls per second).
-// cb -- callback that is called by this event.
-int inittimev(struct timev *ev, int freq, int (*cb)(int))
+// Init ESC's
+static void esc_init()
 {
-	ev->ms = 0;
-	ev->rem = 0;
-	ev->freq = freq;
-	ev->cb = cb;
-
-	return 0;
+	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4
+		= (uint16_t) (0.2 * (float) PWM_MAXCOUNT);
+	HAL_Delay(2000);
 }
 
-// reset periodic event's counter. Used after every
-// event's callback call.
-// ev -- periodic event's context.
-int resettimev(struct timev *ev)
+// Init HP206c barometer
+static void hp_init()
 {
-	ev->rem += ev->ms - TICKSPERSEC / (ev)->freq;
-	ev->ms = 0;
+	struct hp_device d;
 
-	return 0;
+	d.hi2c = &hi2c1;
+	d.osr = HP_OSR_512;
+
+	if (hp_initdevice(&d, dev + HP_DEV) >= 0)
+		uartprintf("HP206C initilized\r\n");
+	else
+		uartprintf("failed to initilize HP206C\r\n");
 }
 
-// calculate tilt compensated heading direction using magnetometer
-// readings, roll value and pitch value.
-// 
-// r -- roll value.
-// p -- pitch value.
-// x -- magnetometer's X axis value.
-// y -- magnetometer's Y axis value.
-// z -- magnetometer's Z axis value.
-float qmc_heading(float r, float p, float x, float y, float z)
+// Init ICM-42688-P IMU
+static void icm_init()
 {
-	x = st.mxsc * (x + st.mx0);
-	y = st.mysc * (y + st.my0);
-	z = st.mzsc * (z + st.mz0);
+	struct icm_device d;
 
-	x = x * cosf(p) + y * sinf(r) * sinf(p)
-		- z * cosf(r) * sinf(p);
-	y = y * cosf(r) + z * sinf(r);
+	d.hspi = &hspi1;
+	d.gpio = GPIOC;
+	d.pin = GPIO_PIN_13;
 
-	return circf(atan2f(y, x) + st.magdecl);
+	d.gyroscale = ICM_1000DPS;
+	d.gyrorate = ICM_GYRO4K;
+	d.gyroorder = ICM_GYROORDER3;
+	d.gyrolpf = ICM_GYROLPF4;
+	d.accelscale = ICM_4G;
+	d.accelrate = ICM_ACCEL4K;
+	d.accellpf = ICM_ACCELLPF4;
+	d.accelorder = ICM_ACCELORDER3;
+
+	if (icm_initdevice(&d, dev + ICM_DEV) >= 0)
+		uartprintf("ICM-42688 initilized\r\n");
+	else
+		uartprintf("failed to initilize ICM-42688\r\n");
 }
 
-/* Set motors thrust
-
-      ltd    rtd
-        \    /
-   ^     \  /
-   |       
-   p     /  \
-        /    \
-      lbd    rbd
-        
-         <- r
-*/
-// all values should be between 0.0 and 1.0.
-int setthrust(float ltd, float lbd, float rbd, float rtd)
+// Init QMC5883L magnetometer
+static void qmc_init()
 {
-	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
-		|| isnan(lbd) || !elrs)
-		ltd = rtd = rbd = lbd = 0.0;
+	struct qmc_device d;
 
-	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.8 + 0.19)
-		* (float) PWM_MAXCOUNT);
-	TIM1->CCR2 = (uint16_t) ((trimuf(lbd) * 0.8 + 0.19)
-		* (float) PWM_MAXCOUNT);
-	TIM1->CCR3 = (uint16_t) ((trimuf(rtd) * 0.8 + 0.19)
-		* (float) PWM_MAXCOUNT);
-	TIM1->CCR4 = (uint16_t) ((trimuf(rbd) * 0.8 + 0.19)
-		* (float) PWM_MAXCOUNT);
+	d.hi2c = &hi2c1;
+	d.scale = QMC_SCALE_8;
+	d.rate = QMC_RATE_100;
+	d.osr = QMC_OSR_256;
 
-	return 0;
+	if (qmc_initdevice(&d, dev + QMC_DEV) >= 0)
+		uartprintf("QMC5883L initilized\r\n");
+	else
+		uartprintf("failed to initilize QMC5883L\r\n");
+}
+
+// Init ESP8285
+static void espdev_init()
+{
+	struct esp_device d;
+
+	d.hspi = &hspi2;
+	d.csgpio = GPIOC;
+	d.cspin = GPIO_PIN_0;
+	d.rstgpio = GPIOC;
+	d.rstpin = GPIO_PIN_14;
+	d.bootgpio = GPIOC;
+	d.bootpin = GPIO_PIN_15;
+	d.intpin = GPIO_PIN_1;
+
+	if (esp_initdevice(&d, dev + ESP_DEV) < 0) {
+		uartprintf("failed to initilize ESP8266\r\n");
+		return;
+	}
+
+	uartprintf("ESP8266 initilized\r\n");
+}
+
+// Init ERLS receiver driver
+static void crsfdev_init()
+{
+	struct crsf_device d;
+
+	d.huart = &huart2;
+
+	crsf_initdevice(&d, dev + CRSF_DEV);
+}
+
+// Init W25Q onboard flash memory
+static void w25dev_init()
+{
+	struct w25_device d;
+
+	d.hspi = &hspi1;
+	d.gpio = GPIOB;
+	d.pin = GPIO_PIN_3;
+
+	if (w25_initdevice(&d, &flashdev) < 0) {
+		uartprintf("failed to initilize W25Q\r\n");
+		return;
+	}
+
+	uartprintf("W25Q initilized\r\n");
+}
+
+// Init GNSS module
+static void m10dev_init()
+{
+	struct m10_device d;
+
+	d.huart = &huart3;
+	
+	if (m10_initdevice(&d, dev + M10_DEV) < 0) {
+		uartprintf("failed to initilize GPS device\r\n");
+		return;
+	}
+	
+	uartprintf("GPS device initilized\r\n");
+}
+
+// Init UART config connection
+static void uartdev_init()
+{
+	struct uart_device d;
+
+	d.huart = &huart4;
+	
+	if (uart_initdevice(&d, dev + UART_DEV) < 0) {
+		uartprintf("failed to initilize UART device\r\n");
+		return;
+	}
+	
+	uartprintf("UART device initilized\r\n");
 }
 
 // write quadcopter settings into internal MCU flash
@@ -655,6 +624,469 @@ int initstabilize(float alt)
 	dsp_initlpf(&valpf, st.vatcoef, PID_FREQ);
 
 	return 0;
+}
+
+// calculate tilt compensated heading direction using magnetometer
+// readings, roll value and pitch value.
+// 
+// r -- roll value.
+// p -- pitch value.
+// x -- magnetometer's X axis value.
+// y -- magnetometer's Y axis value.
+// z -- magnetometer's Z axis value.
+float qmc_heading(float r, float p, float x, float y, float z)
+{
+	x = st.mxsc * (x + st.mx0);
+	y = st.mysc * (y + st.my0);
+	z = st.mzsc * (z + st.mz0);
+
+	x = x * cosf(p) + y * sinf(r) * sinf(p)
+		- z * cosf(r) * sinf(p);
+	y = y * cosf(r) + z * sinf(r);
+
+	return circf(atan2f(y, x) + st.magdecl);
+}
+
+/* Set motors thrust
+
+      ltd    rtd
+        \    /
+   ^     \  /
+   |       
+   p     /  \
+        /    \
+      lbd    rbd
+        
+         <- r
+*/
+// all values should be between 0.0 and 1.0.
+int setthrust(float ltd, float lbd, float rbd, float rtd)
+{
+	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
+		|| isnan(lbd) || !elrs)
+		ltd = rtd = rbd = lbd = 0.0;
+
+	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.8 + 0.19)
+		* (float) PWM_MAXCOUNT);
+	TIM1->CCR2 = (uint16_t) ((trimuf(lbd) * 0.8 + 0.19)
+		* (float) PWM_MAXCOUNT);
+	TIM1->CCR3 = (uint16_t) ((trimuf(rtd) * 0.8 + 0.19)
+		* (float) PWM_MAXCOUNT);
+	TIM1->CCR4 = (uint16_t) ((trimuf(rbd) * 0.8 + 0.19)
+		* (float) PWM_MAXCOUNT);
+
+	return 0;
+}
+
+// Print quadcopter's postion and tilt data into a string.
+//
+// s -- output string.
+// md -- accelerometer and gyroscope data.
+// hd -- magnetometer data.
+int sprintpos(char *s, struct icm_data *id)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "accel: ",
+		(double) id->afx, (double) id->afy, (double) id->afz);
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "gyro: ",
+		(double) id->gfx, (double) id->gfy, (double) id->gfz);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		"accel corrected: ",
+		(double) (id->afx - st.ax0),
+		(double) (id->afy - st.ay0),
+		(double) (id->afz - st.az0));
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		"gyro corrected: ",
+		(double) (id->gfx - st.gx0),
+		(double) (id->gfy - st.gy0),
+		(double) (id->gfz - st.gz0));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
+		(double) (dsp_getcompl(&rollcompl) - st.roll0),
+		(double) (dsp_getcompl(&pitchcompl) - st.pitch0),
+		(double) circf(dsp_getcompl(&yawcompl) - st.yaw0));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"z acceleration: %f\r\n",
+		(double) dsp_getlpf(&tlpf));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"vertival acceleration: %f\r\n",
+		(double) dsp_getlpf(&valpf));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"presice  altitude: %f\r\n",
+		(double) (dsp_getcompl(&altcompl) - alt0));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"battery: %0.3f\n\r",
+		getadcv(&hadc1) / (double) 0xfff * (double) 9.9276);
+
+	return 0;
+}
+
+// Print magmetometer data into a string.
+//
+// s -- output string.
+// hd -- magnetometer data.
+int sprintqmc(char *s, struct qmc_data *hd)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"x = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		(double) qmcdata.fx, (double) qmcdata.fy,
+		(double) qmcdata.fz);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"corrected: x = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		(double) (st.mxsc * (qmcdata.fx + st.mx0)),
+		(double) (st.mysc * (qmcdata.fy + st.my0)),
+		(double) (st.mzsc * (qmcdata.fz + st.mz0)));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"heading: %f\r\n", (double) qmc_heading(
+			dsp_getcompl(&rollcompl) - st.roll0,
+			-(dsp_getcompl(&pitchcompl) - st.pitch0),
+			hd->fx, hd->fy, hd->fz));
+
+	return 0;
+}
+
+// Print all devices statuses into a string
+//
+// s -- output string.
+int sprintdevs(char *s)
+{
+	int i;
+
+	s[0] = '\0';
+
+	for (i = 0; i < DEV_COUNT; ++i) {
+		const char *strstatus;
+
+		switch (dev[i].status) {
+		case DEVSTATUS_IT:
+			strstatus = "interrupts enabled";
+			break;
+		case DEVSTATUS_INIT:
+			strstatus = "initilized";
+			break;
+		case DEVSTATUS_FAILED:
+			strstatus = "failed";
+			break;
+		case DEVSTATUS_NOINIT:
+			strstatus = "not initilized";
+			break;
+		default:
+			strstatus = "unknown";
+			break;
+		}
+
+		sprintf(s + strlen(s), "%-15s: %s\r\n",
+			dev[i].name, strstatus);
+	}
+
+	return 0;
+}
+
+// Print various configuration values into a string.
+//
+// s -- output string.
+int sprintvalues(char *s)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"t: %.3f; r: %.3f; p: %.3f; y: %.3f\r\n",
+		(double) thrust, (double) rolltarget,
+		(double) pitchtarget, (double) yawtarget);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"roll thrust: %.3f; pitch thrust %.3f\r\n",
+		(double) st.rsc, (double) st.psc);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"mag off: %.3f; %.3f; %.3f\r\n",
+		(double) st.mx0, (double) st.my0, (double) st.mz0);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"mag scale: %.3f; %.3f; %.3f\r\n",
+		(double) st.mxsc, (double) st.mysc, (double) st.mzsc);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"mag decl: %.5f\r\n",
+		(double) st.magdecl);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"accel cor: %.3f; %.3f; %.3f\r\n",
+		(double) st.ax0, (double) st.ay0, (double) st.az0);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"gyro cor: %.3f; %.3f; %.3f\r\n",
+		(double) st.gx0, (double) st.gy0, (double) st.gz0);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"roll cor: %.3f; pitch cor: %.3f; yaw cor: %.3f\r\n",
+		(double) st.roll0, (double) st.pitch0,
+		(double) st.yaw0);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"motors state: %.3f\r\n", (double) en);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"loops count: %d\r\n", loopscount);
+
+	return 0;
+}
+
+// Print all PID values into a string.
+//
+// s -- output string.
+int sprintpid(char *s)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"pos PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.p, (double) st.i, (double) st.d);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"speed PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.sp, (double) st.si, (double) st.sd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.yp, (double) st.yi, (double) st.yd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw speed PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.ysp, (double) st.ysi, (double) st.ysd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"thrust PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.zsp, (double) st.zsi, (double) st.zsd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"climb rate PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.cp, (double) st.ci, (double) st.cd);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"altitude PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.ap, (double) st.ai, (double) st.ad);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%s mode\r\n", st.speedpid ? "single" : "dual");
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%s yaw mode\r\n",
+		yawspeedpid ? "single" : "dual");
+
+	const char *mode;
+
+	if (altmode == ALTMODE_ACCEL)		mode = "single";
+	else if (altmode == ALTMODE_SPEED)	mode = "double";
+	else					mode = "triple";
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%s altitude mode\r\n", mode);
+
+	return 0;
+}
+
+// Print all GNSS values into a string.
+//
+// s -- output string.
+int sprintgnss(char *s) {
+	s[0] = '\0';
+
+	sprintf(s, "%s: %f\r\n%s: %hd\r\n%s: %hd %f %c\r\n\
+%s: %hd %f %c\r\n%s: %f\r\n%s: %f\r\n\
+%s: %d\r\n%s: %d\r\n%s: %f\r\n%s: %s\r\n%s: %f\r\n%s: %c\r\n",
+		"time", (double) gnss.time,
+		"status", gnss.status,
+		"latitude", gnss.lat,
+		(double) gnss.latmin,
+		(gnss.latdir == LATDIR_N) ? 'N' : 'S',
+		"longitude", gnss.lon,
+		(double) gnss.lonmin,
+		(gnss.londir == LONDIR_W) ? 'W' : 'E',
+		"speed", (double) gnss.speed,
+		"course", (double) gnss.course,
+		"quality", gnss.quality,
+		"satellites", gnss.satellites,
+		"altitude", (double) gnss.altitude,
+		"date", gnss.date,
+		"magvar", (double) gnss.magvar,
+		"magverdir",
+		(gnss.magvardir == MAGVARDIR_W) ? 'W' : 'E');
+
+	return 0;
+}
+
+// Print all control scaling values
+//
+// s -- output string.
+int sprintfctrl(char *s)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum roll: %.5f\r\n", (double) st.rollmax);
+	
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum pitch: %.5f\r\n", (double) st.pitchmax);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw speed: %.5f\r\n", 
+		(double) st.yawspeed);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw target change speed: %.5f\r\n",
+		(double) st.yawtargetspeed);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum acceleration: %.5f\r\n",
+		(double) st.accelmax);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum climbrate: %.5f\r\n",
+		(double) st.climbratemax);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum altitude: %.5f\r\n",
+		(double) st.altmax);
+
+	return 0;
+}
+
+// Print filters coefficients into a string.
+//
+// s -- output string.
+int sprintffilters(char *s)
+{
+	s[0] = '\0';
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"attitude compl tc: %.6f\r\n", (double) st.atctcoef);
+	
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"yaw compl tc: %.6f\r\n", (double) st.yctcoef);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"accel lpf tc: %.6f\r\n", (double) st.ttcoef);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"vertical accel lpf tc: %.6f\r\n", (double) st.vatcoef);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"climb rate compl tc: %.6f\r\n", (double) st.cctcoef);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"altitude lpf tc: %.6f\r\n", (double) st.atcoef);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"altitude compl tc: %.6f\r\n", (double) st.actcoef);
+
+	return 0;
+}
+
+// Erase log flash to prepare at for writing,
+// erasing starts from address 0.
+//
+// size -- bytes count to erase.
+int eraseflash(const struct cdevice *d, size_t size)
+{
+	size_t pos;
+	char s[255];
+
+	// if erase size equals total flash size,
+	// use chip erase command
+	if (size == W25_TOTALSIZE) {
+		flashdev.eraseall(flashdev.priv);
+		return 0;
+	}
+
+	// else erase flash block-by-block, sector-by-sector
+	for (pos = 0; pos < size; ) {
+		// if remained size is more than block size
+		// use block erase command,
+		// use sector erase command otherwise
+		if ((size - pos) >= W25_BLOCKSIZE) {
+			flashdev.eraseblock(flashdev.priv, pos);
+			pos += W25_BLOCKSIZE;
+
+			sprintf(s, "erased block at %u\r\n", pos);
+			d->write(d->priv, s, strlen(s));
+		}
+		else {
+			flashdev.erasesector(flashdev.priv, pos);
+			pos += W25_SECTORSIZE;
+
+			sprintf(s, "erased sector at %u\r\n", pos);
+			d->write(d->priv, s, strlen(s));
+		}
+	}
+
+	return 0;
+}
+
+// Print all log values into debug connection.
+//
+// s -- string user as buffer.
+int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
+{
+	int fp;
+
+	if (from > to)
+		return (-1);
+
+	// run through all writable space in the flash
+	for (fp = from; fp < to; fp += LOG_BUFSIZE) {
+		int bp;
+
+		// read batch of log frames into log buffer
+		flashdev.read(flashdev.priv,
+			fp * sizeof(struct logpack), logbuf,
+			LOG_BUFSIZE * sizeof(struct logpack));
+
+		// for every read frame
+		for (bp = 0; bp < LOG_BUFSIZE; ++bp) {
+			char *data;
+			int i;
+
+			if (fp + bp < from || fp + bp >= to)
+				continue;
+
+			data = buf + 4;
+
+			// put all frame's values into a string
+			sprintf(data, "%d ", fp + bp);
+			
+			for (i = 0; i < LOG_PACKSIZE; ++i) {
+				sprintf(data + strlen(data), "%0.5f ",
+					(double) logbuf[bp].data[i]);
+			}
+
+			sprintf(data + strlen(data), "\r\n");
+
+			sprintf(buf, "%03hu",
+				crc8((uint8_t *) data, strlen(data)));
+			buf[3] = ' ';
+
+			// send this string into debug connection
+			d->write(d->priv, buf, strlen(buf));
+		}
+	}
+			
+	return 1;
 }
 
 // Stabilization loop. Callback for TEV_PID periodic event. It is the
@@ -1026,446 +1458,6 @@ int telesend(int ms)
 		sizeof(struct crsf_tele));
 
 	return 0;
-}
-
-// Parse configureation command got from debug wi-fi connection
-// by just splitting it into tokens by spaces. Last token is
-// the terminating token and always is an empty string.
-//
-// toks -- result array of command tokens (it's a paring result).
-// maxtoks -- maximum number of tokens posible.
-// data -- command to be parsed.
-int parsecommand(char **toks, int maxtoks, char *data)
-{
-	int i;
-
-	if (data[strlen(data) - 1] == '\n')
-		data[strlen(data) - 1] = '\0';
-
-	for (i = 0; i < maxtoks; ++i)
-		toks[i] = "";
-
-	i = 0;
-
-	toks[i++] = strtok((char *) data, " ");
-
-	while (i < (maxtoks - 1)
-		&& (toks[i++] = strtok(NULL, " ")) != NULL);
-
-	return (i - 1);
-}
-
-// Print quadcopter's postion and tilt data into a string.
-//
-// s -- output string.
-// md -- accelerometer and gyroscope data.
-// hd -- magnetometer data.
-int sprintpos(char *s, struct icm_data *id)
-{
-	s[0] = '\0';
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "accel: ",
-		(double) id->afx, (double) id->afy, (double) id->afz);
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "gyro: ",
-		(double) id->gfx, (double) id->gfy, (double) id->gfz);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
-		"accel corrected: ",
-		(double) (id->afx - st.ax0),
-		(double) (id->afy - st.ay0),
-		(double) (id->afz - st.az0));
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
-		"gyro corrected: ",
-		(double) (id->gfx - st.gx0),
-		(double) (id->gfy - st.gy0),
-		(double) (id->gfz - st.gz0));
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
-		(double) (dsp_getcompl(&rollcompl) - st.roll0),
-		(double) (dsp_getcompl(&pitchcompl) - st.pitch0),
-		(double) circf(dsp_getcompl(&yawcompl) - st.yaw0));
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"z acceleration: %f\r\n",
-		(double) dsp_getlpf(&tlpf));
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"vertival acceleration: %f\r\n",
-		(double) dsp_getlpf(&valpf));
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"presice  altitude: %f\r\n",
-		(double) (dsp_getcompl(&altcompl) - alt0));
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"battery: %0.3f\n\r",
-		getadcv(&hadc1) / (double) 0xfff * (double) 9.9276);
-
-	return 0;
-}
-
-// Print magmetometer data into a string.
-//
-// s -- output string.
-// hd -- magnetometer data.
-int sprintqmc(char *s, struct qmc_data *hd)
-{
-	s[0] = '\0';
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"x = %0.3f; y = %0.3f; z = %0.3f\n\r",
-		(double) qmcdata.fx, (double) qmcdata.fy,
-		(double) qmcdata.fz);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"corrected: x = %0.3f; y = %0.3f; z = %0.3f\n\r",
-		(double) (st.mxsc * (qmcdata.fx + st.mx0)),
-		(double) (st.mysc * (qmcdata.fy + st.my0)),
-		(double) (st.mzsc * (qmcdata.fz + st.mz0)));
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"heading: %f\r\n", (double) qmc_heading(
-			dsp_getcompl(&rollcompl) - st.roll0,
-			-(dsp_getcompl(&pitchcompl) - st.pitch0),
-			hd->fx, hd->fy, hd->fz));
-
-	return 0;
-}
-
-// Print various configuration values into a string.
-//
-// s -- output string.
-int sprintvalues(char *s)
-{
-	s[0] = '\0';
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"t: %.3f; r: %.3f; p: %.3f; y: %.3f\r\n",
-		(double) thrust, (double) rolltarget,
-		(double) pitchtarget, (double) yawtarget);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"roll thrust: %.3f; pitch thrust %.3f\r\n",
-		(double) st.rsc, (double) st.psc);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"mag off: %.3f; %.3f; %.3f\r\n",
-		(double) st.mx0, (double) st.my0, (double) st.mz0);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"mag scale: %.3f; %.3f; %.3f\r\n",
-		(double) st.mxsc, (double) st.mysc, (double) st.mzsc);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"mag decl: %.5f\r\n",
-		(double) st.magdecl);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"accel cor: %.3f; %.3f; %.3f\r\n",
-		(double) st.ax0, (double) st.ay0, (double) st.az0);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"gyro cor: %.3f; %.3f; %.3f\r\n",
-		(double) st.gx0, (double) st.gy0, (double) st.gz0);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"roll cor: %.3f; pitch cor: %.3f; yaw cor: %.3f\r\n",
-		(double) st.roll0, (double) st.pitch0,
-		(double) st.yaw0);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"motors state: %.3f\r\n", (double) en);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"loops count: %d\r\n", loopscount);
-
-	return 0;
-}
-
-
-// Print filters coefficients into a string.
-//
-// s -- output string.
-int sprintffilters(char *s)
-{
-	s[0] = '\0';
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"attitude compl tc: %.6f\r\n", (double) st.atctcoef);
-	
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw compl tc: %.6f\r\n", (double) st.yctcoef);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"accel lpf tc: %.6f\r\n", (double) st.ttcoef);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"vertical accel lpf tc: %.6f\r\n", (double) st.vatcoef);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"climb rate compl tc: %.6f\r\n", (double) st.cctcoef);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"altitude lpf tc: %.6f\r\n", (double) st.atcoef);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"altitude compl tc: %.6f\r\n", (double) st.actcoef);
-
-	return 0;
-}
-
-// Print all PID values into a string.
-//
-// s -- output string.
-int sprintpid(char *s)
-{
-	s[0] = '\0';
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"pos PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.p, (double) st.i, (double) st.d);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"speed PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.sp, (double) st.si, (double) st.sd);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.yp, (double) st.yi, (double) st.yd);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw speed PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.ysp, (double) st.ysi, (double) st.ysd);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"thrust PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.zsp, (double) st.zsi, (double) st.zsd);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"climb rate PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.cp, (double) st.ci, (double) st.cd);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"altitude PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.ap, (double) st.ai, (double) st.ad);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%s mode\r\n", st.speedpid ? "single" : "dual");
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%s yaw mode\r\n",
-		yawspeedpid ? "single" : "dual");
-
-	const char *mode;
-
-	if (altmode == ALTMODE_ACCEL)		mode = "single";
-	else if (altmode == ALTMODE_SPEED)	mode = "double";
-	else					mode = "triple";
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%s altitude mode\r\n", mode);
-
-	return 0;
-}
-
-
-// Print all GNSS values into a string.
-//
-// s -- output string.
-int sprintgnss(char *s) {
-	s[0] = '\0';
-
-	sprintf(s, "%s: %f\r\n%s: %hd\r\n%s: %hd %f %c\r\n\
-%s: %hd %f %c\r\n%s: %f\r\n%s: %f\r\n\
-%s: %d\r\n%s: %d\r\n%s: %f\r\n%s: %s\r\n%s: %f\r\n%s: %c\r\n",
-		"time", (double) gnss.time,
-		"status", gnss.status,
-		"latitude", gnss.lat,
-		(double) gnss.latmin,
-		(gnss.latdir == LATDIR_N) ? 'N' : 'S',
-		"longitude", gnss.lon,
-		(double) gnss.lonmin,
-		(gnss.londir == LONDIR_W) ? 'W' : 'E',
-		"speed", (double) gnss.speed,
-		"course", (double) gnss.course,
-		"quality", gnss.quality,
-		"satellites", gnss.satellites,
-		"altitude", (double) gnss.altitude,
-		"date", gnss.date,
-		"magvar", (double) gnss.magvar,
-		"magverdir",
-		(gnss.magvardir == MAGVARDIR_W) ? 'W' : 'E');
-
-	return 0;
-}
-
-// Print all devices statuses into a string
-//
-// s -- output string.
-int sprintdevs(char *s)
-{
-	int i;
-
-	s[0] = '\0';
-
-	for (i = 0; i < DEV_COUNT; ++i) {
-		const char *strstatus;
-
-		switch (dev[i].status) {
-		case DEVSTATUS_IT:
-			strstatus = "interrupts enabled";
-			break;
-		case DEVSTATUS_INIT:
-			strstatus = "initilized";
-			break;
-		case DEVSTATUS_FAILED:
-			strstatus = "failed";
-			break;
-		case DEVSTATUS_NOINIT:
-			strstatus = "not initilized";
-			break;
-		default:
-			strstatus = "unknown";
-			break;
-		}
-
-		sprintf(s + strlen(s), "%-15s: %s\r\n",
-			dev[i].name, strstatus);
-	}
-
-	return 0;
-}
-
-// Print all control scaling values
-//
-// s -- output string.
-int sprintfctrl(char *s)
-{
-	s[0] = '\0';
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"maximum roll: %.5f\r\n", (double) st.rollmax);
-	
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"maximum pitch: %.5f\r\n", (double) st.pitchmax);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw speed: %.5f\r\n", 
-		(double) st.yawspeed);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw target change speed: %.5f\r\n",
-		(double) st.yawtargetspeed);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"maximum acceleration: %.5f\r\n",
-		(double) st.accelmax);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"maximum climbrate: %.5f\r\n",
-		(double) st.climbratemax);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"maximum altitude: %.5f\r\n",
-		(double) st.altmax);
-
-	return 0;
-}
-
-// Erase log flash to prepare at for writing,
-// erasing starts from address 0.
-//
-// size -- bytes count to erase.
-int eraseflash(const struct cdevice *d, size_t size)
-{
-	size_t pos;
-	char s[255];
-
-	// if erase size equals total flash size,
-	// use chip erase command
-	if (size == W25_TOTALSIZE) {
-		flashdev.eraseall(flashdev.priv);
-		return 0;
-	}
-
-	// else erase flash block-by-block, sector-by-sector
-	for (pos = 0; pos < size; ) {
-		// if remained size is more than block size
-		// use block erase command,
-		// use sector erase command otherwise
-		if ((size - pos) >= W25_BLOCKSIZE) {
-			flashdev.eraseblock(flashdev.priv, pos);
-			pos += W25_BLOCKSIZE;
-
-			sprintf(s, "erased block at %u\r\n", pos);
-			d->write(d->priv, s, strlen(s));
-		}
-		else {
-			flashdev.erasesector(flashdev.priv, pos);
-			pos += W25_SECTORSIZE;
-
-			sprintf(s, "erased sector at %u\r\n", pos);
-			d->write(d->priv, s, strlen(s));
-		}
-	}
-
-	return 0;
-}
-
-// Print all log values into debug connection.
-//
-// s -- string user as buffer.
-int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
-{
-	int fp;
-
-	if (from > to)
-		return (-1);
-
-	// run through all writable space in the flash
-	for (fp = from; fp < to; fp += LOG_BUFSIZE) {
-		int bp;
-
-		// read batch of log frames into log buffer
-		flashdev.read(flashdev.priv,
-			fp * sizeof(struct logpack), logbuf,
-			LOG_BUFSIZE * sizeof(struct logpack));
-
-		// for every read frame
-		for (bp = 0; bp < LOG_BUFSIZE; ++bp) {
-			char *data;
-			int i;
-
-			if (fp + bp < from || fp + bp >= to)
-				continue;
-
-			data = buf + 4;
-
-			// put all frame's values into a string
-			sprintf(data, "%d ", fp + bp);
-			
-			for (i = 0; i < LOG_PACKSIZE; ++i) {
-				sprintf(data + strlen(data), "%0.5f ",
-					(double) logbuf[bp].data[i]);
-			}
-
-			sprintf(data + strlen(data), "\r\n");
-
-			sprintf(buf, "%03hu",
-				crc8((uint8_t *) data, strlen(data)));
-			buf[3] = ' ';
-
-			// send this string into debug connection
-			d->write(d->priv, buf, strlen(buf));
-		}
-	}
-			
-	return 1;
 }
 
 // Disarm command handler.
@@ -1881,82 +1873,6 @@ int systemcmd(const struct cdevice *d, const char **toks, char *out)
 	return 0;
 }
 
-// Parse and execute control command got from debug wifi-connection.
-//
-// cmd -- command to be executed.
-int runcommand(const struct cdevice *d, char *cmd)
-{
-	char buf[ESP_CMDSIZE];
-	char out[INFOLEN];
-	char *toks[MAX_CMDTOKS];
-	uint8_t crc;
-	int toksoff;
-	int i;
-	
-	if (cmd[0] == '\0')
-		return 0;
-
-	memcpy(buf, cmd, ESP_CMDSIZE);
-
-	// split a command into tokens by spaces
-	parsecommand(toks, MAX_CMDTOKS, buf);
-
-	toksoff = 0;
-
-	if (d == dev + ESP_DEV) {
-		toksoff = 1;
-
-		crc = crc8((uint8_t *) cmd + 4, strlen(cmd) - 4);
-
-		if (atoi(toks[0]) != crc)
-			goto crcfail;
-	}
-
-	// perform corresponding action
-	for (i = 0; i < commcount; ++i) {
-		if (strcmp(toks[toksoff], commtable[i].name) == 0) {
-			int r;
-		
-			out[0] = '\0';
-
-			if ((r = commtable[i].func(d,
-					(const char **) toks + toksoff,
-					out)) < 0)
-				goto unknown;
-
-			// r > 0, then it's a printing command and
-			// it does not transmission confirm
-			if (r == 0) {
-				char hdr[ESP_CMDSIZE];
-
-				memcpy(hdr, cmd, ESP_CMDSIZE);
-				d->write(d->priv, hdr, strlen(hdr));
-			}
-
-			if (strlen(out) != 0)
-				d->write(d->priv, out, strlen(out));
-
-			return 0;
-		}
-	}
-
-	return 0;
-
-unknown:
-	snprintf(out, INFOLEN, "Unknown command: %s\r\n", cmd + 4);
-	d->write(d->priv, out, strlen(out));
-
-	return (-1);
-
-crcfail:
-	snprintf(out, INFOLEN, "CRC check fail, got %hu: %s\r\n", crc,
-		cmd + 4);
-
-	d->write(d->priv, out, strlen(out));
-
-	return (-1);
-}
-
 // Set control values using CRSF packet.
 //
 // cd -- CRSF packet
@@ -2154,7 +2070,7 @@ int main(void)
 
 	// main control loop
 	while (1) {
-		char cmd[ESP_CMDSIZE];
+		char cmd[CMDSIZE];
 		struct crsf_data cd;
 		struct m10_data nd;
 		int c, i;
@@ -2163,12 +2079,14 @@ int main(void)
 		__HAL_TIM_SET_COUNTER(&htim8, 0);
 
 		// poll for configuration and telemetry commands
-		// from from debug wifi connection
+		// from debug wifi connection
 		if (dev[ESP_DEV].read(dev[ESP_DEV].priv, &cmd,
-			ESP_CMDSIZE) >= 0) {
+			CMDSIZE) >= 0) {
 			runcommand(dev + ESP_DEV, cmd);
 		}
 
+		// poll for configuration and telemtry commands
+		// from debug uart connection
 		if (dev[UART_DEV].read(dev[UART_DEV].priv, &cmd,
 			UART_CMDSIZE) >= 0) {
 			runcommand(dev + UART_DEV, cmd);
@@ -2533,146 +2451,6 @@ static void uart4_init()
 
 	if (HAL_UART_Init(&huart4) != HAL_OK)
 		error_handler();
-}
-
-// Init ESC's
-static void esc_init()
-{
-	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4
-		= (uint16_t) (0.2 * (float) PWM_MAXCOUNT);
-	HAL_Delay(2000);
-}
-
-// Init HP206c barometer
-static void hp_init()
-{
-	struct hp_device d;
-
-	d.hi2c = &hi2c1;
-	d.osr = HP_OSR_512;
-
-	if (hp_initdevice(&d, dev + HP_DEV) >= 0)
-		uartprintf("HP206C initilized\r\n");
-	else
-		uartprintf("failed to initilize HP206C\r\n");
-}
-
-static void icm_init()
-{
-	struct icm_device d;
-
-	d.hspi = &hspi1;
-	d.gpio = GPIOC;
-	d.pin = GPIO_PIN_13;
-
-	d.gyroscale = ICM_1000DPS;
-	d.gyrorate = ICM_GYRO4K;
-	d.gyroorder = ICM_GYROORDER3;
-	d.gyrolpf = ICM_GYROLPF4;
-	d.accelscale = ICM_4G;
-	d.accelrate = ICM_ACCEL4K;
-	d.accellpf = ICM_ACCELLPF4;
-	d.accelorder = ICM_ACCELORDER3;
-
-	if (icm_initdevice(&d, dev + ICM_DEV) >= 0)
-		uartprintf("ICM-42688 initilized\r\n");
-	else
-		uartprintf("failed to initilize ICM-42688\r\n");
-}
-
-// Init QMC5883L magnetometer
-static void qmc_init()
-{
-	struct qmc_device d;
-
-	d.hi2c = &hi2c1;
-	d.scale = QMC_SCALE_8;
-	d.rate = QMC_RATE_100;
-	d.osr = QMC_OSR_256;
-
-	if (qmc_initdevice(&d, dev + QMC_DEV) >= 0)
-		uartprintf("QMC5883L initilized\r\n");
-	else
-		uartprintf("failed to initilize QMC5883L\r\n");
-}
-
-// Init ESP07
-static void espdev_init()
-{
-	struct esp_device d;
-
-	d.hspi = &hspi2;
-	d.csgpio = GPIOC;
-	d.cspin = GPIO_PIN_0;
-	d.rstgpio = GPIOC;
-	d.rstpin = GPIO_PIN_14;
-	d.bootgpio = GPIOC;
-	d.bootpin = GPIO_PIN_15;
-	d.intpin = GPIO_PIN_1;
-
-	if (esp_initdevice(&d, dev + ESP_DEV) < 0) {
-		uartprintf("failed to initilize ESP8266\r\n");
-		return;
-	}
-
-	uartprintf("ESP8266 initilized\r\n");
-}
-
-// Init ERLS receiver driver
-static void crsfdev_init()
-{
-	struct crsf_device d;
-
-	d.huart = &huart2;
-
-	crsf_initdevice(&d, dev + CRSF_DEV);
-}
-
-// Init ERLS receiver driver
-static void w25dev_init()
-{
-	struct w25_device d;
-
-	d.hspi = &hspi1;
-	d.gpio = GPIOB;
-	d.pin = GPIO_PIN_3;
-
-	if (w25_initdevice(&d, &flashdev) < 0) {
-		uartprintf("failed to initilize W25Q\r\n");
-		return;
-	}
-
-	uartprintf("W25Q initilized\r\n");
-}
-
-// Init GPS module
-static void m10dev_init()
-{
-	struct m10_device d;
-
-	d.huart = &huart3;
-	
-	if (m10_initdevice(&d, dev + M10_DEV) < 0) {
-		uartprintf("failed to initilize GPS device\r\n");
-		return;
-	}
-	
-	uartprintf("GPS device initilized\r\n");
-}
-
-// Init UART config connection
-static void uartdev_init()
-{
-	struct uart_device d;
-
-	d.huart = &huart4;
-	
-	if (uart_initdevice(&d, dev + UART_DEV) < 0) {
-		uartprintf("failed to initilize UART device\r\n");
-		return;
-	}
-	
-	uartprintf("UART device initilized\r\n");
 }
 
 // MCU hardware errors handler. Disarm immediately
