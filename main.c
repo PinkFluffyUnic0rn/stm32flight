@@ -1962,8 +1962,8 @@ int m10msg(struct m10_data *nd)
 		return 0;
 	}
 
-	// other needed data is got RMC messages. Discard
-	// all other messages.
+	// other needed data is got from RMC
+	// messages. Discard all other messages.
 	if (nd->type != M10_TYPE_RMC)
 		return 0;
 

@@ -73,11 +73,9 @@ int runcommand(const struct cdevice *d, char *cmd)
 	if (cmd[0] == '\0')
 		return 0;
 
-
 	// split a command into tokens by spaces
 	memcpy(buf, cmd, CMDSIZE);
 	parsecommand(toks, MAX_CMDTOKS, buf);
-
 
 	// if command wasn't got through UART device, first
 	// token is CRC sum, so offset command tokens by 1

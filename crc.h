@@ -1,6 +1,7 @@
 #ifndef CRC_H
 #define CRC_H
 
+// CRC-8 values table
 static const uint8_t crc8_tbl [] = {
 	0x00, 0xd5, 0x7f, 0xaa, 0xfe, 0x2b, 0x81, 0x54,
 	0x29, 0xfc, 0x56, 0x83, 0xd7, 0x02, 0xa8, 0x7d,
@@ -36,6 +37,10 @@ static const uint8_t crc8_tbl [] = {
 	0xad, 0x78, 0xd2, 0x07, 0x53, 0x86, 0x2c, 0xf9
 };
 
+// CRC-8 calculation.
+//
+// data -- data buffer that need CRC.
+// len -- data buffer length.
 static uint8_t crc8(const uint8_t *data, uint8_t len)
 {
 	uint8_t crc;

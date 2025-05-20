@@ -6,9 +6,13 @@
 #include "global.h"
 #include "util.h"
 
+// delay timer tick duration in nanoseconds
 #define NSECPERTICK (1000 / (OCSFREQ / DELAYPRESCALER / 1000000))
 
+// delay timer handler
 extern TIM_HandleTypeDef htim10;
+
+// debug uart handler
 extern UART_HandleTypeDef huart4;
 
 void memcpyv(volatile void *dest, const volatile void *src, size_t n)
