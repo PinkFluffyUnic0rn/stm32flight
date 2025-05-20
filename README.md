@@ -62,7 +62,7 @@ IMU (accelerometer + gyroscope).
     * `w25.c` and `w25.h` -- driver for a w25q SPI flash.
 
 * `main.c` -- all routines related to flight control.
-* `global.h' -- global values used in many places in source code.
+* `global.h` -- global values used in many places in source code.
 * `crc.h` -- CRC-8 implementation.
 * `util.c` and `util.h` -- common utility functions that can be used in
 more than one source file.
