@@ -18,7 +18,7 @@ int dsp_initlpf(struct dsp_lpf *ir, float tcoef, int freq)
 	return 0;
 }
 
-// get last calculated low-pass filtering result (from last 
+// get last calculated low-pass filtering result (from last
 // dsp_updatelpf call).
 //
 // ir -- low-pass filter's context.

@@ -52,7 +52,7 @@ struct dsp_compl {
 // 	(see main.c).
 int dsp_initlpf(struct dsp_lpf *ir, float tcoef, int freq);
 
-// get last calculated low-pass filtering result (from last 
+// get last calculated low-pass filtering result (from last
 // dsp_updatelpf call).
 //
 // ir -- low-pass filter's context.

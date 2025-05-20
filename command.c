@@ -63,7 +63,7 @@ int runcommand(const struct cdevice *d, char *cmd)
 	uint8_t crc;
 	int toksoff;
 	int i;
-	
+
 	if (cmd[0] == '\0')
 		return 0;
 
@@ -87,7 +87,7 @@ int runcommand(const struct cdevice *d, char *cmd)
 	for (i = 0; i < commcount; ++i) {
 		if (strcmp(toks[toksoff], commtable[i].name) == 0) {
 			int r;
-		
+
 			out[0] = '\0';
 
 			if ((r = commtable[i].func(d,

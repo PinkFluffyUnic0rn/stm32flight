@@ -25,6 +25,6 @@ int uartprintf(const char *format, ...)
 	vsprintf(buf, format, args);
 
 	HAL_UART_Transmit(&huart4, (uint8_t *) buf, strlen(buf), 100);
-	
+
 	return 0;
 }

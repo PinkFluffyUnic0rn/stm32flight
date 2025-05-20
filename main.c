@@ -130,7 +130,7 @@ struct settings {
 				// calibration procedure
 
 	float mxsc, mysc, mzsc;	// megnetormeter scaling values for Z,
-				// Y and Z axes determinted by 
+				// Y and Z axes determinted by
 				// calibration procedure
 
 	float magdecl;		// magnetic declination
@@ -201,10 +201,10 @@ struct settings {
 struct gnss_data {
 	enum GNSSSTATUS status;		// GNSS data status
 					// 1 if valid, 0 otherwise
-	
+
 	float time;			// seconds passed from 00:00 UTC
 	char date[10];			// date in format dd.mm.yy
-	
+
 	uint8_t lat;			// latitude
 	float latmin;			// latitude minutes
 	enum LATDIR latdir;		// latitude direction, 1 if
@@ -377,11 +377,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
 // drivers for devices working through UART.
 //
 // huart -- context for UART triggered that callback.
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (DEVITENABLED(dev[M10_DEV].status))
 		dev[M10_DEV].interrupt(dev[M10_DEV].priv, huart);
-	
+
 	if (DEVITENABLED(dev[CRSF_DEV].status))
 		dev[CRSF_DEV].interrupt(dev[CRSF_DEV].priv, huart);
 
@@ -516,12 +516,12 @@ static void m10dev_init()
 	struct m10_device d;
 
 	d.huart = &huart3;
-	
+
 	if (m10_initdevice(&d, dev + M10_DEV) < 0) {
 		uartprintf("failed to initilize GPS device\r\n");
 		return;
 	}
-	
+
 	uartprintf("GPS device initilized\r\n");
 }
 
@@ -531,12 +531,12 @@ static void uartdev_init()
 	struct uart_device d;
 
 	d.huart = &huart4;
-	
+
 	if (uart_initdevice(&d, dev + UART_DEV) < 0) {
 		uartprintf("failed to initilize UART device\r\n");
 		return;
 	}
-	
+
 	uartprintf("UART device initilized\r\n");
 }
 
@@ -628,7 +628,7 @@ int initstabilize(float alt)
 
 // calculate tilt compensated heading direction using magnetometer
 // readings, roll value and pitch value.
-// 
+//
 // r -- roll value.
 // p -- pitch value.
 // x -- magnetometer's X axis value.
@@ -652,11 +652,11 @@ float qmc_heading(float r, float p, float x, float y, float z)
       ltd    rtd
         \    /
    ^     \  /
-   |       
+   |
    p     /  \
         /    \
       lbd    rbd
-        
+
          <- r
 */
 // all values should be between 0.0 and 1.0.
@@ -940,12 +940,12 @@ int sprintfctrl(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"maximum roll: %.5f\r\n", (double) st.rollmax);
-	
+
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"maximum pitch: %.5f\r\n", (double) st.pitchmax);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw speed: %.5f\r\n", 
+		"yaw speed: %.5f\r\n",
 		(double) st.yawspeed);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
@@ -976,7 +976,7 @@ int sprintffilters(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"attitude compl tc: %.6f\r\n", (double) st.atctcoef);
-	
+
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"yaw compl tc: %.6f\r\n", (double) st.yctcoef);
 
@@ -1069,7 +1069,7 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 
 			// put all frame's values into a string
 			sprintf(data, "%d ", fp + bp);
-			
+
 			for (i = 0; i < LOG_PACKSIZE; ++i) {
 				sprintf(data + strlen(data), "%0.5f ",
 					(double) logbuf[bp].data[i]);
@@ -1085,7 +1085,7 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 			d->write(d->priv, buf, strlen(buf));
 		}
 	}
-			
+
 	return 1;
 }
 
@@ -1272,7 +1272,7 @@ int stabilize(int ms)
 	rtm = (1.0 + st.rsc / 2) * (1.0 + st.psc / 2);
 
 	// update motors thrust based on calculated values. For
-	// quadcopter it's enought to split correction in half for 
+	// quadcopter it's enought to split correction in half for
 	// 3 pairs of motors: left and right for roll, top and bottom
 	// for pitch and two diagonals (spinning in oposite directions)
 	// for yaw.
@@ -1357,8 +1357,8 @@ int hpupdate(int ms)
 	dt = ms / (float) TICKSPERSEC;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
-	
-	if (dev[HP_DEV].status != DEVSTATUS_INIT) 
+
+	if (dev[HP_DEV].status != DEVSTATUS_INIT)
 		return 0;
 
 	// read barometer values
@@ -1466,7 +1466,7 @@ int telesend(int ms)
 int rcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	en = 0.0;
-	
+
 	return 0;
 }
 
@@ -1503,7 +1503,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 		dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
 			sizeof(struct qmc_data));
 
-		sprintqmc(out, &hd);	
+		sprintqmc(out, &hd);
 	}
 	else if (strcmp(toks[1], "hp") == 0) {
 		float alt;
@@ -1618,7 +1618,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 	}
 	else
 		return (-1);
-	
+
 	return 0;
 }
 
@@ -1648,12 +1648,12 @@ int calibcmd(const struct cdevice *dev, const char **toks, char *out)
 int flashcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "write") == 0)
-		writesettings(atoi(toks[2]));	
+		writesettings(atoi(toks[2]));
 	else if (strcmp(toks[1], "read") == 0)
 		readsettings(atoi(toks[2]));
 	else
 		return (-1);
-	
+
 	return 0;
 }
 
@@ -1664,12 +1664,12 @@ int complcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "attitude") == 0) {
 		st.atctcoef = atof(toks[2]);
-		dsp_initcompl(&rollcompl, st.atctcoef, PID_FREQ);	
+		dsp_initcompl(&rollcompl, st.atctcoef, PID_FREQ);
 		dsp_initcompl(&pitchcompl, st.atctcoef, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
 		st.yctcoef = atof(toks[2]);
-		dsp_initcompl(&yawcompl, st.yctcoef, PID_FREQ);	
+		dsp_initcompl(&yawcompl, st.yctcoef, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		st.cctcoef = atof(toks[2]);
@@ -1769,7 +1769,7 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 int logcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	char s[INFOLEN];
-	
+
 	if (strcmp(toks[1], "set") == 0) {
 		// flash erasing process takes time and blocks
 		// other actions, so disarm for safety
@@ -1814,7 +1814,7 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 			if (printlog(d, s, atoi(*p), atoi(*p) + 1) < 0)
 				return (-1);
 		}
-	
+
 		sprintf(s, "-end-\r\n");
 		d->write(d->priv, s, strlen(s));
 	}
@@ -1842,7 +1842,7 @@ int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 		st.yawspeed = v;
 	else if (strcmp(toks[1], "yaw") == 0)
 		st.yawtargetspeed = v;
-	else if (strcmp(toks[1], "accel") == 0)	
+	else if (strcmp(toks[1], "accel") == 0)
 		st.accelmax = v;
 	else if (strcmp(toks[1], "climbrate") == 0)
 		st.climbratemax = v;
@@ -1972,7 +1972,7 @@ int m10msg(struct m10_data *nd)
 	gnss.lat = nd->rmc.lat;
 	gnss.latdir = (tolower(nd->rmc.latdir) == 'n')
 		? LATDIR_N : LATDIR_S;
-	
+
 	gnss.lonmin = nd->gga.lonmin;
 	gnss.lon = nd->rmc.lon;
 	gnss.londir = (tolower(nd->rmc.londir) == 'e')
@@ -1981,7 +1981,7 @@ int m10msg(struct m10_data *nd)
 	gnss.magvar = nd->rmc.magvar;
 	gnss.magvardir = (tolower(nd->rmc.magvardir) == 'e')
 		? MAGVARDIR_E : MAGVARDIR_W;
-	
+
 	gnss.speed = nd->rmc.speed;
 	gnss.course = nd->rmc.course;
 
@@ -2206,10 +2206,10 @@ static void dma_init(void)
 
 	HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
-	
+
 	HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
-	
+
 	HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
@@ -2231,7 +2231,7 @@ static void i2c_init(void)
 	hi2c1.Init.OwnAddress2 = 0;
 	hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
 	hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-	
+
 	if (HAL_I2C_Init(&hi2c1) != HAL_OK)
 		error_handler();
 }
