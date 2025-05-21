@@ -34,8 +34,7 @@
 #define CMDMAXSZ 60
 
 // log size in records
-#define LOGSIZE (1024 * 64)
-//#define LOGSIZE (1024 * 4)
+#define LOGSIZE (1024 * 32)
 
 // maximum number of log records in
 // batch when reading whole log
@@ -134,7 +133,7 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 		// if no serverfunc passed, stop loop
 		if (serverfunc == NULL)
 			break;
-		
+
 		// call serverfunc to perform server-side part of a
 		// command and check command's sucessful completion.
 		if (serverfunc(lsfd, rsi, scmd, data) >= 0)
@@ -193,7 +192,7 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 // lsfd -- UDP socket for configuration connection.
 // rsi -- remote IP address.
 // cmd -- command was sent.
-// data -- userdata passed to sendcmd. 
+// data -- userdata passed to sendcmd.
 int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void *data)
 {
@@ -410,7 +409,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 	while (check) {
 		// reset downloaded records flag
 		check = 0;
-		
+
 		for (i = 0; i < LOGSIZE; ++i) {
 			int rb, re;
 
@@ -433,17 +432,17 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 			// that one go to next iteration
 			if (re - rb <= 1)
 				continue;
-	
+
 			// send current range command
 			sprintf(cmd, "log rget %d %d\r\n", rb, re + 1);
-			
+
 			// request log records
 			reqlogrecords(lsfd, rsi, cmd,
 				&d, &logtotalsz, recs);
 
 			// set downloaded records flag
 			check = 1;
-		
+
 			// set next record to check to
 			// record after just requested range
 			i = re;
@@ -456,7 +455,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 	while (check) {
 		// reset downloaded records flag
 		check = 0;
-		
+
 		// reset record batch size counter
 		reccount = 0;
 
@@ -472,7 +471,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 				// command
 				snprintf(cmd + strlen(cmd),
 					CMDMAXSZ, " %d", i);
-			
+
 				// set downloaded records flag
 				check = 1;
 

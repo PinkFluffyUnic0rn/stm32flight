@@ -44,7 +44,7 @@
 #define HP_FREQ 25
 #define QMC_FREQ 100
 #define TELE_FREQ 10
-#define LOG_FREQ 64
+#define LOG_FREQ 32
 
 // MCU flash address where quadcopter settings is stored
 #define USER_FLASH 0x080e0000
@@ -60,7 +60,7 @@
 #define LOG_BUFSIZE (W25_PAGESIZE / sizeof(struct logpack))
 
 // log packet values positions
-#define LOG_PACKSIZE	16
+#define LOG_PACKSIZE	32
 #define LOG_ACC_X	0
 #define LOG_ACC_Y	1
 #define LOG_ACC_Z	2
@@ -77,6 +77,10 @@
 #define LOG_YAW		13
 #define LOG_CLIMBRATE	14
 #define LOG_ALT		15
+#define LOG_LT		16
+#define LOG_LB		17
+#define LOG_RB		18
+#define LOG_RT		19
 
 // Timer events IDs
 #define TEV_PID 	0
@@ -667,6 +671,11 @@ int setthrust(float ltd, float lbd, float rbd, float rtd)
 	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
 		|| isnan(lbd) || !elrs)
 		ltd = rtd = rbd = lbd = 0.0;
+
+	logwrite(LOG_LT, ltd);
+	logwrite(LOG_LB, lbd);
+	logwrite(LOG_RB, rbd);
+	logwrite(LOG_RT, rtd);
 
 	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.8 + 0.19)
 		* (float) PWM_MAXCOUNT);
@@ -1402,10 +1411,6 @@ int qmcupdate(int ms)
 {
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
-
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8,
-		!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8));
-
 
 	// write magnetometer values into log
 	logwrite(LOG_MAG_X, qmcdata.fx);
@@ -2178,7 +2183,7 @@ static void gpio_init(void)
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7
-		| GPIO_PIN_8 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15,
+		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15,
 		GPIO_PIN_RESET);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_3;
@@ -2187,7 +2192,7 @@ static void gpio_init(void)
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7
-		| GPIO_PIN_8 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
