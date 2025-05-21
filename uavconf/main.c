@@ -35,6 +35,7 @@
 
 // log size in records
 #define LOGSIZE (1024 * 64)
+//#define LOGSIZE (1024 * 4)
 
 // maximum number of log records in
 // batch when reading whole log
@@ -214,7 +215,7 @@ int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 		// reallocate the raw data buffer if it is to
 		// small to hold next packet
 		if (d->sz + d->bufoffset + BUFSZ >= d->maxsz) {
-			d->maxsz = (d->bufoffset + d->sz + BUFSZ) * 2;
+			d->maxsz = (d->bufoffset + d->sz + BUFSZ + 1) * 2;
 			d->buf = realloc(d->buf, d->maxsz);
 		}
 
@@ -282,6 +283,7 @@ int parserecords(char *logbuf, size_t logbufoffset, int *records)
 		char *num, *val;
 		uint8_t crc;
 		size_t n;
+		char *endptr;
 
 		// on every iteration assume that begin of a record is
 		// position after end of a previous record and end of
@@ -297,10 +299,8 @@ int parserecords(char *logbuf, size_t logbufoffset, int *records)
 
 		// if it is not the last record, replace newline
 		// character with null character making separate
-		// string of the current record. End of record pointer
-		// is increased to use it as begin on next record.
-		if (*e != '\0')
-			*(e++) = '\0';
+		// string of the current record.
+		*e = '\0';
 
 		// make separate string of first 4 characters of the
 		// record. It contains record's CRC calculated on remote
@@ -326,11 +326,14 @@ int parserecords(char *logbuf, size_t logbufoffset, int *records)
 
 		// compare calculated CRC and CRC got from remote.
 		// If they don't match, skip record as corrupted.
-		if (atoi(b) != crc)
+		if (strtol(b, &endptr, 10) != crc
+				|| *b == '\0' || *endptr != '\0')
 			goto skip;
 
 		// convert record number from string to integer
-		n = atoi(num);
+		n = strtol(num, &endptr, 10);
+		if (*num == '\0' || *endptr != '\0')
+			goto skip;
 
 		// if record number is correct, store current record's
 		// values offset in raw data buffer to ordered records
@@ -341,8 +344,33 @@ int parserecords(char *logbuf, size_t logbufoffset, int *records)
 skip:
 		// set begin of next record's string to first
 		// character after end of current record
-		b = e;
+		b = ++e;
 	}
+
+	return 0;
+}
+
+int reqlogrecords(int lsfd, const struct sockaddr_in *rsi,
+	const char *cmd, struct loggetdata *d, size_t *logtotalsz,
+	int *recs)
+{
+	// set raw data buffer offset
+	// beyond it's end
+	d->bufoffset = *logtotalsz;
+
+	// send current batch command
+	sendcmd(lsfd, rsi, cmd, logget, d);
+
+	// null-terminate data got
+	// from UDP socket
+	d->buf[d->bufoffset + d->sz] = '\0';
+
+	// parse raw data, got after
+	// command sent earlier
+	parserecords(d->buf, d->bufoffset, recs);
+
+	// update total raw data buffer size
+	*logtotalsz += d->sz + 1;
 
 	return 0;
 }
@@ -369,23 +397,58 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 	d.maxsz = 0;
 	d.bufoffset = 0;
 
-	// send command to get whole log
-	sprintf(cmd, "log rget 0 %d\r\n", LOGSIZE);
-	sendcmd(lsfd, rsi, cmd, logget, &d);
-
-	// null-terminate data got from UDP socket
-	d.buf[d.bufoffset + d.sz] = '\0';
-
-	// update total raw data buffer size
-	logtotalsz = d.sz + 1;
+	logtotalsz = 0;
 
 	// set all records in ordered records array to
 	// negative, marking they wasn't gotten yeat
 	for (i = 0; i < LOGSIZE; ++i)
 		recs[i] = -1;
 
-	// parse raw data, got after command sent earlier
-	parserecords(d.buf, d.bufoffset, recs);
+	// while new log records ranges were
+	// downloaded in previous interation
+	check = 1;
+	while (check) {
+		// reset downloaded records flag
+		check = 0;
+		
+		for (i = 0; i < LOGSIZE; ++i) {
+			int rb, re;
+
+			// if record with this number
+			// isn't downloaded yet
+			if (recs[i] >= 0)
+				continue;
+
+			// starting from current record
+			// check all records until first already
+			// downloaded record not found.
+			rb = i;
+			for (re = i + 1; re < LOGSIZE; ++re) {
+				if (recs[re] >= 0)
+					break;
+			}
+
+			// if distance between current record and first
+			// already downloaded record after it is less
+			// that one go to next iteration
+			if (re - rb <= 1)
+				continue;
+	
+			// send current range command
+			sprintf(cmd, "log rget %d %d\r\n", rb, re + 1);
+			
+			// request log records
+			reqlogrecords(lsfd, rsi, cmd,
+				&d, &logtotalsz, recs);
+
+			// set downloaded records flag
+			check = 1;
+		
+			// set next record to check to
+			// record after just requested range
+			i = re;
+		}
+	}
 
 	// while new log records were
 	// downloaded in previous interation
@@ -402,13 +465,14 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 
 		// for every log record's number
 		for (i = 0; i < LOGSIZE; ++i) {
-			// if record with this number doesn't downloaded
-			// yet
+			// if record with this number
+			// isn't downloaded yet
 			if (recs[i] < 0) {
 				// add this number to batch download
 				// command
 				snprintf(cmd + strlen(cmd),
 					CMDMAXSZ, " %d", i);
+			
 				// set downloaded records flag
 				check = 1;
 
@@ -420,28 +484,14 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 			// last record and there is at least one record
 			// number in batch
 			if (reccount == BATCHSIZE || (i == (LOGSIZE - 1)
-					&& check)) {
-				// set raw data buffer offset
-				// beyond it's end
-				d.bufoffset = logtotalsz;
-
+					&& reccount != 0)) {
 				// add newline character
 				// to current batch command
 				sprintf(cmd + strlen(cmd), "\n");
 
-				// send current batch command
-				sendcmd(lsfd, rsi, cmd, logget, &d);
-
-				// null-terminate data got
-				// from UDP socket
-				d.buf[d.bufoffset + d.sz] = '\0';
-
-				// parse raw data, got after
-				// command sent earlier
-				parserecords(d.buf, d.bufoffset, recs);
-
-				// update total raw data buffer size
-				logtotalsz += d.sz + 1;
+				// request log records
+				reqlogrecords(lsfd, rsi, cmd,
+					&d, &logtotalsz, recs);
 
 				// build first part of a
 				// next batch load command
