@@ -1,6 +1,6 @@
 pid tilt mode double
 pid tilt p 10.0
-pid tilt i 0.00005
+pid tilt i 0.00001
 pid tilt d 0.0001
 pid stilt p 0.05
 pid stilt i 0.0
@@ -9,7 +9,7 @@ pid yaw mode double
 pid yaw p -2.0
 pid yaw i 0.0
 pid yaw d 0.0
-pid syaw p -0.6
+pid syaw p -1.0
 pid syaw i 0.0
 pid syaw d 0.0
 pid throttle p 3.0
@@ -46,6 +46,7 @@ adj mag decl 0.3264
 adj gyro x -0.2
 adj gyro y -0.4
 adj gyro z 0.6
+ctrl thrust 0.9
 ctrl roll 0.25
 ctrl pitch 0.25
 ctrl syaw 1.0

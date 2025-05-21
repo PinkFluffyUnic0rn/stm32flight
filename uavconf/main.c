@@ -28,7 +28,8 @@
 // minimum and maximum wait time for
 // UAV configuration command to execute
 #define MINWAIT 5000
-#define MAXWAIT 500000
+#define MAXWAIT 1000000
+#define FLASHWAIT 2000000
 
 // maximum UAV command size
 #define CMDMAXSZ 60
@@ -160,17 +161,21 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	socklen_t rsis;
 	int rsz;
 
-	// wait command to execute
-	usleep(wait);
+	// wait command to execute: fixed waiting time
+	// for some long commands, dynamic wait for fast commands
+	if (strncmp(cmd + 4, "flash", strlen("flash")) == 0)
+		usleep(FLASHWAIT);
+	else
+		usleep(wait);
 
 	// try to receive response from UDP socket
 	rsis = sizeof(rsi);
 	if ((rsz = recvfrom(lsfd, out, BUFSZ, 0,
-			(struct sockaddr *) &rsi, &rsis)) < 0) {
-
+			(struct sockaddr *) &rsi, &rsis)) <= 0) {
+		
 		// it no response and maximum wait time haven't
 		// already reached, increase it
-		wait = (wait < MAXWAIT) ? wait * 1.5 : wait;
+		wait = (wait < MAXWAIT) ? (wait * 15 / 10) :  wait;
 
 		return (-1);
 	}

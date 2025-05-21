@@ -151,6 +151,7 @@ struct settings {
 
 	float roll0, pitch0, yaw0; // roll, pitch and yaw offset values
 
+	float thrustmax;	// maximum thrust value
 	float rollmax, pitchmax; // maximum roll and pitch angles in Pi
 
 	float yawspeed;		// yaw rotation speed in Pi for
@@ -950,6 +951,9 @@ int sprintfctrl(char *s)
 	s[0] = '\0';
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"maximum thrust: %.5f\r\n", (double) st.thrustmax);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"maximum roll: %.5f\r\n", (double) st.rollmax);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
@@ -1281,6 +1285,10 @@ int stabilize(int ms)
 	lbm = (1.0 - st.rsc / 2) * (1.0 - st.psc / 2);
 	rbm = (1.0 + st.rsc / 2) * (1.0 - st.psc / 2);
 	rtm = (1.0 + st.rsc / 2) * (1.0 + st.psc / 2);
+
+	// if final thrust is greater than
+	// limit set it to the limit
+	thrustcor = thrustcor > st.thrustmax ? st.thrustmax : thrustcor;
 
 	// update motors thrust based on calculated values. For
 	// quadcopter it's enought to split correction in half for
@@ -1841,7 +1849,9 @@ int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 
 	v = atof(toks[2]);
 
-	if (strcmp(toks[1], "roll") == 0)
+	if (strcmp(toks[1], "thrust") == 0)
+		st.thrustmax = v;
+	else if (strcmp(toks[1], "roll") == 0)
 		st.rollmax = v;
 	else if (strcmp(toks[1], "pitch") == 0)
 		st.pitchmax = v;
