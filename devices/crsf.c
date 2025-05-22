@@ -169,7 +169,15 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	attpack = (struct attitude *) (buf + 3);
 
 	buf[0] = 0xc8;
-	
+
+	buf[1] = 15;
+	buf[2] = 0x21;
+	memcpy(buf + 3, tele->mode, 14);
+	(buf + 3)[13] = '\0';
+	buf[15] = crc8(buf + 2, 13);
+
+	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 17, 1000);
+
 	buf[1] = 17;
 	buf[2] = 0x02;
 	gpspack->lat = endian4((int32_t)(tele->lat * 1e7));

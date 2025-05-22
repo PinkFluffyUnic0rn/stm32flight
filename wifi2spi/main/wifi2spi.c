@@ -27,6 +27,9 @@
 
 #include "crc.h"
 
+// should SPI packets got from master be CRC checked
+#define RXCRC 0
+
 // Interrupt pin, it's switched from low to high
 // when ESP8285 has data to send to SPI master
 #define INT_GPIO 4
@@ -190,13 +193,15 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 		crc = data[1];
 
 		// is payload size is greater that maximum possible
-		// or locally calculated CRC doesn't match CRC got from
-		// packet or packet ID not 0xaa, discard the packet
-		if (size > (SPIPACKSIZE - 4)
-				|| crc8(data + 2, size + 2) != crc
-				|| id != 0xaa) {
+		//  or packet ID not 0xaa, discard the packet
+		if (size > (SPIPACKSIZE - 4) || id != 0xaa)
 			goto skip;
-		}
+
+		// if CRC check for incoming packets is enabled
+		// and locally calculated CRC doesn't match CRC got
+		// from packet, discard the packet
+		if (RXCRC && crc8(data + 2, size + 2) != crc)
+			goto skip;
 
 		// put packet payload into Rx stream buffer
 		xStreamBufferSendFromISR(Rxbuf, (void*) data + 4, size,
@@ -219,26 +224,11 @@ skip:
 static void IRAM_ATTR udp_server_task_w(void *pvParameters)
 {
 	char buf[BUFSIZE];
-	int ms;
-
-	// reset delay packet timer
-	ms = 0;
 
 	// endless loop
 	while (1) {
 		struct sockaddr_in saddr;
 		int len;
-
-		// if Rx stream buffer have less data than
-		// minimum required UDP packet size, increase
-		// delay packet timer counter, wait for 10 ms
-		// and go to next iteration
-		if (xStreamBufferBytesAvailable(Rxbuf) < UDPPACKMIN
-				&& ms < 100) {
-			ms += 10;
-			vTaskDelay(10 / portTICK_PERIOD_MS);
-			continue;
-		}
 
 		// get data from Rx stream buffer
 		len = xStreamBufferReceive(Rxbuf, buf, BUFSIZE,
@@ -258,11 +248,8 @@ static void IRAM_ATTR udp_server_task_w(void *pvParameters)
 			sizeof(saddr));
 
 skip:
-		// wait for 10 ms
-		vTaskDelay(10 / portTICK_PERIOD_MS);
-
-		// reset delay packet timer
-		ms = 0;
+		// wait for 5 ms
+		vTaskDelay(5 / portTICK_PERIOD_MS);
 	}
 
 	vTaskDelete(NULL);

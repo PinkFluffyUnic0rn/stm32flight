@@ -264,6 +264,12 @@ static void usart2_init();
 static void usart3_init();
 static void uart4_init();
 
+// stabilization modes short codes that is
+// sent to eLRS remote inside telemetry packets
+const char *attmodestr[] = {"ac", "st", "sp", "ps"};
+const char *yawmodestr[] = {"sp", "cs"};
+const char *altmodestr[] = {"tr", "cl", "al"};
+
 // STM32 perithery contexts
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
@@ -355,6 +361,10 @@ int loopscount = 0;
 // receiving useful packet from receiver and decreased by 1 every
 // second. If it falls to 0, quadcopter disarms.
 int elrstimeout = ELRS_TIMEOUT;
+
+// emergency disarm triggered, further
+// arming is possible only after reboot
+int emergencydisarm = 0;
 
 // Log bufferization controlling variables
 int logtotal = 0;
@@ -1126,6 +1136,12 @@ int stabilize(int ms)
 	float gy, gx, gz;
 	float dt;
 
+	// emergency disarm happened
+	if (emergencydisarm) {
+		setthrust(0.0, 0.0, 0.0, 0.0);
+		en = 0.0;
+	}
+
 	// get time passed from last invocation of this calback function
 	dt = ms / (float) TICKSPERSEC;
 
@@ -1134,7 +1150,7 @@ int stabilize(int ms)
 
 	// toggle arming indication led
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,
-		en ? GPIO_PIN_SET : GPIO_PIN_RESET);
+		(en > 0.5) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
 	// get accelerometer and gyroscope readings
 	dev[ICM_DEV].read(dev[ICM_DEV].priv, &id,
@@ -1195,6 +1211,14 @@ int stabilize(int ms)
 	// vector to gravity vector projection
 	dsp_updatelpf(&valpf, (vx * id.afx + vy * id.afy + vz * id.afz)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
+
+	// if vertical acceleration is negative, most likely
+	// quadcopter is upside down, perform emergency disarm
+	if (dsp_getlpf(&tlpf) < -0.5) {
+		emergencydisarm = 1;
+		setthrust(0.0, 0.0, 0.0, 0.0);
+		en = 0.0;
+	}
 
 	// write roll, pitch and yaw values into log
 	logwrite(LOG_ROLL, roll);
@@ -1331,6 +1355,7 @@ int checkconnection(int ms)
 	// if timeout conter reached 0 and no ERLS
 	// packet came, disarm immediately
 	if (elrstimeout <= 0) {
+		emergencydisarm = 1;
 		setthrust(0.0, 0.0, 0.0, 0.0);
 		en = 0.0;
 	}
@@ -1458,12 +1483,14 @@ int logupdate(int ms)
 
 	return 0;
 }
-
+	
 // Send telemetry through ELRS.
 //
 // ms -- microsecond passed from last callback invocation.
 int telesend(int ms)
 {
+	const char *am;
+	
 	tele.lat = gnss.lat + gnss.latmin / 60.0;
 	tele.lon = gnss.lon + gnss.lonmin / 60.0;
 	tele.speed = gnss.speed;
@@ -1476,6 +1503,27 @@ int telesend(int ms)
 	tele.pitch = dsp_getcompl(&pitchcompl) - st.pitch0;
 	tele.yaw = circf(qmc_heading(tele.roll, -tele.pitch,
 		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
+
+	// fill flight mode string with arm state and
+	// combination of stabilization modes codes
+	if (altmode == ALTMODE_ACCEL)
+		am = altmodestr[0];
+	else if (altmode == ALTMODE_SPEED)
+		am = altmodestr[1];
+	else if (altmode == ALTMODE_POS)
+		am = altmodestr[2];
+	else
+		am = "---";
+
+	snprintf((char *) tele.mode, 14, "%c|%s|%s|%s",
+		en > 0.5 ? 'a' : 'n',
+		attmodestr[st.speedpid ? 0 : 1],
+		yawmodestr[yawspeedpid ? 0 : 1], am);
+
+	// in case of emergency disarming
+	// set flight mode to "stopped"
+	if (emergencydisarm)
+		strcpy((char *) tele.mode, "stopped");
 
 	dev[CRSF_DEV].write(dev[CRSF_DEV].priv, &tele,
 		sizeof(struct crsf_tele));
@@ -2315,7 +2363,7 @@ static void spi2_init(void)
 	hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
 	hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
 	hspi2.Init.NSS = SPI_NSS_SOFT;
-	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
 	hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
 	hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;

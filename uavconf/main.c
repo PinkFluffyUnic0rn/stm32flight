@@ -532,38 +532,40 @@ int handlecmd(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 
 	// if got one of known commands, perform corresponding actions.
 	// In other case just send it into UDP socket.
-	if (strncmp(cmd, "e", strlen("e")) == 0)
+	if (strcmp(cmd, "e") == 0)
 		return 1;
-	if (strncmp(cmd, "m", strlen("m")) == 0)
+	else if (strcmp(cmd, "m") == 0)
 		sendcmd(lsfd, rsi, "info mpu\n", NULL, NULL);
-	else if (strncmp(cmd, "p", strlen("p")) == 0)
+	else if (strcmp(cmd, "p") == 0)
 		sendcmd(lsfd, rsi, "info pid\n", NULL, NULL);
-	else if (strncmp(cmd, "v", strlen("v")) == 0)
+	else if (strcmp(cmd, "v") == 0)
 		sendcmd(lsfd, rsi, "info values\n", NULL, NULL);
-	else if (strncmp(cmd, "h", strlen("h")) == 0)
+	else if (strcmp(cmd, "h") == 0)
 		sendcmd(lsfd, rsi, "info qmc\n", NULL, NULL);
-	else if (strncmp(cmd, "b", strlen("b")) == 0)
+	else if (strcmp(cmd, "b") == 0)
 		sendcmd(lsfd, rsi, "info hp\n", NULL, NULL);
-	else if (strncmp(cmd, "g", strlen("g")) == 0)
+	else if (strcmp(cmd, "g") == 0)
 		sendcmd(lsfd, rsi, "info gnss\n", NULL, NULL);
-	else if (strncmp(cmd, "d", strlen("d")) == 0)
+	else if (strcmp(cmd, "d") == 0)
 		sendcmd(lsfd, rsi, "info dev\n", NULL, NULL);
-	else if (strncmp(cmd, "c", strlen("c")) == 0)
+	else if (strcmp(cmd, "t") == 0)
 		sendcmd(lsfd, rsi, "info ctrl\n", NULL, NULL);
-	else if (strncmp(cmd, "f", strlen("f")) == 0)
+	else if (strcmp(cmd, "f") == 0)
 		sendcmd(lsfd, rsi, "info filter\n", NULL, NULL);
-	else if (strncmp(cmd, "w", strlen("w")) == 0) {
+	else if (strcmp(cmd, "w") == 0) {
 		sprintf(buf, "log set %d\r\n", LOGSIZE);
 		sendcmd(lsfd, rsi, buf, NULL, NULL);
 	}
-	else if (strncmp(cmd, "s", strlen("s")) == 0)
+	else if (strcmp(cmd, "s") == 0)
 		sendcmd(lsfd, rsi, "log set 0\n", NULL, NULL);
-	else if (strncmp(cmd, "r", strlen("r")) == 0)
+	else if (strcmp(cmd, "r") == 0)
 		getlog(lsfd, rsi);
-	else if (strncmp(cmd, "c", strlen("c")) == 0)
-		sendcmd(lsfd, rsi, "c 0.0\n", conffunc, NULL);
-	else
-		sendcmd(lsfd, rsi, cmd, NULL, NULL);
+	else if (strcmp(cmd, "c") == 0)
+		sendcmd(lsfd, rsi, "c 0.0\n", NULL, NULL);
+	else {
+		sprintf(buf, "%s\r\n", cmd);
+		sendcmd(lsfd, rsi, buf, NULL, NULL);
+	}
 
 	return 0;
 }
@@ -614,7 +616,11 @@ int main(int argc, char *argv[])
 		// if got data on standart input, read
 		// one line and interpret it as command
 		if (FD_ISSET(0, &rfds)) {
-			getline(&buf, &bufsz, stdin);
+			ssize_t l;
+			l = getline(&buf, &bufsz, stdin);
+
+			if (buf[l - 1] == '\n')
+				buf[l - 1] = '\0';
 
 			if (handlecmd(buf, lsfd, &rsi) != 0)
 				break;
