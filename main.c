@@ -44,7 +44,7 @@
 #define HP_FREQ 25
 #define QMC_FREQ 100
 #define TELE_FREQ 10
-#define LOG_FREQ 32
+#define LOG_FREQ 64
 
 // MCU flash address where quadcopter settings is stored
 #define USER_FLASH 0x080e0000

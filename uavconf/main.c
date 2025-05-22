@@ -35,7 +35,7 @@
 #define CMDMAXSZ 60
 
 // log size in records
-#define LOGSIZE (1024 * 32)
+#define LOGSIZE (1024 * 64)
 
 // maximum number of log records in
 // batch when reading whole log
