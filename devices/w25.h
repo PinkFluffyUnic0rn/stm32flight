@@ -10,10 +10,18 @@
 
 #define W25_MAXDEVS 1
 
+enum W25_IOCTL {
+	W25_IOCTL_READWRITE = 0,
+	W25_IOCTL_WRITEONLY = 1
+};
+
 struct w25_device {
 	SPI_HandleTypeDef *hspi;
 	GPIO_TypeDef *gpio;
 	uint16_t pin;
+
+	// private
+	int writemode;
 };
 
 int w25_initdevice(void *is, struct bdevice *dev);

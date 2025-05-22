@@ -81,6 +81,14 @@
 #define LOG_LB		17
 #define LOG_RB		18
 #define LOG_RT		19
+#define LOG_CRSFCH0	20
+#define LOG_CRSFCH1	21
+#define LOG_CRSFCH2	22
+#define LOG_CRSFCH3	23
+#define LOG_CRSFCH4	24
+#define LOG_CRSFCH5	25
+#define LOG_CRSFCH6	26
+#define LOG_CRSFCH7	27
 
 // Timer events IDs
 #define TEV_PID 	0
@@ -1802,6 +1810,11 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 
 		logsize = atoi(toks[2]) * sizeof(struct logpack);
 
+		// enable writeonly mode if log writing is enabled
+		flashdev.ioctl(flashdev.priv,
+			(logsize == 0)
+			? W25_IOCTL_READWRITE : W25_IOCTL_WRITEONLY);
+
 		// erase log flash no
 		// respond during this process
 		eraseflash(d, logsize);
@@ -1816,20 +1829,30 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		logbufpos = 0;
 	}
 	else if (strcmp(toks[1], "rget") == 0) {
+		// enable read/write mode if reading log
+		flashdev.ioctl(flashdev.priv, W25_IOCTL_READWRITE);
+
+		// print records from specified range
 		if (printlog(d, s, atoi(toks[2]), atoi(toks[3])) < 0)
 			return (-1);
 
+		// write end marker
 		sprintf(s, "-end-\r\n");
 		d->write(d->priv, s, strlen(s));
 	}
 	else if (strcmp(toks[1], "bget") == 0) {
 		const char **p;
 
+		// enable read/write mode if reading log
+		flashdev.ioctl(flashdev.priv, W25_IOCTL_READWRITE);
+	
+		// print every record whose number is in arguments
 		for (p = toks + 2; strlen(*p) != 0; ++p) {
 			if (printlog(d, s, atoi(*p), atoi(*p) + 1) < 0)
 				return (-1);
 		}
 
+		// write end marker
 		sprintf(s, "-end-\r\n");
 		d->write(d->priv, s, strlen(s));
 	}
@@ -1897,6 +1920,16 @@ int systemcmd(const struct cdevice *d, const char **toks, char *out)
 int crsfcmd(const struct crsf_data *cd, int ms)
 {
 	float dt;
+
+	// write first 4 channels values into log	
+	logwrite(LOG_CRSFCH0, cd->chf[0]);
+	logwrite(LOG_CRSFCH1, cd->chf[1]);
+	logwrite(LOG_CRSFCH2, cd->chf[2]);
+	logwrite(LOG_CRSFCH3, cd->chf[3]);
+	logwrite(LOG_CRSFCH4, cd->chf[4]);
+	logwrite(LOG_CRSFCH5, cd->chf[5]);
+	logwrite(LOG_CRSFCH6, cd->chf[6]);
+	logwrite(LOG_CRSFCH7, cd->chf[7]);
 
 	// channel to on remote is used to turn on/off
 	// erls control. If this channel has low state, all remote

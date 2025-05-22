@@ -164,9 +164,11 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 	HAL_SPI_Transmit(dev->hspi, (uint8_t  *) data, sz, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
-	w25_waitwrite(dev, W25_WTIMEOUT);
-	w25_writedisable(dev);
-	w25_blockprotect(dev, 0x0f);
+	if (dev->writemode == W25_IOCTL_READWRITE) {
+		w25_waitwrite(dev, W25_WTIMEOUT);
+		w25_writedisable(dev);
+		w25_blockprotect(dev, 0x0f);
+	}
 
 	return 0;
 }
@@ -265,6 +267,11 @@ int w25_writesector(void *d, size_t addr, const void *data,
 
 int w25_ioctl(void *d, int req, ...)
 {
+	struct w25_device *dev;
+	dev = (struct w25_device *) d;
+	
+	dev->writemode = req;
+
 	return 0;
 }
 
@@ -290,7 +297,10 @@ int w25_initdevice(void *is, struct bdevice *dev)
 	dev->sectorsize = W25_SECTORSIZE;
 	dev->totalsize = W25_TOTALSIZE;
 
+	devs[devcount].writemode = W25_IOCTL_READWRITE;
+	
 	r = w25_init(devs + devcount++);
+
 
 	dev->status = (r == 0) ? DEVSTATUS_INIT : DEVSTATUS_FAILED;
 
