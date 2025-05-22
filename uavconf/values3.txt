@@ -28,8 +28,8 @@ compl altitude 2.0
 lpf climb 0.25
 lpf vaccel 0.25
 lpf altitude 1.0
-adj rollthrust 0.0
-adj pitchthrust 0.0
+adj rollthrust -0.01
+adj pitchthrust -0.025
 adj roll 0.0
 adj pitch 0.0
 adj yaw 0.0
