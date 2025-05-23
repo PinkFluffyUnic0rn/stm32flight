@@ -96,6 +96,12 @@ by this UAV. Listed commands should be sent using UDP/IP to address
     * `gnss` -- M10 GNSS data.
     * `ctrl` -- eLRS remote configuration values.
     * `filter` -- complimentary and LPF filters configuration values.
+ * `log set {l}` -- set log length to `{l}` records and if `{l}` greater
+than `0` start logging. If `{l}` is `0`, stop logging.
+ * `log rget {b} {e}` -- get log records whose number starts from `{b}`
+and end with `{e} - 1`.
+ * `log bget {n1}...{nN}` -- get batch of log records with numbers
+`{n1}...{nN}`.
  * `pid (tilt|yaw) mode (single/double)` -- switch to single/double PID
 loop mode for tilt/yaw
  * `pid (tilt|stilt|yaw|syaw|throttle/climbrate/altitude) (p|i|d) {val}`
@@ -133,6 +139,62 @@ loop mode in radians.
  * `ctrl accel {val}` -- set maximum acceleration for throttle loop.
  * `ctrl climbrate {val}` -- set maximum climb rate in m/s.
  * `ctrl altmax {val}` -- set maximum altitude in meters.
+
+Log format
+==========
+
+Log records got by commands `log rget` and `log bget` are just lines
+with set of space separated numeric strings and have such format:
+
+```
+    {CRC} {number} {v0} ... {v31}
+
+```
+, where `{CRC}` is CRC-8 sum of record line, `{number}` -- record
+number and `{v0} ... {v31}` -- 31 record values.
+
+Log records sampled 64 times per second, so it is possible to get
+exact time from log start for each record, by it's number. For example,
+record with number `1234` was sampled at `45763 / 64 = 715.04` seconds
+from logging start, or, at 11 minutes and 55.04 seconds.
+
+Record values store various values that have meaning during flight. They
+are listed below:
+
+| number |value                           |
+|--------|--------------------------------|
+|0       |accelerometer scaled raw X value|
+|1       |accelerometer scaled raw Y value|
+|2       |accelerometer scaled raw Z value|
+|3       |gyroscope scaled raw X value    |
+|4       |gyroscope scaled raw Y value    |
+|5       |gyroscope scaled raw Z value    |
+|6       |magnetometer raw X value        |
+|7       |magnetometer raw Y value        |
+|8       |magnetometer raw Z value        |
+|9       |barometer temperature           |
+|10      |barometer altitude              |
+|11      |calculated roll value           |
+|12      |calculated pitch value          |
+|13      |calculated yaw value            |
+|14      |calculated climb rate           |
+|15      |calculated altitude             |
+|16      |left-forward motor's thrust     |
+|17      |left-backward motor's thrust    |
+|18      |right-forward motor's thrust    |
+|19      |right-backward motor's thrust   |
+|20      |eLRS channel 0 value            |
+|21      |eLRS channel 1 value            |
+|22      |eLRS channel 2 value            |
+|23      |eLRS channel 3 value            |
+|24      |eLRS channel 4 value            |
+|25      |eLRS channel 5 value            |
+|26      |eLRS channel 6 value            |
+|27      |eLRS channel 7 value            |
+|28      |unused                          |
+|29      |unused                          |
+|30      |unused                          |
+|31      |unused                          |
 
 Quadcopter parameters
 ==========
