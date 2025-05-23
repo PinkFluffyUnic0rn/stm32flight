@@ -748,7 +748,7 @@ int sprintpos(char *s, struct icm_data *id)
 		(double) dsp_getlpf(&tlpf));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"vertival acceleration: %f\r\n",
+		"vertical acceleration: %f\r\n",
 		(double) dsp_getlpf(&valpf));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
@@ -1382,6 +1382,10 @@ int magcalib(int ms)
 	if (!magcalibmode)
 		return 0;
 
+	// if magnetometer isn't initilized, return
+	if (dev[QMC_DEV].status != DEVSTATUS_INIT)
+		return 0;
+
 	// read magnetometer values
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
 		sizeof(struct qmc_data));
@@ -1410,6 +1414,7 @@ int hpupdate(int ms)
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
+	// if barometer isn't initilized, return
 	if (dev[HP_DEV].status != DEVSTATUS_INIT)
 		return 0;
 
@@ -1450,6 +1455,11 @@ int hpupdate(int ms)
 // ms -- microsecond passed from last callback invocation.
 int qmcupdate(int ms)
 {
+	// if magnetometer isn't initilized, return
+	if (dev[QMC_DEV].status != DEVSTATUS_INIT)
+		return 0;
+
+	// read magnetometer values
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
 

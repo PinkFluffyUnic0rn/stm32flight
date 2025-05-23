@@ -36,12 +36,12 @@ adj yaw 0.0
 adj acc x 0.0
 adj acc y 0.0
 adj acc z 0.0
-adj mag x0 0.0
-adj mag y0 0.0
+adj mag x0 20.0
+adj mag y0 -55.0
 adj mag z0 0.0
-adj mag xscale 1.0
+adj mag xscale 1.0137
 adj mag yscale 1.0
-adj mag zscale 1.0
+adj mag zscale 1.0279
 adj mag decl 0.3264
 adj gyro x -0.2
 adj gyro y -0.4

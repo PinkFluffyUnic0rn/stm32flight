@@ -553,7 +553,7 @@ int handlecmd(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 	else if (strcmp(cmd, "f") == 0)
 		sendcmd(lsfd, rsi, "info filter\n", NULL, NULL);
 	else if (strcmp(cmd, "w") == 0) {
-		sprintf(buf, "log set %d\r\n", LOGSIZE);
+		sprintf(buf, "log set %d\n", LOGSIZE);
 		sendcmd(lsfd, rsi, buf, NULL, NULL);
 	}
 	else if (strcmp(cmd, "s") == 0)
@@ -563,7 +563,7 @@ int handlecmd(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 	else if (strcmp(cmd, "c") == 0)
 		sendcmd(lsfd, rsi, "c 0.0\n", NULL, NULL);
 	else {
-		sprintf(buf, "%s\r\n", cmd);
+		sprintf(buf, "%s\n", cmd);
 		sendcmd(lsfd, rsi, buf, NULL, NULL);
 	}
 
