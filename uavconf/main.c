@@ -39,7 +39,7 @@
 
 // maximum number of log records in
 // batch when reading whole log
-#define BATCHSIZE 7
+#define BATCHSIZE 6
 
 // userdata structure passed to server-side
 // part of log download command
@@ -116,9 +116,9 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 {
 	char scmd[BUFSZ];
 
-	// calculate command's string CRC-8 value and add it as decimal
+	// calculate command's string CRC-16 value and add it as decimal
 	// string to begin of the command.
-	snprintf(scmd, BUFSZ, "%03hu %s", crc8((uint8_t *) cmd,
+	snprintf(scmd, BUFSZ, "%05u %s", crc16((uint8_t *) cmd,
 		strlen(cmd)), cmd);
 	scmd[BUFSZ - 1] = '\0';
 
@@ -163,7 +163,7 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 
 	// wait command to execute: fixed waiting time
 	// for some long commands, dynamic wait for fast commands
-	if (strncmp(cmd + 4, "flash", strlen("flash")) == 0)
+	if (strncmp(cmd + 6, "flash", strlen("flash")) == 0)
 		usleep(FLASHWAIT);
 	else
 		usleep(wait);
@@ -285,7 +285,7 @@ int parserecords(char *logbuf, size_t logbufoffset, int *records)
 	// so iterate through raw data buffer by them
 	while ((e = strchr(e, '\n')) != NULL) {
 		char *num, *val;
-		uint8_t crc;
+		uint16_t crc;
 		size_t n;
 		char *endptr;
 
@@ -295,25 +295,25 @@ int parserecords(char *logbuf, size_t logbufoffset, int *records)
 
 		// if record is less than 5 characters,
 		// skip it as corrupted
-		if (e - b < 5)
+		if (e - b < 7)
 			goto skip;
 
 		// calculate record's CRC
-		crc = crc8((uint8_t *) b + 4, e - b - 4 + 1);
+		crc = crc16((uint8_t *) b + 6, e - b - 6 + 1);
 
 		// if it is not the last record, replace newline
 		// character with null character making separate
 		// string of the current record.
 		*e = '\0';
 
-		// make separate string of first 4 characters of the
+		// make separate string of first 6 characters of the
 		// record. It contains record's CRC calculated on remote
 		// side, as decimal string
-		b[3] = '\0';
+		b[5] = '\0';
 
 		// set pointer to characters after
 		// CRC, it is record's number
-		num = b + 4;
+		num = b + 6;
 
 		// set pointer to first whitespace character after
 		// record's number, it is begin of record's values
@@ -400,7 +400,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 	d.sz = 0;
 	d.maxsz = 0;
 	d.bufoffset = 0;
-
+	
 	logtotalsz = 0;
 
 	// set all records in ordered records array to

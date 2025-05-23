@@ -60,7 +60,7 @@ int runcommand(const struct cdevice *d, char *cmd)
 	char buf[CMDSIZE];
 	char out[INFOLEN];
 	char *toks[MAX_CMDTOKS];
-	uint8_t crc;
+	uint16_t crc;
 	int toksoff;
 	int isuart;
 	int i;
@@ -85,7 +85,7 @@ int runcommand(const struct cdevice *d, char *cmd)
 	// localy and compare it's to CRC got from remote. If they
 	// dont match, send back CRC fail error.
 	if (!isuart) {
-		crc = crc8((uint8_t *) cmd + 4, strlen(cmd) - 4);
+		crc = crc16((uint8_t *) cmd + 6, strlen(cmd) - 6);
 
 		if (atoi(toks[0]) != crc)
 			goto crcfail;
@@ -131,7 +131,7 @@ unknown:
 	return (-1);
 
 crcfail:
-	snprintf(out, INFOLEN, "CRC check fail, got %hu: %s\r\n",
+	snprintf(out, INFOLEN, "CRC check fail, got %u: %s\r\n",
 		crc, cmd);
 
 	d->write(d->priv, out, strlen(out));

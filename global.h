@@ -7,6 +7,9 @@
 // periodic event timer prescaler
 #define PRESCALER 128
 
+// PWM settings
+#define PWM_MAXCOUNT 3200
+
 // periodic event timer period
 #define TIMPERIOD 0xfff
 

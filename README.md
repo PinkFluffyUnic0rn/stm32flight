@@ -64,6 +64,8 @@ IMU (accelerometer + gyroscope).
 * `main.c` -- all routines related to flight control.
 * `global.h` -- global values used in many places in source code.
 * `crc.h` -- CRC-8 implementation.
+* `stm32periph.c` and `stm32periph.h` -- stm32 periphery initialization
+and error handling.
 * `util.c` and `util.h` -- common utility functions that can be used in
 more than one source file.
 * `dsp.c` and `dsp.h` -- functions for PID control and data filtering

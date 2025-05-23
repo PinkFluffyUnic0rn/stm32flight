@@ -37,7 +37,7 @@ static int esp_dequeque(volatile struct fifo *f, char *out)
 {
 	if (f->bot == f->top)
 		return (-1);
-	
+
 	memcpyv(out, f->cmd[f->bot], ESP_CMDSIZE);
 
 	f->bot = (f->bot + 1) % ESP_FIFOSIZE;
