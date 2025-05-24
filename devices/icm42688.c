@@ -12,6 +12,7 @@
 
 enum ICM_REGISTER {
 	ICM_WHOAMI		= 117,
+	ICM_BANKSELECT		= 118,
 	ICM_PWRMGMT		= 78,
 	ICM_GYROCONFIG0		= 79,
 	ICM_ACCELCONFIG0	= 80,
@@ -175,31 +176,31 @@ int icm_selftest(struct icm_device *dev, struct icm_stdata *stdata)
 int icm_init(struct icm_device *dev)
 {
 	uint8_t check;
+	uint8_t v;
 
-	check = 0;	
+	check = 0;
 	icm_read(dev, ICM_WHOAMI, &check, 1);
 
 	if (check != 0x47)
 		return (-1);
 
-	icm_write(dev, ICM_PWRMGMT, 0x0f);
+	icm_write(dev, ICM_BANKSELECT, 0);
 	
-	icm_write(dev, ICM_GYROCONFIG0,
-		dev->gyroscale << 5 | dev->gyrorate);
-	icm_write(dev, ICM_ACCELCONFIG0,
-		dev->accelscale << 5 | dev->accelrate);
-	
+	icm_write(dev, ICM_PWRMGMT, 0x00);
+
 	icm_write(dev, ICM_GYROACCELCONFIG0,
 		dev->accellpf << 4 | dev->gyrolpf);
 
+	icm_read(dev, 0x4d, &v, 1);
+	icm_write(dev, 0x4d, (v & ~0xc0) | 0x40);
 /*
-	icm_write(dev, 0x76, 1);
+	icm_write(dev, ICM_BANKSELECT, 1);
 
 	icm_write(dev, 0x0c, DELT);
 	icm_write(dev, 0x0d, DELTSQR & 0xff);
 	icm_write(dev, 0x0e, (DELTSQR >> 8) | (BITSHIFT << 4));
 
-	icm_write(dev, 0x76, 2);
+	icm_write(dev, ICM_BANKSELECT, 2);
 
 	icm_write(dev, 0x03, DELT << 1);
 	icm_write(dev, 0x04, DELTSQR & 0xff);
@@ -207,6 +208,14 @@ int icm_init(struct icm_device *dev)
 
 	icm_write(dev, 0x76, 0);
 */
+	
+	icm_write(dev, ICM_PWRMGMT, 0x0f);
+
+	icm_write(dev, ICM_GYROCONFIG0,
+		dev->gyroscale << 5 | dev->gyrorate);
+	icm_write(dev, ICM_ACCELCONFIG0,
+		dev->accelscale << 5 | dev->accelrate);
+	
 	return 0;
 }
 
