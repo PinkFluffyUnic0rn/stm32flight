@@ -70,23 +70,26 @@
 #define LOG_MAG_Z	8
 #define LOG_BAR_TEMP	9
 #define LOG_BAR_ALT	10
-#define LOG_ROLL	11
-#define LOG_PITCH	12
-#define LOG_YAW		13
-#define LOG_CLIMBRATE	14
-#define LOG_ALT		15
-#define LOG_LT		16
-#define LOG_LB		17
-#define LOG_RB		18
-#define LOG_RT		19
-#define LOG_CRSFCH0	20
-#define LOG_CRSFCH1	21
-#define LOG_CRSFCH2	22
-#define LOG_CRSFCH3	23
-#define LOG_CRSFCH4	24
-#define LOG_CRSFCH5	25
-#define LOG_CRSFCH6	26
-#define LOG_CRSFCH7	27
+#define LOG_ACCPT_X	11
+#define LOG_ACCPT_Y	12
+#define LOG_ACCPT_Z	13
+#define LOG_ROLL	14
+#define LOG_PITCH	15
+#define LOG_YAW		16
+#define LOG_CLIMBRATE	17
+#define LOG_ALT		18
+#define LOG_LT		19
+#define LOG_LB		20
+#define LOG_RB		21
+#define LOG_RT		22
+#define LOG_CRSFCH0	23
+#define LOG_CRSFCH1	24
+#define LOG_CRSFCH2	25
+#define LOG_CRSFCH3	26
+#define LOG_CRSFCH4	27
+#define LOG_CRSFCH5	28
+#define LOG_CRSFCH6	29
+#define LOG_CRSFCH7	30
 
 // Timer events IDs
 #define TEV_PID 	0
@@ -179,6 +182,10 @@ struct settings {
 				// acceleration pow-pass filter
 	float vatcoef;		// time coefficient for vertical
 				// acceleration pow-pass filter
+
+	float accpt1freq;	// cut-off frequency for
+				// accelerometer PT1 filter
+
 	float atcoef;		// time coefficient for altitude
 				// low-pass filter
 	float cctcoef;		// time coefficient for climb rate
@@ -260,6 +267,10 @@ struct bdevice flashdev;
 struct dsp_lpf valpf;
 struct dsp_lpf tlpf;
 struct dsp_lpf altlpf;
+
+struct dsp_lpf accxpt1;
+struct dsp_lpf accypt1;
+struct dsp_lpf acczpt1;
 
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
@@ -420,11 +431,11 @@ static void icm_init()
 	d.pin = GPIO_PIN_13;
 
 	d.gyroscale = ICM_1000DPS;
-	d.gyrorate = ICM_GYRO4K;
+	d.gyrorate = ICM_GYRO8K;
 	d.gyroorder = ICM_GYROORDER3;
 	d.gyrolpf = ICM_GYROLPFLL;
 	d.accelscale = ICM_4G;
-	d.accelrate = ICM_ACCEL4K;
+	d.accelrate = ICM_ACCEL8K;
 	d.accellpf = ICM_ACCELLPFLL;
 	d.accelorder = ICM_ACCELORDER3;
 
@@ -612,6 +623,10 @@ int initstabilize(float alt)
 	dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
 	dsp_initlpf(&valpf, st.vatcoef, PID_FREQ);
 
+	dsp_initpt1(&accxpt1, st.accpt1freq, PID_FREQ);
+	dsp_initpt1(&accypt1, st.accpt1freq, PID_FREQ);
+	dsp_initpt1(&acczpt1, st.accpt1freq, PID_FREQ);
+
 	return 0;
 }
 
@@ -683,7 +698,10 @@ int sprintpos(char *s, struct icm_data *id)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "accel: ",
-		(double) id->afx, (double) id->afy, (double) id->afz);
+		(double) dsp_getlpf(&accxpt1),
+		(double) dsp_getlpf(&accypt1),
+		(double) dsp_getlpf(&acczpt1));	
+	
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "gyro: ",
 		(double) id->gfx, (double) id->gfy, (double) id->gfz);
@@ -691,9 +709,9 @@ int sprintpos(char *s, struct icm_data *id)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
 		"accel corrected: ",
-		(double) (id->afx - st.ax0),
-		(double) (id->afy - st.ay0),
-		(double) (id->afz - st.az0));
+		(double) (dsp_getlpf(&accxpt1) - st.ax0),
+		(double) (dsp_getlpf(&accypt1) - st.ay0),
+		(double) (dsp_getlpf(&acczpt1) - st.az0));
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
 		"gyro corrected: ",
@@ -978,7 +996,10 @@ int sprintffilters(char *s)
 		"yaw compl tc: %.6f\r\n", (double) st.yctcoef);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"accel lpf tc: %.6f\r\n", (double) st.ttcoef);
+		"accel lpf cut-off: %.6f\r\n", (double) st.accpt1freq);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"thrust lpf tc: %.6f\r\n", (double) st.ttcoef);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"vertical accel lpf tc: %.6f\r\n", (double) st.vatcoef);
@@ -1098,6 +1119,7 @@ int stabilize(int ms)
 	float rollcor, pitchcor, yawcor, thrustcor;
 	float vx, vy, vz;
 	float gy, gx, gz;
+	float ay, ax, az;
 	float dt;
 
 	// emergency disarm happened
@@ -1129,9 +1151,13 @@ int stabilize(int ms)
 	logwrite(LOG_GYRO_Z, id.gfz);
 
 	// apply accelerometer offsets
-	id.afx -= st.ax0;
-	id.afy -= st.ay0;
-	id.afz -= st.az0;
+	ax = dsp_updatept1(&accxpt1, id.afx) - st.ax0;
+	ay = dsp_updatept1(&accypt1, id.afy) - st.ay0;
+	az = dsp_updatept1(&acczpt1, id.afz) - st.az0;
+
+	logwrite(LOG_ACCPT_X, ax);
+	logwrite(LOG_ACCPT_Y, ay);
+	logwrite(LOG_ACCPT_Z, az);
 
 	// update vertical acceleration low-pass filter
 	dsp_updatelpf(&tlpf, id.afz);
@@ -1149,13 +1175,11 @@ int stabilize(int ms)
 	// calculated from acceleromer readings through some
 	// trigonometry.
 	roll = dsp_updatecompl(&rollcompl, gy * dt,
-		atan2f(-id.afx,
-		sqrt(id.afy * id.afy + id.afz * id.afz))) - st.roll0;
+		atan2f(-ax, sqrt(ay * ay + az * az))) - st.roll0;
 
 	// same as for roll but for different axes
 	pitch = dsp_updatecompl(&pitchcompl, gx * dt,
-		atan2f(id.afy,
-		sqrt(id.afx * id.afx + id.afz * id.afz))) - st.pitch0;
+		atan2f(ay, sqrt(ax * ax + az * az))) - st.pitch0;
 
 	// update complimenraty filter for yaw axis and get next yaw
 	// value. First signal is the speed of the rotation around Z
@@ -1173,7 +1197,7 @@ int stabilize(int ms)
 
 	// update vertical acceleration using acceleration
 	// vector to gravity vector projection
-	dsp_updatelpf(&valpf, (vx * id.afx + vy * id.afy + vz * id.afz)
+	dsp_updatelpf(&valpf, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
 	// if vertical acceleration is negative, most likely
@@ -1536,10 +1560,6 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 		dev[ICM_DEV].read(dev[ICM_DEV].priv, &id,
 			sizeof(struct icm_data));
 
-		id.afx -= st.ax0;
-		id.afy -= st.ay0;
-		id.afz -= st.az0;
-
 		sprintpos(out, &id);
 	}
 	else if (strcmp(toks[1], "qmc") == 0) {
@@ -1733,7 +1753,14 @@ int complcmd(const struct cdevice *dev, const char **toks, char *out)
 // toks -- list of parsed command tokens.
 int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 {
-	if (strcmp(toks[1], "climb") == 0) {
+	if (strcmp(toks[1], "accel") == 0) {
+		st.accpt1freq = atof(toks[2]);
+
+		dsp_initpt1(&accxpt1, st.accpt1freq, PID_FREQ);
+		dsp_initpt1(&accypt1, st.accpt1freq, PID_FREQ);
+		dsp_initpt1(&accypt1, st.accpt1freq, PID_FREQ);
+	}
+	else if (strcmp(toks[1], "climb") == 0) {
 		st.ttcoef = atof(toks[2]);
 
 		dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);

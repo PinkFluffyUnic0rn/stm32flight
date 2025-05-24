@@ -64,6 +64,10 @@ float dsp_getlpf(struct dsp_lpf *ir);
 // v -- new value of a signal being filtered.
 float dsp_updatelpf(struct dsp_lpf *ir, float v);
 
+int dsp_initpt1(struct dsp_lpf *ir, float cutoff, int freq);
+float dsp_getpt1(struct dsp_lpf *ir);
+float dsp_updatept1(struct dsp_lpf *ir, float v);
+
 // initilize PID controller.
 //
 // pv -- PID controller context.

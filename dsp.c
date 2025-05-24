@@ -22,6 +22,30 @@ float dsp_updatelpf(struct dsp_lpf *ir, float v)
 	return ir->avg;
 }
 
+int dsp_initpt1(struct dsp_lpf *ir, float cutoff, int freq)
+{
+	float v;
+
+	v = 2.0f * M_PI * cutoff / (float) freq;
+
+	ir->avg = 0.0;
+	ir->alpha = v / (v + 1.0f);
+
+	return 0;
+}
+
+float dsp_getpt1(struct dsp_lpf *ir)
+{
+	return ir->avg;
+}
+
+float dsp_updatept1(struct dsp_lpf *ir, float v)
+{
+	ir->avg += ir->alpha * (v - ir->avg);
+
+	return ir->avg;
+}
+
 int dsp_initpidval(struct dsp_pidval *pv, float kp, float ki, float kd,
 	float target)
 {

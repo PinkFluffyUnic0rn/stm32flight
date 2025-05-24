@@ -192,9 +192,7 @@ int icm_init(struct icm_device *dev)
 	icm_write(dev, ICM_GYROACCELCONFIG0,
 		dev->accellpf << 4 | dev->gyrolpf);
 
-
-
-
+/*
 	icm_write(dev, 0x76, 1);
 
 	icm_write(dev, 0x0c, DELT);
@@ -208,7 +206,7 @@ int icm_init(struct icm_device *dev)
 	icm_write(dev, 0x05, (DELTSQR >> 8) | (BITSHIFT << 4));
 
 	icm_write(dev, 0x76, 0);
-
+*/
 	return 0;
 }
 
