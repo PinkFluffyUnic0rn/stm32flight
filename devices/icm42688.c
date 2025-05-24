@@ -6,6 +6,10 @@
 
 #include "icm42688.h"
 
+#define DELT 21
+#define DELTSQR 440
+#define BITSHIFT 6
+
 enum ICM_REGISTER {
 	ICM_WHOAMI		= 117,
 	ICM_PWRMGMT		= 78,
@@ -187,6 +191,23 @@ int icm_init(struct icm_device *dev)
 	
 	icm_write(dev, ICM_GYROACCELCONFIG0,
 		dev->accellpf << 4 | dev->gyrolpf);
+
+
+
+
+	icm_write(dev, 0x76, 1);
+
+	icm_write(dev, 0x0c, DELT);
+	icm_write(dev, 0x0d, DELTSQR & 0xff);
+	icm_write(dev, 0x0e, (DELTSQR >> 8) | (BITSHIFT << 4));
+
+	icm_write(dev, 0x76, 2);
+
+	icm_write(dev, 0x03, DELT << 1);
+	icm_write(dev, 0x04, DELTSQR & 0xff);
+	icm_write(dev, 0x05, (DELTSQR >> 8) | (BITSHIFT << 4));
+
+	icm_write(dev, 0x76, 0);
 
 	return 0;
 }

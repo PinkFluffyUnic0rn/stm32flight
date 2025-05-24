@@ -422,10 +422,10 @@ static void icm_init()
 	d.gyroscale = ICM_1000DPS;
 	d.gyrorate = ICM_GYRO4K;
 	d.gyroorder = ICM_GYROORDER3;
-	d.gyrolpf = ICM_GYROLPF4;
+	d.gyrolpf = ICM_GYROLPFLL;
 	d.accelscale = ICM_4G;
 	d.accelrate = ICM_ACCEL4K;
-	d.accellpf = ICM_ACCELLPF4;
+	d.accellpf = ICM_ACCELLPFLL;
 	d.accelorder = ICM_ACCELORDER3;
 
 	if (icm_initdevice(&d, dev + ICM_DEV) >= 0)
