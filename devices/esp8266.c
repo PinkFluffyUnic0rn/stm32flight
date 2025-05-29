@@ -106,7 +106,7 @@ int esp_send(void *d, void *dt, size_t sz)
 		uint16_t size;
 		int t;
 		uint8_t b;
-		
+
 		t = 0;
 		while (HAL_GPIO_ReadPin(dev->bootgpio,
 				dev->bootpin) == GPIO_PIN_SET
@@ -126,6 +126,8 @@ int esp_send(void *d, void *dt, size_t sz)
 
 		HAL_GPIO_WritePin(dev->csgpio, dev->cspin,
 			GPIO_PIN_RESET);
+		
+		ndelay(5000);
 
 		b = 0x2;
 		HAL_SPI_Transmit(dev->hspi, &b, 1, 1000);
@@ -136,7 +138,7 @@ int esp_send(void *d, void *dt, size_t sz)
 		HAL_SPI_Transmit(dev->hspi, buf, ESP_SPIPACKSIZE, 1000);
 
 		HAL_GPIO_WritePin(dev->csgpio, dev->cspin,
-			GPIO_PIN_SET);
+			GPIO_PIN_SET);	
 	}
 
 	return 0;
@@ -168,7 +170,8 @@ static int esp_run(struct esp_device *dev)
 	HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_SET);
 	HAL_Delay(250);
 	HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_SET);
-
+	
+	HAL_GPIO_WritePin(dev->bootgpio, dev->bootpin, GPIO_PIN_RESET);
 	GPIO_InitStruct.Pin = dev->bootpin;
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;

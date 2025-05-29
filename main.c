@@ -163,6 +163,11 @@ struct settings {
 	float thrustmax;	// maximum thrust value
 	float rollmax, pitchmax; // maximum roll and pitch angles in Pi
 
+
+	float rollspeed;	// roll rotation speed in Pi for
+				// single loop tilt mode
+	float pitchspeed;	// pitch rotation speed in Pi for
+				// single loop tilt mode
 	float yawspeed;		// yaw rotation speed in Pi for
 				// single loop yaw mode
 	float yawtargetspeed;	// yaw target change speed in Pi for
@@ -309,6 +314,8 @@ float en = 0.0; // 1.0 when motors turned on, 0.0 otherwise
 enum ALTMODE altmode = 0; // ALTMODE_POS if in altitude hold mode,
 			  // ALTMODE_SPEED if climbrate control mode,
 			  // ALTMODE_ACCEL if acceleration control mode
+int speedpid = 0;	// 1 if only gyroscope if used for yaw
+			// stabilization, 0 if accelerometer is used
 int yawspeedpid = 0;	// 1 if only gyroscope if used for yaw
 			// stabilization, 0 if magnetometer is used
 
@@ -619,13 +626,14 @@ int initstabilize(float alt)
 	dsp_initpidval(&apv, st.ap, st.ai, st.ad, 0.0);
 
 	// init low-pass fitlers for altitude and vertical acceleration
-	dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
-	dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
-	dsp_initlpf(&valpf, st.vatcoef, PID_FREQ);
+	dsp_initlpf1t(&altlpf, st.atcoef, HP_FREQ);
+	dsp_initlpf1t(&tlpf, st.ttcoef, PID_FREQ);
+	dsp_initlpf1t(&valpf, st.vatcoef, PID_FREQ);
 
-	dsp_initpt1(&accxpt1, st.accpt1freq, PID_FREQ);
-	dsp_initpt1(&accypt1, st.accpt1freq, PID_FREQ);
-	dsp_initpt1(&acczpt1, st.accpt1freq, PID_FREQ);
+	// init low-pass fitlers for accelerometer x,y and z axes
+	dsp_initlpf1f(&accxpt1, st.accpt1freq, PID_FREQ);
+	dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
+	dsp_initlpf1f(&acczpt1, st.accpt1freq, PID_FREQ);
 
 	return 0;
 }
@@ -895,7 +903,7 @@ int sprintpid(char *s)
 		(double) st.ap, (double) st.ai, (double) st.ad);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%s mode\r\n", st.speedpid ? "single" : "dual");
+		"%s mode\r\n", speedpid ? "single" : "dual");
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%s yaw mode\r\n",
@@ -958,6 +966,14 @@ int sprintfctrl(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"maximum pitch: %.5f\r\n", (double) st.pitchmax);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"roll speed: %.5f\r\n",
+		(double) st.rollspeed);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"pitch speed: %.5f\r\n",
+		(double) st.pitchspeed);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"yaw speed: %.5f\r\n",
@@ -1151,9 +1167,9 @@ int stabilize(int ms)
 	logwrite(LOG_GYRO_Z, id.gfz);
 
 	// apply accelerometer offsets
-	ax = dsp_updatept1(&accxpt1, id.afx) - st.ax0;
-	ay = dsp_updatept1(&accypt1, id.afy) - st.ay0;
-	az = dsp_updatept1(&acczpt1, id.afz) - st.az0;
+	ax = dsp_updatelpf(&accxpt1, id.afx) - st.ax0;
+	ay = dsp_updatelpf(&accypt1, id.afy) - st.ay0;
+	az = dsp_updatelpf(&acczpt1, id.afz) - st.az0;
 
 	logwrite(LOG_ACCPT_X, ax);
 	logwrite(LOG_ACCPT_Y, ay);
@@ -1213,7 +1229,7 @@ int stabilize(int ms)
 	logwrite(LOG_PITCH, pitch);
 	logwrite(LOG_YAW, yaw);
 
-	if (st.speedpid) {
+	if (speedpid) {
 		// if in single PID loop mode for tilt
 		// (called accro mode), use only rotation speed values
 		// from the gyroscope. Update speed PID controllers for
@@ -1515,7 +1531,7 @@ int telesend(int ms)
 
 	snprintf((char *) tele.mode, 14, "%c|%s|%s|%s",
 		en > 0.5 ? 'a' : 'n',
-		attmodestr[st.speedpid ? 0 : 1],
+		attmodestr[speedpid ? 0 : 1],
 		yawmodestr[yawspeedpid ? 0 : 1], am);
 
 	// in case of emergency disarming
@@ -1610,9 +1626,9 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 	if (strcmp(toks[1], "tilt") == 0) {
 		if (strcmp(toks[2], "mode") == 0) {
 			if (strcmp(toks[3], "double") == 0)
-				st.speedpid = 0;
+				speedpid = 0;
 			else if (strcmp(toks[3], "single") == 0)
-				st.speedpid = 1;
+				speedpid = 1;
 			else
 				return (-1);
 		}
@@ -1756,24 +1772,24 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 	if (strcmp(toks[1], "accel") == 0) {
 		st.accpt1freq = atof(toks[2]);
 
-		dsp_initpt1(&accxpt1, st.accpt1freq, PID_FREQ);
-		dsp_initpt1(&accypt1, st.accpt1freq, PID_FREQ);
-		dsp_initpt1(&accypt1, st.accpt1freq, PID_FREQ);
+		dsp_initlpf1f(&accxpt1, st.accpt1freq, PID_FREQ);
+		dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
+		dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "climb") == 0) {
 		st.ttcoef = atof(toks[2]);
 
-		dsp_initlpf(&tlpf, st.ttcoef, PID_FREQ);
+		dsp_initlpf1t(&tlpf, st.ttcoef, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "vaccel") == 0) {
 		st.vatcoef = atof(toks[2]);
 
-		dsp_initlpf(&valpf, st.vatcoef, PID_FREQ);
+		dsp_initlpf1t(&valpf, st.vatcoef, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		st.atcoef = atof(toks[2]);
 
-		dsp_initlpf(&altlpf, st.atcoef, HP_FREQ);
+		dsp_initlpf1t(&altlpf, st.atcoef, HP_FREQ);
 	}
 	else
 		return (-1);
@@ -1927,10 +1943,14 @@ int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 		st.rollmax = v;
 	else if (strcmp(toks[1], "pitch") == 0)
 		st.pitchmax = v;
-	else if (strcmp(toks[1], "syaw") == 0)
-		st.yawspeed = v;
 	else if (strcmp(toks[1], "yaw") == 0)
 		st.yawtargetspeed = v;
+	else if (strcmp(toks[1], "sroll") == 0)
+		st.rollspeed = v;
+	else if (strcmp(toks[1], "spitch") == 0)
+		st.pitchspeed = v;
+	else if (strcmp(toks[1], "syaw") == 0)
+		st.yawspeed = v;
 	else if (strcmp(toks[1], "accel") == 0)
 		st.accelmax = v;
 	else if (strcmp(toks[1], "climbrate") == 0)
@@ -1970,7 +1990,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 {
 	float dt;
 
-	// write first 4 channels values into log	
+	// write first 8 channels values into log	
 	logwrite(LOG_CRSFCH0, cd->chf[0]);
 	logwrite(LOG_CRSFCH1, cd->chf[1]);
 	logwrite(LOG_CRSFCH2, cd->chf[2]);
@@ -1980,7 +2000,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	logwrite(LOG_CRSFCH6, cd->chf[6]);
 	logwrite(LOG_CRSFCH7, cd->chf[7]);
 
-	// channel to on remote is used to turn on/off
+	// channel 8 on remote is used to turn on/off
 	// erls control. If this channel has low state, all remote
 	// commands will be ignored, but packet still continue to
 	// comming
@@ -2029,15 +2049,26 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 	// if channel 9 is active (it's no-fix button on remote used
 	// for testing), set reference altitude from current altitude
-	if (cd->chf[8] > 0.0) {
-		dsp_initcompl(&climbratecompl, st.cctcoef, HP_FREQ);
-
+	if (cd->chf[8] > 0.0)
 		alt0 = dsp_getlpf(&altlpf);
-	}
 
 	// enable motors if channel six has value
 	// more than 50, disarm immediately otherwise
-	en = (cd->chf[5] > 0.5) ? 1.0 : 0.0;
+
+	if (cd->chf[5] < -0.25) {
+		en = 0;
+		speedpid = 0;
+	}
+	else if (cd->chf[5] > 0.25) {
+		en = 1;
+		speedpid = 0;
+	}
+	else {
+		en = 1;
+		speedpid = 1;
+	}
+
+//	en = (cd->chf[5] > 0.5) ? 1.0 : 0.0;
 
 	if (en < 0.5)
 		setthrust(0.0, 0.0, 0.0, 0.0);

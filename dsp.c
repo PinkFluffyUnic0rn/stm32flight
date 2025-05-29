@@ -2,48 +2,38 @@
 
 #include "dsp.h"
 
-int dsp_initlpf(struct dsp_lpf *ir, float tcoef, int freq)
+int dsp_initlpf1t(struct dsp_lpf *ir, float tcoef, int freq)
 {
-	ir->avg = 0.0;
+	ir->s1 = 0.0;
 	ir->alpha = exp(-1.0 / (float) freq / tcoef);
+	ir->order = DSP_LPFORDER_1;
+
+	return 0;
+}
+
+int dsp_initlpf1f(struct dsp_lpf *ir, float cutoff, int freq)
+{
+	float v;
+
+	v = 2.0f * M_PI * cutoff / (float) freq;
+
+	ir->s1 = 0.0;
+	ir->alpha = 1.0 - v / (v + 1.0f);
+	ir->order = DSP_LPFORDER_1;
 
 	return 0;
 }
 
 float dsp_getlpf(struct dsp_lpf *ir)
 {
-	return ir->avg;
+	return ir->s1;
 }
 
 float dsp_updatelpf(struct dsp_lpf *ir, float v)
 {
-	ir->avg = ir->alpha * ir->avg + (1 - ir->alpha) * v;
+	ir->s1 = ir->alpha * ir->s1 + (1 - ir->alpha) * v;
 
-	return ir->avg;
-}
-
-int dsp_initpt1(struct dsp_lpf *ir, float cutoff, int freq)
-{
-	float v;
-
-	v = 2.0f * M_PI * cutoff / (float) freq;
-
-	ir->avg = 0.0;
-	ir->alpha = v / (v + 1.0f);
-
-	return 0;
-}
-
-float dsp_getpt1(struct dsp_lpf *ir)
-{
-	return ir->avg;
-}
-
-float dsp_updatept1(struct dsp_lpf *ir, float v)
-{
-	ir->avg += ir->alpha * (v - ir->avg);
-
-	return ir->avg;
+	return ir->s1;
 }
 
 int dsp_initpidval(struct dsp_pidval *pv, float kp, float ki, float kd,

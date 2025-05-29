@@ -17,12 +17,20 @@
 // convert degrees to radians
 #define deg2rad(v) ((v) / 180.0 * M_PI)
 
+// low-pass filter's order
+enum DSP_LPFORDER {
+	DSP_LPFORDER_1 = 0,	// first order
+	DSP_LPFORDER_2 = 1,	// secord order
+	DSP_LPFORDER_3 = 2	// third order
+};
+
 // low pas filter context
 // it holds lpf's alpha and
 // accumulated filter data between calls
 struct dsp_lpf {
-	float avg;
+	float s1;
 	float alpha;
+	enum DSP_LPFORDER order;
 };
 
 // PID context
@@ -42,15 +50,25 @@ struct dsp_compl {
 	float coef;
 };
 
-// initilize low-pass filter.
+// initilize first order low-pass filter using time constant value.
 //
 // ir -- low-pass filter context.
-// tcoef -- time low-pass filter constant used to calculate
+// tcoef -- low-pass filter's time constant used to calculate
 // 	it's alpha coefficient.
 // freq -- discretisation frequency used to calculate alpha. In flight
 // 	controller application it's the stabilization loop frequency
 // 	(see main.c).
-int dsp_initlpf(struct dsp_lpf *ir, float tcoef, int freq);
+int dsp_initlpf1t(struct dsp_lpf *ir, float tcoef, int freq);
+
+// initilize first order low-pass filter using cut-off frequency value.
+//
+// ir -- low-pass filter context.
+// cutoff -- low-pass filter's cut-off frequency used to calculate
+// 	it's alpha coefficient.
+// freq -- discretisation frequency used to calculate alpha. In flight
+// 	controller application it's the stabilization loop frequency
+// 	(see main.c).
+int dsp_initlpf1f(struct dsp_lpf *ir, float cutoff, int freq);
 
 // get last calculated low-pass filtering result (from last
 // dsp_updatelpf call).
@@ -63,10 +81,6 @@ float dsp_getlpf(struct dsp_lpf *ir);
 // ir -- low-pass filter context.
 // v -- new value of a signal being filtered.
 float dsp_updatelpf(struct dsp_lpf *ir, float v);
-
-int dsp_initpt1(struct dsp_lpf *ir, float cutoff, int freq);
-float dsp_getpt1(struct dsp_lpf *ir);
-float dsp_updatept1(struct dsp_lpf *ir, float v);
 
 // initilize PID controller.
 //

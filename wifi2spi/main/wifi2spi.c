@@ -134,12 +134,19 @@ static void IRAM_ATTR transfrombuf()
 	trans.miso = (uint32_t *) data;
 	trans.bits.miso = SPIPACKSIZE * 8;
 
+	// to prevent context switch between interrupt and
+	// start of the transmission, enter critical section
+	taskENTER_CRITICAL();
+
 	// switch interrupt pin to high signaling
 	// SPI master that new data is coming
 	gpio_set_level(INT_GPIO, 1);
 
 	// perform SPI transmission	
 	spi_trans(HSPI_HOST, &trans);
+
+	// exit critical section after transmission is done
+	taskEXIT_CRITICAL();
 }
 
 // SPI event callback.
@@ -158,7 +165,7 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 
 	// if it is not transmission end event, return
 	if (event != SPI_TRANS_DONE_EVENT)
-		return;
+		goto skip;
 
 	// retrieve transmission type from callback argument
 	trans_done = *(uint32_t*)arg;
