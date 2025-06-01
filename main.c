@@ -277,6 +277,10 @@ struct dsp_lpf accxpt1;
 struct dsp_lpf accypt1;
 struct dsp_lpf acczpt1;
 
+struct dsp_lpf magxlpf;
+struct dsp_lpf magylpf;
+struct dsp_lpf magzlpf;
+
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
 struct dsp_compl yawcompl;
@@ -460,7 +464,7 @@ static void qmc_init()
 	d.hi2c = &hi2c1;
 	d.scale = QMC_SCALE_8;
 	d.rate = QMC_RATE_100;
-	d.osr = QMC_OSR_256;
+	d.osr = QMC_OSR_512;
 
 	if (qmc_initdevice(&d, dev + QMC_DEV) >= 0)
 		uartprintf("QMC5883L initilized\r\n");
@@ -634,6 +638,10 @@ int initstabilize(float alt)
 	dsp_initlpf1f(&accxpt1, st.accpt1freq, PID_FREQ);
 	dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
 	dsp_initlpf1f(&acczpt1, st.accpt1freq, PID_FREQ);
+
+	dsp_initlpf1f(&magxlpf, 10.0, PID_FREQ);
+	dsp_initlpf1f(&magylpf, 10.0, PID_FREQ);
+	dsp_initlpf1f(&magzlpf, 10.0, PID_FREQ);
 
 	return 0;
 }
