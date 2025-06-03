@@ -24,6 +24,7 @@
 #include "w25.h"
 #include "m10.h"
 #include "uartconf.h"
+#include "irc.h"
 
 // device numbers
 #define ICM_DEV		0
@@ -33,7 +34,8 @@
 #define M10_DEV		4
 #define ESP_DEV		5
 #define UART_DEV	6
-#define DEV_COUNT	7
+#define IRC_DEV		7
+#define DEV_COUNT	8
 
 // Periodic events frequencies
 #define PID_FREQ 4000
@@ -430,6 +432,21 @@ static void hp_init()
 		uartprintf("HP206C initilized\r\n");
 	else
 		uartprintf("failed to initilize HP206C\r\n");
+}
+
+// Init IRC tramp video transmitter
+static void irc_init()
+{
+	struct irc_device d;
+
+	d.huart = &huart5;
+	d.power = 25;
+	d.frequency = 5733;
+
+	if (irc_initdevice(&d, dev + IRC_DEV) >= 0)
+		uartprintf("IRC device initilized\r\n");
+	else
+		uartprintf("failed to initilize IRC device\r\n");
 }
 
 // Init ICM-42688-P IMU
@@ -1616,6 +1633,15 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 		sprintfctrl(out);
 	else if (strcmp(toks[1], "filter") == 0)
 		sprintffilters(out);
+	else if (strcmp(toks[1], "irc") == 0) {
+		struct irc_data data;
+
+		dev[IRC_DEV].read(dev[IRC_DEV].priv, &data,
+			sizeof(struct irc_data));
+
+		snprintf(out, INFOLEN, "frequency: %d; power: %d\r\n",
+			data.frequency, data.power);
+	}
 	else
 		return (-1);
 
@@ -1990,6 +2016,29 @@ int systemcmd(const struct cdevice *d, const char **toks, char *out)
 	return 0;
 }
 
+// "irc" command handler. Configure IRC tramp video transmitter.
+//
+// toks -- list of parsed command tokens.
+int irccmd(const struct cdevice *d, const char **toks, char *out)
+{
+	if (strcmp(toks[1], "set") == 0) {
+		if (strcmp(toks[2], "frequency") == 0) {
+			dev[IRC_DEV].configure(dev[IRC_DEV].priv,
+				"frequency", atoi(toks[3]));
+		}
+		else if (strcmp(toks[2], "power") == 0) {
+			dev[IRC_DEV].configure(dev[IRC_DEV].priv,
+				"power", atoi(toks[3]));
+		}
+		else
+			return (-1);
+	}
+	else
+		return (-1);
+
+	return 0;
+}
+
 // Set control values using CRSF packet.
 //
 // cd -- CRSF packet
@@ -2060,9 +2109,10 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	if (cd->chf[8] > 0.0)
 		alt0 = dsp_getlpf(&altlpf);
 
-	// enable motors if channel six has value
-	// more than 50, disarm immediately otherwise
-
+	// set acceleromter stabilization mode, if channel 6 has value
+	// more than 25, set gyroscope only stabilization mode, if
+	// channel 6 has value between -25 and 25, disarm if channel 6
+	// value is less than -25
 	if (cd->chf[5] < -0.25) {
 		en = 0;
 		speedpid = 0;
@@ -2075,8 +2125,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		en = 1;
 		speedpid = 1;
 	}
-
-//	en = (cd->chf[5] > 0.5) ? 1.0 : 0.0;
 
 	if (en < 0.5)
 		setthrust(0.0, 0.0, 0.0, 0.0);
@@ -2161,6 +2209,7 @@ int main(void)
 	usart2_init();
 	usart3_init();
 	uart4_init();
+	uart5_init();
 
 	// init board's devices
 	esc_init();
@@ -2172,6 +2221,7 @@ int main(void)
 	m10dev_init();
 	uartdev_init();
 	hp_init();
+	irc_init();
 
 	// reading settings from memory slot 0
 	readsettings(0);
@@ -2201,6 +2251,7 @@ int main(void)
 	addcommand("log", logcmd);
 	addcommand("ctrl", ctrlcmd);
 	addcommand("system", systemcmd);
+	addcommand("irc", irccmd);
 
 	// initilize ERLS timer. For now ERLS polling is not a periodic
 	// event and called as frequently as possible, so it needs this

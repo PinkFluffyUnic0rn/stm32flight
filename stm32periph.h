@@ -13,6 +13,7 @@ extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 extern UART_HandleTypeDef huart4;
+extern UART_HandleTypeDef huart5;
 extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart3_rx;
@@ -33,6 +34,7 @@ void usart1_init();
 void usart2_init();
 void usart3_init();
 void uart4_init();
+void uart5_init();
 
 // MCU hardware errors handler. Disarm immediately
 // in case of any of such error.

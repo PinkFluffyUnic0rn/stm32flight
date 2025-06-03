@@ -14,6 +14,7 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 UART_HandleTypeDef huart4;
+UART_HandleTypeDef huart5;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart3_rx;
@@ -354,6 +355,21 @@ void uart4_init()
 	huart4.Init.OverSampling = UART_OVERSAMPLING_16;
 
 	if (HAL_UART_Init(&huart4) != HAL_OK)
+		error_handler();
+}
+
+void uart5_init()
+{
+	huart5.Instance = UART5;
+	huart5.Init.BaudRate = 9600;
+	huart5.Init.WordLength = UART_WORDLENGTH_8B;
+	huart5.Init.StopBits = UART_STOPBITS_1;
+	huart5.Init.Parity = UART_PARITY_NONE;
+	huart5.Init.Mode = UART_MODE_TX_RX;
+	huart5.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart5.Init.OverSampling = UART_OVERSAMPLING_16;
+
+	if (HAL_HalfDuplex_Init(&huart5) != HAL_OK)
 		error_handler();
 }
 
