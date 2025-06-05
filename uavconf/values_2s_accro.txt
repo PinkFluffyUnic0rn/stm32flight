@@ -1,20 +1,20 @@
 pid tilt mode double
-pid tilt p 10.0
-pid tilt i 0.00001
+pid tilt p 2.0
+pid tilt i 0.000
 pid tilt d 0.0001
-pid stilt p 0.05
+pid stilt p 0.25
 pid stilt i 0.0
 pid stilt d 0.0
 pid yaw mode double
-pid yaw p -2.0
+pid yaw p -1.5
 pid yaw i 0.0
 pid yaw d 0.0
-pid syaw p -1.0
+pid syaw p -2.5
 pid syaw i 0.0
-pid syaw d 0.0
+pid syaw d 0.0005
 pid throttle p 3.0
-pid throttle i 0.00005
-pid throttle d 0.00005
+pid throttle i 0.0
+pid throttle d 0.0
 pid climbrate p 0.3
 pid climbrate i 0.0
 pid climbrate d 0.0001
@@ -26,6 +26,7 @@ compl yaw 1.5
 compl climbrate 1.5
 compl altitude 2.0
 lpf accel 40.0
+lpf gyro 40.0
 lpf climb 0.25
 lpf vaccel 0.25
 lpf altitude 1.0
@@ -50,9 +51,9 @@ adj gyro z 0.6
 ctrl thrust 0.9
 ctrl roll 0.25
 ctrl pitch 0.25
-ctrl sroll 3.0
-ctrl spitch 3.0
-ctrl syaw 1.0
+ctrl sroll 1.0
+ctrl spitch 1.0
+ctrl syaw 1.5
 ctrl yaw 2.0
 ctrl accel 0.5
 ctrl climbrate 1.5

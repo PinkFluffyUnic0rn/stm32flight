@@ -44,7 +44,7 @@
 #define HP_FREQ 25
 #define QMC_FREQ 100
 #define TELE_FREQ 10
-#define LOG_FREQ 64
+#define LOG_FREQ 256
 
 // MCU flash address where quadcopter settings is stored
 #define USER_FLASH 0x080e0000
@@ -193,6 +193,9 @@ struct settings {
 	float accpt1freq;	// cut-off frequency for
 				// accelerometer PT1 filter
 
+	float gyropt1freq;	// cut-off frequency for
+				// gyroscope PT1 filter
+
 	float atcoef;		// time coefficient for altitude
 				// low-pass filter
 	float cctcoef;		// time coefficient for climb rate
@@ -278,6 +281,10 @@ struct dsp_lpf altlpf;
 struct dsp_lpf accxpt1;
 struct dsp_lpf accypt1;
 struct dsp_lpf acczpt1;
+
+struct dsp_lpf gyroxpt1;
+struct dsp_lpf gyroypt1;
+struct dsp_lpf gyrozpt1;
 
 struct dsp_lpf magxlpf;
 struct dsp_lpf magylpf;
@@ -651,11 +658,17 @@ int initstabilize(float alt)
 	dsp_initlpf1t(&tlpf, st.ttcoef, PID_FREQ);
 	dsp_initlpf1t(&valpf, st.vatcoef, PID_FREQ);
 
-	// init low-pass fitlers for accelerometer x,y and z axes
+	// init low-pass fitlers for accelerometer x, y and z axes
 	dsp_initlpf1f(&accxpt1, st.accpt1freq, PID_FREQ);
 	dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
 	dsp_initlpf1f(&acczpt1, st.accpt1freq, PID_FREQ);
 
+	// init low-pass fitlers for gyroscope x, y and z axes
+	dsp_initlpf1f(&gyroxpt1, st.gyropt1freq, PID_FREQ);
+	dsp_initlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ);
+	dsp_initlpf1f(&gyrozpt1, st.gyropt1freq, PID_FREQ);
+
+	// init low-pass fitlers for magnetometer x, y and z axes
 	dsp_initlpf1f(&magxlpf, 10.0, PID_FREQ);
 	dsp_initlpf1f(&magylpf, 10.0, PID_FREQ);
 	dsp_initlpf1f(&magzlpf, 10.0, PID_FREQ);
@@ -686,16 +699,17 @@ float qmc_heading(float r, float p, float x, float y, float z)
 
 /* Set motors thrust
 
-      ltd    rtd
+      rtd    ltd
         \    /
-   ^     \  /
+   p     \  /
    |
-   p     /  \
+   v     /  \
         /    \
-      lbd    rbd
+      rbd    lbd
 
-         <- r
+         r ->
 */
+
 // all values should be between 0.0 and 1.0.
 int setthrust(float ltd, float lbd, float rbd, float rtd)
 {
@@ -737,7 +751,9 @@ int sprintpos(char *s, struct icm_data *id)
 	
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "gyro: ",
-		(double) id->gfx, (double) id->gfy, (double) id->gfz);
+		(double) dsp_getlpf(&gyroxpt1),
+		(double) dsp_getlpf(&gyroypt1),
+		(double) dsp_getlpf(&gyrozpt1));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
@@ -748,9 +764,9 @@ int sprintpos(char *s, struct icm_data *id)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
 		"gyro corrected: ",
-		(double) (id->gfx - st.gx0),
-		(double) (id->gfy - st.gy0),
-		(double) (id->gfz - st.gz0));
+		(double) (dsp_getlpf(&gyroxpt1) - st.gx0),
+		(double) (dsp_getlpf(&gyroypt1) - st.gy0),
+		(double) (dsp_getlpf(&gyrozpt1) - st.gz0));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
@@ -1037,6 +1053,9 @@ int sprintffilters(char *s)
 		"yaw compl tc: %.6f\r\n", (double) st.yctcoef);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"gyro lpf cut-off: %.6f\r\n", (double) st.gyropt1freq);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel lpf cut-off: %.6f\r\n", (double) st.accpt1freq);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
@@ -1205,9 +1224,10 @@ int stabilize(int ms)
 
 	// offset gyroscope readings by values, calculater
 	// at power on and convert result into radians
-	gx = deg2rad((id.gfx - st.gx0));
-	gy = deg2rad((id.gfy - st.gy0));
-	gz = deg2rad((id.gfz - st.gz0));
+
+	gx = deg2rad(dsp_updatelpf(&gyroxpt1, id.gfx) - st.gx0);
+	gy = deg2rad(dsp_updatelpf(&gyroypt1, id.gfy) - st.gy0);
+	gz = deg2rad(dsp_updatelpf(&gyrozpt1, id.gfz) - st.gz0);
 
 	// update complimenraty filter for roll axis and get next roll
 	// value. First signal (value) is signal to be integrated: it's
@@ -1803,7 +1823,14 @@ int complcmd(const struct cdevice *dev, const char **toks, char *out)
 // toks -- list of parsed command tokens.
 int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 {
-	if (strcmp(toks[1], "accel") == 0) {
+	if (strcmp(toks[1], "gyro") == 0) {
+		st.gyropt1freq = atof(toks[2]);
+
+		dsp_initlpf1f(&gyroxpt1, st.gyropt1freq, PID_FREQ);
+		dsp_initlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ);
+		dsp_initlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ);
+	}
+	else if (strcmp(toks[1], "accel") == 0) {
 		st.accpt1freq = atof(toks[2]);
 
 		dsp_initlpf1f(&accxpt1, st.accpt1freq, PID_FREQ);
@@ -2076,11 +2103,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// get time passed from last ERLS packet
 	dt = ms / (float) TICKSPERSEC;
 
-	// set pitch/roll targets based on
-	// channels 1-2 values (it's a joystick on most remotes)
-	rolltarget = cd->chf[0] * (M_PI * st.rollmax);
-	pitchtarget = -cd->chf[1] * (M_PI * st.pitchmax);
-
 	if (cd->chf[4] < 0.0) {
 		yawspeedpid = 0;
 		yawtarget = circf(yawtarget
@@ -2091,6 +2113,10 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		yawtarget = -cd->chf[3] * M_PI * st.yawspeed;
 	}
 
+	// set altitude hold mode, if channel 7 has value more than 25,
+	// set climbrate stabilization mode if channel 7 has value
+	// between -25 and 25, set vertical acceleration mode if channel
+	// 7 value is less than -25
 	if (cd->chf[6] < -0.25) {
 		altmode = ALTMODE_ACCEL;
 		thrust = (cd->chf[2] + 0.75) / 1.75 * st.accelmax;;
@@ -2120,12 +2146,24 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	else if (cd->chf[5] > 0.25) {
 		en = 1;
 		speedpid = 0;
+
+		// set pitch/roll targets based on
+		// channels 1-2 values (it's a joystick on most remotes)
+		rolltarget = cd->chf[0] * (M_PI * st.rollmax);
+		pitchtarget = -cd->chf[1] * (M_PI * st.pitchmax);
 	}
 	else {
 		en = 1;
 		speedpid = 1;
+
+		// set pitch/roll targets based on
+		// channels 1-2 values (it's a joystick on most remotes)
+		rolltarget = cd->chf[0] * (M_PI * st.rollspeed);
+		pitchtarget = -cd->chf[1] * (M_PI * st.pitchspeed);
 	}
 
+	// disable thrust when motors should be
+	// disabled, for additional safety
 	if (en < 0.5)
 		setthrust(0.0, 0.0, 0.0, 0.0);
 
@@ -2221,7 +2259,7 @@ int main(void)
 	m10dev_init();
 	uartdev_init();
 	hp_init();
-	irc_init();
+	// irc_init();
 
 	// reading settings from memory slot 0
 	readsettings(0);
