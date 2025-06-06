@@ -195,6 +195,8 @@ struct settings {
 
 	float gyropt1freq;	// cut-off frequency for
 				// gyroscope PT1 filter
+	
+	float dpt1freq;		// cut-off frequency for PID D term
 
 	float atcoef;		// time coefficient for altitude
 				// low-pass filter
@@ -633,25 +635,28 @@ int initstabilize(float alt)
 	dsp_initcompl(&altcompl, st.actcoef, HP_FREQ);
 
 	// init roll and pitch position PID controller contexts
-	dsp_initpidval(&pitchpv, st.p, st.i, st.d, 0.0);
-	dsp_initpidval(&rollpv, st.p, st.i, st.d, 0.0);
+	dsp_initpid(&pitchpv, st.p, st.i, st.d, st.dpt1freq, PID_FREQ);
+	dsp_initpid(&rollpv, st.p, st.i, st.d, st.dpt1freq, PID_FREQ);
 
 	// init roll, pitch and yaw speed PID controller contexts
-	dsp_initpidval(&pitchspv, st.sp, st.si, st.sd, 0.0);
-	dsp_initpidval(&rollspv, st.sp, st.si, st.sd, 0.0);
-	dsp_initpidval(&yawspv, st.ysp, st.ysi, st.ysd, 0.0);
+	dsp_initpid(&pitchspv, st.sp, st.si, st.sd,
+		st.dpt1freq, PID_FREQ);
+	dsp_initpid(&rollspv, st.sp, st.si, st.sd,
+		st.dpt1freq, PID_FREQ);
+	dsp_initpid(&yawspv, st.ysp, st.ysi, st.ysd,
+		st.dpt1freq, PID_FREQ);
 
 	// init yaw position PID controller's context
-	dsp_initpidval(&yawpv, st.yp, st.yi, st.yd, 0.0);
+	dsp_initpid(&yawpv, st.yp, st.yi, st.yd, st.dpt1freq, PID_FREQ);
 
 	// init vertical acceleration PID controller's context
-	dsp_initpidval(&tpv, st.zsp, st.zsi, st.zsd, 0.0);
+	dsp_initpid(&tpv, st.zsp, st.zsi, st.zsd, st.dpt1freq, PID_FREQ);
 
 	// init climbrate PID controller's context
-	dsp_initpidval(&cpv, st.cp, st.ci, st.cd, 0.0);
+	dsp_initpid(&cpv, st.cp, st.ci, st.cd, st.dpt1freq, PID_FREQ);
 
 	// init altitude PID controller's context
-	dsp_initpidval(&apv, st.ap, st.ai, st.ad, 0.0);
+	dsp_initpid(&apv, st.ap, st.ai, st.ad, st.dpt1freq, PID_FREQ);
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_initlpf1t(&altlpf, st.atcoef, HP_FREQ);
@@ -1057,6 +1062,9 @@ int sprintffilters(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel lpf cut-off: %.6f\r\n", (double) st.accpt1freq);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"d lpf cut-off: %.6f\r\n", (double) st.dpt1freq);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"thrust lpf tc: %.6f\r\n", (double) st.ttcoef);
@@ -1691,8 +1699,10 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.d = v;
 		else					return (-1);
 
-		dsp_setpid(&pitchpv, st.p, st.i, st.d);
-		dsp_setpid(&rollpv, st.p, st.i, st.d);
+		dsp_setpid(&pitchpv, st.p, st.i, st.d,
+			st.dpt1freq, PID_FREQ);
+		dsp_setpid(&rollpv, st.p, st.i, st.d,
+			st.dpt1freq, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "stilt") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.sp = v;
@@ -1700,8 +1710,10 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.sd = v;
 		else					return (-1);
 
-		dsp_setpid(&pitchspv, st.sp, st.si, st.sd);
-		dsp_setpid(&rollspv, st.sp, st.si, st.sd);
+		dsp_setpid(&pitchspv, st.sp, st.si, st.sd,
+			st.dpt1freq, PID_FREQ);
+		dsp_setpid(&rollspv, st.sp, st.si, st.sd,
+			st.dpt1freq, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
 		if (strcmp(toks[2], "mode") == 0) {
@@ -1717,7 +1729,8 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.yd = v;
 		else					return (-1);
 
-		dsp_setpid(&yawpv, st.yp, st.yi, st.yd);
+		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
+			st.dpt1freq, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "syaw") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.ysp = v;
@@ -1725,7 +1738,8 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.ysd = v;
 		else					return (-1);
 
-		dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd);
+		dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd,
+			st.dpt1freq, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "throttle") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.zsp = v;
@@ -1733,7 +1747,8 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.zsd = v;
 		else					return (-1);
 
-		dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd);
+		dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd,
+			st.dpt1freq, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.cp = v;
@@ -1741,7 +1756,8 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.cd = v;
 		else					return (-1);
 
-		dsp_setpid(&cpv, st.cp, st.ci, st.cd);
+		dsp_setpid(&cpv, st.cp, st.ci, st.cd,
+			st.dpt1freq, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.ap = v;
@@ -1749,7 +1765,8 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.ad = v;
 		else					return (-1);
 
-		dsp_setpid(&apv, st.ap, st.ai, st.ad);
+		dsp_setpid(&apv, st.ap, st.ai, st.ad,
+			st.dpt1freq, PID_FREQ);
 	}
 	else
 		return (-1);
@@ -1836,6 +1853,26 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 		dsp_initlpf1f(&accxpt1, st.accpt1freq, PID_FREQ);
 		dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
 		dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
+	}
+	else if (strcmp(toks[1], "d") == 0) {
+		st.dpt1freq = atof(toks[2]);
+		
+		dsp_setpid(&pitchpv, st.p, st.i, st.d,
+			st.dpt1freq, PID_FREQ);
+		dsp_setpid(&rollpv, st.p, st.i, st.d,
+			st.dpt1freq, PID_FREQ);
+		dsp_setpid(&pitchspv, st.sp, st.si, st.sd,
+			st.dpt1freq, PID_FREQ);
+		dsp_setpid(&rollspv, st.sp, st.si, st.sd,
+			st.dpt1freq, PID_FREQ);
+		dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd,
+			st.dpt1freq, PID_FREQ);
+		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
+			st.dpt1freq, PID_FREQ);
+		dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd,
+			st.dpt1freq, PID_FREQ);
+		dsp_setpid(&cpv, st.cp, st.ci, st.cd,
+			st.dpt1freq, PID_FREQ);
 	}
 	else if (strcmp(toks[1], "climb") == 0) {
 		st.ttcoef = atof(toks[2]);

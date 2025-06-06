@@ -38,6 +38,7 @@ struct dsp_lpf {
 // accumelated data between calls.
 struct dsp_pidval {
 	float kp, ki, kd;
+	struct dsp_lpf dlpf;
 	float pe;
 	float s;
 };
@@ -70,6 +71,26 @@ int dsp_initlpf1t(struct dsp_lpf *ir, float tcoef, int freq);
 // 	(see main.c).
 int dsp_initlpf1f(struct dsp_lpf *ir, float cutoff, int freq);
 
+// set new first order low-pass filter using time constant value.
+//
+// ir -- low-pass filter context.
+// tcoef -- low-pass filter's time constant used to calculate
+// 	it's alpha coefficient.
+// freq -- discretisation frequency used to calculate alpha. In flight
+// 	controller application it's the stabilization loop frequency
+// 	(see main.c).
+int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq);
+
+// set new first order low-pass filter using cut-off frequency value.
+//
+// ir -- low-pass filter context.
+// cutoff -- low-pass filter's cut-off frequency used to calculate
+// 	it's alpha coefficient.
+// freq -- discretisation frequency used to calculate alpha. In flight
+// 	controller application it's the stabilization loop frequency
+// 	(see main.c).
+int dsp_setlpf1f(struct dsp_lpf *ir, float cutoff, int freq);
+
 // get last calculated low-pass filtering result (from last
 // dsp_updatelpf call).
 //
@@ -88,9 +109,10 @@ float dsp_updatelpf(struct dsp_lpf *ir, float v);
 // kp -- P coefficient.
 // ki -- I coefficient.
 // kd -- D coefficient.
+// dcoutoff -- D low-pass filter cut-off frequency.
 // target -- initial target value (unsed, should be removed).
-int dsp_initpidval(struct dsp_pidval *pv, float kp, float ki, float kd,
-	float target);
+int dsp_initpid(struct dsp_pidval *pv, float kp, float ki, float kd,
+	float dcoutoff, int freq);
 
 // set new P, I and D coefficient for a PID controller.
 //
@@ -98,7 +120,9 @@ int dsp_initpidval(struct dsp_pidval *pv, float kp, float ki, float kd,
 // kp -- P coefficient.
 // ki -- I coefficient.
 // kd -- D coefficient.
-float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd);
+// dcoutoff -- D low-pass filter cut-off frequency.
+float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
+	float dcutoff, int freq);
 
 // calculate next PID controller's correction value.
 //

@@ -27,6 +27,7 @@ compl climbrate 1.5
 compl altitude 2.0
 lpf gyro 40.0
 lpf accel 40.0
+lpf d 100.0
 lpf climb 0.25
 lpf vaccel 0.25
 lpf altitude 1.0
