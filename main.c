@@ -44,7 +44,7 @@
 #define HP_FREQ 25
 #define QMC_FREQ 100
 #define TELE_FREQ 10
-#define LOG_FREQ 256
+#define LOG_FREQ 64
 
 // MCU flash address where quadcopter settings is stored
 #define USER_FLASH 0x080e0000
@@ -291,6 +291,11 @@ struct dsp_lpf gyrozpt1;
 struct dsp_lpf magxlpf;
 struct dsp_lpf magylpf;
 struct dsp_lpf magzlpf;
+
+struct dsp_lpf ltlpf;
+struct dsp_lpf lblpf;
+struct dsp_lpf rtlpf;
+struct dsp_lpf rblpf;
 
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
@@ -677,6 +682,11 @@ int initstabilize(float alt)
 	dsp_initlpf1f(&magxlpf, 10.0, PID_FREQ);
 	dsp_initlpf1f(&magylpf, 10.0, PID_FREQ);
 	dsp_initlpf1f(&magzlpf, 10.0, PID_FREQ);
+
+	dsp_initlpf1f(&ltlpf, 40.0, PID_FREQ);
+	dsp_initlpf1f(&lblpf, 40.0, PID_FREQ);
+	dsp_initlpf1f(&rtlpf, 40.0, PID_FREQ);
+	dsp_initlpf1f(&rblpf, 40.0, PID_FREQ);
 
 	return 0;
 }
@@ -1378,6 +1388,20 @@ int stabilize(int ms)
 	// if final thrust is greater than
 	// limit set it to the limit
 	thrustcor = thrustcor > st.thrustmax ? st.thrustmax : thrustcor;
+/*
+	float ltd, lbd, rbd, rtd;
+
+	ltd = dsp_updatelpf(&ltlpf, ltm * (thrustcor - 0.5 * rollcor
+			+ 0.5 * pitchcor - 0.5 * yawcor));
+	lbd = dsp_updatelpf(&lblpf, lbm * (thrustcor - 0.5 * rollcor
+			- 0.5 * pitchcor + 0.5 * yawcor));
+	rbd = dsp_updatelpf(&rblpf, rbm * (thrustcor + 0.5 * rollcor
+			- 0.5 * pitchcor - 0.5 * yawcor));
+	rtd = dsp_updatelpf(&rtlpf, rtm * (thrustcor + 0.5 * rollcor
+			+ 0.5 * pitchcor + 0.5 * yawcor));
+
+	setthrust(en * ltd, en * lbd, en * rbd, en * rtd);
+*/
 
 	// update motors thrust based on calculated values. For
 	// quadcopter it's enought to split correction in half for
@@ -2296,7 +2320,7 @@ int main(void)
 	m10dev_init();
 	uartdev_init();
 	hp_init();
-	// irc_init();
+	irc_init();
 
 	// reading settings from memory slot 0
 	readsettings(0);

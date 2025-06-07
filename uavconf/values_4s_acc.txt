@@ -1,8 +1,8 @@
 pid tilt mode double
-pid tilt p 8.0
+pid tilt p 7.0
 pid tilt i 0.0
-pid tilt d 0.001
-pid stilt p 0.1
+pid tilt d 0.0001
+pid stilt p 0.05
 pid stilt i 0.0
 pid stilt d 0.0
 pid yaw mode double
@@ -18,8 +18,8 @@ pid throttle d 0.0
 pid climbrate p 0.3
 pid climbrate i 0.0
 pid climbrate d 0.0001
-pid altitude p 0.8
-pid altitude i 0.0005
+pid altitude p 0.6
+pid altitude i 0.001
 pid altitude d 0.0
 compl attitude 0.75
 compl yaw 1.5

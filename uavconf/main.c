@@ -552,6 +552,8 @@ int handlecmd(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 		sendcmd(lsfd, rsi, "info ctrl\n", NULL, NULL);
 	else if (strcmp(cmd, "f") == 0)
 		sendcmd(lsfd, rsi, "info filter\n", NULL, NULL);
+	else if (strcmp(cmd, "i") == 0)
+		sendcmd(lsfd, rsi, "info irc\n", NULL, NULL);
 	else if (strcmp(cmd, "w") == 0) {
 		sprintf(buf, "log set %d\n", LOGSIZE);
 		sendcmd(lsfd, rsi, buf, NULL, NULL);
