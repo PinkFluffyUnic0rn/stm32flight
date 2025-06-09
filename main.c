@@ -277,6 +277,8 @@ struct cdevice dev[DEV_COUNT];
 struct bdevice flashdev;
 
 // DSP contexts
+struct dsp_lpf batlpf;
+
 struct dsp_lpf valpf;
 struct dsp_lpf tlpf;
 struct dsp_lpf altlpf;
@@ -292,11 +294,6 @@ struct dsp_lpf gyrozpt1;
 struct dsp_lpf magxlpf;
 struct dsp_lpf magylpf;
 struct dsp_lpf magzlpf;
-
-struct dsp_lpf ltlpf;
-struct dsp_lpf lblpf;
-struct dsp_lpf rtlpf;
-struct dsp_lpf rblpf;
 
 struct dsp_compl pitchcompl;
 struct dsp_compl rollcompl;
@@ -390,7 +387,7 @@ float batteryvoltage()
 
 	HAL_ADC_Stop(&hadc1);
 
-	return (v / (float) 0xfff);
+	return (v / (float) 0xfff * 17.85882);
 }
 
 // external interrupt callback. It calls interrupt hadlers from
@@ -664,6 +661,9 @@ int initstabilize(float alt)
 	// init altitude PID controller's context
 	dsp_initpid(&apv, st.ap, st.ai, st.ad, st.dpt1freq, PID_FREQ);
 
+	// init battery voltage low-pass filter
+	dsp_initlpf1f(&batlpf, 100.0, PID_FREQ);
+
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_initlpf1t(&altlpf, st.atcoef, HP_FREQ);
 	dsp_initlpf1t(&tlpf, st.ttcoef, PID_FREQ);
@@ -683,11 +683,6 @@ int initstabilize(float alt)
 	dsp_initlpf1f(&magxlpf, 10.0, PID_FREQ);
 	dsp_initlpf1f(&magylpf, 10.0, PID_FREQ);
 	dsp_initlpf1f(&magzlpf, 10.0, PID_FREQ);
-
-	dsp_initlpf1f(&ltlpf, 40.0, PID_FREQ);
-	dsp_initlpf1f(&lblpf, 40.0, PID_FREQ);
-	dsp_initlpf1f(&rtlpf, 40.0, PID_FREQ);
-	dsp_initlpf1f(&rblpf, 40.0, PID_FREQ);
 
 	return 0;
 }
@@ -802,10 +797,6 @@ int sprintpos(char *s, struct icm_data *id)
 		"presice  altitude: %f\r\n",
 		(double) (dsp_getcompl(&altcompl) - alt0));
 
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"battery: %0.3f\n\r",
-		(double) (batteryvoltage() * 22.25765));
-
 	return 0;
 }
 
@@ -914,6 +905,10 @@ int sprintvalues(char *s)
 		"roll cor: %.3f; pitch cor: %.3f; yaw cor: %.3f\r\n",
 		(double) st.roll0, (double) st.pitch0,
 		(double) st.yaw0);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"battery: %0.3f\n\r",
+		(double) (dsp_getlpf(&batlpf)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"motors state: %.3f\r\n", (double) en);
@@ -1213,6 +1208,9 @@ int stabilize(int ms)
 	// divide-by-zero protection
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
+	// update battery voltage
+	logwrite(LOG_BAT, dsp_updatelpf(&batlpf, batteryvoltage()));
+
 	// toggle arming indication led
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,
 		(en > 0.5) ? GPIO_PIN_SET : GPIO_PIN_RESET);
@@ -1389,20 +1387,6 @@ int stabilize(int ms)
 	// if final thrust is greater than
 	// limit set it to the limit
 	thrustcor = thrustcor > st.thrustmax ? st.thrustmax : thrustcor;
-/*
-	float ltd, lbd, rbd, rtd;
-
-	ltd = dsp_updatelpf(&ltlpf, ltm * (thrustcor - 0.5 * rollcor
-			+ 0.5 * pitchcor - 0.5 * yawcor));
-	lbd = dsp_updatelpf(&lblpf, lbm * (thrustcor - 0.5 * rollcor
-			- 0.5 * pitchcor + 0.5 * yawcor));
-	rbd = dsp_updatelpf(&rblpf, rbm * (thrustcor + 0.5 * rollcor
-			- 0.5 * pitchcor - 0.5 * yawcor));
-	rtd = dsp_updatelpf(&rtlpf, rtm * (thrustcor + 0.5 * rollcor
-			+ 0.5 * pitchcor + 0.5 * yawcor));
-
-	setthrust(en * ltd, en * lbd, en * rbd, en * rtd);
-*/
 
 	// update motors thrust based on calculated values. For
 	// quadcopter it's enought to split correction in half for
@@ -1583,7 +1567,7 @@ int telesend(int ms)
 {
 	const char *am;
 
-	tele.bat = batteryvoltage() * (float) 22.25765;
+	tele.bat = dsp_getlpf(&batlpf);
 	
 	if (tele.bat < 6.0)
 		tele.batrem = (tele.bat - 3.5) / 0.7;
