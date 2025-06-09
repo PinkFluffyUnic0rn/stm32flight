@@ -56,10 +56,12 @@ u6:	ICM-42688-P
 u7:	QMC5883L
 
 dc-dc converter:
-l20:	10 uH
-r20:	10 kOhm
-r21:	3.3 kOhm
-c20:	0.1 uF
-c21:	10 uF
-c22:	100 uF
-u20:	tps5430
+l1:	10 uH
+r1:	10 kOhm
+r2:	3.3 kOhm
+r3:	4.7 kOhm
+r4:	27 kOhm
+c1:	0.1 uF
+c2:	10 uF
+c3:	100 uF
+u1:	tps5430
