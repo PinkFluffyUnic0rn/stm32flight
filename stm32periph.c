@@ -277,7 +277,7 @@ void adc1_init(void)
 	ADC_ChannelConfTypeDef sConfig = {0};
 
 	hadc1.Instance = ADC1;
-	hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+	hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
 	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
 	hadc1.Init.ScanConvMode = DISABLE;
 	hadc1.Init.ContinuousConvMode = ENABLE;

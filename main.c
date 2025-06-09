@@ -92,6 +92,7 @@
 #define LOG_CRSFCH5	28
 #define LOG_CRSFCH6	29
 #define LOG_CRSFCH7	30
+#define LOG_BAT		31
 
 // Timer events IDs
 #define TEV_PID 	0
@@ -375,21 +376,21 @@ int logflashpos = 0;
 size_t logsize = 0;
 struct logpack logbuf[LOG_BUFSIZE];
 
-// Get value from ADC, was used to monitor battery voltage.
+// Get battery voltage from ADC.
 //
 // hadc -- ADC context.
-uint32_t getadcv(ADC_HandleTypeDef *hadc)
+float batteryvoltage()
 {
 	uint32_t v;
 
-	HAL_ADC_Start(hadc);
-	HAL_ADC_PollForConversion(hadc, 1);
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, 1);
 
-	v = HAL_ADC_GetValue(hadc);
+	v = HAL_ADC_GetValue(&hadc1);
 
-	HAL_ADC_Stop(hadc);
+	HAL_ADC_Stop(&hadc1);
 
-	return v;
+	return (v / (float) 0xfff);
 }
 
 // external interrupt callback. It calls interrupt hadlers from
@@ -803,7 +804,7 @@ int sprintpos(char *s, struct icm_data *id)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"battery: %0.3f\n\r",
-		getadcv(&hadc1) / (double) 0xfff * (double) 9.9276);
+		(double) (batteryvoltage() * 22.25765));
 
 	return 0;
 }
@@ -1581,7 +1582,22 @@ int logupdate(int ms)
 int telesend(int ms)
 {
 	const char *am;
+
+	tele.bat = batteryvoltage() * (float) 22.25765;
 	
+	if (tele.bat < 6.0)
+		tele.batrem = (tele.bat - 3.5) / 0.7;
+	else if (tele.bat < 9.0)
+		tele.batrem = (tele.bat - 7.0) / 1.4;
+	else if (tele.bat < 13.5)
+		tele.batrem = (tele.bat - 10.5) / 2.1;
+	else if (tele.bat < 18.0)
+		tele.batrem = (tele.bat - 14) / 2.8;
+	else
+		tele.batrem = (tele.bat - 21) / 3.5;
+		
+	tele.batrem = trimf(100.0 * tele.batrem, 0.0, 100.0);
+		
 	tele.lat = gnss.lat + gnss.latmin / 60.0;
 	tele.lon = gnss.lon + gnss.lonmin / 60.0;
 	tele.speed = gnss.speed;

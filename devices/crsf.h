@@ -16,6 +16,8 @@ struct crsf_data {
 
 struct crsf_tele {
 	uint8_t mode[16];
+	float bat;
+	float batrem;
 	float lat;
 	float lon;
 	float speed;

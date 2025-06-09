@@ -21,6 +21,14 @@ struct packet {
 	uint8_t crc;
 };
 
+
+struct __attribute__ ((packed)) battery {
+	int16_t voltage;
+	int16_t current;
+	int8_t cap[3];
+	int8_t rem;
+};
+
 struct __attribute__ ((packed)) gps {
 	int32_t lat;
 	int32_t lon;
@@ -160,10 +168,12 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	struct gps *gpspack;
 	struct baroaltitude *baltpack;
 	struct attitude *attpack;
+	struct battery *batpack;
 	uint8_t buf[64];
 
 	d = dev;
 	tele = dt;
+	batpack =  (struct battery *) (buf + 3);
 	gpspack =  (struct gps *) (buf + 3);
 	baltpack = (struct baroaltitude *) (buf + 3);
 	attpack = (struct attitude *) (buf + 3);
@@ -177,6 +187,16 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	buf[15] = crc8(buf + 2, 13);
 
 	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 17, 1000);
+
+	buf[1] = 10;
+	buf[2] = 0x08;
+	batpack->voltage = endian2((int16_t)(tele->bat * 10));
+	batpack->current = 0;
+	batpack->cap[0] = batpack->cap[1] = batpack->cap[2] = 0; 
+	batpack->rem = (int8_t)(tele->batrem);
+	buf[11] = crc8(buf + 2, 9);
+
+	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 12, 1000);
 
 	buf[1] = 17;
 	buf[2] = 0x02;
