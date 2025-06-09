@@ -59,8 +59,8 @@ dc-dc converter:
 l1:	10 uH
 r1:	10 kOhm
 r2:	3.3 kOhm
-r3:	4.7 kOhm
-r4:	27 kOhm
+r3:	680 Ohm
+r4:	3 kOhm
 c1:	0.1 uF
 c2:	10 uF
 c3:	100 uF
