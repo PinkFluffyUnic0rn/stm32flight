@@ -6,6 +6,10 @@
 #include <QtWidgets>
 #include "mainwidget.h"
 
+extern "C" {
+#include "uavconf.h"
+}
+
 using namespace std;
 
 setting::setting(QWidget *parent, enum SETTING_TYPE t, string n,
@@ -28,6 +32,8 @@ setting::setting(QWidget *parent, enum SETTING_TYPE t, string n,
 			QRegExp("[-]{0,1}\\d{0,}\\.\\d{0,}"),0);
 
 		edit->setValidator(validator);
+
+		edit->setText(QString::fromStdString("0.0"));
 	}
 	else if (t == SETTING_TYPE_MODE) {
 		box = new QComboBox();
@@ -141,8 +147,10 @@ void settings_group::set_setting_value(string name, const string &v)
 float_settings_group::float_settings_group(QWidget *parent,
 	string name, vector<string> s) : settings_group(parent, name)
 {
-	for (auto it = begin(s); it != end(s); ++it)
-		add_setting(new setting(nullptr, SETTING_TYPE_FLOAT, *it));
+	for (auto it = begin(s); it != end(s); ++it) {
+		add_setting(new setting(nullptr,
+			SETTING_TYPE_FLOAT, *it));
+	}
 }
 
 settings_tab::settings_tab(QWidget *parent) : QWidget(parent)
@@ -561,11 +569,28 @@ void main_widget::string_to_conf(const string &s)
 	}
 }
 
+void write_term(void *t, const char *s)
+{
+	terminal *term;
+
+	term = (terminal *) t;
+
+	term->add_output(string(s));
+}
+
 void main_widget::flash_click_handler()
 {
+	stringstream ss;
+	string line;
+	
 	conf_to_string();
 
-	term->add_output(conf);
+	ss = stringstream(conf);
+
+	while (getline(ss, line, '\n')) {
+		sendcmd(lsfd, &rsi, line.c_str(), conffunc,
+			write_term, (void *) term);
+	}
 }
 
 void main_widget::open_click_handler()
@@ -574,7 +599,8 @@ void main_widget::open_click_handler()
 	ifstream infile;
 	stringstream buf;
 
-	name = QFileDialog::getOpenFileName(this, tr("Open file"), "", tr("Text files (*.txt)"));
+	name = QFileDialog::getOpenFileName(this, tr("Open file"),
+		"", tr("Text files (*.txt)"));
 
 	infile.open(name.toStdString());	
 
@@ -609,6 +635,8 @@ main_widget::main_widget(QWidget *parent) : QWidget(parent)
 	adjustments_tab = new settings_tab;
 	filters_tab = new settings_tab;
 	control_tab = new settings_tab;
+
+	initsocks(&lsfd, &rsi);
 
 	pid_tab->add_group(new float_settings_group(nullptr,
 		"rate PID", {"P", "I", "D"}), 0, 0);
@@ -656,7 +684,8 @@ main_widget::main_widget(QWidget *parent) : QWidget(parent)
 	
 	control_tab->add_group(new float_settings_group(nullptr,
 		"control rates",
-		{"roll", "pitch", "yaw position", "yaw", "climb"}), 3, 3, 2, 1);
+		{"roll", "pitch", "yaw position", "yaw", "climb"}),
+		3, 3, 2, 1);
 
 	tab->addTab(pid_tab, "PID");
 	tab->addTab(filters_tab, "Filters");

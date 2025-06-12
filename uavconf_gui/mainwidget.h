@@ -1,6 +1,9 @@
 #ifndef MAINWIDGET_H
 #define MAINWIDGET_H
 
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
 #include <string>
 #include <vector>
 #include <QWidget>
@@ -125,6 +128,9 @@ private:
 	void open_click_handler();
 	void save_click_handler();
 	void flash_click_handler();
+
+	struct sockaddr_in rsi;
+	int lsfd;
 
 	string conf;
 
