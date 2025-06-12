@@ -3,6 +3,9 @@
 
 int initsocks(int *lsfd, struct sockaddr_in *rsi);
 
+int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
+	void (*outfunc) (void *, const char *), void *data);
+
 int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void (*outfunc) (void *, const char *), void *data);
 

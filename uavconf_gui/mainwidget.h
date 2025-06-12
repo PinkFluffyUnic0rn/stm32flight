@@ -22,10 +22,12 @@ public:
 	setting(QWidget *parent = 0,
 		enum SETTING_TYPE t = SETTING_TYPE_FLOAT,
 		string n = string(""),
+		string c = string(""),
 		vector<string> modes = vector<string>());
 	~setting();
 
 	string &get_name();
+	string &get_command();
 	QWidget *get_label();
 	QWidget *get_field();
 	string get_value() const;
@@ -34,6 +36,7 @@ public:
 private:
 	QLabel *label;
 	string name;
+	string command;
 	
 	union {
 		struct {
@@ -61,6 +64,8 @@ public:
 	
 	void set_setting_value(string name, const string &v);
 
+	map<string, setting *> &get_settings();
+	
 private:
 	string name;
 	QGroupBox *group;
@@ -76,7 +81,8 @@ class float_settings_group : public settings_group
 public:
 	float_settings_group(QWidget *parent = 0,
 		string name = string(""),
-		vector<string> s = vector<string>());
+		vector<string> s = vector<string>(),
+		vector<string> c = vector<string>());
 };
 
 class settings_tab : public QWidget
@@ -92,6 +98,8 @@ public:
 
 	settings_group *get_group(string name);
 	const setting *get_setting(string name);
+
+	map<string, settings_group *>  &get_groups();
 
 private:
 	QGridLayout *grid;
@@ -127,26 +135,18 @@ private:
 
 	void open_click_handler();
 	void save_click_handler();
+	void connect_click_handler();
 	void flash_click_handler();
+
+	const vector<string> cmds;
 
 	struct sockaddr_in rsi;
 	int lsfd;
 
 	string conf;
 
-	settings_tab *pid_tab;
-	settings_tab *adjustments_tab;
-	settings_tab *filters_tab;
-	settings_tab *control_tab;
-	
-	setting *open;
-	setting *save;
-	
-	setting *flash;
-
-	setting *startlog;
-	setting *stoplog;
-	setting *loadlog;
+	map<string, settings_tab *> tabs;
+	map<string, setting *> settings;
 
 	terminal *term;
 	QTabWidget *tab;

@@ -1928,7 +1928,7 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 
 	v = atof(toks[2]);
 
-	if (strcmp(toks[1], "rollthrust") == 0)		st.rsc = v;
+if (strcmp(toks[1], "rollthrust") == 0)		st.rsc = v;
 	else if (strcmp(toks[1], "pitchthrust") == 0)	st.psc = v;
 	else if (strcmp(toks[1], "roll") == 0)		st.roll0 = v;
 	else if (strcmp(toks[1], "pitch") == 0)		st.pitch0 = v;
@@ -2125,6 +2125,207 @@ int irccmd(const struct cdevice *d, const char **toks, char *out)
 		return (-1);
 
 	return 0;
+}
+
+int getcmd(const struct cdevice *d, const char **toks, char *out)
+{
+	const char **p;
+	char *data;
+	float v;
+
+	if (strcmp(toks[1], "pid") == 0) {
+		if (strcmp(toks[2], "tilt") == 0) {
+			if (strcmp(toks[3], "p") == 0)
+				v = st.p;
+			else if (strcmp(toks[3], "i") == 0)
+				v = st.i;
+			else if (strcmp(toks[3], "d") == 0)
+				v = st.d;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "stilt") == 0) {
+			if (strcmp(toks[3], "p") == 0)
+				v = st.sp;
+			else if (strcmp(toks[3], "i") == 0)
+				v = st.si;
+			else if (strcmp(toks[3], "d") == 0)
+				v = st.sd;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "yaw") == 0) {
+			if (strcmp(toks[3], "p") == 0)
+				v = st.yp;
+			else if (strcmp(toks[3], "i") == 0)
+				v = st.yi;
+			else if (strcmp(toks[3], "d") == 0)
+				v = st.yd;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "syaw") == 0) {
+			if (strcmp(toks[3], "p") == 0)
+				v = st.ysp;
+			else if (strcmp(toks[3], "i") == 0)
+				v = st.ysi;
+			else if (strcmp(toks[3], "d") == 0)
+				v = st.ysd;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "throttle") == 0) {
+			if (strcmp(toks[3], "p") == 0)
+				v = st.zsp;
+			else if (strcmp(toks[3], "i") == 0)
+				v = st.zsi;
+			else if (strcmp(toks[3], "d") == 0)
+				v = st.zsd;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "climbrate") == 0) {
+			if (strcmp(toks[3], "p") == 0)
+				v = st.cp;
+			else if (strcmp(toks[3], "i") == 0)
+				v = st.ci;
+			else if (strcmp(toks[3], "d") == 0)
+				v = st.cd;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "altitude") == 0) {
+			if (strcmp(toks[3], "p") == 0)
+				v = st.ap;
+			else if (strcmp(toks[3], "i") == 0)
+				v = st.ai;
+			else if (strcmp(toks[3], "d") == 0)
+				v = st.ad;
+			else
+				return (-1);
+		}
+		else
+			return (-1);
+	}
+	else if (strcmp(toks[1], "compl") == 0) {
+		if (strcmp(toks[2], "attitude") == 0)
+			v = st.atctcoef;
+		else if (strcmp(toks[2], "yaw") == 0)
+			v = st.yctcoef;
+		else if (strcmp(toks[2], "climbrate") == 0)
+			v = st.cctcoef;
+		else if (strcmp(toks[2], "altitude") == 0)
+			v = st.actcoef;
+		else
+			return (-1);
+	}
+	else if (strcmp(toks[1], "lpf") == 0) {
+		if (strcmp(toks[2], "gyro") == 0)
+			v = st.gyropt1freq;
+		else if (strcmp(toks[2], "accel") == 0)
+			v = st.accpt1freq;
+		else if (strcmp(toks[2], "d") == 0)
+			v = st.dpt1freq;
+		else if (strcmp(toks[2], "climb") == 0)
+			v = st.ttcoef;
+		else if (strcmp(toks[2], "vaccel") == 0)
+			v = st.vatcoef;
+		else if (strcmp(toks[2], "altitude") == 0)
+			v = st.atcoef;
+		else
+			return (-1);
+	}
+	else if (strcmp(toks[1], "adj") == 0) {
+		if (strcmp(toks[2], "rollthrust") == 0)
+			v = st.rsc;
+		else if (strcmp(toks[2], "pitchthrust") == 0)
+			v = st.psc;
+		else if (strcmp(toks[2], "roll") == 0)
+			v = st.roll0;
+		else if (strcmp(toks[2], "pitch") == 0)
+			v = st.pitch0;
+		else if (strcmp(toks[2], "yaw") == 0)
+			v = st.yaw0;
+		else if (strcmp(toks[2], "acc") == 0) {
+			if (strcmp(toks[3], "x") == 0)
+				v = st.ax0;
+			else if (strcmp(toks[3], "y") == 0)
+				v = st.ay0;
+			else if (strcmp(toks[3], "z") == 0)
+				v = st.az0;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "gyro") == 0) {
+			if (strcmp(toks[3], "x") == 0)
+				v = st.gx0;
+			else if (strcmp(toks[3], "y") == 0)
+				v = st.gy0;
+			else if (strcmp(toks[3], "z") == 0)
+				v = st.gz0;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "mag") == 0) {
+			if (strcmp(toks[3], "x0") == 0)
+				v = st.mx0;
+			else if (strcmp(toks[3], "y0") == 0)
+				v = st.my0;
+			else if (strcmp(toks[3], "z0") == 0)
+				v = st.mz0;
+			else if (strcmp(toks[3], "xscale") == 0)
+				v = st.mxsc;
+			else if (strcmp(toks[3], "yscale") == 0)
+				v = st.mysc;
+			else if (strcmp(toks[3], "zscale") == 0)
+				v = st.mzsc;
+			else if (strcmp(toks[3], "decl") == 0)
+				v = st.magdecl;
+			else
+				return (-1);
+		}
+		else
+			return (-1);
+	}
+	else if (strcmp(toks[1], "ctrl") == 0) {
+		if (strcmp(toks[2], "thrust") == 0)
+			v = st.thrustmax;
+		else if (strcmp(toks[2], "roll") == 0)
+			v = st.rollmax;
+		else if (strcmp(toks[2], "pitch") == 0)
+			v = st.pitchmax;
+		else if (strcmp(toks[2], "yaw") == 0)
+			v = st.yawtargetspeed;
+		else if (strcmp(toks[2], "sroll") == 0)
+			v = st.rollspeed;
+		else if (strcmp(toks[2], "spitch") == 0)
+			v = st.pitchspeed;
+		else if (strcmp(toks[2], "syaw") == 0)
+			v = st.yawspeed;
+		else if (strcmp(toks[2], "accel") == 0)
+			v = st.accelmax;
+		else if (strcmp(toks[2], "climbrate") == 0)
+			v = st.climbratemax;
+		else if (strcmp(toks[2], "altmax") == 0)
+			v = st.altmax;
+		else
+			return (-1);
+	}
+	else
+		return (-1);
+
+	data = out + 6;
+
+	data[0] = '\0';
+	for (p = toks + 1; *p != NULL; ++p)
+		sprintf(data + strlen(data), "%s ", *p);
+
+	sprintf(data + strlen(data), "%f\r\n", (double) v);
+
+	sprintf(out, "%05u", crc16((uint8_t *) data, strlen(data)));
+	out[5] = ' ';
+
+	return 1;
 }
 
 // Set control values using CRSF packet.
@@ -2351,6 +2552,7 @@ int main(void)
 	addcommand("ctrl", ctrlcmd);
 	addcommand("system", systemcmd);
 	addcommand("irc", irccmd);
+	addcommand("get", getcmd);
 
 	// initilize ERLS timer. For now ERLS polling is not a periodic
 	// event and called as frequently as possible, so it needs this

@@ -152,6 +152,65 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 // lsfd -- UDP socket for configuration connection.
 // rsi -- remote IP address.
 // cmd -- command was sent.
+// outfunc -- function used to process command output
+// data -- userdata passed to sendcmd.
+int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
+	void (*outfunc) (void *, const char *), void *data)
+{
+	char out[BUFSZ + 1];
+	static int wait = MINWAIT; // wait time static variable
+				   // is used to adjust wait time
+				   // dinamically
+	char *endptr;
+	socklen_t rsis;
+	int rsz;
+
+	(void)(data);
+
+	// wait command to execute: fixed waiting time
+	// for some long commands, dynamic wait for fast commands
+	if (strncmp(cmd + 6, "flash", strlen("flash")) == 0)
+		usleep(FLASHWAIT);
+	else
+		usleep(wait);
+
+	// try to receive response from UDP socket
+	rsis = sizeof(rsi);
+	if ((rsz = recvfrom(lsfd, out, BUFSZ, 0,
+			(struct sockaddr *) &rsi, &rsis)) <= 0) {
+		
+		// it no response and maximum wait time haven't
+		// already reached, increase it
+		wait = (wait < MAXWAIT) ? (wait * 15 / 10) :  wait;
+
+		return (-1);
+	}
+
+	
+	// CRC-16 check output	
+	out[5] = '\0';
+	if (strtol(out, &endptr, 10)
+			!= crc16((uint8_t *) out + 6, rsz - 6)
+		|| *out == '\0' || *endptr != '\0')
+		return (-1);
+
+	// zero-terminate string got from network
+	out[rsz] = '\0';
+
+	outfunc(data, out + 6);
+
+
+
+	return 0;
+}
+
+// Server-side part of configuration command got from UAV
+// configuration file passed to this program as argument.
+//
+// lsfd -- UDP socket for configuration connection.
+// rsi -- remote IP address.
+// cmd -- command was sent.
+// outfunc -- function used to process command output
 // data -- userdata passed to sendcmd.
 int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void (*outfunc) (void *, const char *), void *data)
@@ -187,10 +246,7 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	// zero-terminate string got from network
 	out[rsz] = '\0';
 
-//	printf("%s", out);
-
 	outfunc(data, out);
-
 
 	// if response string doesn't equal command string sent, then
 	// command wasn't executed successfuly or response is corrupted

@@ -13,14 +13,16 @@ extern "C" {
 using namespace std;
 
 setting::setting(QWidget *parent, enum SETTING_TYPE t, string n,
-	vector<string> modes) : QWidget(parent)
+	string c, vector<string> modes)
+		: QWidget(parent)
 {
-	name = n;
-	
 	edit = NULL;
 	box = NULL;
 	button = NULL;
 	label = new QLabel();
+
+	name = n;
+	command = c;
 
 	label->setFrameStyle(QFrame::Panel | QFrame::Sunken);
 	label->setText(name.c_str());
@@ -64,6 +66,11 @@ string &setting::get_name()
 	return name;
 }
 
+string &setting::get_command()
+{
+	return command;
+}
+
 QWidget *setting::get_label()
 {
 	return label;
@@ -96,9 +103,17 @@ string setting::get_value() const
 
 void setting::set_value(const string &s)
 {
-	if (type == SETTING_TYPE_FLOAT)
-		edit->setText(QString::fromStdString(s));
+	if (type == SETTING_TYPE_FLOAT) {
+		string t;
 
+		t = s;
+		t.erase(t.find_last_not_of("0\r\n") + 1);
+
+		if (t.back() == '.')
+			t.pop_back();
+		
+		edit->setText(QString::fromStdString(t));
+	}
 }
 
 settings_group::settings_group(QWidget *parent,
@@ -144,13 +159,27 @@ void settings_group::set_setting_value(string name, const string &v)
 }
 
 
-float_settings_group::float_settings_group(QWidget *parent,
-	string name, vector<string> s) : settings_group(parent, name)
+map<string, setting *> &settings_group::get_settings()
 {
+	return settings;
+}
+
+float_settings_group::float_settings_group(QWidget *parent,
+	string name, vector<string> s, vector<string> c)
+		: settings_group(parent, name)
+{
+	size_t i;
+
+	for (i = 0; i < s.size(); ++i) {
+		add_setting(new setting(nullptr,
+			SETTING_TYPE_FLOAT, s[i], c[i]));
+	}
+
+	/*
 	for (auto it = begin(s); it != end(s); ++it) {
 		add_setting(new setting(nullptr,
 			SETTING_TYPE_FLOAT, *it));
-	}
+	}*/
 }
 
 settings_tab::settings_tab(QWidget *parent) : QWidget(parent)
@@ -176,6 +205,12 @@ void settings_tab::add_setting(setting *s,
 {
 	settings[s->get_name()] = s;
 	grid->addWidget(s, r, c, rs, cs);
+}
+
+
+map<string, settings_group *>  &settings_tab::get_groups()
+{
+	return groups;
 }
 
 settings_group *settings_tab::get_group(string name)
@@ -212,53 +247,65 @@ void terminal::add_output(string s)
 
 void main_widget::conf_to_string()
 {
-	const settings_group *g;
+//	const settings_group *g;
 
 	conf = string("");
 
-	g = pid_tab->get_group("angle PID");
+	for (auto t = begin(tabs); t != end(tabs); ++t) {
+		map<string, settings_group *> &groups = t->second->get_groups();
+
+		for (auto g = begin(groups); g != end(groups); ++g) {
+			map<string, setting *> &settings = g->second->get_settings();
+
+			for (auto s = begin(settings); s != end(settings); ++s) {
+				conf += s->second->get_command() + string(" ") + s->second->get_value() + string("\n");
+			}
+		}
+	}
+/*
+	g = tabs["pid"]->get_group("angle PID");
 	conf += string("pid tilt p ") + g->get_setting_value("P") + string("\n");
 	conf += string("pid tilt i ") + g->get_setting_value("I") + string("\n");
 	conf += string("pid tilt d ") + g->get_setting_value("D") + string("\n");
 
-	g = pid_tab->get_group("rate PID");
+	g = tabs["pid"]->get_group("rate PID");
 	conf += string("pid stilt p ") + g->get_setting_value("P") + string("\n");
 	conf += string("pid stilt i ") + g->get_setting_value("I") + string("\n");
 	conf += string("pid stilt d ") + g->get_setting_value("D") + string("\n");
 
-	g = pid_tab->get_group("yaw PID");
+	g = tabs["pid"]->get_group("yaw PID");
 	conf += string("pid syaw p ") + g->get_setting_value("P") + string("\n");
 	conf += string("pid syaw i ") + g->get_setting_value("I") + string("\n");
 	conf += string("pid syaw d ") + g->get_setting_value("D") + string("\n");
 
-	g = pid_tab->get_group("yaw position PID");
+	g = tabs["pid"]->get_group("yaw position PID");
 	conf += string("pid yaw p ") + g->get_setting_value("P") + string("\n");
 	conf += string("pid yaw i ") + g->get_setting_value("I") + string("\n");
 	conf += string("pid yaw d ") + g->get_setting_value("D") + string("\n");
 
-	g = pid_tab->get_group("throttle PID");
+	g = tabs["pid"]->get_group("throttle PID");
 	conf += string("pid throttle p ") + g->get_setting_value("P") + string("\n");
 	conf += string("pid throttle i ") + g->get_setting_value("I") + string("\n");
 	conf += string("pid throttle d ") + g->get_setting_value("D") + string("\n");
 
-	g = pid_tab->get_group("climb rate PID");
+	g = tabs["pid"]->get_group("climb rate PID");
 	conf += string("pid climbrate p ") + g->get_setting_value("P") + string("\n");
 	conf += string("pid climbrate i ") + g->get_setting_value("I") + string("\n");
 	conf += string("pid climbrate d ") + g->get_setting_value("D") + string("\n");
 
-	g = pid_tab->get_group("altitude PID");
+	g = tabs["pid"]->get_group("altitude PID");
 	conf += string("pid altitude p ") + g->get_setting_value("P") + string("\n");
 	conf += string("pid altitude i ") + g->get_setting_value("I") + string("\n");
 	conf += string("pid altitude d ") + g->get_setting_value("D") + string("\n");
 
 
-	g = filters_tab->get_group("Complimentary filters");
+	g = tabs["filters"]->get_group("Complimentary filters");
 	conf += string("compl attitude ") + g->get_setting_value("attitude") + string("\n");
 	conf += string("compl yaw ") + g->get_setting_value("yaw") + string("\n");
 	conf += string("compl climbrate ") + g->get_setting_value("climb rate") + string("\n");
 	conf += string("compl altitude ") + g->get_setting_value("altitude") + string("\n");
 
-	g = filters_tab->get_group("Low-pass filters");
+	g = tabs["filters"]->get_group("Low-pass filters");
 	conf += string("lpf gyro ") + g->get_setting_value("gyroscope") + string("\n");
 	conf += string("lpf accel ") + g->get_setting_value("accelerometer") + string("\n");
 	conf += string("lpf d ") + g->get_setting_value("d-term") + string("\n");
@@ -267,51 +314,51 @@ void main_widget::conf_to_string()
 	conf += string("lpf altitude ") + g->get_setting_value("altitude") + string("\n");
 
 
-	g = adjustments_tab->get_group("motor scale");
+	g = tabs["adjustments"]->get_group("motor scale");
 	conf += string("adj rollthrust ") + g->get_setting_value("roll") + string("\n");
 	conf += string("adj pitchthrust ") + g->get_setting_value("pitch") + string("\n");
 
-	g = adjustments_tab->get_group("attitude offset");
+	g = tabs["adjustments"]->get_group("attitude offset");
 	conf += string("adj roll ") + g->get_setting_value("roll") + string("\n");
 	conf += string("adj pitch ") + g->get_setting_value("pitch") + string("\n");
 	conf += string("adj yaw ") + g->get_setting_value("yaw") + string("\n");
 
-	g = adjustments_tab->get_group("accelerometer offset");
+	g = tabs["adjustments"]->get_group("accelerometer offset");
 	conf += string("adj acc x ") + g->get_setting_value("X") + string("\n");
 	conf += string("adj acc y ") + g->get_setting_value("Y") + string("\n");
 	conf += string("adj acc z ") + g->get_setting_value("Z") + string("\n");
 
-	g = adjustments_tab->get_group("gyroscope offset");
+	g = tabs["adjustments"]->get_group("gyroscope offset");
 	conf += string("adj gyro x ") + g->get_setting_value("X") + string("\n");
 	conf += string("adj gyro y ") + g->get_setting_value("Y") + string("\n");
 	conf += string("adj gyro z ") + g->get_setting_value("Z") + string("\n");
 
-	g = adjustments_tab->get_group("magnetometer offsets");
+	g = tabs["adjustments"]->get_group("magnetometer offsets");
 	conf += string("adj mag x0 ") + g->get_setting_value("X") + string("\n");
 	conf += string("adj mag y0 ") + g->get_setting_value("Y") + string("\n");
 	conf += string("adj mag z0 ") + g->get_setting_value("Z") + string("\n");
 	conf += string("adj mag decl ") + g->get_setting_value("declination") + string("\n");
 
-	g = adjustments_tab->get_group("magnetometer scale");
+	g = tabs["adjustments"]->get_group("magnetometer scale");
 	conf += string("adj mag xscale ") + g->get_setting_value("X") + string("\n");
 	conf += string("adj mag yscale ") + g->get_setting_value("Y") + string("\n");
 	conf += string("adj mag zscale ") + g->get_setting_value("Z") + string("\n");
 
 
-	g = control_tab->get_group("control maximums");
+	g = tabs["control"]->get_group("control maximums");
 	conf += string("ctrl thrust ") + g->get_setting_value("thrust") + string("\n");
 	conf += string("ctrl roll ") + g->get_setting_value("roll angle") + string("\n");
 	conf += string("ctrl pitch ") + g->get_setting_value("pitch angle") + string("\n");
 	conf += string("ctrl accel ") + g->get_setting_value("acceleration") + string("\n");
 	conf += string("ctrl altmax ") + g->get_setting_value("altitude") + string("\n");
 
-	g = control_tab->get_group("control rates");
+	g = tabs["control"]->get_group("control rates");
 	conf += string("ctrl sroll ") + g->get_setting_value("roll") + string("\n");
 	conf += string("ctrl spitch ") + g->get_setting_value("pitch") + string("\n");
 	conf += string("ctrl syaw ") + g->get_setting_value("yaw") + string("\n");
 	conf += string("ctrl yaw ") + g->get_setting_value("yaw position") + string("\n");
 	conf += string("ctrl climbrate ") + g->get_setting_value("climb") + string("\n");
-
+*/
 	conf += "flash write" + string("\n");
 }
 
@@ -334,7 +381,7 @@ void main_widget::string_to_conf(const string &s)
 			if (toks[1] == "tilt") {
 				settings_group *g;
 
-				g = pid_tab->get_group("angle PID");
+				g = tabs["pid"]->get_group("angle PID");
 
 				if (toks[2] == "p")
 					g->set_setting_value("P", toks[3]);
@@ -346,7 +393,7 @@ void main_widget::string_to_conf(const string &s)
 			else if (toks[1] == "stilt") {
 				settings_group *g;
 
-				g = pid_tab->get_group("rate PID");
+				g = tabs["pid"]->get_group("rate PID");
 
 				if (toks[2] == "p")
 					g->set_setting_value("P", toks[3]);
@@ -358,7 +405,7 @@ void main_widget::string_to_conf(const string &s)
 			else if (toks[1] == "yaw") {
 				settings_group *g;
 
-				g = pid_tab->get_group("yaw position PID");
+				g = tabs["pid"]->get_group("yaw position PID");
 
 				if (toks[2] == "p")
 					g->set_setting_value("P", toks[3]);
@@ -370,7 +417,7 @@ void main_widget::string_to_conf(const string &s)
 			else if (toks[1] == "syaw") {
 				settings_group *g;
 
-				g = pid_tab->get_group("yaw PID");
+				g = tabs["pid"]->get_group("yaw PID");
 
 				if (toks[2] == "p")
 					g->set_setting_value("P", toks[3]);
@@ -382,7 +429,7 @@ void main_widget::string_to_conf(const string &s)
 			else if (toks[1] == "throttle") {
 				settings_group *g;
 
-				g = pid_tab->get_group("throttle PID");
+				g = tabs["pid"]->get_group("throttle PID");
 
 				if (toks[2] == "p")
 					g->set_setting_value("P", toks[3]);
@@ -394,7 +441,7 @@ void main_widget::string_to_conf(const string &s)
 			else if (toks[1] == "climbrate") {
 				settings_group *g;
 
-				g = pid_tab->get_group("climb rate PID");
+				g = tabs["pid"]->get_group("climb rate PID");
 
 				if (toks[2] == "p")
 					g->set_setting_value("P", toks[3]);
@@ -406,7 +453,7 @@ void main_widget::string_to_conf(const string &s)
 			else if (toks[1] == "altitude") {
 				settings_group *g;
 
-				g = pid_tab->get_group("altitude PID");
+				g = tabs["pid"]->get_group("altitude PID");
 
 				if (toks[2] == "p")
 					g->set_setting_value("P", toks[3]);
@@ -419,7 +466,7 @@ void main_widget::string_to_conf(const string &s)
 		else if (toks[0] == "compl") {
 			settings_group *g;
 			
-			g = filters_tab->get_group("Complimentary filters");
+			g = tabs["filters"]->get_group("Complimentary filters");
 			
 			if (toks[1] == "attitude")
 				g->set_setting_value("attitude", toks[2]);
@@ -433,7 +480,7 @@ void main_widget::string_to_conf(const string &s)
 		else if (toks[0] == "lpf") {
 			settings_group *g;
 			
-			g = filters_tab->get_group("Low-pass filters");
+			g = tabs["filters"]->get_group("Low-pass filters");
 			
 			if (toks[1] == "gyro")
 				g->set_setting_value("gyroscope", toks[2]);
@@ -452,27 +499,27 @@ void main_widget::string_to_conf(const string &s)
 			settings_group *g;
 			
 			if (toks[1] == "rollthrust") {
-				g = adjustments_tab->get_group("motor scale");
+				g = tabs["adjustments"]->get_group("motor scale");
 				g->set_setting_value("roll", toks[3]);
 			}
 			else if (toks[1] == "pitchthrust") {
-				g = adjustments_tab->get_group("motor scale");
+				g = tabs["adjustments"]->get_group("motor scale");
 				g->set_setting_value("pitch", toks[3]);
 			}
 			else if (toks[1] == "roll") {
-				g = adjustments_tab->get_group("attitude offset");
+				g = tabs["adjustments"]->get_group("attitude offset");
 				g->set_setting_value("roll", toks[3]);
 			}
 			else if (toks[1] == "pitch") {
-				g = adjustments_tab->get_group("attitude offset");
+				g = tabs["adjustments"]->get_group("attitude offset");
 				g->set_setting_value("pitch", toks[3]);
 			}
 			else if (toks[1] == "yaw") {
-				g = adjustments_tab->get_group("attitude offset");
+				g = tabs["adjustments"]->get_group("attitude offset");
 				g->set_setting_value("yaw", toks[3]);
 			}
 			else if (toks[1] == "acc") {
-				g = adjustments_tab->get_group("accelerometer offset");
+				g = tabs["adjustments"]->get_group("accelerometer offset");
 				if (toks[2] == "x")
 					g->set_setting_value("X", toks[3]);
 				if (toks[2] == "y")
@@ -481,7 +528,7 @@ void main_widget::string_to_conf(const string &s)
 					g->set_setting_value("Z", toks[3]);
 			}
 			else if (toks[1] == "gyro") {
-				g = adjustments_tab->get_group("gyroscope offset");
+				g = tabs["adjustments"]->get_group("gyroscope offset");
 				if (toks[2] == "x")
 					g->set_setting_value("X", toks[3]);
 				if (toks[2] == "y")
@@ -491,31 +538,31 @@ void main_widget::string_to_conf(const string &s)
 			}
 			else if (toks[1] == "mag") {
 				if (toks[2] == "x0") {
-					g = adjustments_tab->get_group("magnetometer offsets");
+					g = tabs["adjustments"]->get_group("magnetometer offsets");
 					g->set_setting_value("X", toks[3]);
 				}
 				else if (toks[2] == "y0") {
-					g = adjustments_tab->get_group("magnetometer offsets");
+					g = tabs["adjustments"]->get_group("magnetometer offsets");
 					g->set_setting_value("Y", toks[3]);
 				}
 				else if (toks[2] == "z0") {
-					g = adjustments_tab->get_group("magnetometer offsets");
+					g = tabs["adjustments"]->get_group("magnetometer offsets");
 					g->set_setting_value("Z", toks[3]);
 				}
 				else if (toks[2] == "decl") {
-					g = adjustments_tab->get_group("magnetometer offsets");
+					g = tabs["adjustments"]->get_group("magnetometer offsets");
 					g->set_setting_value("declination", toks[3]);
 				}
 				else if (toks[2] == "xscale") {
-					g = adjustments_tab->get_group("magnetometer scale");
+					g = tabs["adjustments"]->get_group("magnetometer scale");
 					g->set_setting_value("X", toks[3]);
 				}
 				else if (toks[2] == "yscale") {
-					g = adjustments_tab->get_group("magnetometer scale");
+					g = tabs["adjustments"]->get_group("magnetometer scale");
 					g->set_setting_value("Y", toks[3]);
 				}
 				else if (toks[2] == "zscale") {
-					g = adjustments_tab->get_group("magnetometer scale");
+					g = tabs["adjustments"]->get_group("magnetometer scale");
 					g->set_setting_value("Z", toks[3]);
 				}
 			}
@@ -525,71 +572,47 @@ void main_widget::string_to_conf(const string &s)
 			settings_group *g;
 
 			if (toks[1] == "thrust") {
-				g = control_tab->get_group("control maximums");
+				g = tabs["control"]->get_group("control maximums");
 				g->set_setting_value("thrust", toks[2]);
 			}
 			else if (toks[1] == "roll") {
-				g = control_tab->get_group("control maximums");
+				g = tabs["control"]->get_group("control maximums");
 				g->set_setting_value("roll angle", toks[2]);
 			}
 			else if (toks[1] == "pitch") {
-				g = control_tab->get_group("control maximums");
+				g = tabs["control"]->get_group("control maximums");
 				g->set_setting_value("pitch angle", toks[2]);
 			}
 			else if (toks[1] == "accel") {
-				g = control_tab->get_group("control maximums");
+				g = tabs["control"]->get_group("control maximums");
 				g->set_setting_value("acceleration", toks[2]);
 			}
 			else if (toks[1] == "altmax") {
-				g = control_tab->get_group("control maximums");
+				g = tabs["control"]->get_group("control maximums");
 				g->set_setting_value("altitude", toks[2]);
 			}
 			else if (toks[1] == "sroll") {
-				g = control_tab->get_group("control rates");
+				g = tabs["control"]->get_group("control rates");
 				g->set_setting_value("roll", toks[2]);
 			}
 			else if (toks[1] == "spitch") {
-				g = control_tab->get_group("control rates");
+				g = tabs["control"]->get_group("control rates");
 				g->set_setting_value("pitch", toks[2]);
 			}
 			else if (toks[1] == "syaw") {
-				g = control_tab->get_group("control rates");
+				g = tabs["control"]->get_group("control rates");
 				g->set_setting_value("yaw", toks[2]);
 			}
 			else if (toks[1] == "yaw") {
-				g = control_tab->get_group("control rates");
+				g = tabs["control"]->get_group("control rates");
 				g->set_setting_value("yaw position", toks[2]);
 			}
 			else if (toks[1] == "climbrate") {
-				g = control_tab->get_group("control rates");
+				g = tabs["control"]->get_group("control rates");
 				g->set_setting_value("climb", toks[2]);
 			}
 		}
 			
-	}
-}
-
-void write_term(void *t, const char *s)
-{
-	terminal *term;
-
-	term = (terminal *) t;
-
-	term->add_output(string(s));
-}
-
-void main_widget::flash_click_handler()
-{
-	stringstream ss;
-	string line;
-	
-	conf_to_string();
-
-	ss = stringstream(conf);
-
-	while (getline(ss, line, '\n')) {
-		sendcmd(lsfd, &rsi, line.c_str(), conffunc,
-			write_term, (void *) term);
 	}
 }
 
@@ -626,108 +649,214 @@ void main_widget::save_click_handler()
 	outfile.close();
 }
 
-main_widget::main_widget(QWidget *parent) : QWidget(parent)
+void write_conf(void *c, const char *s)
+{
+	string *conf;
+
+	conf = (string *) c;
+
+	*conf += string(s);
+}
+
+void main_widget::connect_click_handler()
+{
+	conf = "";
+	
+	term->add_output(string("loading values..."));
+
+
+	for (auto it = begin(cmds); it != end(cmds); ++it) {
+		sendcmd(lsfd, &rsi, ("get " + *it).c_str(), getfunc,
+			write_conf, (void *) &conf);
+	
+		term->add_output("get " + *it);
+		
+		QCoreApplication::processEvents();
+	}
+	
+	term->add_output(string("Connected to UAV, values loaded"));
+
+	string_to_conf(conf);
+}
+
+void write_term(void *t, const char *s)
+{
+	terminal *term;
+
+	term = (terminal *) t;
+
+	term->add_output(string(s));
+	QCoreApplication::processEvents();
+}
+
+void main_widget::flash_click_handler()
+{
+	stringstream ss;
+	string line;
+	
+	conf_to_string();
+
+	ss = stringstream(conf);
+
+	while (getline(ss, line, '\n')) {
+		sendcmd(lsfd, &rsi, line.c_str(), conffunc,
+			write_term, (void *) term);
+	
+		QCoreApplication::processEvents();
+	}
+}
+
+main_widget::main_widget(QWidget *parent) : QWidget(parent), cmds( {
+	"pid tilt p", "pid tilt i", "pid tilt d",
+	"pid stilt p", "pid stilt i", "pid stilt d",
+	"pid yaw p", "pid yaw i", "pid yaw d",
+	"pid syaw p", "pid syaw i", "pid syaw d",
+	"pid throttle p", "pid throttle i", "pid throttle d",
+	"pid climbrate p", "pid climbrate i", "pid climbrate d",
+	"pid altitude p", "pid altitude i", "pid altitude d",
+
+	"compl attitude", "compl yaw",
+	"compl climbrate", "compl altitude",
+
+	"lpf gyro", "lpf accel", "lpf d",
+	"lpf climb", "lpf vaccel", "lpf altitude",
+
+	"adj rollthrust", "adj pitchthrust",
+	"adj roll", "adj pitch", "adj yaw",
+
+	"adj acc x", "adj acc y", "adj acc z",
+	"adj gyro x", "adj gyro y", "adj gyro z",
+
+	"adj mag x0", "adj mag y0", "adj mag z0", "adj mag decl",
+	"adj mag xscale", "adj mag yscale", "adj mag zscale",
+
+	"ctrl thrust", "ctrl roll", "ctrl pitch", "ctrl yaw",
+	"ctrl sroll", "ctrl spitch","ctrl syaw",
+	"ctrl accel", "ctrl climbrate", "ctrl altmax"
+})
 {
 	grid = new QGridLayout(this);
 	tab = new QTabWidget;
 
-	pid_tab = new settings_tab;
-	adjustments_tab = new settings_tab;
-	filters_tab = new settings_tab;
-	control_tab = new settings_tab;
+	tabs["pid"] = new settings_tab;
+	tabs["adjustments"] = new settings_tab;
+	tabs["filters"] = new settings_tab;
+	tabs["control"] = new settings_tab;
 
 	initsocks(&lsfd, &rsi);
 
-	pid_tab->add_group(new float_settings_group(nullptr,
-		"rate PID", {"P", "I", "D"}), 0, 0);
-	pid_tab->add_group(new float_settings_group(nullptr,
-		"angle PID", {"P", "I", "D"}), 0, 1);
-	pid_tab->add_group(new float_settings_group(nullptr,
-		"yaw PID", {"P", "I", "D"}), 0, 2);
-	pid_tab->add_group(new float_settings_group(nullptr,
-		"yaw position PID", {"P", "I", "D"}), 0, 3);
-	pid_tab->add_group(new float_settings_group(nullptr,
-		"throttle PID", {"P", "I", "D"}), 1, 0);
-	pid_tab->add_group(new float_settings_group(nullptr,
-		"climb rate PID", {"P", "I", "D"}), 1, 1);
-	pid_tab->add_group(new float_settings_group(nullptr,
-		"altitude PID", {"P", "I", "D"}), 1, 2);
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"rate PID", {"P", "I", "D"},
+		{"pid tilt p", "pid tilt i", "pid tilt d"}), 0, 0);
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"angle PID", {"P", "I", "D"},
+		{"pid stilt p", "pid stilt i", "pid stilt d"}), 0, 1);
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"yaw PID", {"P", "I", "D"},
+		{"pid syaw p", "pid syaw i", "pid syaw d"}), 0, 2);
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"yaw position PID", {"P", "I", "D"},
+		{"pid yaw p", "pid yaw i", "pid yaw d"}), 0, 3);
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"throttle PID", {"P", "I", "D"},
+		{"pid throttle p", "pid throttle i", "pid throttle d"}),
+		1, 0);
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"climb rate PID", {"P", "I", "D"},
+		{"pid climbrate p", "pid climbrate i",
+		"pid climbrate d"}), 1, 1);
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"altitude PID", {"P", "I", "D"},
+		{"pid altitude p", "pid altitude i", "pid altitude d"}),
+		1, 2);
 
-	filters_tab->add_group(new float_settings_group(nullptr,
+	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Complimentary filters",
-		{"attitude", "yaw", "climb rate", "altitude"}),
+		{"attitude", "yaw", "climb rate", "altitude"},
+		{"compl attitude", "compl yaw",
+		"compl climbrate", "compl altitude"}),
 		3, 0, 2, 1); 
-
-	filters_tab->add_group(new float_settings_group(nullptr,
+	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Low-pass filters",
 		{"gyroscope", "accelerometer", "d-term",
-		"climb rate", "acceleration", "altitude"}), 3, 1, 2, 1);
+		"climb rate", "acceleration", "altitude"},
+		{"lpf gyro", "lpf accel", "lpf d", "lpf climb",
+		"lpf vaccel", "lpf altitude"}), 3, 1, 2, 1);
 
-	adjustments_tab->add_group(new float_settings_group(nullptr,
-		"attitude offset", {"roll", "pitch", "yaw"}), 0, 0);
-	adjustments_tab->add_group(new float_settings_group(nullptr,
-		"motor scale", {"roll", "pitch"}), 0, 1);
-	adjustments_tab->add_group(new float_settings_group(nullptr,
-		"accelerometer offset", {"X", "Y", "Z"}), 1, 0);
-	adjustments_tab->add_group(new float_settings_group(nullptr,
-		"gyroscope offset", {"X", "Y", "Z"}), 1, 1);
-	adjustments_tab->add_group(new float_settings_group(nullptr,
-		"magnetometer offsets", {"X", "Y", "Z", "declination"}),
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"attitude offset", {"roll", "pitch", "yaw"},
+		{"adj roll", "adj pitch", "adj yaw"}), 0, 0);
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"motor scale", {"roll", "pitch"},
+		{"adj rollthrust", "adj pitchthrust"}), 0, 1);
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"accelerometer offset", {"X", "Y", "Z"},
+		{"adj acc x", "adj acc y", "adj acc z"}), 1, 0);
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"gyroscope offset", {"X", "Y", "Z"},
+		{"adj gyro x", "adj gyro y", "adj gyro z"}), 1, 1);
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"magnetometer offsets", {"X", "Y", "Z", "declination"},
+		{"adj mag x0", "adj mag y0",
+		"adj mag z0", "adj mag decl"}),
 		2, 0);
-	adjustments_tab->add_group(new float_settings_group(nullptr,
-		"magnetometer scale", {"X", "Y", "Z"}), 2, 1);
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"magnetometer scale", {"X", "Y", "Z"},
+		{"adj mag xscale", "adj mag yscale",
+		"adj mag zscale"}), 2, 1);
 
-	control_tab->add_group(new float_settings_group(nullptr,
+	tabs["control"]->add_group(new float_settings_group(nullptr,
 		"control maximums",
 		{"thrust", "roll angle", "pitch angle",
-		"acceleration", "altitude"}), 3, 2, 2, 1);
+		"acceleration", "altitude"},
+		{"ctrl thrust", "ctrl roll", "ctrl pitch",
+		"ctrl accel", "ctrl altmax"}), 3, 2, 2, 1);
 	
-	control_tab->add_group(new float_settings_group(nullptr,
+	tabs["control"]->add_group(new float_settings_group(nullptr,
 		"control rates",
-		{"roll", "pitch", "yaw position", "yaw", "climb"}),
+		{"roll", "pitch", "yaw position", "yaw", "climb"},
+		{"ctrl sroll", "ctrl spitch", "ctrl yaw",
+		"ctrl syaw", "ctrl climbrate"}),
 		3, 3, 2, 1);
 
-	tab->addTab(pid_tab, "PID");
-	tab->addTab(filters_tab, "Filters");
-	tab->addTab(adjustments_tab, "Adjustments");
-	tab->addTab(control_tab, "Control");
+	tab->addTab(tabs["pid"], "PID");
+	tab->addTab(tabs["filters"], "Filters");
+	tab->addTab(tabs["adjustments"], "Adjustments");
+	tab->addTab(tabs["control"], "Control");
 
-	open = new setting(nullptr, SETTING_TYPE_BUTTON, "open config");
-	save = new setting(nullptr, SETTING_TYPE_BUTTON, "save config");
-
-	flash = new setting(nullptr, SETTING_TYPE_BUTTON,
+	settings["open"] = new setting(nullptr, SETTING_TYPE_BUTTON,
+		"open config");
+	settings["save"] = new setting(nullptr, SETTING_TYPE_BUTTON,
+		"save config");
+	settings["connect"] = new setting(nullptr, SETTING_TYPE_BUTTON,
+		"connect to UAV");
+	settings["flash"] = new setting(nullptr, SETTING_TYPE_BUTTON,
 		"write to flash");
 
-	connect(dynamic_cast<QPushButton *> (open->get_field()),
+	connect(dynamic_cast<QPushButton *> (settings["open"]->get_field()),
 		&QPushButton::clicked, this,
 		&main_widget::open_click_handler);
 
-	connect(dynamic_cast<QPushButton *> (save->get_field()),
+	connect(dynamic_cast<QPushButton *> (settings["save"]->get_field()),
 		&QPushButton::clicked, this,
 		&main_widget::save_click_handler);
 
-	connect(dynamic_cast<QPushButton *> (flash->get_field()),
+	connect(dynamic_cast<QPushButton *> (settings["connect"]->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::connect_click_handler);
+
+	connect(dynamic_cast<QPushButton *> (settings["flash"]->get_field()),
 		&QPushButton::clicked, this,
 		&main_widget::flash_click_handler);
 
-/*
-	startlog = new setting(nullptr, SETTING_TYPE_BUTTON, "start log");
-	stoplog = new setting(nullptr, SETTING_TYPE_BUTTON, "stop log");
-	loadlog = new setting(nullptr, SETTING_TYPE_BUTTON, "load log");
-*/
 	term = new terminal();
 
 	grid->addWidget(tab, 0, 0, 5, 4);
-	grid->addWidget(open->get_field(), 5, 0);
-	grid->addWidget(save->get_field(), 5, 1);
-	grid->addWidget(flash->get_field(), 5, 3);
+	grid->addWidget(settings["open"]->get_field(), 5, 0);
+	grid->addWidget(settings["save"]->get_field(), 5, 1);
+	grid->addWidget(settings["connect"]->get_field(), 5, 2);
+	grid->addWidget(settings["flash"]->get_field(), 5, 3);
 	grid->addWidget(term, 0, 4, 6, 2);
-	
-	/*
-	grid->addWidget(startlog->get_field(), 5, 1);
-	grid->addWidget(stoplog->get_field(), 5, 2);
-	grid->addWidget(loadlog->get_field(), 5, 3);
-	*/
 
 	setWindowTitle(tr("Settings"));
 }
