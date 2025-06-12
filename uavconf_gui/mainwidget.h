@@ -138,8 +138,6 @@ private:
 	void connect_click_handler();
 	void flash_click_handler();
 
-	const vector<string> cmds;
-
 	struct sockaddr_in rsi;
 	int lsfd;
 
