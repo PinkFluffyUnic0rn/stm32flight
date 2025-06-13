@@ -16,6 +16,8 @@ enum SETTING_TYPE {
 	SETTING_TYPE_BUTTON
 };
 
+class commands_tree;
+
 class setting : public QWidget
 {
 public:
@@ -23,6 +25,7 @@ public:
 		enum SETTING_TYPE t = SETTING_TYPE_FLOAT,
 		string n = string(""),
 		string c = string(""),
+		commands_tree *cmdstree = NULL,
 		vector<string> modes = vector<string>());
 	~setting();
 
@@ -82,7 +85,8 @@ public:
 	float_settings_group(QWidget *parent = 0,
 		string name = string(""),
 		vector<string> s = vector<string>(),
-		vector<string> c = vector<string>());
+		vector<string> c = vector<string>(),
+		commands_tree *cmdstree = NULL);
 };
 
 class settings_tab : public QWidget
@@ -123,6 +127,25 @@ private:
 	QLineEdit *line;
 };
 
+class commands_tree {
+public:
+	commands_tree(const string &s = "");
+	~commands_tree();
+
+	commands_tree *get_child(const string &s);
+
+	setting *get_setting();
+
+	void set_setting(setting *s);
+
+	map<string, commands_tree *> &get_children();
+
+private:
+	string name;
+	map<string, commands_tree *> children;
+	setting *cmdsetting;
+};
+
 class main_widget : public QWidget
 {
 public:
@@ -140,6 +163,8 @@ private:
 
 	struct sockaddr_in rsi;
 	int lsfd;
+
+	commands_tree cmdstree;
 
 	string conf;
 

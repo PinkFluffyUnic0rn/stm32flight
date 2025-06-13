@@ -13,9 +13,13 @@ extern "C" {
 using namespace std;
 
 setting::setting(QWidget *parent, enum SETTING_TYPE t, string n,
-	string c, vector<string> modes)
+	string c, commands_tree *cmdstree, vector<string> modes)
 		: QWidget(parent)
 {
+	commands_tree *tr;
+	stringstream ss;
+	string tok;
+
 	edit = NULL;
 	box = NULL;
 	button = NULL;
@@ -23,6 +27,16 @@ setting::setting(QWidget *parent, enum SETTING_TYPE t, string n,
 
 	name = n;
 	command = c;
+
+	if (cmdstree != NULL) {
+		ss = stringstream(command);
+		tr = cmdstree;
+
+		while (getline(ss, tok, ' '))
+			tr = tr->get_child(tok);
+			
+		tr->set_setting(this);
+	}
 
 	label->setFrameStyle(QFrame::Panel | QFrame::Sunken);
 	label->setText(name.c_str());
@@ -168,14 +182,15 @@ map<string, setting *> &settings_group::get_settings()
 }
 
 float_settings_group::float_settings_group(QWidget *parent,
-	string name, vector<string> s, vector<string> c)
+	string name, vector<string> s, vector<string> c,
+		commands_tree *cmdstree)
 		: settings_group(parent, name)
 {
 	size_t i;
 
 	for (i = 0; i < s.size(); ++i) {
 		add_setting(new setting(nullptr,
-			SETTING_TYPE_FLOAT, s[i], c[i]));
+			SETTING_TYPE_FLOAT, s[i], c[i], cmdstree));
 	}
 }
 
@@ -279,242 +294,15 @@ void main_widget::string_to_conf(const string &s)
 		while (getline(ss, tok, ' '))
 			toks.push_back(tok);
 
-		if (toks[0] == "pid") {
-			if (toks[1] == "tilt") {
-				settings_group *g;
+		commands_tree *tr;
 
-				g = tabs["pid"]->get_group("angle PID");
-
-				if (toks[2] == "p")
-					g->set_setting_value("P", toks[3]);
-				else if (toks[2] == "i")
-					g->set_setting_value("I", toks[3]);
-				else if (toks[2] == "d")
-					g->set_setting_value("D", toks[3]);
-			}
-			else if (toks[1] == "stilt") {
-				settings_group *g;
-
-				g = tabs["pid"]->get_group("rate PID");
-
-				if (toks[2] == "p")
-					g->set_setting_value("P", toks[3]);
-				else if (toks[2] == "i")
-					g->set_setting_value("I", toks[3]);
-				else if (toks[2] == "d")
-					g->set_setting_value("D", toks[3]);
-			}
-			else if (toks[1] == "yaw") {
-				settings_group *g;
-
-				g = tabs["pid"]->get_group("yaw position PID");
-
-				if (toks[2] == "p")
-					g->set_setting_value("P", toks[3]);
-				else if (toks[2] == "i")
-					g->set_setting_value("I", toks[3]);
-				else if (toks[2] == "d")
-					g->set_setting_value("D", toks[3]);
-			}
-			else if (toks[1] == "syaw") {
-				settings_group *g;
-
-				g = tabs["pid"]->get_group("yaw PID");
-
-				if (toks[2] == "p")
-					g->set_setting_value("P", toks[3]);
-				else if (toks[2] == "i")
-					g->set_setting_value("I", toks[3]);
-				else if (toks[2] == "d")
-					g->set_setting_value("D", toks[3]);
-			}
-			else if (toks[1] == "throttle") {
-				settings_group *g;
-
-				g = tabs["pid"]->get_group("throttle PID");
-
-				if (toks[2] == "p")
-					g->set_setting_value("P", toks[3]);
-				else if (toks[2] == "i")
-					g->set_setting_value("I", toks[3]);
-				else if (toks[2] == "d")
-					g->set_setting_value("D", toks[3]);
-			}
-			else if (toks[1] == "climbrate") {
-				settings_group *g;
-
-				g = tabs["pid"]->get_group("climb rate PID");
-
-				if (toks[2] == "p")
-					g->set_setting_value("P", toks[3]);
-				else if (toks[2] == "i")
-					g->set_setting_value("I", toks[3]);
-				else if (toks[2] == "d")
-					g->set_setting_value("D", toks[3]);
-			}
-			else if (toks[1] == "altitude") {
-				settings_group *g;
-
-				g = tabs["pid"]->get_group("altitude PID");
-
-				if (toks[2] == "p")
-					g->set_setting_value("P", toks[3]);
-				else if (toks[2] == "i")
-					g->set_setting_value("I", toks[3]);
-				else if (toks[2] == "d")
-					g->set_setting_value("D", toks[3]);
-			}
+		tr = &cmdstree;
+		for (auto it = begin(toks); it != (end(toks) - 1); ++it) {
+			tr = tr->get_child(*it);
 		}
-		else if (toks[0] == "compl") {
-			settings_group *g;
-			
-			g = tabs["filters"]->get_group("Complimentary filters");
-			
-			if (toks[1] == "attitude")
-				g->set_setting_value("attitude", toks[2]);
-			else if (toks[1] == "yaw")
-				g->set_setting_value("yaw", toks[2]);
-			else if (toks[1] == "climbrate")
-				g->set_setting_value("climb rate", toks[2]);
-			else if (toks[1] == "altitude")
-				g->set_setting_value("altitude", toks[2]);
-		}
-		else if (toks[0] == "lpf") {
-			settings_group *g;
-			
-			g = tabs["filters"]->get_group("Low-pass filters");
-			
-			if (toks[1] == "gyro")
-				g->set_setting_value("gyroscope", toks[2]);
-			else if (toks[1] == "accel")
-				g->set_setting_value("accelerometer", toks[2]);
-			else if (toks[1] == "d")
-				g->set_setting_value("d-term", toks[2]);
-			else if (toks[1] == "climb")
-				g->set_setting_value("climb rate", toks[2]);
-			else if (toks[1] == "vaccel")
-				g->set_setting_value("acceleration", toks[2]);
-			else if (toks[1] == "altitude")
-				g->set_setting_value("altitude", toks[2]);
-		}
-		else if (toks[0] == "adj") {
-			settings_group *g;
-			
-			if (toks[1] == "rollthrust") {
-				g = tabs["adjustments"]->get_group("motor scale");
-				g->set_setting_value("roll", toks[3]);
-			}
-			else if (toks[1] == "pitchthrust") {
-				g = tabs["adjustments"]->get_group("motor scale");
-				g->set_setting_value("pitch", toks[3]);
-			}
-			else if (toks[1] == "roll") {
-				g = tabs["adjustments"]->get_group("attitude offset");
-				g->set_setting_value("roll", toks[3]);
-			}
-			else if (toks[1] == "pitch") {
-				g = tabs["adjustments"]->get_group("attitude offset");
-				g->set_setting_value("pitch", toks[3]);
-			}
-			else if (toks[1] == "yaw") {
-				g = tabs["adjustments"]->get_group("attitude offset");
-				g->set_setting_value("yaw", toks[3]);
-			}
-			else if (toks[1] == "acc") {
-				g = tabs["adjustments"]->get_group("accelerometer offset");
-				if (toks[2] == "x")
-					g->set_setting_value("X", toks[3]);
-				if (toks[2] == "y")
-					g->set_setting_value("Y", toks[3]);
-				if (toks[2] == "z")
-					g->set_setting_value("Z", toks[3]);
-			}
-			else if (toks[1] == "gyro") {
-				g = tabs["adjustments"]->get_group("gyroscope offset");
-				if (toks[2] == "x")
-					g->set_setting_value("X", toks[3]);
-				if (toks[2] == "y")
-					g->set_setting_value("Y", toks[3]);
-				if (toks[2] == "z")
-					g->set_setting_value("Z", toks[3]);
-			}
-			else if (toks[1] == "mag") {
-				if (toks[2] == "x0") {
-					g = tabs["adjustments"]->get_group("magnetometer offsets");
-					g->set_setting_value("X", toks[3]);
-				}
-				else if (toks[2] == "y0") {
-					g = tabs["adjustments"]->get_group("magnetometer offsets");
-					g->set_setting_value("Y", toks[3]);
-				}
-				else if (toks[2] == "z0") {
-					g = tabs["adjustments"]->get_group("magnetometer offsets");
-					g->set_setting_value("Z", toks[3]);
-				}
-				else if (toks[2] == "decl") {
-					g = tabs["adjustments"]->get_group("magnetometer offsets");
-					g->set_setting_value("declination", toks[3]);
-				}
-				else if (toks[2] == "xscale") {
-					g = tabs["adjustments"]->get_group("magnetometer scale");
-					g->set_setting_value("X", toks[3]);
-				}
-				else if (toks[2] == "yscale") {
-					g = tabs["adjustments"]->get_group("magnetometer scale");
-					g->set_setting_value("Y", toks[3]);
-				}
-				else if (toks[2] == "zscale") {
-					g = tabs["adjustments"]->get_group("magnetometer scale");
-					g->set_setting_value("Z", toks[3]);
-				}
-			}
 
-		}
-		else if (toks[0] == "ctrl") {
-			settings_group *g;
-
-			if (toks[1] == "thrust") {
-				g = tabs["control"]->get_group("control maximums");
-				g->set_setting_value("thrust", toks[2]);
-			}
-			else if (toks[1] == "roll") {
-				g = tabs["control"]->get_group("control maximums");
-				g->set_setting_value("roll angle", toks[2]);
-			}
-			else if (toks[1] == "pitch") {
-				g = tabs["control"]->get_group("control maximums");
-				g->set_setting_value("pitch angle", toks[2]);
-			}
-			else if (toks[1] == "accel") {
-				g = tabs["control"]->get_group("control maximums");
-				g->set_setting_value("acceleration", toks[2]);
-			}
-			else if (toks[1] == "altmax") {
-				g = tabs["control"]->get_group("control maximums");
-				g->set_setting_value("altitude", toks[2]);
-			}
-			else if (toks[1] == "sroll") {
-				g = tabs["control"]->get_group("control rates");
-				g->set_setting_value("roll", toks[2]);
-			}
-			else if (toks[1] == "spitch") {
-				g = tabs["control"]->get_group("control rates");
-				g->set_setting_value("pitch", toks[2]);
-			}
-			else if (toks[1] == "syaw") {
-				g = tabs["control"]->get_group("control rates");
-				g->set_setting_value("yaw", toks[2]);
-			}
-			else if (toks[1] == "yaw") {
-				g = tabs["control"]->get_group("control rates");
-				g->set_setting_value("yaw position", toks[2]);
-			}
-			else if (toks[1] == "climbrate") {
-				g = tabs["control"]->get_group("control rates");
-				g->set_setting_value("climb", toks[2]);
-			}
-		}
-			
+		if (tr->get_setting() != NULL)
+			tr->get_setting()->set_value(*(end(toks) - 1));
 	}
 }
 
@@ -621,6 +409,39 @@ void main_widget::flash_click_handler()
 	}
 }
 
+commands_tree::commands_tree(const string &n) : cmdsetting(NULL)
+{
+	name = n;
+}
+
+commands_tree::~commands_tree()
+{
+
+}
+
+commands_tree *commands_tree::get_child(const string &s)
+{
+	if (children.count(s) == 0)
+		children[s] = new commands_tree(s);
+	
+	return children[s];
+}
+
+setting *commands_tree::get_setting()
+{
+	return cmdsetting;
+}
+
+void commands_tree::set_setting(setting *s)
+{
+	cmdsetting = s;
+}
+
+map<string, commands_tree *> &commands_tree::get_children()
+{
+	return children;
+}
+
 main_widget::main_widget(QWidget *parent) : QWidget(parent)
 {
 	grid = new QGridLayout(this);
@@ -635,77 +456,82 @@ main_widget::main_widget(QWidget *parent) : QWidget(parent)
 
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"rate PID", {"P", "I", "D"},
-		{"pid stilt p", "pid stilt i", "pid stilt d"}), 0, 0);
+		{"pid stilt p", "pid stilt i", "pid stilt d"},
+		&cmdstree), 0, 0);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"angle PID", {"P", "I", "D"},
-		{"pid tilt p", "pid tilt i", "pid tilt d"}), 0, 1);
+		{"pid tilt p", "pid tilt i", "pid tilt d"}, &cmdstree),
+		0, 1);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"yaw PID", {"P", "I", "D"},
-		{"pid syaw p", "pid syaw i", "pid syaw d"}), 0, 2);
+		{"pid syaw p", "pid syaw i", "pid syaw d"}, &cmdstree),
+		0, 2);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"yaw position PID", {"P", "I", "D"},
-		{"pid yaw p", "pid yaw i", "pid yaw d"}), 0, 3);
+		{"pid yaw p", "pid yaw i", "pid yaw d"}, &cmdstree),
+		0, 3);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"throttle PID", {"P", "I", "D"},
-		{"pid throttle p", "pid throttle i", "pid throttle d"}),
-		1, 0);
+		{"pid throttle p", "pid throttle i", "pid throttle d"},
+		&cmdstree), 1, 0);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"climb rate PID", {"P", "I", "D"},
 		{"pid climbrate p", "pid climbrate i",
-		"pid climbrate d"}), 1, 1);
+		"pid climbrate d"}, &cmdstree), 1, 1);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"altitude PID", {"P", "I", "D"},
-		{"pid altitude p", "pid altitude i", "pid altitude d"}),
-		1, 2);
+		{"pid altitude p", "pid altitude i", "pid altitude d"},
+		&cmdstree), 1, 2);
 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Complimentary filters",
 		{"attitude", "yaw", "climb rate", "altitude"},
 		{"compl attitude", "compl yaw",
-		"compl climbrate", "compl altitude"}),
+		"compl climbrate", "compl altitude"}, &cmdstree),
 		3, 0, 2, 1); 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Low-pass filters",
 		{"gyroscope", "accelerometer", "d-term",
 		"climb rate", "acceleration", "altitude"},
 		{"lpf gyro", "lpf accel", "lpf d", "lpf climb",
-		"lpf vaccel", "lpf altitude"}), 3, 1, 2, 1);
+		"lpf vaccel", "lpf altitude"}, &cmdstree), 3, 1, 2, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"attitude offset", {"roll", "pitch", "yaw"},
-		{"adj roll", "adj pitch", "adj yaw"}), 0, 0);
+		{"adj roll", "adj pitch", "adj yaw"}, &cmdstree), 0, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"motor scale", {"roll", "pitch"},
-		{"adj rollthrust", "adj pitchthrust"}), 0, 1);
+		{"adj rollthrust", "adj pitchthrust"}, &cmdstree),
+		0, 1);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"accelerometer offset", {"X", "Y", "Z"},
-		{"adj acc x", "adj acc y", "adj acc z"}), 1, 0);
+		{"adj acc x", "adj acc y", "adj acc z"}, &cmdstree),
+		1, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"gyroscope offset", {"X", "Y", "Z"},
-		{"adj gyro x", "adj gyro y", "adj gyro z"}), 1, 1);
+		{"adj gyro x", "adj gyro y", "adj gyro z"}, &cmdstree),
+		1, 1);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"magnetometer offsets", {"X", "Y", "Z", "declination"},
 		{"adj mag x0", "adj mag y0",
-		"adj mag z0", "adj mag decl"}),
-		2, 0);
+		"adj mag z0", "adj mag decl"}, &cmdstree), 2, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"magnetometer scale", {"X", "Y", "Z"},
 		{"adj mag xscale", "adj mag yscale",
-		"adj mag zscale"}), 2, 1);
+		"adj mag zscale"}, &cmdstree), 2, 1);
 
 	tabs["control"]->add_group(new float_settings_group(nullptr,
 		"control maximums",
 		{"thrust", "roll angle", "pitch angle",
 		"acceleration", "altitude"},
 		{"ctrl thrust", "ctrl roll", "ctrl pitch",
-		"ctrl accel", "ctrl altmax"}), 3, 2, 2, 1);
+		"ctrl accel", "ctrl altmax"}, &cmdstree), 3, 2, 2, 1);
 	
 	tabs["control"]->add_group(new float_settings_group(nullptr,
 		"control rates",
 		{"roll", "pitch", "yaw position", "yaw", "climb"},
 		{"ctrl sroll", "ctrl spitch", "ctrl yaw",
-		"ctrl syaw", "ctrl climbrate"}),
-		3, 3, 2, 1);
+		"ctrl syaw", "ctrl climbrate"}, &cmdstree), 3, 3, 2, 1);
 
 	tab->addTab(tabs["pid"], "PID");
 	tab->addTab(tabs["filters"], "Filters");
