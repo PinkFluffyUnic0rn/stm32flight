@@ -17,6 +17,7 @@ enum SETTING_TYPE {
 };
 
 class commands_tree;
+class main_widget;
 
 class setting : public QWidget
 {
@@ -82,14 +83,19 @@ class button_setting : public setting
 public:
 	button_setting(QWidget *parent = 0,
 		string n = string(""),
-		string c = string(""),
-		commands_tree *cmdstree = nullptr);
+		void (*eh)(void *) = nullptr,
+		void *ua = nullptr);
 	~button_setting();
 
 	QWidget *get_field() { return button; }
 
 private:
+	void click_handler();
+
 	QPushButton *button;
+
+	void (*external_handler)(void *);
+	void *userdata;
 };
 
 class mode_setting : public setting
@@ -172,13 +178,12 @@ class terminal : public QWidget
 {
 public:
 	terminal(QWidget *parent = 0);
-	~terminal() { }
+	~terminal();
 
 	void add_output(string s);
 
 	QLineEdit *get_line() { return line; }
 private:
-	QGroupBox *group;
 	QGridLayout *grid;
 	QTextEdit *edit;
 	QLineEdit *line;
@@ -187,7 +192,7 @@ private:
 class commands_tree {
 public:
 	commands_tree(const string &s = "");
-	~commands_tree() { }
+	~commands_tree();
 
 	commands_tree *get_child(const string &s);
 
@@ -209,34 +214,27 @@ public:
 	main_widget(QWidget *parent = 0);
 	~main_widget();
 
+	void write_to_terminal(string s);
+
+	void string_to_conf(const string &);
+	string conf_to_string();
+
+	void start_catch_uav_out() { catchuavout = true; }
+	void stop_catch_uav_out() { catchuavout = false; }
+
+	void send_uav_conf_cmd(string cmd);
+	void send_uav_info_cmd(string cmd);
+	void send_uav_get_cmd(string cmd, string *out);
+	void get_uav_log(string &s);
+
+	map<string, settings_tab *> get_tabs() { return tabs; }
+
 protected:
 	void keyPressEvent(QKeyEvent *event) override;
 
 private:
-	void conf_to_string();
-	void string_to_conf(const string &);
 
 	void return_pressed();
-	void open_click_handler();
-	void save_click_handler();
-	void connect_click_handler();
-	void flash_click_handler();
-	
-	void log_start_click_handler();
-	void log_stop_click_handler();
-	void log_read_click_handler();
-	void log_load_click_handler();
-	
-	void info_imu_click_handler();
-	void info_pid_click_handler();
-	void info_values_click_handler();
-	void info_mag_click_handler();
-	void info_bar_click_handler();
-	void info_gnss_click_handler();
-	void info_devices_click_handler();
-	void info_control_click_handler();
-	void info_filter_click_handler();
-	void info_vtx_click_handler();
 
 	void timer_handler();
 
@@ -244,9 +242,7 @@ private:
 	struct sockaddr_in rsi;
 	int lsfd;
 
-	commands_tree cmdstree;
-
-	string conf;
+	commands_tree *cmdstree;
 
 	map<string, settings_tab *> tabs;
 	map<string, setting *> settings;
@@ -254,6 +250,7 @@ private:
 	terminal *term;
 	QTabWidget *tab;
 	QGridLayout *grid;
+	QTimer *timer;
 };
 
 #endif

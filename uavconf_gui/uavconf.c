@@ -628,3 +628,35 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 
 	return 0;
 }
+
+int recvoutput(int lsfd, const struct sockaddr_in *rsi, char *buf)
+{
+	fd_set rfds;
+	struct timeval timeout;
+
+	FD_ZERO(&rfds);
+	FD_SET(lsfd, &rfds);
+
+	timeout.tv_sec = 0;
+	timeout.tv_usec = 0;
+
+	if (select(lsfd + 1, &rfds, NULL, NULL, &timeout) <= 0)
+		return (-1);
+
+	if (FD_ISSET(lsfd, &rfds)) {
+		socklen_t rsis;
+		int rsz;
+
+		rsis = sizeof(rsi);
+		if ((rsz = recvfrom(lsfd, buf, BUFSZ, 0,
+			(struct sockaddr *) &rsi, &rsis)) <= 0) {
+			return (-1);
+		}
+			
+		buf[rsz] = '\0';
+		
+		return 0;
+	}
+
+	return 1;
+}
