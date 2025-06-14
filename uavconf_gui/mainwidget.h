@@ -219,10 +219,21 @@ private:
 	void connect_click_handler();
 	void flash_click_handler();
 	
-	void start_log_click_handler();
-	void stop_log_click_handler();
-	void read_log_click_handler();
-	void load_log_click_handler();
+	void log_start_click_handler();
+	void log_stop_click_handler();
+	void log_read_click_handler();
+	void log_load_click_handler();
+	
+	void info_imu_click_handler();
+	void info_pid_click_handler();
+	void info_values_click_handler();
+	void info_mag_click_handler();
+	void info_bar_click_handler();
+	void info_gnss_click_handler();
+	void info_devices_click_handler();
+	void info_control_click_handler();
+	void info_filter_click_handler();
+	void info_vtx_click_handler();
 
 	void timer_handler();
 

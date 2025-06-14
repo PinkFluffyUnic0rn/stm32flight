@@ -437,7 +437,7 @@ void main_widget::flash_click_handler()
 	catchuavout = true;
 }
 
-void main_widget::start_log_click_handler()
+void main_widget::log_start_click_handler()
 {
 	sendcmd(lsfd, &rsi,
 		("log set " + tabs["log"]->get_group("Log write")
@@ -446,13 +446,13 @@ void main_widget::start_log_click_handler()
 		infofunc, write_term, (void *) term);
 }
 
-void main_widget::stop_log_click_handler()
+void main_widget::log_stop_click_handler()
 {
 	sendcmd(lsfd, &rsi, "log set 0\n", infofunc,
 		write_term, (void *) term);
 }
 
-void main_widget::read_log_click_handler()
+void main_widget::log_read_click_handler()
 {
 	sendcmd(lsfd, &rsi,
 		("log rget " + tabs["log"]->get_group("Log read")
@@ -464,7 +464,7 @@ void main_widget::read_log_click_handler()
 		infofunc, write_term, (void *) term);
 }
 
-void main_widget::load_log_click_handler()
+void main_widget::log_load_click_handler()
 {
 	char *output;
 	size_t outsize;
@@ -493,6 +493,66 @@ void main_widget::load_log_click_handler()
 	outfile.close();
 
 	catchuavout = true;
+}
+
+void main_widget::info_imu_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info mpu", infofunc,
+		write_term, (void *) term);
+}
+
+void main_widget::info_pid_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info pid", infofunc,
+		write_term, (void *) term);
+}
+
+void main_widget::info_values_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info values", infofunc,
+		write_term, (void *) term);
+}
+
+void main_widget::info_mag_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info qmc", infofunc,
+		write_term, (void *) term);
+}
+
+void main_widget::info_bar_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info hp", infofunc,
+		write_term, (void *) term);
+}
+
+void main_widget::info_gnss_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info gnss", infofunc,
+		write_term, (void *) term);
+}
+
+void main_widget::info_devices_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info dev", infofunc,
+		write_term, (void *) term);
+}
+
+void main_widget::info_control_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info ctrl", infofunc,
+		write_term, (void *) term);
+}
+
+void main_widget::info_filter_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info filter", infofunc,
+		write_term, (void *) term);
+}
+
+void main_widget::info_vtx_click_handler()
+{
+	sendcmd(lsfd, &rsi, "info irc", infofunc,
+		write_term, (void *) term);
 }
 
 commands_tree::commands_tree(const string &n) : cmdsetting(nullptr)
@@ -562,6 +622,7 @@ main_widget::main_widget(QWidget *parent)
 	tabs["filters"] = new settings_tab;
 	tabs["control"] = new settings_tab;
 	tabs["log"] = new settings_tab;
+	tabs["info"] = new settings_tab;
 	
 	term = new terminal();
 
@@ -657,6 +718,21 @@ main_widget::main_widget(QWidget *parent)
 		{"ctrl sroll",	"ctrl spitch",	"ctrl yaw",	"ctrl syaw",	"ctrl climbrate"},
 		&cmdstree), 3, 3, 2, 1);
 
+	
+	settings_group *info = new settings_group(nullptr, "Info");
+	info->add_setting_pair(new button_setting(nullptr, "IMU"),
+		new button_setting(nullptr, "PID"));
+	info->add_setting_pair(new button_setting(nullptr, "Values"),
+		new button_setting(nullptr, "Magnetometer"));
+	info->add_setting_pair(new button_setting(nullptr, "Barometer"),
+		new button_setting(nullptr, "GNSS"));
+	info->add_setting_pair(new button_setting(nullptr, "Devices status"),
+		new button_setting(nullptr, "Control"));
+	info->add_setting_pair(new button_setting(nullptr, "Filters"),
+		new button_setting(nullptr, "VTX"));
+	
+	tabs["info"]->add_group(info, 0, 0, 1, 1);
+
 	settings_group *log_write = new settings_group(nullptr, "Log write");
 	settings_group *log_read = new settings_group(nullptr, "Log read");
 
@@ -681,6 +757,7 @@ main_widget::main_widget(QWidget *parent)
 	tab->addTab(tabs["adjustments"], "Adjustments");
 	tab->addTab(tabs["control"], "Control");
 	tab->addTab(tabs["log"], "Log");
+	tab->addTab(tabs["info"], "Info");
 
 
 	settings["open"] = new button_setting(nullptr, "open config");
@@ -708,22 +785,60 @@ main_widget::main_widget(QWidget *parent)
 	connect(dynamic_cast<QPushButton *> (tabs["log"]
 			->get_group("Log write")->get_setting("start log")->get_field()),
 		&QPushButton::clicked, this,
-		&main_widget::start_log_click_handler);
-
+		&main_widget::log_start_click_handler);
 	connect(dynamic_cast<QPushButton *> (tabs["log"]
 			->get_group("Log write")->get_setting("stop log")->get_field()),
 		&QPushButton::clicked, this,
-		&main_widget::stop_log_click_handler);
-
+		&main_widget::log_stop_click_handler);
 	connect(dynamic_cast<QPushButton *> (tabs["log"]
 			->get_group("Log read")->get_setting("read log")->get_field()),
 		&QPushButton::clicked, this,
-		&main_widget::read_log_click_handler);
-
+		&main_widget::log_read_click_handler);
 	connect(dynamic_cast<QPushButton *> (tabs["log"]
 			->get_group("Log read")->get_setting("load log")->get_field()),
 		&QPushButton::clicked, this,
-		&main_widget::load_log_click_handler);
+		&main_widget::log_load_click_handler);
+
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("IMU")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_imu_click_handler);
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("PID")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_pid_click_handler);
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("Values")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_values_click_handler);
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("Magnetometer")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_mag_click_handler);
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("Barometer")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_bar_click_handler);
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("GNSS")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_gnss_click_handler);
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("Devices status")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_devices_click_handler);
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("Control")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_control_click_handler);
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("Filters")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_filter_click_handler);
+	connect(dynamic_cast<QPushButton *> (tabs["info"]
+			->get_group("Info")->get_setting("VTX")->get_field()),
+		&QPushButton::clicked, this,
+		&main_widget::info_vtx_click_handler);
 
 
 	QTimer *timer = new QTimer(this);
