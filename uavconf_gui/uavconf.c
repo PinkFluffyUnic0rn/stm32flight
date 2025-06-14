@@ -35,11 +35,12 @@
 #define CMDMAXSZ 60
 
 // log size in records
-#define LOGSIZE (1024 * 64)
+//#define LOGSIZE (1024 * 64)
+#define LOGSIZE (1024 * 16)
 
 // maximum number of log records in
 // batch when reading whole log
-#define BATCHSIZE 6
+#define BATCHSIZE 5
 
 // userdata structure passed to server-side
 // part of log download command
@@ -142,6 +143,35 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 		if (serverfunc(lsfd, rsi, scmd, outfunc, data) >= 0)
 			break;
 	} while (1);
+
+	return 0;
+}
+
+// Server-side part of configuration command got from UAV
+// configuration file passed to this program as argument.
+//
+// lsfd -- UDP socket for configuration connection.
+// rsi -- remote IP address.
+// cmd -- command was sent.
+// outfunc -- function used to process command output
+// data -- userdata passed to sendcmd.
+int infofunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
+	void (*outfunc) (void *, const char *), void *data)
+{
+	static int wait = MINWAIT; // wait time static variable
+				   // is used to adjust wait time
+				   // dinamically
+	(void)(data);
+	(void)(lsfd);
+	(void)(rsi);
+	(void)(outfunc);
+
+	// wait command to execute: fixed waiting time
+	// for some long commands, dynamic wait for fast commands
+	if (strncmp(cmd + 6, "flash", strlen("flash")) == 0)
+		usleep(FLASHWAIT);
+	else
+		usleep(wait);
 
 	return 0;
 }
@@ -409,8 +439,8 @@ int parserecords(char *logbuf, size_t logbufoffset, int *records)
 		// if record number is correct, store current record's
 		// values offset in raw data buffer to ordered records
 		// output array
-		if (n < LOGSIZE)
-			records[n] = val - logbuf;
+//		if (n < LOGSIZE)
+		records[n] = val - logbuf;
 
 skip:
 		// set begin of next record's string to first
@@ -450,19 +480,25 @@ int reqlogrecords(int lsfd, const struct sockaddr_in *rsi,
 //
 // lsfd -- UDP socket for configuration connection.
 // rsi -- remote IP address.
-int getlog(int lsfd, const struct sockaddr_in *rsi)
+int getlog(int lsfd, const struct sockaddr_in *rsi,
+	int loadfrom, int loadto,
+	char **output, size_t *outsize)
 {
 	struct loggetdata d;
-	int recs[LOGSIZE];
+	int *recs;
 	char cmd[CMDMAXSZ];
 	int reccount;
 	int check;
 	size_t logtotalsz;
+	int outoffset;
 	int i;
+
+	if ((recs = malloc(sizeof(int) * loadto)) == NULL)
+		return (-1);
 
 	// initilize userdata structure for
 	// server-side log download function
-	d.reccnt = LOGSIZE;
+	d.reccnt = loadto;
 	d.buf = NULL;
 	d.sz = 0;
 	d.maxsz = 0;
@@ -472,9 +508,9 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 
 	// set all records in ordered records array to
 	// negative, marking they wasn't gotten yeat
-	for (i = 0; i < LOGSIZE; ++i)
+	for (i = 0; i < loadto; ++i)
 		recs[i] = -1;
-
+	
 	// while new log records ranges were
 	// downloaded in previous interation
 	check = 1;
@@ -482,7 +518,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 		// reset downloaded records flag
 		check = 0;
 
-		for (i = 0; i < LOGSIZE; ++i) {
+		for (i = loadfrom; i < loadto; ++i) {
 			int rb, re;
 
 			// if record with this number
@@ -494,7 +530,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 			// check all records until first already
 			// downloaded record not found.
 			rb = i;
-			for (re = i + 1; re < LOGSIZE; ++re) {
+			for (re = i + 1; re < loadto; ++re) {
 				if (recs[re] >= 0)
 					break;
 			}
@@ -535,14 +571,14 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 		sprintf(cmd, "log bget");
 
 		// for every log record's number
-		for (i = 0; i < LOGSIZE; ++i) {
+		for (i = loadfrom; i < loadto; ++i) {
 			// if record with this number
 			// isn't downloaded yet
 			if (recs[i] < 0) {
 				// add this number to batch download
 				// command
 				snprintf(cmd + strlen(cmd),
-					CMDMAXSZ, " %d", i);
+					CMDMAXSZ - strlen(cmd), " %d", i);
 
 				// set downloaded records flag
 				check = 1;
@@ -550,11 +586,11 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 				// increase record batch size counter
 				++reccount;
 			}
-
+	
 			// if current batch size is enough or it is a
 			// last record and there is at least one record
 			// number in batch
-			if (reccount == BATCHSIZE || (i == (LOGSIZE - 1)
+			if (reccount == BATCHSIZE || (i == (loadto - 1)
 					&& reccount != 0)) {
 				// add newline character
 				// to current batch command
@@ -575,12 +611,17 @@ int getlog(int lsfd, const struct sockaddr_in *rsi)
 	}
 
 	// write all log records in their order
-	for (i = 0; i < LOGSIZE; ++i)
-		printf("%d %s\n", i, d.buf + recs[i]);
+	*outsize = 0;
+	*output = NULL;
+	outoffset = 0;
+	for (i = loadfrom; i < loadto; ++i) {
+		if (outoffset + strlen(d.buf + recs[i]) + 16 > *outsize) {
+			*outsize = (outoffset + strlen(d.buf + recs[i]) + 16) * 2;
+			*output = realloc(*output, *outsize);
+		}
 
-	// flush stdout to ensure everything ot written
-	// when standart output is redirrected to file
-	fflush(stdout);
+		outoffset += sprintf(*output + outoffset, "%d %s\n", i, d.buf + recs[i]);
+	}
 
 	// free raw data buffer
 	free(d.buf);

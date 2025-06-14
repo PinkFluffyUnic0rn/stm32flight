@@ -22,36 +22,92 @@ class setting : public QWidget
 {
 public:
 	setting(QWidget *parent = 0,
-		enum SETTING_TYPE t = SETTING_TYPE_FLOAT,
 		string n = string(""),
 		string c = string(""),
-		commands_tree *cmdstree = NULL,
-		vector<string> modes = vector<string>());
+		commands_tree *cmdstree = nullptr);
 	~setting();
 
-	string &get_name();
-	string &get_command();
-	QWidget *get_label();
-	QWidget *get_field();
-	string get_value() const;
-	void set_value(const string &s);
+	string &get_name() { return name; }
+	string &get_command() { return command; }
+	QWidget *get_label() { return label; }
+
+	virtual QWidget *get_field() = 0;
+	virtual string get_value() const { return string(""); }
+	virtual void set_value(const string &s) { (void) s; }
 
 private:
 	QLabel *label;
 	string name;
 	string command;
-	
-	union {
-		struct {
-			QLineEdit *edit;
-			QRegExpValidator *validator;
-		};
+};
 
-		QComboBox *box;
-		QPushButton *button;
-	};
+class float_setting : public setting
+{
+public:
+	float_setting(QWidget *parent = 0,
+		string n = string(""),
+		string c = string(""),
+		commands_tree *cmdstree = nullptr);
+	~float_setting();
 
-	enum SETTING_TYPE type;
+	QWidget *get_field() { return edit; }
+	string get_value() const;
+	void set_value(const string &s);
+
+private:
+	QLineEdit *edit;
+	QRegExpValidator *validator;
+};
+
+class uint_setting : public setting
+{
+public:
+	uint_setting(QWidget *parent = 0,
+		string n = string(""),
+		string c = string(""),
+		commands_tree *cmdstree = nullptr);
+	~uint_setting();
+
+	QWidget *get_field() { return edit; }
+	string get_value() const;
+	void set_value(const string &s);
+
+private:
+	QLineEdit *edit;
+	QRegExpValidator *validator;
+};
+
+class button_setting : public setting
+{
+public:
+	button_setting(QWidget *parent = 0,
+		string n = string(""),
+		string c = string(""),
+		commands_tree *cmdstree = nullptr);
+	~button_setting();
+
+	QWidget *get_field() { return button; }
+
+private:
+	QPushButton *button;
+};
+
+class mode_setting : public setting
+{
+public:
+	mode_setting(QWidget *parent = 0,
+		string n = string(""),
+		string c = string(""),
+		commands_tree *cmdstree = nullptr,
+		vector<string> modes = vector<string>());
+	~mode_setting();
+
+	QWidget *get_field() { return box; }
+	string get_value() const;
+	void set_value(const string &s) { (void) s; }
+
+private:
+	QComboBox *box;	
 };
 
 class settings_group : public QWidget
@@ -60,14 +116,14 @@ public:
 	settings_group(QWidget *parent = 0, string n = string(""));
 	~settings_group();
 
-	void add_setting(setting *s);
-	string get_setting_value(string name) const;
+	void add_setting(setting *s, bool addlabel = true);
+	void add_setting_pair(setting *s1, setting *s2);
 
-	string get_name();
+	string get_name() { return name; }
 	
-	void set_setting_value(string name, const string &v);
-
-	map<string, setting *> &get_settings();
+	map<string, setting *> &get_settings() { return settings; }
+	
+	setting *get_setting(const string &n) { return settings[n]; }
 	
 private:
 	string name;
@@ -86,7 +142,7 @@ public:
 		string name = string(""),
 		vector<string> s = vector<string>(),
 		vector<string> c = vector<string>(),
-		commands_tree *cmdstree = NULL);
+		commands_tree *cmdstree = nullptr);
 };
 
 class settings_tab : public QWidget
@@ -100,10 +156,10 @@ public:
 	void add_setting(setting *s, int r, int c, int
 		rs = 1, int cs = 1);
 
-	settings_group *get_group(string name);
-	const setting *get_setting(string name);
+	settings_group *get_group(string name) { return groups[name]; }
+	const setting *get_setting(string name) { return settings[name]; }
 
-	map<string, settings_group *>  &get_groups();
+	map<string, settings_group *>  &get_groups() { return groups; }
 
 private:
 	QGridLayout *grid;
@@ -116,10 +172,11 @@ class terminal : public QWidget
 {
 public:
 	terminal(QWidget *parent = 0);
-	~terminal();
+	~terminal() { }
 
 	void add_output(string s);
 
+	QLineEdit *get_line() { return line; }
 private:
 	QGroupBox *group;
 	QGridLayout *grid;
@@ -130,15 +187,15 @@ private:
 class commands_tree {
 public:
 	commands_tree(const string &s = "");
-	~commands_tree();
+	~commands_tree() { }
 
 	commands_tree *get_child(const string &s);
 
-	setting *get_setting();
+	setting *get_setting() { return cmdsetting; }
 
 	void set_setting(setting *s);
 
-	map<string, commands_tree *> &get_children();
+	map<string, commands_tree *> &get_children() { return children; }
 
 private:
 	string name;
@@ -156,11 +213,20 @@ private:
 	void conf_to_string();
 	void string_to_conf(const string &);
 
+	void return_pressed();
 	void open_click_handler();
 	void save_click_handler();
 	void connect_click_handler();
 	void flash_click_handler();
+	
+	void start_log_click_handler();
+	void stop_log_click_handler();
+	void read_log_click_handler();
+	void load_log_click_handler();
 
+	void timer_handler();
+
+	bool catchuavout;
 	struct sockaddr_in rsi;
 	int lsfd;
 

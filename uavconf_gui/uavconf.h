@@ -3,6 +3,9 @@
 
 int initsocks(int *lsfd, struct sockaddr_in *rsi);
 
+int infofunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
+	void (*outfunc) (void *, const char *), void *data);
+
 int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void (*outfunc) (void *, const char *), void *data);
 
@@ -14,6 +17,8 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 		const char *, void (*) (void *, const char *), void *),
 		void (*outfunc) (void *, const char *), void *data);
 
-int getlog(int lsfd, const struct sockaddr_in *rsi);
+int getlog(int lsfd, const struct sockaddr_in *rsi,
+	int loadfrom, int loadto,
+	char **output, size_t *outsize);
 
 #endif
