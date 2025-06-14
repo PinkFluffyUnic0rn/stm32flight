@@ -209,6 +209,9 @@ public:
 	main_widget(QWidget *parent = 0);
 	~main_widget();
 
+protected:
+	void keyPressEvent(QKeyEvent *event) override;
+
 private:
 	void conf_to_string();
 	void string_to_conf(const string &);

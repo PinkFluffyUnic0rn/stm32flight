@@ -855,6 +855,30 @@ main_widget::main_widget(QWidget *parent)
 	setWindowTitle(tr("Settings"));
 }
 
+void main_widget::keyPressEvent(QKeyEvent *event)
+{
+	if (event->key() == Qt::Key_M)
+		info_imu_click_handler();
+	else if (event->key() == Qt::Key_P)
+		info_pid_click_handler();
+	else if (event->key() == Qt::Key_V)
+		info_values_click_handler();
+	else if (event->key() == Qt::Key_H)
+		info_mag_click_handler();
+	else if (event->key() == Qt::Key_B)
+		info_bar_click_handler();
+	else if (event->key() == Qt::Key_G)
+		info_gnss_click_handler();
+	else if (event->key() == Qt::Key_D)
+		info_devices_click_handler();
+	else if (event->key() == Qt::Key_T)
+		info_control_click_handler();
+	else if (event->key() == Qt::Key_F)
+		info_filter_click_handler();
+	else if (event->key() == Qt::Key_I)
+		info_vtx_click_handler();
+}
+
 main_widget::~main_widget()
 {
 }
