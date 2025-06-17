@@ -1928,7 +1928,7 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 
 	v = atof(toks[2]);
 
-if (strcmp(toks[1], "rollthrust") == 0)		st.rsc = v;
+	if (strcmp(toks[1], "rollthrust") == 0)		st.rsc = v;
 	else if (strcmp(toks[1], "pitchthrust") == 0)	st.psc = v;
 	else if (strcmp(toks[1], "roll") == 0)		st.roll0 = v;
 	else if (strcmp(toks[1], "pitch") == 0)		st.pitch0 = v;
@@ -1940,6 +1940,8 @@ if (strcmp(toks[1], "rollthrust") == 0)		st.rsc = v;
 			st.ay0 = atof(toks[3]);
 		else if (strcmp(toks[2], "z") == 0)
 			st.az0 = atof(toks[3]);
+		else
+			return (-1);
 	}
 	else if (strcmp(toks[1], "gyro") == 0) {
 		if (strcmp(toks[2], "x") == 0)
@@ -1948,6 +1950,8 @@ if (strcmp(toks[1], "rollthrust") == 0)		st.rsc = v;
 			st.gy0 = atof(toks[3]);
 		else if (strcmp(toks[2], "z") == 0)
 			st.gz0 = atof(toks[3]);
+		else
+			return (-1);
 	}
 	else if (strcmp(toks[1], "mag") == 0) {
 		if (strcmp(toks[2], "x0") == 0)
