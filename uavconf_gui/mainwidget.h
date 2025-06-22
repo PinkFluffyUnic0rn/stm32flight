@@ -110,7 +110,7 @@ public:
 
 	QWidget *get_field() { return box; }
 	string get_value() const;
-	void set_value(const string &s) { (void) s; }
+	void set_value(const string &s);
 
 private:
 	QComboBox *box;	

@@ -116,7 +116,7 @@ void connect_click_handler(void *arg)
 	mw->start_catch_uav_out();
 }
 
-void flash_click_handler(void *arg)
+void send_click_handler(void *arg)
 {
 	stringstream ss;
 	string line;
@@ -135,6 +135,22 @@ void flash_click_handler(void *arg)
 		mw->send_uav_conf_cmd(line);
 		QCoreApplication::processEvents();
 	}
+	
+	mw->start_catch_uav_out();
+}
+
+void flash_click_handler(void *arg)
+{
+	stringstream ss;
+	string line;
+	string conf;
+	main_widget *mw;
+	
+	mw = (main_widget *) arg;
+	
+	mw->stop_catch_uav_out();
+	
+	mw->send_uav_conf_cmd("flash write\n");
 	
 	mw->start_catch_uav_out();
 }
@@ -412,6 +428,16 @@ string mode_setting::get_value() const
 	return box->currentText().toStdString();
 }
 
+void mode_setting::set_value(const string &s)
+{
+	int idx;
+
+	if ((idx = box->findText(QString::fromStdString(s))) < 0)
+		idx = 0;
+
+	box->setCurrentIndex(idx);
+}
+
 settings_group::settings_group(QWidget *parent,
 	string n) : QWidget(parent), name(n), layout_last(0)
 {
@@ -564,6 +590,7 @@ main_widget::main_widget(QWidget *parent)
 	tabs["control"] = new settings_tab;
 	tabs["log"] = new settings_tab;
 	tabs["info"] = new settings_tab;
+	tabs["devices"] = new settings_tab;
 	
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"rate PID", 
@@ -696,6 +723,20 @@ main_widget::main_widget(QWidget *parent)
 	log_read->add_setting(new button_setting(nullptr, "load log", log_load_click_handler, this),
 		false);
 
+	settings_group *irc = new settings_group(nullptr, "IRC");
+	irc->add_setting(new mode_setting(nullptr, "Power", "irc power",
+		cmdstree, {"25", "100", "200", "400", "600"}));
+	irc->add_setting(new mode_setting(nullptr, "Frequency",
+		"irc frequency", cmdstree, {"5865", "5845", "5825",
+		"5805", "5785", "5765", "5745", "5725", "5733", "5752",
+		"5771", "5790", "5809", "5828", "5847", "5866", "5705",
+		"5685", "5665", "5645", "5885", "5905", "5925", "5945",
+		"5740", "5760", "5780", "5800", "5820", "5840", "5860",
+		"5880", "5658", "5695", "5732", "5769", "5806", "5843",
+		"5917"}));
+
+	tabs["devices"]->add_group(irc, 0, 0, 1, 1);
+
 	tabs["log"]->add_group(log_write, 0, 0, 1, 1);
 	tabs["log"]->add_group(log_read, 0, 1, 1, 1);
 
@@ -705,10 +746,12 @@ main_widget::main_widget(QWidget *parent)
 	tab->addTab(tabs["control"], "Control");
 	tab->addTab(tabs["log"], "Log");
 	tab->addTab(tabs["info"], "Info");
+	tab->addTab(tabs["devices"], "Devices");
 
 	settings["open"] = new button_setting(nullptr, "open config", open_click_handler, this);
 	settings["save"] = new button_setting(nullptr, "save config", save_click_handler, this);
 	settings["connect"] = new button_setting(nullptr, "connect to UAV", connect_click_handler, this);
+	settings["send"] = new button_setting(nullptr, "send settings", send_click_handler, this);
 	settings["flash"] = new button_setting(nullptr, "write to flash", flash_click_handler, this);
 
 	connect(term->get_line(), &QLineEdit::returnPressed, this, &main_widget::return_pressed);
@@ -717,12 +760,13 @@ main_widget::main_widget(QWidget *parent)
 	connect(timer, &QTimer::timeout, this, &main_widget::timer_handler);
 	timer->start(1);
 
-	grid->addWidget(tab, 0, 0, 5, 4);
+	grid->addWidget(tab, 0, 0, 5, 5);
 	grid->addWidget(settings["open"]->get_field(), 5, 0);
 	grid->addWidget(settings["save"]->get_field(), 5, 1);
 	grid->addWidget(settings["connect"]->get_field(), 5, 2);
-	grid->addWidget(settings["flash"]->get_field(), 5, 3);
-	grid->addWidget(term, 0, 4, 6, 2);
+	grid->addWidget(settings["send"]->get_field(), 5, 3);
+	grid->addWidget(settings["flash"]->get_field(), 5, 4);
+	grid->addWidget(term, 0, 5, 6, 3);
 
 	setWindowTitle(tr("Settings"));
 }
@@ -754,14 +798,18 @@ void main_widget::string_to_conf(const string &s)
 	string line;
 
 	while (getline(ss, line, '\n')) {
-		stringstream ss(line);
+		stringstream ss;
 		vector<string> toks;
+		commands_tree *tr;
 		string tok;
 
+		while (line.back() == '\n' || line.back() == '\r')
+			line.pop_back();
+
+		ss = stringstream(line);
+		
 		while (getline(ss, tok, ' '))
 			toks.push_back(tok);
-
-		commands_tree *tr;
 
 		tr = cmdstree;
 		for (auto it = begin(toks); it != (end(toks) - 1); ++it)
@@ -797,8 +845,6 @@ string main_widget::conf_to_string()
 			}
 		}
 	}
-
-	conf += "flash write" + string("\n");
 
 	return conf;
 }

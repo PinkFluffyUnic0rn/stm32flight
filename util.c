@@ -50,3 +50,22 @@ int ndelay(int ns)
 
 	return 0;
 }
+
+int isvalinlist(int v, int num, ...)
+{
+	va_list args;
+	int i;
+
+	va_start(args, num);
+
+	for (i = 0; i < num; ++i) {
+		if (v == va_arg(args, int)) {
+			va_end(args);
+			return 1;
+		}
+	}
+
+	va_end(args);
+
+	return 0;
+}

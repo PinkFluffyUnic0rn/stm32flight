@@ -13,6 +13,30 @@
 static struct irc_device irc_devs[IRC_MAXDEVS];
 static size_t irc_devcount = 0;
 
+static int ispowervalid(int v)
+{
+	return isvalinlist(v, 5, IRC_POWER_25, IRC_POWER_100,
+		IRC_POWER_200, IRC_POWER_400, IRC_POWER_600);
+}
+
+static int isfreqvalid(int v)
+{
+	return isvalinlist(v, 39, IRC_FREQ_5865, IRC_FREQ_5845,
+		IRC_FREQ_5825, IRC_FREQ_5805, IRC_FREQ_5785,
+		IRC_FREQ_5765, IRC_FREQ_5745, IRC_FREQ_5725,
+		IRC_FREQ_5733, IRC_FREQ_5752, IRC_FREQ_5771,
+		IRC_FREQ_5790, IRC_FREQ_5809, IRC_FREQ_5828,
+		IRC_FREQ_5847, IRC_FREQ_5866, IRC_FREQ_5705,
+		IRC_FREQ_5685, IRC_FREQ_5665, IRC_FREQ_5645,
+		IRC_FREQ_5885, IRC_FREQ_5905, IRC_FREQ_5925,
+		IRC_FREQ_5945, IRC_FREQ_5740, IRC_FREQ_5760,
+		IRC_FREQ_5780, IRC_FREQ_5800, IRC_FREQ_5820,
+		IRC_FREQ_5840, IRC_FREQ_5860, IRC_FREQ_5880,
+		IRC_FREQ_5658, IRC_FREQ_5695, IRC_FREQ_5732,
+		IRC_FREQ_5769, IRC_FREQ_5806, IRC_FREQ_5843,
+		IRC_FREQ_5917);
+}
+
 uint8_t irc_checksum(uint8_t *data, size_t sz)
 {
 	uint8_t sum;
@@ -81,58 +105,98 @@ int irc_configure(void *d, const char *cmd, ...)
 {
 	struct irc_device *dev;
 	struct irc_data data;
-	int retries;
+	char *par;
+	int r;
 	va_list args;
 	
 	dev = d;
 	
 	va_start(args, cmd);
 
-	if (strcmp(cmd, "frequency") == 0) {
-		int freq;
+	if (strcmp(cmd, "set") == 0) {
+		par = va_arg(args, char *);
 
-		freq = va_arg(args, int);
+		if (strcmp(par, "frequency") == 0) {
+			int freq;
 
-		for (retries = 0; retries < IRC_RETRIES; ++retries) {
-			irc_sendpacket(dev, 'F', freq);
-			HAL_Delay(250);
-			
-			if (irc_read(d, &data,
-					sizeof(struct irc_data)) != 0)
-				continue;
+			freq = va_arg(args, int);
 
-			if (data.frequency == freq)
+			if (!isfreqvalid(freq))
+				freq = IRC_FREQ_5733;
+
+			for (r = 0; r < IRC_RETRIES; ++r) {
+				irc_sendpacket(dev, 'F', freq);
+				HAL_Delay(250);
+				
+				if (irc_read(d, &data,
+						sizeof(struct irc_data)) != 0)
+					continue;
+
+				if (data.frequency == freq)
+					break;
+			}
+
+			if (r == IRC_RETRIES) {
+				va_end(args);
+				return (-1);
+			}	
+
+			dev->frequency = freq;
+		}
+		else if (strcmp(par, "power") == 0) {
+			int power;
+
+			power = va_arg(args, int);
+				
+			if (!ispowervalid(power))
+				power = IRC_POWER_25;
+
+			for (r = 0; r < IRC_RETRIES; ++r) {	
+				irc_sendpacket(dev, 'P', power);
+				HAL_Delay(250);
+		
+				if (irc_read(d, &data,
+						sizeof(struct irc_data)) != 0)
+					continue;
+
+				if (data.power == power)
+					break;
+			}	
+
+			if (r == IRC_RETRIES) {
+				va_end(args);
+				return (-1);
+			}	
+
+			dev->power = power;
+		}
+	}
+	else if (strcmp(cmd, "get") == 0) {
+		uint8_t pack[16];
+		int *out;
+
+		for (r = 0; r < IRC_RETRIES; ++r) {
+			irc_sendpacket(dev, 'v', dev->power);
+
+			HAL_UART_Receive(dev->huart, pack, 16, 1000);
+
+			if (irc_checksum(pack + 1, 13) == pack[14])
 				break;
 		}
 
-		if (retries == IRC_RETRIES)
-			return (-1);	
-
-		dev->frequency = freq;
-	}
-	else if (strcmp(cmd, "power") == 0) {
-		int power;
+		par = va_arg(args, char *);
+		out = va_arg(args, int *);
 		
-		power = va_arg(args, int);
-	
-		for (retries = 0; retries < IRC_RETRIES; ++retries) {	
-			irc_sendpacket(dev, 'P', power);
-			HAL_Delay(250);
-	
-			if (irc_read(d, &data,
-					sizeof(struct irc_data)) != 0)
-				continue;
-
-			if (data.power == power)
-				break;
-		}	
-
-		if (retries == IRC_RETRIES)
-			return (-1);	
-
-		dev->power = power;
+		if (strcmp(par, "frequency") == 0)
+			*out = pack[2] | pack[3] << 8;
+		else if (strcmp(par, "power") == 0)
+			*out = pack[4] | pack[5] << 8;
+		else {
+			va_end(args);
+			return (-1);
+		}
 	}
-	
+
 	va_end(args);
 
 	return 0;

@@ -20,4 +20,6 @@ void memcpyv(volatile void *dest, const volatile void *src, size_t n);
 // 	MCU's clock and timer prescaler.
 int ndelay(int ns);
 
+int isvalinlist(int v, int num, ...);
+
 #endif

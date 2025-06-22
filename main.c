@@ -226,6 +226,8 @@ struct settings {
 	float zsp, zsi,	zsd; // P/I/D values for vertical acceleration
 	float cp, ci, cd; // P/I/D values for climb rate
 	float ap, ai, ad; // P/I/D values for altitude
+	
+	int ircpower, ircfreq; // IRC Tramp VTX power and frequency
 };
 
 // Values got from GNSS module using NMEA protocol
@@ -452,8 +454,8 @@ static void irc_init()
 	struct irc_device d;
 
 	d.huart = &huart5;
-	d.power = 25;
-	d.frequency = 5733;
+	d.power = st.ircpower;
+	d.frequency = st.ircfreq;
 
 	if (irc_initdevice(&d, dev + IRC_DEV) >= 0)
 		uartprintf("IRC device initilized\r\n");
@@ -2113,17 +2115,23 @@ int systemcmd(const struct cdevice *d, const char **toks, char *out)
 // toks -- list of parsed command tokens.
 int irccmd(const struct cdevice *d, const char **toks, char *out)
 {
-	if (strcmp(toks[1], "set") == 0) {
-		if (strcmp(toks[2], "frequency") == 0) {
-			dev[IRC_DEV].configure(dev[IRC_DEV].priv,
-				"frequency", atoi(toks[3]));
-		}
-		else if (strcmp(toks[2], "power") == 0) {
-			dev[IRC_DEV].configure(dev[IRC_DEV].priv,
-				"power", atoi(toks[3]));
-		}
-		else
-			return (-1);
+	if (strcmp(toks[1], "frequency") == 0) {
+		st.ircfreq = atoi(toks[2]);
+
+		if (dev[IRC_DEV].status != DEVSTATUS_INIT)
+			return 0;
+
+		dev[IRC_DEV].configure(dev[IRC_DEV].priv, "set",
+			"frequency", atoi(toks[2]));
+	}
+	else if (strcmp(toks[1], "power") == 0) {
+		st.ircpower = atoi(toks[2]);
+	
+		if (dev[IRC_DEV].status != DEVSTATUS_INIT)
+			return 0;
+
+		dev[IRC_DEV].configure(dev[IRC_DEV].priv, "set",
+			"power", atoi(toks[2]));
 	}
 	else
 		return (-1);
@@ -2135,7 +2143,11 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	const char **p;
 	char *data;
+	int isfloat;
 	float v;
+	int vi;
+
+	isfloat = 1;
 
 	if (strcmp(toks[1], "pid") == 0) {
 		if (strcmp(toks[2], "tilt") == 0) {
@@ -2210,6 +2222,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		}
 		else
 			return (-1);
+	
+		isfloat = 1;
 	}
 	else if (strcmp(toks[1], "compl") == 0) {
 		if (strcmp(toks[2], "attitude") == 0)
@@ -2222,6 +2236,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 			v = st.actcoef;
 		else
 			return (-1);
+
+		isfloat = 1;
 	}
 	else if (strcmp(toks[1], "lpf") == 0) {
 		if (strcmp(toks[2], "gyro") == 0)
@@ -2238,6 +2254,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 			v = st.atcoef;
 		else
 			return (-1);
+
+		isfloat = 1;
 	}
 	else if (strcmp(toks[1], "adj") == 0) {
 		if (strcmp(toks[2], "rollthrust") == 0)
@@ -2290,6 +2308,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		}
 		else
 			return (-1);
+
+		isfloat = 1;
 	}
 	else if (strcmp(toks[1], "ctrl") == 0) {
 		if (strcmp(toks[2], "thrust") == 0)
@@ -2314,6 +2334,18 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 			v = st.altmax;
 		else
 			return (-1);
+
+		isfloat = 1;
+	}
+	else if (strcmp(toks[1], "irc") == 0) {
+		if (strcmp(toks[2], "frequency") == 0)
+			vi = st.ircfreq;
+		else if (strcmp(toks[2], "power") == 0)
+			vi = st.ircpower;
+		else
+			return (-1);
+
+		isfloat = 0;
 	}
 	else
 		return (-1);
@@ -2324,7 +2356,10 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	for (p = toks + 1; *p != NULL; ++p)
 		sprintf(data + strlen(data), "%s ", *p);
 
-	sprintf(data + strlen(data), "%f\r\n", (double) v);
+	if (isfloat)
+		sprintf(data + strlen(data), "%f\r\n", (double) v);
+	else	
+		sprintf(data + strlen(data), "%d\r\n", vi);
 
 	sprintf(out, "%05u", crc16((uint8_t *) data, strlen(data)));
 	out[5] = ' ';
@@ -2515,6 +2550,9 @@ int main(void)
 	uart4_init();
 	uart5_init();
 
+	// reading settings from memory slot 0
+	readsettings(0);
+
 	// init board's devices
 	esc_init();
 	icm_init();
@@ -2526,9 +2564,6 @@ int main(void)
 	uartdev_init();
 	hp_init();
 	irc_init();
-
-	// reading settings from memory slot 0
-	readsettings(0);
 
 	// initilize stabilization routine
 	initstabilize(0.0);

@@ -30,6 +30,7 @@
 #define MINWAIT 5000
 #define MAXWAIT 1000000
 #define FLASHWAIT 2000000
+#define IRCWAIT 1000000
 
 // maximum UAV command size
 #define CMDMAXSZ 60
@@ -201,6 +202,9 @@ int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	// for some long commands, dynamic wait for fast commands
 	if (strncmp(cmd + 6, "flash", strlen("flash")) == 0)
 		usleep(FLASHWAIT);
+	else if (strncmp(cmd + 6, "irc", strlen("irc")) == 0
+		|| strncmp(cmd + 6, "get irc", strlen("get irc")) == 0)
+		usleep(IRCWAIT);
 	else
 		usleep(wait);
 
@@ -258,6 +262,9 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	// for some long commands, dynamic wait for fast commands
 	if (strncmp(cmd + 6, "flash", strlen("flash")) == 0)
 		usleep(FLASHWAIT);
+	else if (strncmp(cmd + 6, "irc", strlen("irc")) == 0
+		|| strncmp(cmd + 6, "get irc", strlen("get irc")) == 0)
+		usleep(IRCWAIT);
 	else
 		usleep(wait);
 
