@@ -1,11 +1,9 @@
-pid tilt mode double
 pid tilt p 7.0
 pid tilt i 0.0
 pid tilt d 0.0001
 pid stilt p 0.05
 pid stilt i 0.0
 pid stilt d 0.0
-pid yaw mode double
 pid yaw p -1.5
 pid yaw i 0.0
 pid yaw d 0.0
@@ -59,4 +57,5 @@ ctrl yaw 2.0
 ctrl accel 0.5
 ctrl climbrate 1.5
 ctrl altmax 4.0
-flash write
+irc frequency 5645
+irc power 25
