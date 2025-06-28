@@ -227,6 +227,14 @@ int crsf_write(void *dev, void *dt, size_t sz)
 
 	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 10, 1000);
 
+	buf[1] = 4;
+	buf[2] = 0x07;
+	*((int16_t *)(buf + 3)) = endian2((int16_t)(tele->vspeed * 100.0));
+	buf[5] = crc8(buf + 2, 3);
+
+	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 6, 1000);
+
+
 	return 0;
 }
 

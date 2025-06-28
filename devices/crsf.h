@@ -4,7 +4,7 @@
 #include "device.h"
 
 #define CRSF_MAXDEVS 1
-#define CRSF_CHANNELCOUNT 10
+#define CRSF_CHANNELCOUNT 16
 
 struct crsf_device {
 	UART_HandleTypeDef *huart;

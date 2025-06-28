@@ -210,7 +210,7 @@ Quadcopter parameters
  * Motors: 1404, 3800 kV
  * Props: 3030
  * Battery: 14.8v (4s), 1300 mAh, 120c
- * Frame: plywood
+ * Frame: carbon fiber
 
 Quadcopter Weight
 ======
@@ -220,5 +220,5 @@ Quadcopter Weight
  * Battery: 148g
  * BEC: ~6g
  * Antenna: 10g
- * Frame: ~91g
- * Total weight: 353g 
+ * Frame: ~114g
+ * Total weight: 376g

@@ -59,8 +59,10 @@
 // log packets buffer size
 #define LOG_BUFSIZE (W25_PAGESIZE / sizeof(struct logpack))
 
-// log packet values positions
+// log packet size
 #define LOG_PACKSIZE	32
+
+// log packet values positions
 #define LOG_ACC_X	0
 #define LOG_ACC_Y	1
 #define LOG_ACC_Z	2
@@ -94,6 +96,9 @@
 #define LOG_CRSFCH7	30
 #define LOG_BAT		31
 
+// Timer events count
+#define TEV_COUNT	7
+
 // Timer events IDs
 #define TEV_PID 	0
 #define TEV_CHECK 	1
@@ -102,11 +107,21 @@
 #define TEV_QMC		4
 #define TEV_LOG		5
 #define TEV_TELE	6
-#define TEV_COUNT	7
 
 // Timeout in seconds before quadcopter disarm
 // when got no data from ERLS receiver
 #define ELRS_TIMEOUT 2
+
+// eRLS channels mapping
+#define ERLS_CH_ROLL		0
+#define ERLS_CH_PITCH		1
+#define ERLS_CH_THRUST		2
+#define ERLS_CH_YAW		3
+#define ERLS_CH_YAWMODE		4
+#define ERLS_CH_ATTMODE		5
+#define ERLS_CH_THRMODE		6
+#define ERLS_CH_ONOFF		7
+#define ERLS_CH_ALTCALIB	8
 
 // set value in current log frame
 // pos -- value's position inside the frame
@@ -2376,20 +2391,20 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	float dt;
 
 	// write first 8 channels values into log	
-	logwrite(LOG_CRSFCH0, cd->chf[0]);
-	logwrite(LOG_CRSFCH1, cd->chf[1]);
-	logwrite(LOG_CRSFCH2, cd->chf[2]);
-	logwrite(LOG_CRSFCH3, cd->chf[3]);
-	logwrite(LOG_CRSFCH4, cd->chf[4]);
-	logwrite(LOG_CRSFCH5, cd->chf[5]);
-	logwrite(LOG_CRSFCH6, cd->chf[6]);
-	logwrite(LOG_CRSFCH7, cd->chf[7]);
+	logwrite(LOG_CRSFCH0, cd->chf[ERLS_CH_ROLL]);
+	logwrite(LOG_CRSFCH1, cd->chf[ERLS_CH_PITCH]);
+	logwrite(LOG_CRSFCH2, cd->chf[ERLS_CH_THRUST]);
+	logwrite(LOG_CRSFCH3, cd->chf[ERLS_CH_YAW]);
+	logwrite(LOG_CRSFCH4, cd->chf[ERLS_CH_YAWMODE]);
+	logwrite(LOG_CRSFCH5, cd->chf[ERLS_CH_ATTMODE]);
+	logwrite(LOG_CRSFCH6, cd->chf[ERLS_CH_THRMODE]);
+	logwrite(LOG_CRSFCH7, cd->chf[ERLS_CH_ONOFF]);
 
 	// channel 8 on remote is used to turn on/off
 	// erls control. If this channel has low state, all remote
 	// commands will be ignored, but packet still continue to
 	// comming
-	elrs = (cd->chf[7] > 0.5) ? 1 : 0;
+	elrs = (cd->chf[ERLS_CH_ONOFF] > 0.5) ? 1 : 0;
 
 	// update ERLS timeout as we got packet
 	elrstimeout = ELRS_TIMEOUT;
@@ -2404,54 +2419,59 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// get time passed from last ERLS packet
 	dt = ms / (float) TICKSPERSEC;
 
-	if (cd->chf[4] < 0.0) {
+	if (cd->chf[ERLS_CH_YAWMODE] < 0.0) {
 		yawspeedpid = 0;
 		yawtarget = circf(yawtarget
-			+ cd->chf[3] * dt * M_PI * st.yawtargetspeed);
+			+ cd->chf[ERLS_CH_YAW] * dt * M_PI
+				* st.yawtargetspeed);
 	}
 	else {
 		yawspeedpid = 1;
-		yawtarget = -cd->chf[3] * M_PI * st.yawspeed;
+		yawtarget = -cd->chf[ERLS_CH_YAW] * M_PI * st.yawspeed;
 	}
 
 	// set altitude hold mode, if channel 7 has value more than 25,
 	// set climbrate stabilization mode if channel 7 has value
 	// between -25 and 25, set vertical acceleration mode if channel
 	// 7 value is less than -25
-	if (cd->chf[6] < -0.25) {
+	if (cd->chf[ERLS_CH_THRMODE] < -0.25) {
 		altmode = ALTMODE_ACCEL;
-		thrust = (cd->chf[2] + 0.75) / 1.75 * st.accelmax;;
+		thrust = (cd->chf[ERLS_CH_THRUST] + 0.75)
+			/ 1.75 * st.accelmax;;
 	}
-	else if (cd->chf[6] > 0.25) {
+	else if (cd->chf[ERLS_CH_THRMODE] > 0.25) {
 		altmode = ALTMODE_POS;
-		thrust = (cd->chf[2] + 1.0) / 2.0 * st.altmax;
+		thrust = (cd->chf[ERLS_CH_THRUST] + 1.0)
+			/ 2.0 * st.altmax;
 	}
 	else {
 		altmode = ALTMODE_SPEED;
-		thrust = cd->chf[2] * st.climbratemax;
+		thrust = cd->chf[ERLS_CH_THRUST] * st.climbratemax;
 	}
 
 	// if channel 9 is active (it's no-fix button on remote used
 	// for testing), set reference altitude from current altitude
-	if (cd->chf[8] > 0.0)
+	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0)
 		alt0 = dsp_getlpf(&altlpf);
 
 	// set acceleromter stabilization mode, if channel 6 has value
 	// more than 25, set gyroscope only stabilization mode, if
 	// channel 6 has value between -25 and 25, disarm if channel 6
 	// value is less than -25
-	if (cd->chf[5] < -0.25) {
+	if (cd->chf[ERLS_CH_ATTMODE] < -0.25) {
 		en = 0;
 		speedpid = 0;
 	}
-	else if (cd->chf[5] > 0.25) {
+	else if (cd->chf[ERLS_CH_ATTMODE] > 0.25) {
 		en = 1;
 		speedpid = 0;
 
 		// set pitch/roll targets based on
 		// channels 1-2 values (it's a joystick on most remotes)
-		rolltarget = cd->chf[0] * (M_PI * st.rollmax);
-		pitchtarget = -cd->chf[1] * (M_PI * st.pitchmax);
+		rolltarget = cd->chf[ERLS_CH_ROLL]
+			* (M_PI * st.rollmax);
+		pitchtarget = -cd->chf[ERLS_CH_PITCH]
+			* (M_PI * st.pitchmax);
 	}
 	else {
 		en = 1;
@@ -2459,8 +2479,10 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 		// set pitch/roll targets based on
 		// channels 1-2 values (it's a joystick on most remotes)
-		rolltarget = cd->chf[0] * (M_PI * st.rollspeed);
-		pitchtarget = -cd->chf[1] * (M_PI * st.pitchspeed);
+		rolltarget = cd->chf[ERLS_CH_ROLL]
+			* (M_PI * st.rollspeed);
+		pitchtarget = -cd->chf[ERLS_CH_PITCH]
+			* (M_PI * st.pitchspeed);
 	}
 
 	// disable thrust when motors should be
