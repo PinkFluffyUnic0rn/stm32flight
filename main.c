@@ -112,6 +112,11 @@
 // when got no data from ERLS receiver
 #define ELRS_TIMEOUT 2
 
+// Time required to register button push,
+// used for buttons and switches that controls
+// time  consuming functions
+#define ELRS_PUSHTIMEOUT 0.1
+
 // eRLS channels mapping
 #define ERLS_CH_ROLL		0
 #define ERLS_CH_PITCH		1
@@ -122,6 +127,7 @@
 #define ERLS_CH_THRMODE		6
 #define ERLS_CH_ONOFF		7
 #define ERLS_CH_ALTCALIB	8
+#define ERLS_CH_SETSLOT		15
 
 // set value in current log frame
 // pos -- value's position inside the frame
@@ -360,7 +366,10 @@ int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
 	      // is > 50)
 
 // Pressure and altitude initial values
-float alt0;
+float alt0 = 0.0;
+
+// Current settings slot
+int curslot = 0;
 
 // Settings
 struct settings st;
@@ -602,20 +611,25 @@ static void uartdev_init()
 // slot -- offset in settings array in flash.
 int writesettings(int slot)
 {
+	struct settings s[6];
 	uint32_t sz;
 	uint32_t *pt;
 	uint32_t addr;
 	int j;
+
+	memcpy(s, (void *) (USER_FLASH), sizeof(struct settings) * 6);
 
 	__disable_irq();
 	HAL_FLASH_Unlock();
 
 	FLASH_Erase_Sector(FLASH_SECTOR_11,  VOLTAGE_RANGE_3);
 
-	sz = sizeof(struct settings);
-	pt = (uint32_t *) &st;
+	memcpy(s + slot, &st, sizeof(struct settings));
 
-	addr = USER_FLASH + sizeof(struct settings) * slot;
+	sz = sizeof(struct settings) * 6;
+	pt = (uint32_t *) s;
+	
+	addr = USER_FLASH;
 	for (j = 0; j < sz / 4; ++j) {
 		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr, pt[j]);
 		addr += 4;
@@ -632,74 +646,78 @@ int writesettings(int slot)
 // slot -- offset in settings array in flash.
 int readsettings(int slot)
 {
-	memcpy(&st, (void *) (USER_FLASH + slot),
+	memcpy(&st, (void *) (USER_FLASH
+			+ slot * sizeof(struct settings)),
 		sizeof(struct settings));
 
 	return 0;
 }
 
-// Init stabilization loop.
+// Init/set stabilization loop.
 //
-// alt -- initial quadcopter altitude. Usually 0.0.
-int initstabilize(float alt)
+// init -- if called during initilization.
+int setstabilize(int init)
 {
-	// set initial altitude. Usually 0.0
-	alt0 = alt;
-
 	// init complementary filters contexts
-	dsp_initcompl(&pitchcompl, st.atctcoef, PID_FREQ);
-	dsp_initcompl(&rollcompl, st.atctcoef, PID_FREQ);
-	dsp_initcompl(&yawcompl, st.yctcoef, PID_FREQ);
+	dsp_setcompl(&pitchcompl, st.atctcoef, PID_FREQ, init);
+	dsp_setcompl(&rollcompl, st.atctcoef, PID_FREQ, init);
+	dsp_setcompl(&yawcompl, st.yctcoef, PID_FREQ, init);
 
-	dsp_initcompl(&climbratecompl, st.cctcoef, HP_FREQ);
-	dsp_initcompl(&altcompl, st.actcoef, HP_FREQ);
+	dsp_setcompl(&climbratecompl, st.cctcoef, HP_FREQ, init);
+	dsp_setcompl(&altcompl, st.actcoef, HP_FREQ, init);
 
 	// init roll and pitch position PID controller contexts
-	dsp_initpid(&pitchpv, st.p, st.i, st.d, st.dpt1freq, PID_FREQ);
-	dsp_initpid(&rollpv, st.p, st.i, st.d, st.dpt1freq, PID_FREQ);
+	dsp_setpid(&pitchpv, st.p, st.i, st.d, st.dpt1freq,
+		PID_FREQ, init);
+	dsp_setpid(&rollpv, st.p, st.i, st.d, st.dpt1freq,
+		PID_FREQ, init);
 
 	// init roll, pitch and yaw speed PID controller contexts
-	dsp_initpid(&pitchspv, st.sp, st.si, st.sd,
-		st.dpt1freq, PID_FREQ);
-	dsp_initpid(&rollspv, st.sp, st.si, st.sd,
-		st.dpt1freq, PID_FREQ);
-	dsp_initpid(&yawspv, st.ysp, st.ysi, st.ysd,
-		st.dpt1freq, PID_FREQ);
+	dsp_setpid(&pitchspv, st.sp, st.si, st.sd,
+		st.dpt1freq, PID_FREQ, init);
+	dsp_setpid(&rollspv, st.sp, st.si, st.sd,
+		st.dpt1freq, PID_FREQ, init);
+	dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd,
+		st.dpt1freq, PID_FREQ, init);
 
 	// init yaw position PID controller's context
-	dsp_initpid(&yawpv, st.yp, st.yi, st.yd, st.dpt1freq, PID_FREQ);
+	dsp_setpid(&yawpv, st.yp, st.yi, st.yd, st.dpt1freq,
+		PID_FREQ, init);
 
 	// init vertical acceleration PID controller's context
-	dsp_initpid(&tpv, st.zsp, st.zsi, st.zsd, st.dpt1freq, PID_FREQ);
+	dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd, st.dpt1freq,
+		PID_FREQ, init);
 
 	// init climbrate PID controller's context
-	dsp_initpid(&cpv, st.cp, st.ci, st.cd, st.dpt1freq, PID_FREQ);
+	dsp_setpid(&cpv, st.cp, st.ci, st.cd, st.dpt1freq,
+		PID_FREQ, init);
 
 	// init altitude PID controller's context
-	dsp_initpid(&apv, st.ap, st.ai, st.ad, st.dpt1freq, PID_FREQ);
+	dsp_setpid(&apv, st.ap, st.ai, st.ad, st.dpt1freq,
+		PID_FREQ, init);
 
 	// init battery voltage low-pass filter
-	dsp_initlpf1f(&batlpf, 100.0, PID_FREQ);
+	dsp_setlpf1f(&batlpf, 100.0, PID_FREQ, init);
 
 	// init low-pass fitlers for altitude and vertical acceleration
-	dsp_initlpf1t(&altlpf, st.atcoef, HP_FREQ);
-	dsp_initlpf1t(&tlpf, st.ttcoef, PID_FREQ);
-	dsp_initlpf1t(&valpf, st.vatcoef, PID_FREQ);
+	dsp_setlpf1t(&altlpf, st.atcoef, HP_FREQ, init);
+	dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, init);
+	dsp_setlpf1t(&valpf, st.vatcoef, PID_FREQ, init);
 
 	// init low-pass fitlers for accelerometer x, y and z axes
-	dsp_initlpf1f(&accxpt1, st.accpt1freq, PID_FREQ);
-	dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
-	dsp_initlpf1f(&acczpt1, st.accpt1freq, PID_FREQ);
+	dsp_setlpf1f(&accxpt1, st.accpt1freq, PID_FREQ, init);
+	dsp_setlpf1f(&accypt1, st.accpt1freq, PID_FREQ, init);
+	dsp_setlpf1f(&acczpt1, st.accpt1freq, PID_FREQ, init);
 
 	// init low-pass fitlers for gyroscope x, y and z axes
-	dsp_initlpf1f(&gyroxpt1, st.gyropt1freq, PID_FREQ);
-	dsp_initlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ);
-	dsp_initlpf1f(&gyrozpt1, st.gyropt1freq, PID_FREQ);
+	dsp_setlpf1f(&gyroxpt1, st.gyropt1freq, PID_FREQ, init);
+	dsp_setlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ, init);
+	dsp_setlpf1f(&gyrozpt1, st.gyropt1freq, PID_FREQ, init);
 
 	// init low-pass fitlers for magnetometer x, y and z axes
-	dsp_initlpf1f(&magxlpf, 10.0, PID_FREQ);
-	dsp_initlpf1f(&magylpf, 10.0, PID_FREQ);
-	dsp_initlpf1f(&magzlpf, 10.0, PID_FREQ);
+	dsp_setlpf1f(&magxlpf, 10.0, PID_FREQ, init);
+	dsp_setlpf1f(&magylpf, 10.0, PID_FREQ, init);
+	dsp_setlpf1f(&magzlpf, 10.0, PID_FREQ, init);
 
 	return 0;
 }
@@ -1654,7 +1672,7 @@ int rcmd(const struct cdevice *dev, const char **toks, char *out)
 // toks -- list of parsed command tokens.
 int ccmd(const struct cdevice *dev, const char **toks, char *out)
 {
-	initstabilize(atof(toks[1]));
+	setstabilize(1);
 
 	return 0;
 }
@@ -1741,9 +1759,9 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpid(&pitchpv, st.p, st.i, st.d,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&rollpv, st.p, st.i, st.d,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "stilt") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.sp = v;
@@ -1752,9 +1770,9 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpid(&pitchspv, st.sp, st.si, st.sd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&rollspv, st.sp, st.si, st.sd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
 		if (strcmp(toks[2], "mode") == 0) {
@@ -1771,7 +1789,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "syaw") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.ysp = v;
@@ -1780,7 +1798,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "throttle") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.zsp = v;
@@ -1789,7 +1807,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.cp = v;
@@ -1798,7 +1816,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpid(&cpv, st.cp, st.ci, st.cd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.ap = v;
@@ -1807,7 +1825,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpid(&apv, st.ap, st.ai, st.ad,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -1857,20 +1875,20 @@ int complcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "attitude") == 0) {
 		st.atctcoef = atof(toks[2]);
-		dsp_initcompl(&rollcompl, st.atctcoef, PID_FREQ);
-		dsp_initcompl(&pitchcompl, st.atctcoef, PID_FREQ);
+		dsp_setcompl(&rollcompl, st.atctcoef, PID_FREQ, 0);
+		dsp_setcompl(&pitchcompl, st.atctcoef, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
 		st.yctcoef = atof(toks[2]);
-		dsp_initcompl(&yawcompl, st.yctcoef, PID_FREQ);
+		dsp_setcompl(&yawcompl, st.yctcoef, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		st.cctcoef = atof(toks[2]);
-		dsp_initcompl(&climbratecompl, st.cctcoef, HP_FREQ);
+		dsp_setcompl(&climbratecompl, st.cctcoef, HP_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		st.actcoef = atof(toks[2]);
-		dsp_initcompl(&altcompl, st.actcoef, HP_FREQ);
+		dsp_setcompl(&altcompl, st.actcoef, HP_FREQ, 0);
 	}
 
 	return 0;
@@ -1884,51 +1902,51 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 	if (strcmp(toks[1], "gyro") == 0) {
 		st.gyropt1freq = atof(toks[2]);
 
-		dsp_initlpf1f(&gyroxpt1, st.gyropt1freq, PID_FREQ);
-		dsp_initlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ);
-		dsp_initlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ);
+		dsp_setlpf1f(&gyroxpt1, st.gyropt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "accel") == 0) {
 		st.accpt1freq = atof(toks[2]);
 
-		dsp_initlpf1f(&accxpt1, st.accpt1freq, PID_FREQ);
-		dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
-		dsp_initlpf1f(&accypt1, st.accpt1freq, PID_FREQ);
+		dsp_setlpf1f(&accxpt1, st.accpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(&accypt1, st.accpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(&accypt1, st.accpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "d") == 0) {
 		st.dpt1freq = atof(toks[2]);
 		
 		dsp_setpid(&pitchpv, st.p, st.i, st.d,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&rollpv, st.p, st.i, st.d,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&pitchspv, st.sp, st.si, st.sd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&rollspv, st.sp, st.si, st.sd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&cpv, st.cp, st.ci, st.cd,
-			st.dpt1freq, PID_FREQ);
+			st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "climb") == 0) {
 		st.ttcoef = atof(toks[2]);
 
-		dsp_initlpf1t(&tlpf, st.ttcoef, PID_FREQ);
+		dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "vaccel") == 0) {
 		st.vatcoef = atof(toks[2]);
 
-		dsp_initlpf1t(&valpf, st.vatcoef, PID_FREQ);
+		dsp_setlpf1t(&valpf, st.vatcoef, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		st.atcoef = atof(toks[2]);
 
-		dsp_initlpf1t(&altlpf, st.atcoef, HP_FREQ);
+		dsp_setlpf1t(&altlpf, st.atcoef, HP_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -2388,7 +2406,9 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 // ms -- microsecond passed from last CRSF packet
 int crsfcmd(const struct crsf_data *cd, int ms)
 {
+	static float slottimeout = ELRS_PUSHTIMEOUT;
 	float dt;
+	int slot;
 
 	// write first 8 channels values into log	
 	logwrite(LOG_CRSFCH0, cd->chf[ERLS_CH_ROLL]);
@@ -2419,8 +2439,37 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// get time passed from last ERLS packet
 	dt = ms / (float) TICKSPERSEC;
 
-	if (cd->chf[ERLS_CH_YAWMODE] < 0.0) {
+	// channel 16 is used to select settings slot, it is
+	// a 6 position switch on remote used for testing
+	if (cd->chf[ERLS_CH_SETSLOT] < -0.8)		slot = 0;
+	else if (cd->chf[ERLS_CH_SETSLOT] < -0.4)	slot = 1;
+	else if (cd->chf[ERLS_CH_SETSLOT] < 0)		slot = 2;
+	else if (cd->chf[ERLS_CH_SETSLOT] < 0.4)	slot = 3;
+	else if (cd->chf[ERLS_CH_SETSLOT] < 0.8)	slot = 4;
+	else						slot = 5;
+
+	// slot changed differ from current, wait some time to
+	// ensure that it's not a some error, if enough time passed,
+	// load settings from choosen slot
+	if (slot != curslot) {
+		slottimeout -= dt;
+
+		if (slottimeout <= 0.0) {
+			readsettings(slot);
+			setstabilize(0);
+
+			curslot = slot;
+		}
+	} else
+		slottimeout = ELRS_PUSHTIMEOUT;
+
+	// set magnetometer stabilization mode, if channel 4 has value
+	// more than 0, set gyroscope only stabilization mode otherwise
+	if (cd->chf[ERLS_CH_YAWMODE] > 0.0) {
 		yawspeedpid = 0;
+
+		// in magnetometer stabilization mode absolute yaw
+		// value is stabilized, so target should be integrated
 		yawtarget = circf(yawtarget
 			+ cd->chf[ERLS_CH_YAW] * dt * M_PI
 				* st.yawtargetspeed);
@@ -2572,8 +2621,9 @@ int main(void)
 	uart4_init();
 	uart5_init();
 
-	// reading settings from memory slot 0
-	readsettings(0);
+	// reading settings from memory current
+	// memory slot, which is 0 at start
+	readsettings(curslot);
 
 	// init board's devices
 	esc_init();
@@ -2588,7 +2638,7 @@ int main(void)
 	irc_init();
 
 	// initilize stabilization routine
-	initstabilize(0.0);
+	setstabilize(1);
 
 	// initilize periodic events
 	inittimev(evs + TEV_PID, PID_FREQ, stabilize);

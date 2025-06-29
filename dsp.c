@@ -2,33 +2,23 @@
 
 #include "dsp.h"
 
-int dsp_initlpf1t(struct dsp_lpf *ir, float tcoef, int freq)
+int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq, int init)
 {
-	ir->s1 = 0.0;
-	dsp_setlpf1t(ir, tcoef,  freq);
+	if (init)
+		ir->s1 = 0.0;
 
-	return 0;
-}
-
-int dsp_initlpf1f(struct dsp_lpf *ir, float cutoff, int freq)
-{
-	ir->s1 = 0.0;
-	dsp_setlpf1f(ir, cutoff,  freq);
-
-	return 0;
-}
-
-int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq)
-{
 	ir->alpha = exp(-1.0 / (float) freq / tcoef);
 	ir->order = DSP_LPFORDER_1;
 
 	return 0;
 }
 
-int dsp_setlpf1f(struct dsp_lpf *ir, float cutoff, int freq)
+int dsp_setlpf1f(struct dsp_lpf *ir, float cutoff, int freq, int init)
 {
 	float v;
+
+	if (init)
+		ir->s1 = 0.0;
 
 	v = 2.0f * M_PI * cutoff / (float) freq;
 
@@ -50,29 +40,19 @@ float dsp_updatelpf(struct dsp_lpf *ir, float v)
 	return ir->s1;
 }
 
-int dsp_initpid(struct dsp_pidval *pv, float kp, float ki, float kd,
-	float dcutoff, int freq)
-{
-	pv->kp = kp;
-	pv->ki = ki;
-	pv->kd = kd;
-
-	dsp_initlpf1f(&(pv->dlpf), dcutoff, freq);
-
-	pv->pe = 0.0;
-	pv->s = 0.0;
-
-	return 0;
-}
-
 float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
-	float dcutoff, int freq)
+	float dcutoff, int freq, int init)
 {
+	if (init) {
+		pv->pe = 0.0;
+		pv->s = 0.0;
+	}
+
 	pv->kp = kp;
 	pv->ki = ki;
 	pv->kd = kd;
 	
-	dsp_setlpf1f(&(pv->dlpf), dcutoff, freq);
+	dsp_setlpf1f(&(pv->dlpf), dcutoff, freq, init);
 
 	return 0;
 }
@@ -109,9 +89,11 @@ float dsp_circpid(struct dsp_pidval *pv, float target,
 	return v;
 }
 
-int dsp_initcompl(struct dsp_compl *comp, float tc, int freq)
+int dsp_setcompl(struct dsp_compl *comp, float tc, int freq, int init)
 {
-	comp->s = 0;
+	if (init)
+		comp->s = 0;
+
 	comp->coef = tc / (tc + 1.0 / (float) freq);
 
 	return 0;

@@ -141,17 +141,23 @@ void send_click_handler(void *arg)
 
 void flash_click_handler(void *arg)
 {
+	map<string, settings_tab *> tabs;
+	main_widget *mw;
 	stringstream ss;
 	string line;
 	string conf;
-	main_widget *mw;
 	
 	mw = (main_widget *) arg;
 	
+	tabs = mw->get_tabs();
+
 	mw->stop_catch_uav_out();
 	
-	mw->send_uav_conf_cmd("flash write\n");
-	
+	mw->send_uav_conf_cmd("flash write " + tabs["flash"]
+		->get_group("Write")
+		->get_setting("slot")
+		->get_value() + "\n");
+
 	mw->start_catch_uav_out();
 }
 
@@ -588,42 +594,43 @@ main_widget::main_widget(QWidget *parent)
 	tabs["adjustments"] = new settings_tab;
 	tabs["filters"] = new settings_tab;
 	tabs["control"] = new settings_tab;
+	tabs["flash"] = new settings_tab;
 	tabs["log"] = new settings_tab;
 	tabs["info"] = new settings_tab;
 	tabs["devices"] = new settings_tab;
 	
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"rate PID", 
+		"Rate PID", 
 		{"P",		"I", 		"D"},
 		{"pid stilt p",	"pid stilt i",	"pid stilt d"},
 		cmdstree), 0, 0);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"angle PID",
+		"Angle PID",
 		{"P",		"I",		"D"},
 		{"pid tilt p",	"pid tilt i",	"pid tilt d"},
 		cmdstree), 0, 1);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"yaw PID",
+		"Yaw PID",
 		{"P",		"I",		"D"},
 		{"pid syaw p",	"pid syaw i",	"pid syaw d"},
 		cmdstree), 0, 2);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"yaw position PID",
+		"Yaw position PID",
 		{"P",		"I",		"D"},
 		{"pid yaw p",	"pid yaw i",	"pid yaw d"},
 		cmdstree), 0, 3);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"throttle PID",
+		"Throttle PID",
 		{"P",			"I",			"D"},
 		{"pid throttle p", 	"pid throttle i",	"pid throttle d"},
 		cmdstree), 1, 0);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"climb rate PID",
+		"Climb rate PID",
 		{"P",			"I",			"D"},
 		{"pid climbrate p",	"pid climbrate i",	"pid climbrate d"},
 		cmdstree), 1, 1);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"altitude PID",
+		"Altitude PID",
 		{"P",			"I",			"D"},
 		{"pid altitude p",	"pid altitude i",	"pid altitude d"},
 		cmdstree), 1, 2);
@@ -640,49 +647,56 @@ main_widget::main_widget(QWidget *parent)
 		cmdstree), 3, 1, 2, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"attitude offset",
+		"Attitude offset",
 		{"roll",	"pitch",	"yaw"},
 		{"adj roll",	"adj pitch",	"adj yaw"},
 		cmdstree), 0, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"motor scale",
+		"Motor scale",
 		{"roll",		"pitch"},
 		{"adj rollthrust", 	"adj pitchthrust"},
 		cmdstree), 0, 1);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"accelerometer offset",
+		"Accelerometer offset",
 		{"X",		"Y",		"Z"},
 		{"adj acc x",	"adj acc y",	"adj acc z"},
 		cmdstree), 1, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"gyroscope offset",
+		"Gyroscope offset",
 		{"X",		"Y",		"Z"},
 		{"adj gyro x",	"adj gyro y",	"adj gyro z"},
 		cmdstree), 1, 1);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"magnetometer offsets",
+		"Magnetometer offsets",
 		{"X",		"Y",		"Z",		"declination"},
 		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl"},
 		cmdstree), 2, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"magnetometer scale",
+		"Magnetometer scale",
 		{"X",			"Y",			"Z"},
 		{"adj mag xscale", 	"adj mag yscale",	"adj mag zscale"},
 		cmdstree), 2, 1);
 
 	tabs["control"]->add_group(new float_settings_group(nullptr,
-		"control maximums",
+		"Control maximums",
 		{"thrust",	"roll angle", 	"pitch angle",	"acceleration",	"altitude"},
 		{"ctrl thrust",	"ctrl roll",	"ctrl pitch",	"ctrl accel",	"ctrl altmax"},
 		cmdstree), 3, 2, 2, 1);
 	
 	tabs["control"]->add_group(new float_settings_group(nullptr,
-		"control rates",
+		"Control rates",
 		{"roll",	"pitch",	"yaw position",	"yaw",		"climb"},
 		{"ctrl sroll",	"ctrl spitch",	"ctrl yaw",	"ctrl syaw",	"ctrl climbrate"},
 		cmdstree), 3, 3, 2, 1);
 
-	
+	settings_group *flash = new settings_group(nullptr, "Write");
+
+	flash->add_setting(new uint_setting(nullptr, "slot"));
+	flash->add_setting(new button_setting(nullptr, "write to flash",
+		flash_click_handler, this), false);
+
+	tabs["flash"]->add_group(flash, 0, 0, 1, 1);
+
 	settings_group *info = new settings_group(nullptr, "Info");
 	info->add_setting_pair(
 		new button_setting(nullptr, "IMU", info_imu_click_handler, this),
@@ -744,15 +758,15 @@ main_widget::main_widget(QWidget *parent)
 	tab->addTab(tabs["filters"], "Filters");
 	tab->addTab(tabs["adjustments"], "Adjustments");
 	tab->addTab(tabs["control"], "Control");
+	tab->addTab(tabs["flash"], "Flash");
 	tab->addTab(tabs["log"], "Log");
 	tab->addTab(tabs["info"], "Info");
 	tab->addTab(tabs["devices"], "Devices");
 
 	settings["open"] = new button_setting(nullptr, "open config", open_click_handler, this);
 	settings["save"] = new button_setting(nullptr, "save config", save_click_handler, this);
-	settings["connect"] = new button_setting(nullptr, "connect to UAV", connect_click_handler, this);
-	settings["send"] = new button_setting(nullptr, "send settings", send_click_handler, this);
-	settings["flash"] = new button_setting(nullptr, "write to flash", flash_click_handler, this);
+	settings["connect"] = new button_setting(nullptr, "get settings", connect_click_handler, this);
+	settings["send"] = new button_setting(nullptr, "set settings", send_click_handler, this);
 
 	connect(term->get_line(), &QLineEdit::returnPressed, this, &main_widget::return_pressed);
 
@@ -760,13 +774,12 @@ main_widget::main_widget(QWidget *parent)
 	connect(timer, &QTimer::timeout, this, &main_widget::timer_handler);
 	timer->start(1);
 
-	grid->addWidget(tab, 0, 0, 5, 5);
+	grid->addWidget(tab, 0, 0, 5, 4);
 	grid->addWidget(settings["open"]->get_field(), 5, 0);
 	grid->addWidget(settings["save"]->get_field(), 5, 1);
 	grid->addWidget(settings["connect"]->get_field(), 5, 2);
 	grid->addWidget(settings["send"]->get_field(), 5, 3);
-	grid->addWidget(settings["flash"]->get_field(), 5, 4);
-	grid->addWidget(term, 0, 5, 6, 3);
+	grid->addWidget(term, 0, 4, 6, 2);
 
 	setWindowTitle(tr("Settings"));
 }

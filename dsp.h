@@ -51,26 +51,6 @@ struct dsp_compl {
 	float coef;
 };
 
-// initilize first order low-pass filter using time constant value.
-//
-// ir -- low-pass filter context.
-// tcoef -- low-pass filter's time constant used to calculate
-// 	it's alpha coefficient.
-// freq -- discretisation frequency used to calculate alpha. In flight
-// 	controller application it's the stabilization loop frequency
-// 	(see main.c).
-int dsp_initlpf1t(struct dsp_lpf *ir, float tcoef, int freq);
-
-// initilize first order low-pass filter using cut-off frequency value.
-//
-// ir -- low-pass filter context.
-// cutoff -- low-pass filter's cut-off frequency used to calculate
-// 	it's alpha coefficient.
-// freq -- discretisation frequency used to calculate alpha. In flight
-// 	controller application it's the stabilization loop frequency
-// 	(see main.c).
-int dsp_initlpf1f(struct dsp_lpf *ir, float cutoff, int freq);
-
 // set new first order low-pass filter using time constant value.
 //
 // ir -- low-pass filter context.
@@ -79,7 +59,8 @@ int dsp_initlpf1f(struct dsp_lpf *ir, float cutoff, int freq);
 // freq -- discretisation frequency used to calculate alpha. In flight
 // 	controller application it's the stabilization loop frequency
 // 	(see main.c).
-int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq);
+// init -- 1, if internal values initializaion required, 0 otherwise.
+int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq, int init);
 
 // set new first order low-pass filter using cut-off frequency value.
 //
@@ -89,7 +70,8 @@ int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq);
 // freq -- discretisation frequency used to calculate alpha. In flight
 // 	controller application it's the stabilization loop frequency
 // 	(see main.c).
-int dsp_setlpf1f(struct dsp_lpf *ir, float cutoff, int freq);
+// init -- 1, if internal values initializaion required, 0 otherwise.
+int dsp_setlpf1f(struct dsp_lpf *ir, float cutoff, int freq, int init);
 
 // get last calculated low-pass filtering result (from last
 // dsp_updatelpf call).
@@ -103,17 +85,6 @@ float dsp_getlpf(struct dsp_lpf *ir);
 // v -- new value of a signal being filtered.
 float dsp_updatelpf(struct dsp_lpf *ir, float v);
 
-// initilize PID controller.
-//
-// pv -- PID controller context.
-// kp -- P coefficient.
-// ki -- I coefficient.
-// kd -- D coefficient.
-// dcoutoff -- D low-pass filter cut-off frequency.
-// target -- initial target value (unsed, should be removed).
-int dsp_initpid(struct dsp_pidval *pv, float kp, float ki, float kd,
-	float dcoutoff, int freq);
-
 // set new P, I and D coefficient for a PID controller.
 //
 // pv -- PID controller context.
@@ -121,8 +92,9 @@ int dsp_initpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 // ki -- I coefficient.
 // kd -- D coefficient.
 // dcoutoff -- D low-pass filter cut-off frequency.
+// init -- 1, if internal values initializaion required, 0 otherwise.
 float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
-	float dcutoff, int freq);
+	float dcutoff, int freq, int init);
 
 // calculate next PID controller's correction value.
 //
@@ -144,16 +116,18 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt);
 // val -- current value.
 // dt -- time delta, i.e. time passed from previous correction
 // 	value calculation.
-float dsp_circpid(struct dsp_pidval *pv, float target, float val, float dt);
+float dsp_circpid(struct dsp_pidval *pv, float target,
+	float val, float dt);
 
-// initilize complimentary filter.
+// set new complimentary filter using time constant value.
 //
 // comp -- complimentary filter's context.
 // tc -- complimentary filter's time constant in seconds.
 // freq -- discretisation frequency used to calculate filter's.
 // coefficient. In flight controller application it's the stabilization
 // 	loop frequency (see main.c).
-int dsp_initcompl(struct dsp_compl *comp, float tc, int freq);
+// init -- 1, if internal values initializaion required, 0 otherwise.
+int dsp_setcompl(struct dsp_compl *comp, float tc, int freq, int init);
 
 // get last calculated complimentary filtering result.
 // (from last dsp_updatecompl call).
