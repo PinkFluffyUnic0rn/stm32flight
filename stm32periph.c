@@ -196,9 +196,6 @@ void tim1_init(void)
 	if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
 		error_handler();
 
-	if (HAL_TIM_OC_Init(&htim1) != HAL_OK)
-		error_handler();
-
 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
 	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
 	if (HAL_TIMEx_MasterConfigSynchronization(&htim1,
@@ -237,12 +234,6 @@ void tim1_init(void)
 		error_handler();
 
 	HAL_TIM_MspPostInit(&htim1);
-/*
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-*/
 }
 
 void tim8_init(void)
@@ -394,6 +385,8 @@ void uart5_init()
 void error_handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
 
 	__disable_irq();
 	while (1) {}

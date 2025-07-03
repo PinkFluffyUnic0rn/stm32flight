@@ -461,9 +461,8 @@ static void dshotsetbuf(uint16_t* buf, float val)
 
 	pack = (uival << 1) | 0;
 
-	csum = pack ^ (pack >> 4) ^ (pack >> 8) ^ (pack >> 12);
+	csum = (pack ^ (pack >> 4) ^ (pack >> 8) ^ (pack >> 12)) & 0xf;
 
-	csum &= 0xf;
 	pack = (pack << 4) | csum;
 
 	for(i = 0; i < 16; i++) {
@@ -477,7 +476,9 @@ static void dshotsetbuf(uint16_t* buf, float val)
 
 static void dshotdmacb(DMA_HandleTypeDef *hdma)
 {
-	TIM_HandleTypeDef *htim = (TIM_HandleTypeDef *)((DMA_HandleTypeDef *)hdma)->Parent;
+	TIM_HandleTypeDef *htim;;
+	
+	htim = (TIM_HandleTypeDef *)((DMA_HandleTypeDef *)hdma)->Parent;
 
 	if (hdma == htim->hdma[TIM_DMA_ID_CC1])
 		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC1);
@@ -557,6 +558,8 @@ static void esc_init()
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 
 	setthrust(0.0, 0.0, 0.0, 0.0);
+
+	HAL_Delay(2000);
 }
 
 // Init HP206c barometer
@@ -1294,7 +1297,6 @@ int stabilize(int ms)
 	float gy, gx, gz;
 	float ay, ax, az;
 	float dt;
-
 
 	// emergency disarm happened
 	if (emergencydisarm) {
