@@ -10,6 +10,11 @@
 // PWM settings
 #define PWM_MAXCOUNT 3200
 
+// DSHOT-300 values
+#define DSHOT_BITLEN 427
+#define DSHOT_0 160
+#define DSHOT_1 320
+
 // periodic event timer period
 #define TIMPERIOD 0xfff
 

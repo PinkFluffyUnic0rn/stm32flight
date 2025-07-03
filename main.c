@@ -114,7 +114,7 @@
 
 // Time required to register button push,
 // used for buttons and switches that controls
-// time  consuming functions
+// time consuming functions
 #define ELRS_PUSHTIMEOUT 0.1
 
 // eRLS channels mapping
@@ -450,12 +450,113 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		dev[ESP_DEV].error(dev[ESP_DEV].priv, huart);
 }
 
+static void dshotsetbuf(uint16_t* buf, float val)
+{
+	uint16_t pack;
+	uint16_t uival;
+	unsigned int csum;
+	int i;
+
+	uival = (uint16_t) (trimuf(val) * 1999.0 + 0.5) + 48;
+
+	pack = (uival << 1) | 0;
+
+	csum = pack ^ (pack >> 4) ^ (pack >> 8) ^ (pack >> 12);
+
+	csum &= 0xf;
+	pack = (pack << 4) | csum;
+
+	for(i = 0; i < 16; i++) {
+		buf[i] = (pack & 0x8000) ? DSHOT_1 : DSHOT_0;
+		pack <<= 1;
+	}
+
+	buf[16] = 0;
+	buf[17] = 0;
+}
+
+static void dshotdmacb(DMA_HandleTypeDef *hdma)
+{
+	TIM_HandleTypeDef *htim = (TIM_HandleTypeDef *)((DMA_HandleTypeDef *)hdma)->Parent;
+
+	if (hdma == htim->hdma[TIM_DMA_ID_CC1])
+		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC1);
+	else if(hdma == htim->hdma[TIM_DMA_ID_CC2])
+		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC2);
+	else if(hdma == htim->hdma[TIM_DMA_ID_CC3])
+		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC3);
+	else if(hdma == htim->hdma[TIM_DMA_ID_CC4])
+		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
+}
+
+/* Set motors thrust
+
+      rtd    ltd
+        \    /
+   p     \  /
+   |
+   v     /  \
+        /    \
+      rbd    lbd
+
+         r ->
+*/
+// all values should be between 0.0 and 1.0.
+int setthrust(float ltd, float lbd, float rbd, float rtd)
+{
+	static uint16_t dsbuf[4][18];
+
+	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
+		|| isnan(lbd) || !elrs)
+		ltd = rtd = rbd = lbd = 0.0;
+
+	logwrite(LOG_LT, ltd);
+	logwrite(LOG_LB, lbd);
+	logwrite(LOG_RB, rbd);
+	logwrite(LOG_RT, rtd);
+
+	dshotsetbuf(dsbuf[0], trimuf(ltd));
+	dshotsetbuf(dsbuf[1], trimuf(lbd));
+	dshotsetbuf(dsbuf[2], trimuf(rtd));
+	dshotsetbuf(dsbuf[3], trimuf(rbd));
+
+	HAL_DMA_Start_IT(htim1.hdma[TIM_DMA_ID_CC1],
+		(uint32_t) dsbuf[0],
+		(uint32_t) &(htim1.Instance->CCR1), 18);
+	HAL_DMA_Start_IT(htim1.hdma[TIM_DMA_ID_CC2],
+		(uint32_t) dsbuf[1],
+		(uint32_t) &(htim1.Instance->CCR2), 18);
+	HAL_DMA_Start_IT(htim1.hdma[TIM_DMA_ID_CC3],
+		(uint32_t) dsbuf[2],
+		(uint32_t) &(htim1.Instance->CCR3), 18);
+	HAL_DMA_Start_IT(htim1.hdma[TIM_DMA_ID_CC4],
+		(uint32_t) dsbuf[3],
+		(uint32_t) &(htim1.Instance->CCR4), 18);
+
+	__HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_CC1);
+	__HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_CC2);
+	__HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_CC3);
+	__HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_CC4);
+
+	return 0;
+}
+
 // Init ESC's
 static void esc_init()
 {
-	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4
-		= (uint16_t) (0.2 * (float) PWM_MAXCOUNT);
-	HAL_Delay(2000);
+	__HAL_TIM_SET_AUTORELOAD(&htim1, DSHOT_BITLEN);
+
+	htim1.hdma[TIM_DMA_ID_CC1]->XferCpltCallback = dshotdmacb;
+	htim1.hdma[TIM_DMA_ID_CC2]->XferCpltCallback = dshotdmacb;
+	htim1.hdma[TIM_DMA_ID_CC3]->XferCpltCallback = dshotdmacb;
+	htim1.hdma[TIM_DMA_ID_CC4]->XferCpltCallback = dshotdmacb;
+
+  	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+
+	setthrust(0.0, 0.0, 0.0, 0.0);
 }
 
 // Init HP206c barometer
@@ -741,43 +842,6 @@ float qmc_heading(float r, float p, float x, float y, float z)
 	y = y * cosf(r) + z * sinf(r);
 
 	return circf(atan2f(y, x) + st.magdecl);
-}
-
-/* Set motors thrust
-
-      rtd    ltd
-        \    /
-   p     \  /
-   |
-   v     /  \
-        /    \
-      rbd    lbd
-
-         r ->
-*/
-
-// all values should be between 0.0 and 1.0.
-int setthrust(float ltd, float lbd, float rbd, float rtd)
-{
-	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
-		|| isnan(lbd) || !elrs)
-		ltd = rtd = rbd = lbd = 0.0;
-
-	logwrite(LOG_LT, ltd);
-	logwrite(LOG_LB, lbd);
-	logwrite(LOG_RB, rbd);
-	logwrite(LOG_RT, rtd);
-
-	TIM1->CCR1 = (uint16_t) ((trimuf(ltd) * 0.8 + 0.19)
-		* (float) PWM_MAXCOUNT);
-	TIM1->CCR2 = (uint16_t) ((trimuf(lbd) * 0.8 + 0.19)
-		* (float) PWM_MAXCOUNT);
-	TIM1->CCR3 = (uint16_t) ((trimuf(rtd) * 0.8 + 0.19)
-		* (float) PWM_MAXCOUNT);
-	TIM1->CCR4 = (uint16_t) ((trimuf(rbd) * 0.8 + 0.19)
-		* (float) PWM_MAXCOUNT);
-
-	return 0;
 }
 
 // Print quadcopter's postion and tilt data into a string.
@@ -1230,6 +1294,7 @@ int stabilize(int ms)
 	float gy, gx, gz;
 	float ay, ax, az;
 	float dt;
+
 
 	// emergency disarm happened
 	if (emergencydisarm) {
@@ -2607,10 +2672,10 @@ int main(void)
 
 	// init stm32 periphery
 	gpio_init();
+	dma_init();
 	tim1_init();
 	tim8_init();
 	tim10_init();
-	dma_init();
 	i2c_init();
 	spi1_init();
 	spi2_init();
