@@ -14,6 +14,8 @@ accelerometer/gyroscope readings.
 * acceleration stabilization using accelerometer readings.
 * configuration through wi-fi.
 * altitude hold.
+* dshot-300 ESC control protocol.
+* IRC Tramp VTX control.
 * telemetry through eLRS.
 * terminal configuration tool.
 * Qt5 based GUI configuration tool.
@@ -32,7 +34,7 @@ Devices
 
 Project structure
 =========
-* `additional` -- the directory containing schematics for the flight
+* `pcb` -- the directory containing schematics for the flight
 controller and BEC:
     * `bottom.png` -- bottom side of flight controller board.
     * `top.png` -- top side of flight controller board.
@@ -40,6 +42,10 @@ controller and BEC:
     * `power.png` -- power layer of flight controller board.
     * `tps5430.JPG` -- DC-DC conveter used to convert battery voltage to
 5 volts used by main board's input LDO and FPV camera.
+    * `conponentvalues.txt` -- values and types for components on
+schematics.
+* `additional` -- additional files
+    * `frame.dxf` -- quadcopter frame outline.
 * `devices` -- drivers for devices used by the flight controller:
     * `device.h` -- main interface for a character device. Used by almost
 all devices in devices directory.
@@ -62,6 +68,8 @@ magnetometer.
 IMU (accelerometer + gyroscope).
     * `m10.c` and `m10.h` -- driver for a M10 GNSS module.
     * `w25.c` and `w25.h` -- driver for a w25q SPI flash.
+    * `irc.c` and `irc.h` -- driver for an IRC Tramp controlled
+VTX device.
 
 * `main.c` -- all routines related to flight control.
 * `global.h` -- global values used in many places in source code.

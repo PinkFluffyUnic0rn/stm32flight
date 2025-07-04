@@ -9,7 +9,7 @@
 // will be set to nearest border value.
 #define trimuf(v) (((v) < 0.0) ? 0.0 : (((v) > 1.0) ? 1.0 : (v)))
 
-// check that rotaions value is in [-2Pi:2Pi] range, if it falls out
+// check that rotaions value is in [-2Pi;2Pi] range, if it falls out
 // of this range, exceess cirles (whole 2Pi's) will be removed.
 #define circf(v) (((v) < -M_PI) ? ((v) + 2.0 * M_PI)		\
 	: (((v) > M_PI) ? ((v) - 2.0 * M_PI) : (v)))
@@ -136,7 +136,7 @@ int dsp_setcompl(struct dsp_compl *comp, float tc, int freq, int init);
 float dsp_getcompl(struct dsp_compl *comp);
 
 // calculate next complimentary filter's value in circular way
-// ([-Pi:Pi] range is used) and get the result.
+// ([-Pi;Pi] range is used) and get the result.
 //
 // comp -- complimentary filter's context.
 // v0 -- new value of first signal to be filtered and merged.

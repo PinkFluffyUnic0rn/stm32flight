@@ -450,6 +450,11 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		dev[ESP_DEV].error(dev[ESP_DEV].priv, huart);
 }
 
+// Fill buffer, that contains PWM duty cycle values of a
+// a dshot packet using desired motor thrust value.
+//
+// buf -- buffer for PWM duty cycle values that is used by DMA.
+// val -- motor thrust value in range from 0.0 to 1.0
 static void dshotsetbuf(uint16_t* buf, float val)
 {
 	uint16_t pack;
@@ -457,29 +462,39 @@ static void dshotsetbuf(uint16_t* buf, float val)
 	unsigned int csum;
 	int i;
 
+	// convert motor thrust value from [0.0;1.0]
+	// range to int value in [48; 2047] range
 	uival = (uint16_t) (trimuf(val) * 1999.0 + 0.5) + 48;
 
+	// bit after thrust value is telemetry request,
+	// so just shift because no telemetry is used
 	pack = (uival << 1) | 0;
 
+	// calculate dshot checksum
 	csum = (pack ^ (pack >> 4) ^ (pack >> 8) ^ (pack >> 12)) & 0xf;
 
+	// append checksum to the packet
 	pack = (pack << 4) | csum;
 
+	// construct PWM duty cycle buffer for the packet
 	for(i = 0; i < 16; i++) {
 		buf[i] = (pack & 0x8000) ? DSHOT_1 : DSHOT_0;
 		pack <<= 1;
 	}
 
+	// two bits used to maintain space between packets
 	buf[16] = 0;
 	buf[17] = 0;
 }
 
+// DMA callback for dshot processing
 static void dshotdmacb(DMA_HandleTypeDef *hdma)
 {
 	TIM_HandleTypeDef *htim;;
 	
 	htim = (TIM_HandleTypeDef *)((DMA_HandleTypeDef *)hdma)->Parent;
 
+	// disable DMA after bit was sent
 	if (hdma == htim->hdma[TIM_DMA_ID_CC1])
 		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC1);
 	else if(hdma == htim->hdma[TIM_DMA_ID_CC2])
@@ -511,16 +526,21 @@ int setthrust(float ltd, float lbd, float rbd, float rtd)
 		|| isnan(lbd) || !elrs)
 		ltd = rtd = rbd = lbd = 0.0;
 
+	// put motors thrust values into log
 	logwrite(LOG_LT, ltd);
 	logwrite(LOG_LB, lbd);
 	logwrite(LOG_RB, rbd);
 	logwrite(LOG_RT, rtd);
 
+	// construst a PWM duty cycle
+	// buffers for dshot ESCs
 	dshotsetbuf(dsbuf[0], trimuf(ltd));
 	dshotsetbuf(dsbuf[1], trimuf(lbd));
 	dshotsetbuf(dsbuf[2], trimuf(rtd));
 	dshotsetbuf(dsbuf[3], trimuf(rbd));
 
+	// instruct DMA to use the buffers
+	// for streams corresponding to DSHOT ESCs
 	HAL_DMA_Start_IT(htim1.hdma[TIM_DMA_ID_CC1],
 		(uint32_t) dsbuf[0],
 		(uint32_t) &(htim1.Instance->CCR1), 18);
@@ -534,6 +554,7 @@ int setthrust(float ltd, float lbd, float rbd, float rtd)
 		(uint32_t) dsbuf[3],
 		(uint32_t) &(htim1.Instance->CCR4), 18);
 
+	// Enable DMA for streams corresponding to DSHOT ESCs
 	__HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_CC1);
 	__HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_CC2);
 	__HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_CC3);
@@ -547,18 +568,23 @@ static void esc_init()
 {
 	__HAL_TIM_SET_AUTORELOAD(&htim1, DSHOT_BITLEN);
 
+	// set dshot DMA callback for TIM channels
+	// corresponding to DSHOT escs
 	htim1.hdma[TIM_DMA_ID_CC1]->XferCpltCallback = dshotdmacb;
 	htim1.hdma[TIM_DMA_ID_CC2]->XferCpltCallback = dshotdmacb;
 	htim1.hdma[TIM_DMA_ID_CC3]->XferCpltCallback = dshotdmacb;
 	htim1.hdma[TIM_DMA_ID_CC4]->XferCpltCallback = dshotdmacb;
 
+	// start PWM on TIM channels corresponding to DSHOT ESCs
   	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 
+	// set zero initial thrust for every motor
 	setthrust(0.0, 0.0, 0.0, 0.0);
 
+	// delay to let esc fully initilize
 	HAL_Delay(2000);
 }
 
