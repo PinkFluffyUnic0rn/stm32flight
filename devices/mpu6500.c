@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "util.h"
+
 #include "mpu6500.h"
 
 #define MPU_ADDR 0x68
@@ -185,7 +187,7 @@ int mpu_selftest(struct mpu_device *dev, struct mpu_stdata *stdata)
 	mpu_write(dev, MPU_GYROCONF, 0xe0);
 	mpu_write(dev, MPU_ACCELCONF, 0xe0);
 
-	HAL_Delay(100);
+	mdelay(100);
 
 	stax = stay = staz = stgx = stgy = stgz = 0;
 	for (i = 0; i < 200; ++i) {
@@ -200,7 +202,7 @@ int mpu_selftest(struct mpu_device *dev, struct mpu_stdata *stdata)
 
 	mpu_write(dev, MPU_GYROCONF, 0x0);
 	mpu_write(dev, MPU_ACCELCONF, 0x0);
-	HAL_Delay(100);
+	mdelay(100);
 
 	mpu_read(dev, 0, stbuf, 3);
 	mpu_read(dev, 13, stbuf + 3, 3);

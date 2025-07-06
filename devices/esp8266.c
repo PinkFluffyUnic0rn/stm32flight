@@ -111,7 +111,8 @@ int esp_send(void *d, void *dt, size_t sz)
 		while (HAL_GPIO_ReadPin(dev->bootgpio,
 				dev->bootpin) == GPIO_PIN_SET
 				&& t / 1000 < ESP_SPITIMEOUTUS) {
-			ndelay(100);
+//			ndelay(100);
+			udelay(1);
 			t += 100;
 		}
 
@@ -127,7 +128,8 @@ int esp_send(void *d, void *dt, size_t sz)
 		HAL_GPIO_WritePin(dev->csgpio, dev->cspin,
 			GPIO_PIN_RESET);
 		
-		ndelay(5000);
+//		ndelay(5000);
+		udelay(5);
 
 		b = 0x2;
 		HAL_SPI_Transmit(dev->hspi, &b, 1, 1000);
@@ -164,11 +166,11 @@ static int esp_run(struct esp_device *dev)
 
 	HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(dev->bootgpio, dev->bootpin, GPIO_PIN_SET);
-	HAL_Delay(250);
+	mdelay(250);
 	HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_RESET);
-	HAL_Delay(250);
+	mdelay(250);
 	HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_SET);
-	HAL_Delay(250);
+	mdelay(250);
 	HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_SET);
 	
 	HAL_GPIO_WritePin(dev->bootgpio, dev->bootpin, GPIO_PIN_RESET);
@@ -192,11 +194,11 @@ static int esp_flash(struct esp_device *dev)
 
 	HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(dev->bootgpio, dev->bootpin, GPIO_PIN_RESET);
-	HAL_Delay(250);
+	mdelay(250);
 	HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_RESET);
-	HAL_Delay(250);
+	mdelay(250);
 	HAL_GPIO_WritePin(dev->rstgpio, dev->rstpin, GPIO_PIN_SET);
-	HAL_Delay(250);
+	mdelay(250);
 	HAL_GPIO_WritePin(dev->csgpio, dev->cspin, GPIO_PIN_SET);
 
 	return 0;

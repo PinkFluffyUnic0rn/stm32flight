@@ -272,6 +272,47 @@ void info_vtx_click_handler(void *arg)
 	((main_widget *) arg)->send_uav_info_cmd("info irc");
 }
 
+void lt_direct_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor lt d");
+}
+
+void lt_reverse_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor lt r");
+}
+
+void lb_direct_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor lb d");
+}
+
+void lb_reverse_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor lb r");
+}
+
+void rt_direct_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor rt d");
+}
+
+void rt_reverse_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor rt r");
+}
+
+void rb_direct_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor rb d");
+}
+
+void rb_reverse_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor rb r");
+}
+
+
 setting::setting(QWidget *parent, string n, string c,
 	commands_tree *cmdstree)
 		: QWidget(parent)
@@ -598,6 +639,7 @@ main_widget::main_widget(QWidget *parent)
 	tabs["log"] = new settings_tab;
 	tabs["info"] = new settings_tab;
 	tabs["devices"] = new settings_tab;
+	tabs["motors"] = new settings_tab;
 	
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"Rate PID", 
@@ -737,6 +779,9 @@ main_widget::main_widget(QWidget *parent)
 	log_read->add_setting(new button_setting(nullptr, "load log", log_load_click_handler, this),
 		false);
 
+	tabs["log"]->add_group(log_write, 0, 0, 1, 1);
+	tabs["log"]->add_group(log_read, 0, 1, 1, 1);
+
 	settings_group *irc = new settings_group(nullptr, "IRC");
 	irc->add_setting(new mode_setting(nullptr, "Power", "irc power",
 		cmdstree, {"25", "100", "200", "400", "600"}));
@@ -751,8 +796,45 @@ main_widget::main_widget(QWidget *parent)
 
 	tabs["devices"]->add_group(irc, 0, 0, 1, 1);
 
-	tabs["log"]->add_group(log_write, 0, 0, 1, 1);
-	tabs["log"]->add_group(log_read, 0, 1, 1, 1);
+	settings_group *lt = new settings_group(nullptr,
+		"left-top");
+	lt->add_setting(new mode_setting(nullptr, "output",
+		"motor lt", cmdstree, {"0", "1", "2", "3"}));
+	lt->add_setting_pair(
+		new button_setting(nullptr, "direct", lt_direct_click_handler, this),
+		new button_setting(nullptr, "reverse", lt_reverse_click_handler, this)
+	);
+	tabs["motors"]->add_group(lt, 0, 0, 1, 1);
+
+	settings_group *lb = new settings_group(nullptr,
+		"left-bottom");
+	lb->add_setting(new mode_setting(nullptr, "output",
+		"motor lb", cmdstree, {"0", "1", "2", "3"}));
+	lb->add_setting_pair(
+		new button_setting(nullptr, "direct", lb_direct_click_handler, this),
+		new button_setting(nullptr, "reverse", lb_reverse_click_handler, this)
+	);
+	tabs["motors"]->add_group(lb, 1, 0, 1, 1);
+
+	settings_group *rt = new settings_group(nullptr,
+		"right-top");
+	rt->add_setting(new mode_setting(nullptr, "output",
+		"motor rt", cmdstree, {"0", "1", "2", "3"}));
+	rt->add_setting_pair(
+		new button_setting(nullptr, "direct", rt_direct_click_handler, this),
+		new button_setting(nullptr, "reverse", rt_reverse_click_handler, this)
+	);
+	tabs["motors"]->add_group(rt, 0, 1, 1, 1);
+
+	settings_group *rb = new settings_group(nullptr,
+		"right-bottom");
+	rb->add_setting(new mode_setting(nullptr, "output",
+		"motor rb", cmdstree, {"0", "1", "2", "3"}));
+	rb->add_setting_pair(
+		new button_setting(nullptr, "direct", rb_direct_click_handler, this),
+		new button_setting(nullptr, "reverse", rb_reverse_click_handler, this)
+	);
+	tabs["motors"]->add_group(rb, 1, 1, 1, 1);
 
 	tab->addTab(tabs["pid"], "PID");
 	tab->addTab(tabs["filters"], "Filters");
@@ -762,6 +844,7 @@ main_widget::main_widget(QWidget *parent)
 	tab->addTab(tabs["log"], "Log");
 	tab->addTab(tabs["info"], "Info");
 	tab->addTab(tabs["devices"], "Devices");
+	tab->addTab(tabs["motors"], "Motors");
 
 	settings["open"] = new button_setting(nullptr, "open config", open_click_handler, this);
 	settings["save"] = new button_setting(nullptr, "save config", save_click_handler, this);

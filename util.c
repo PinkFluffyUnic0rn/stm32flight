@@ -7,7 +7,7 @@
 #include "util.h"
 
 // delay timer tick duration in nanoseconds
-#define NSECPERTICK (1000 / (OCSFREQ / DELAYPRESCALER / 1000000))
+// #define NSECPERTICK (1000 / (OCSFREQ / DELAYPRESCALER / 1000000))
 
 // delay timer handler
 extern TIM_HandleTypeDef htim10;
@@ -37,16 +37,23 @@ int uartprintf(const char *format, ...)
 	return 0;
 }
 
-int ndelay(int ns)
+int udelay(int us)
 {
-	int ticks;
 	int c;
-
-	ticks = ns / NSECPERTICK + 1;
 
 	__HAL_TIM_SET_COUNTER(&htim10, 0);
 		
-	while ((c = __HAL_TIM_GET_COUNTER(&htim10)) < ticks);
+	while ((c = __HAL_TIM_GET_COUNTER(&htim10)) < us);
+
+	return 0;
+}
+
+int mdelay(int ms)
+{
+	int i;
+
+	for (i = 0; i < ms; ++i)
+		udelay(1000);
 
 	return 0;
 }

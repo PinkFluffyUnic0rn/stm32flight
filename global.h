@@ -22,7 +22,8 @@
 #define TICKSPERSEC (OCSFREQ / PRESCALER)
 
 // delay timer prescaler
-#define DELAYPRESCALER 2
+//#define DELAYPRESCALER 2
+#define DELAYPRESCALER 128
 
 // maximum length for info packet
 // sent back to operator

@@ -1,11 +1,12 @@
 #include "stm32f4xx_hal.h"
-#include "esp8266.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+
+#include "util.h"
 
 #include "m10.h"
 
@@ -292,14 +293,6 @@ int m10_error(void *dev, const void *h)
 	return 0;
 }
 
-static void memcpyv(volatile void *dest, const volatile void *src, size_t n)
-{
-	int i;
-
-	for (i = 0; i < n; ++i)
-		((uint8_t *) dest)[i] = ((uint8_t *) src)[i];
-}
-
 static int ubx_receivemsgs(struct m10_msg *m, const uint8_t **msg,
 	const uint32_t *msglen, int msgcount, int timeout)
 {
@@ -309,7 +302,7 @@ static int ubx_receivemsgs(struct m10_msg *m, const uint8_t **msg,
 		int i;
 
 		if (Msgr == Msgw) {
-			HAL_Delay(1);
+			mdelay(1);
 			continue;
 		}
 
@@ -318,7 +311,7 @@ static int ubx_receivemsgs(struct m10_msg *m, const uint8_t **msg,
 		Msgr = (Msgr + 1) % RXCIRCSIZE;
 
 		if (m->type != M10_MSGTYPE_UBX) {
-			HAL_Delay(1);
+			mdelay(1);
 			continue;
 		}
 
@@ -327,7 +320,7 @@ static int ubx_receivemsgs(struct m10_msg *m, const uint8_t **msg,
 				return i;
 		}
 
-		HAL_Delay(1);
+		mdelay(1);
 	}
 
 	return (-1);

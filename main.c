@@ -249,6 +249,7 @@ struct settings {
 	float ap, ai, ad; // P/I/D values for altitude
 	
 	int ircpower, ircfreq; // IRC Tramp VTX power and frequency
+	int lt, lb, rb, rt; // motors ESC outputs numbers
 };
 
 // Values got from GNSS module using NMEA protocol
@@ -451,7 +452,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 }
 
 // Fill buffer, that contains PWM duty cycle values of a
-// a dshot packet using desired motor thrust value.
+// a DSHOT packet using desired motor thrust value.
 //
 // buf -- buffer for PWM duty cycle values that is used by DMA.
 // val -- motor thrust value in range from 0.0 to 1.0
@@ -488,6 +489,8 @@ static void dshotsetbuf(uint16_t* buf, float val)
 }
 
 // DMA callback for dshot processing
+//
+// hdma -- DMA device that triggered this callback.
 static void dshotdmacb(DMA_HandleTypeDef *hdma)
 {
 	TIM_HandleTypeDef *htim;;
@@ -505,20 +508,119 @@ static void dshotdmacb(DMA_HandleTypeDef *hdma)
 		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
 }
 
+// Send dshot special command to a DSHOT output.
+//
+// n -- a DSHOT output's number.
+// cmd -- command number.
+int dshotcmd(int n, uint16_t cmd)
+{
+	static uint16_t dsbuf[18];
+	DMA_HandleTypeDef *hdma;
+	int timcc;
+	uint16_t pack;
+	unsigned int csum;
+	volatile uint32_t *ccr;
+	int i;
+
+	// select DMA device, TIM channel and CCR register corresponding
+	// to the DSHOT output
+	switch (n) {
+	case 0:
+		hdma = htim1.hdma[TIM_DMA_ID_CC1];
+		timcc = TIM_DMA_CC1;
+		ccr = &(htim1.Instance->CCR1);
+		break;
+
+	case 1:
+		hdma = htim1.hdma[TIM_DMA_ID_CC2];
+		timcc = TIM_DMA_CC2;
+		ccr = &(htim1.Instance->CCR2);
+		break;
+
+	case 2:
+		hdma = htim1.hdma[TIM_DMA_ID_CC3];
+		timcc = TIM_DMA_CC3;
+		ccr = &(htim1.Instance->CCR3);
+		break;
+
+	case 3:
+		hdma = htim1.hdma[TIM_DMA_ID_CC4];
+		timcc = TIM_DMA_CC4;
+		ccr = &(htim1.Instance->CCR4);
+		break;
+
+	default:
+		return 0;
+	}
+
+	// bit after thrust value is telemetry request
+	// and should be 1 for special commands
+	pack = (cmd << 1) | 1;
+	
+	// calculate dshot checksum
+	csum = (pack ^ (pack >> 4) ^ (pack >> 8) ^ (pack >> 12)) & 0xf;
+
+	// append checksum to the packet
+	pack = (pack << 4) | csum;
+
+	// construct PWM duty cycle buffer for the packet
+	for(i = 0; i < 16; i++) {
+		dsbuf[i] = (pack & 0x8000) ? DSHOT_1 : DSHOT_0;
+		pack <<= 1;
+	}
+
+	// two bits used to maintain space between packets
+	dsbuf[16] = 0;
+	dsbuf[17] = 0;
+
+	// wait for previous DSHOT packet to finish
+	udelay(100);
+
+	// send packet with command 10 times. Specification
+	// requires 6 for most command, 10 is to be sure.
+	for (i = 0; i < 10; ++i) {
+		// instruct DMA to use the buffer
+		// for stream corresponding to DSHOT output
+		HAL_DMA_Start_IT(hdma, (uint32_t) dsbuf,
+			(uint32_t) ccr, 18);
+
+		// Enable DMA for stream corresponding to DSHOT output
+		__HAL_TIM_ENABLE_DMA(&htim1, timcc);
+
+		// wait for previous command packet to finish
+		udelay(100);
+	}
+
+	return 0;
+}
+
+// Send dshot command to set motor's direction.
+//
+// n -- a DSHOT output's number.
+// dir -- 1 is reverse direction, 0 normal direction.
+int dshotspindir(int n, int dir)
+{
+	dshotcmd(n, dir ? 21 : 20);
+	dshotcmd(n, 12);
+	mdelay(35);
+
+	return 0;
+}
+
 /* Set motors thrust
 
-      rtd    ltd
+      ltd    rtd
         \    /
    p     \  /
    |
    v     /  \
         /    \
-      rbd    lbd
+      lbd    rbd
 
          r ->
 */
 // all values should be between 0.0 and 1.0.
-int setthrust(float ltd, float lbd, float rbd, float rtd)
+int setthrust(float rtd, float rbd, float lbd, float ltd)
 {
 	static uint16_t dsbuf[4][18];
 
@@ -532,12 +634,16 @@ int setthrust(float ltd, float lbd, float rbd, float rtd)
 	logwrite(LOG_RB, rbd);
 	logwrite(LOG_RT, rtd);
 
+	if (st.lt < 0 || st.lt > 3 || st.lb < 0 || st.lb > 3
+		|| st.rb < 0 || st.rb > 3 || st.rt < 0 || st.rt > 3)
+		return 0;
+
 	// construst a PWM duty cycle
 	// buffers for dshot ESCs
-	dshotsetbuf(dsbuf[0], trimuf(ltd));
-	dshotsetbuf(dsbuf[1], trimuf(lbd));
-	dshotsetbuf(dsbuf[2], trimuf(rtd));
-	dshotsetbuf(dsbuf[3], trimuf(rbd));
+	dshotsetbuf(dsbuf[st.lt], trimuf(ltd));
+	dshotsetbuf(dsbuf[st.lb], trimuf(lbd));
+	dshotsetbuf(dsbuf[st.rt], trimuf(rtd));
+	dshotsetbuf(dsbuf[st.rb], trimuf(rbd));
 
 	// instruct DMA to use the buffers
 	// for streams corresponding to DSHOT ESCs
@@ -563,7 +669,7 @@ int setthrust(float ltd, float lbd, float rbd, float rtd)
 	return 0;
 }
 
-// Init ESC's
+// Init ESC's.
 static void esc_init()
 {
 	__HAL_TIM_SET_AUTORELOAD(&htim1, DSHOT_BITLEN);
@@ -583,12 +689,9 @@ static void esc_init()
 
 	// set zero initial thrust for every motor
 	setthrust(0.0, 0.0, 0.0, 0.0);
-
-	// delay to let esc fully initilize
-	HAL_Delay(2000);
 }
 
-// Init HP206c barometer
+// Init HP206c barometer.
 static void hp_init()
 {
 	struct hp_device d;
@@ -602,7 +705,7 @@ static void hp_init()
 		uartprintf("failed to initilize HP206C\r\n");
 }
 
-// Init IRC tramp video transmitter
+// Init IRC tramp video transmitter.
 static void irc_init()
 {
 	struct irc_device d;
@@ -617,7 +720,7 @@ static void irc_init()
 		uartprintf("failed to initilize IRC device\r\n");
 }
 
-// Init ICM-42688-P IMU
+// Init ICM-42688-P IMU.
 static void icm_init()
 {
 	struct icm_device d;
@@ -641,7 +744,7 @@ static void icm_init()
 		uartprintf("failed to initilize ICM-42688\r\n");
 }
 
-// Init QMC5883L magnetometer
+// Init QMC5883L magnetometer.
 static void qmc_init()
 {
 	struct qmc_device d;
@@ -657,7 +760,7 @@ static void qmc_init()
 		uartprintf("failed to initilize QMC5883L\r\n");
 }
 
-// Init ESP8285
+// Init ESP8285.
 static void espdev_init()
 {
 	struct esp_device d;
@@ -679,7 +782,7 @@ static void espdev_init()
 	uartprintf("ESP8266 initilized\r\n");
 }
 
-// Init ERLS receiver driver
+// Init ERLS receiver driver.
 static void crsfdev_init()
 {
 	struct crsf_device d;
@@ -689,7 +792,7 @@ static void crsfdev_init()
 	crsf_initdevice(&d, dev + CRSF_DEV);
 }
 
-// Init W25Q onboard flash memory
+// Init W25Q onboard flash memory.
 static void w25dev_init()
 {
 	struct w25_device d;
@@ -706,7 +809,7 @@ static void w25dev_init()
 	uartprintf("W25Q initilized\r\n");
 }
 
-// Init GNSS module
+// Init GNSS module.
 static void m10dev_init()
 {
 	struct m10_device d;
@@ -721,7 +824,7 @@ static void m10dev_init()
 	uartprintf("GPS device initilized\r\n");
 }
 
-// Init UART config connection
+// Init UART config connection.
 static void uartdev_init()
 {
 	struct uart_device d;
@@ -736,7 +839,7 @@ static void uartdev_init()
 	uartprintf("UART device initilized\r\n");
 }
 
-// write quadcopter settings into internal MCU flash
+// write quadcopter settings into internal MCU flash.
 //
 // slot -- offset in settings array in flash.
 int writesettings(int slot)
@@ -956,7 +1059,7 @@ int sprintqmc(char *s, struct qmc_data *hd)
 	return 0;
 }
 
-// Print all devices statuses into a string
+// Print all devices statuses into a string.
 //
 // s -- output string.
 int sprintdevs(char *s)
@@ -1131,7 +1234,7 @@ int sprintgnss(char *s) {
 	return 0;
 }
 
-// Print all control scaling values
+// Print all control scaling values.
 //
 // s -- output string.
 int sprintfctrl(char *s)
@@ -1772,7 +1875,9 @@ int ccmd(const struct cdevice *dev, const char **toks, char *out)
 
 // "info" command handler. Print various sensor and control values.
 //
+// d -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int infocmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "mpu") == 0) {
@@ -1830,7 +1935,9 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 
 // "pid" command handler. Configure PID values.
 //
+// dev -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	float v;
@@ -1928,7 +2035,9 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 
 // "calib" command handler. Turn on/off devices calibration modes.
 //
+// dev -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int calibcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "mag") == 0) {
@@ -1948,7 +2057,9 @@ int calibcmd(const struct cdevice *dev, const char **toks, char *out)
 // "flash" command handler. Write/read MCU's internal flash
 // used for storing configuraton.
 //
+// dev -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int flashcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "write") == 0)
@@ -1963,7 +2074,9 @@ int flashcmd(const struct cdevice *dev, const char **toks, char *out)
 
 // "compl" command handler. Configure pitch/roll complimentary filters.
 //
+// dev -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int complcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "attitude") == 0) {
@@ -1989,7 +2102,9 @@ int complcmd(const struct cdevice *dev, const char **toks, char *out)
 
 // "lpf" command handler. Configure low-pass filters.
 //
+// dev -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "gyro") == 0) {
@@ -2049,7 +2164,9 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 
 // "adj" command handler. Configure various offset/scale values.
 //
+// dev -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	float v;
@@ -2107,7 +2224,9 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 
 // "log" command handler. Start/stop/get flight log.
 //
+// d -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int logcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	char s[INFOLEN];
@@ -2184,7 +2303,9 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 
 // "ctrl" command handler. Configure control ranges scaling.
 //
+// d -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	float v;
@@ -2219,7 +2340,9 @@ int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 
 // "system" command handler. Run system commands.
 //
+// d -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int systemcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "esp") == 0) {
@@ -2238,7 +2361,9 @@ int systemcmd(const struct cdevice *d, const char **toks, char *out)
 
 // "irc" command handler. Configure IRC tramp video transmitter.
 //
+// d -- charter device device that got this command.
 // toks -- list of parsed command tokens.
+// out -- command's output.
 int irccmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "frequency") == 0) {
@@ -2265,6 +2390,57 @@ int irccmd(const struct cdevice *d, const char **toks, char *out)
 	return 0;
 }
 
+// "motor" command handler. Configure motors output
+// number and direction.
+//
+// d -- charter device device that got this command.
+// toks -- list of parsed command tokens.
+// out -- command's output.
+int motorcmd(const struct cdevice *d, const char **toks, char *out)
+{
+	if (strcmp(toks[1], "lt") == 0) {
+		if (strcmp(toks[2], "r") == 0)
+			dshotspindir(st.lt, 1);
+		else if (strcmp(toks[2], "d") == 0)
+			dshotspindir(st.lt, 0);
+		else
+			st.lt = atoi(toks[2]);
+	}
+	else if (strcmp(toks[1], "lb") == 0) {
+		if (strcmp(toks[2], "r") == 0)
+			dshotspindir(st.lb, 1);
+		else if (strcmp(toks[2], "d") == 0)
+			dshotspindir(st.lb, 0);
+		else
+			st.lb = atoi(toks[2]);
+	}
+	else if (strcmp(toks[1], "rb") == 0) {
+		if (strcmp(toks[2], "r") == 0)
+			dshotspindir(st.rb, 1);
+		else if (strcmp(toks[2], "d") == 0)
+			dshotspindir(st.rb, 0);
+		else
+			st.rb = atoi(toks[2]);
+	}
+	else if (strcmp(toks[1], "rt") == 0) {
+		if (strcmp(toks[2], "r") == 0)
+			dshotspindir(st.rt, 1);
+		else if (strcmp(toks[2], "d") == 0)
+			dshotspindir(st.rt, 0);
+		else
+			st.rt = atoi(toks[2]);
+	}
+	else
+		return (-1);
+
+	return 0;
+}
+
+// "get" command handler. Get current configuration values.
+//
+// d -- charter device device that got this command.
+// toks -- list of parsed command tokens.
+// out -- command's output.
 int getcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	const char **p;
@@ -2471,6 +2647,18 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		else
 			return (-1);
 
+		isfloat = 0;
+	}
+	else if (strcmp(toks[1], "motor") == 0) {
+		if (strcmp(toks[2], "lt") == 0)
+			vi = st.lt;
+		else if (strcmp(toks[2], "lb") == 0)
+			vi = st.lb;
+		else if (strcmp(toks[2], "rb") == 0)
+			vi = st.rb;
+		else if (strcmp(toks[2], "rt") == 0)
+			vi = st.rt;
+		
 		isfloat = 0;
 	}
 	else
@@ -2731,7 +2919,7 @@ int main(void)
 	irc_init();
 
 	// initilize stabilization routine
-	setstabilize(1);
+	setstabilize(0);
 
 	// initilize periodic events
 	inittimev(evs + TEV_PID, PID_FREQ, stabilize);
@@ -2756,6 +2944,7 @@ int main(void)
 	addcommand("ctrl", ctrlcmd);
 	addcommand("system", systemcmd);
 	addcommand("irc", irccmd);
+	addcommand("motor", motorcmd);
 	addcommand("get", getcmd);
 
 	// initilize ERLS timer. For now ERLS polling is not a periodic

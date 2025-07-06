@@ -3,12 +3,14 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "util.h"
+
 #include "w25.h"
 
 static struct w25_device devs[W25_MAXDEVS];
 size_t devcount = 0;
 
-#define W25_WTIMEOUT 100
+#define W25_WTIMEOUT 100000
 #define W25_CETIMEOUT 100000
 #define W25_SETIMEOUT 400
 #define W25_BETIMEOUT 1600
@@ -34,7 +36,7 @@ static int w25_init(struct w25_device *dev)
 	uint8_t sbuf[4];
 	uint32_t id;
 
-	HAL_Delay(100);
+	mdelay(100);
 
 	sbuf[0] = 0x66;
 	sbuf[1] = 0x99;
@@ -43,7 +45,7 @@ static int w25_init(struct w25_device *dev)
 	HAL_SPI_Transmit(dev->hspi, sbuf, 2, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
-	HAL_Delay(100);
+	mdelay(100);
 
 	id = w25_getid(dev);
 
@@ -82,7 +84,7 @@ static int w25_writedisable(struct w25_device *dev)
 static int w25_waitwrite(struct w25_device *dev, int timeout)
 {
 	uint8_t sbuf[4], rbuf[4];
-	int retries;
+	int us;
 
 	sbuf[0] = 0x05;
 
@@ -90,12 +92,12 @@ static int w25_waitwrite(struct w25_device *dev, int timeout)
 
 	HAL_SPI_Transmit(dev->hspi, sbuf, 1, 100);
 
-	retries = 0;
+	us = 0;
 	do {
-		HAL_Delay(1);
+		udelay(10);
 		HAL_SPI_Receive(dev->hspi, rbuf, 1, 100);
-		++retries;
-	} while ((rbuf[0] & 0x01) == 0x01 && retries < timeout);
+		us += 10;
+	} while ((rbuf[0] & 0x01) == 0x01 && us < timeout);
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 
@@ -149,6 +151,7 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 	
 	dev = (struct w25_device *) d;
 
+	// if (dev->writemode == W25_IOCTL_READWRITE) ??
 	w25_waitwrite(dev, W25_WTIMEOUT);
 
 	w25_blockprotect(dev, 0x00);

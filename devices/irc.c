@@ -126,7 +126,7 @@ int irc_configure(void *d, const char *cmd, ...)
 
 			for (r = 0; r < IRC_RETRIES; ++r) {
 				irc_sendpacket(dev, 'F', freq);
-				HAL_Delay(250);
+				mdelay(250);
 				
 				if (irc_read(d, &data,
 						sizeof(struct irc_data)) != 0)
@@ -153,7 +153,7 @@ int irc_configure(void *d, const char *cmd, ...)
 
 			for (r = 0; r < IRC_RETRIES; ++r) {	
 				irc_sendpacket(dev, 'P', power);
-				HAL_Delay(250);
+				mdelay(250);
 		
 				if (irc_read(d, &data,
 						sizeof(struct irc_data)) != 0)

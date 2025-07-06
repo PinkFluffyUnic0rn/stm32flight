@@ -12,14 +12,20 @@ int uartprintf(const char *format, ...);
 // src -- source buffer.
 void memcpyv(volatile void *dest, const volatile void *src, size_t n);
 
-// submicroseconds delay.
+// microseconds delay.
 //
-// ns -- delay in nanoseconds, will be rounded to the closest possible
-// 	value determined by MCU's clock frequency and delay timer
-// 	prescaler. Maximum and minimum values also determined by
-// 	MCU's clock and timer prescaler.
-int ndelay(int ns);
+// us -- delay in microseconds.
+int udelay(int us);
 
+// milliseconds delay.
+//
+// ms -- delay in microseconds.
+int mdelay(int ms);
+
+// is value in list.
+//
+// v -- value.
+// num, ... -- list of values.
 int isvalinlist(int v, int num, ...);
 
 #endif

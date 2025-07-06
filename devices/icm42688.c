@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <math.h>
 
+#include "util.h"
+
 #include "icm42688.h"
 
 #define DELT 21
@@ -114,7 +116,7 @@ int icm_selftest(struct icm_device *dev, struct icm_stdata *stdata)
 	icm_write(dev, ICM_ACCELCONFIG0, ICM_4G << 5 | ICM_ACCEL1K);
 	icm_write(dev, ICM_GYROACCELCONFIG0, 0x44);
 
-	HAL_Delay(100);
+	mdelay(100);
 
 	ax = ay = az = gx = gy = gz = 0;
 	for (i = 0; i < 200; ++i) {
@@ -123,7 +125,7 @@ int icm_selftest(struct icm_device *dev, struct icm_stdata *stdata)
 		ax += data.ax;	ay += data.ay;	az += data.az;
 		gx += data.gx;	gy += data.gy;	gz += data.gz;
 
-		HAL_Delay(1);
+		mdelay(1);
 	}
 
 	ax /= 200;	ay /= 200;	az /= 200;
@@ -131,7 +133,7 @@ int icm_selftest(struct icm_device *dev, struct icm_stdata *stdata)
 
 	icm_write(dev, 0x70, 0x7f);
 
-	HAL_Delay(100);
+	mdelay(100);
 
 	stax = stay = staz = stgx = stgy = stgz = 0;
 	for (i = 0; i < 200; ++i) {
@@ -140,7 +142,7 @@ int icm_selftest(struct icm_device *dev, struct icm_stdata *stdata)
 		stax += data.ax;	stay += data.ay;	staz += data.az;
 		stgx += data.gx;	stgy += data.gy;	stgz += data.gz;
 		
-		HAL_Delay(1);
+		mdelay(1);
 	}
 
 	stax /= 200;	stay /= 200;	staz /= 200;
@@ -148,7 +150,7 @@ int icm_selftest(struct icm_device *dev, struct icm_stdata *stdata)
 
 	icm_write(dev, 0x70, 0x0);
 
-	HAL_Delay(100);
+	mdelay(100);
 
 	icm_write(dev, 0x76, 1);
 	icm_read(dev, 0x5f, stbuf, 3);

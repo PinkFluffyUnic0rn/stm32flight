@@ -59,3 +59,7 @@ ctrl climbrate 1.5
 ctrl altmax 4.0
 irc frequency 5645
 irc power 25
+motor lt 2
+motor lb 3
+motor rt 0
+motor rb 1

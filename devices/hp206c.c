@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "util.h"
+
 #include "hp206c.h"
 
 #define HP_ADDR 0x76
@@ -32,7 +34,7 @@ int hp_getdata(void *d, void *dt, size_t sz)
 
 	if (sz < sizeof(struct hp_data))
 		return (-1);
-
+	
 	c = HP_AT;
 	HAL_I2C_Master_Transmit(dev->hi2c, HP_ADDR << 1, &c, 1, 1000);
 	HAL_I2C_Master_Receive(dev->hi2c, (HP_ADDR << 1) | 0x1, buf, 6,
@@ -60,11 +62,11 @@ int hp_init(struct hp_device *dev)
 
 	c = HP_ADCCVT | dev->osr << 2;
 	HAL_I2C_Master_Transmit(dev->hi2c, HP_ADDR << 1, &c, 1, 1000);
-
+	
 	for (i = 0; i < 10; ++i) {
 		struct hp_data hd;
-		
-		HAL_Delay(35);
+
+		mdelay(35);
 
 		hp_getdata(dev, &hd, sizeof(struct hp_data));
 	}
