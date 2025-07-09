@@ -54,10 +54,11 @@ OBJECTS_DIR   = ./
 
 SOURCES       = main.cpp \
 		mainwidget.cpp \
-		../api/uavconf.c 
+		../api/uavconf.c moc_mainwidget.cpp
 OBJECTS       = main.o \
 		mainwidget.o \
-		uavconf.o
+		uavconf.o \
+		moc_mainwidget.o
 DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/unix.conf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/linux.conf \
@@ -377,8 +378,14 @@ compiler_moc_predefs_clean:
 moc_predefs.h: /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/data/dummy.cpp
 	g++ -pipe -O2 -Wall -Wextra -dM -E -o moc_predefs.h /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/data/dummy.cpp
 
-compiler_moc_header_make_all:
+compiler_moc_header_make_all: moc_mainwidget.cpp
 compiler_moc_header_clean:
+	-$(DEL_FILE) moc_mainwidget.cpp
+moc_mainwidget.cpp: mainwidget.h \
+		moc_predefs.h \
+		/usr/lib/qt5/bin/moc
+	/usr/lib/qt5/bin/moc $(DEFINES) --include /home/qwerty/stm32flight/uavconf/gui/moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -I/home/qwerty/stm32flight/uavconf/gui -I/home/qwerty/stm32flight/uavconf/gui -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/c++/14 -I/usr/include/x86_64-linux-gnu/c++/14 -I/usr/include/c++/14/backward -I/usr/lib/gcc/x86_64-linux-gnu/14/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include mainwidget.h -o moc_mainwidget.cpp
+
 compiler_moc_objc_header_make_all:
 compiler_moc_objc_header_clean:
 compiler_moc_source_make_all:
@@ -391,7 +398,7 @@ compiler_yacc_impl_make_all:
 compiler_yacc_impl_clean:
 compiler_lex_make_all:
 compiler_lex_clean:
-compiler_clean: compiler_moc_predefs_clean 
+compiler_clean: compiler_moc_predefs_clean compiler_moc_header_clean 
 
 ####### Compile
 
@@ -404,6 +411,9 @@ mainwidget.o: mainwidget.cpp mainwidget.h \
 
 uavconf.o: ../api/uavconf.c ../../crc.h
 	$(CC) -c $(CFLAGS) $(INCPATH) -o uavconf.o ../api/uavconf.c
+
+moc_mainwidget.o: moc_mainwidget.cpp 
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o moc_mainwidget.o moc_mainwidget.cpp
 
 ####### Install
 

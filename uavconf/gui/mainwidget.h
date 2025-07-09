@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 #include <QWidget>
+#include <QObject>
+#include <QtWidgets>
+
 
 using namespace std;
 
@@ -21,6 +24,8 @@ class main_widget;
 
 class setting : public QWidget
 {
+	Q_OBJECT
+
 public:
 	setting(QWidget *parent = 0,
 		string n = string(""),
@@ -105,7 +110,8 @@ public:
 		string n = string(""),
 		string c = string(""),
 		commands_tree *cmdstree = nullptr,
-		vector<string> modes = vector<string>());
+		vector<string> modes = vector<string>(),
+		string init = string());
 	~mode_setting();
 
 	QWidget *get_field() { return box; }
@@ -118,6 +124,8 @@ private:
 
 class settings_group : public QWidget
 {
+	Q_OBJECT
+
 public:
 	settings_group(QWidget *parent = 0, string n = string(""));
 	~settings_group();
@@ -153,6 +161,8 @@ public:
 
 class settings_tab : public QWidget
 {
+	Q_OBJECT
+
 public:
 	settings_tab(QWidget *parent = 0);
 	~settings_tab();
@@ -210,6 +220,7 @@ private:
 
 class main_widget : public QWidget
 {
+	Q_OBJECT
 public:
 	main_widget(QWidget *parent = 0);
 	~main_widget();
@@ -228,15 +239,22 @@ public:
 	void get_uav_log(string &s);
 
 	map<string, settings_tab *> get_tabs() { return tabs; }
+	
+public slots:
+	void lt_item_changed(int idx);
+	void lb_item_changed(int idx);
+	void rt_item_changed(int idx);
+	void rb_item_changed(int idx);
 
 protected:
 	void keyPressEvent(QKeyEvent *event) override;
 
-private:
-
+private:	
 	void return_pressed();
 
 	void timer_handler();
+
+	void update_motors_mapping(int motoridx);
 
 	bool catchuavout;
 	struct sockaddr_in rsi;

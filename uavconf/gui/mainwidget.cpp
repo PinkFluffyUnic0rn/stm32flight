@@ -1,7 +1,9 @@
 #include <string>
 #include <vector>
+#include <set>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 
 #include <QtWidgets>
 #include "mainwidget.h"
@@ -282,6 +284,11 @@ void lt_reverse_click_handler(void *arg)
 	((main_widget *) arg)->send_uav_info_cmd("motor lt r");
 }
 
+void lt_save_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor lt s");
+}
+
 void lb_direct_click_handler(void *arg)
 {
 	((main_widget *) arg)->send_uav_info_cmd("motor lb d");
@@ -290,6 +297,11 @@ void lb_direct_click_handler(void *arg)
 void lb_reverse_click_handler(void *arg)
 {
 	((main_widget *) arg)->send_uav_info_cmd("motor lb r");
+}
+
+void lb_save_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor lb s");
 }
 
 void rt_direct_click_handler(void *arg)
@@ -302,6 +314,11 @@ void rt_reverse_click_handler(void *arg)
 	((main_widget *) arg)->send_uav_info_cmd("motor rt r");
 }
 
+void rt_save_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor rt s");
+}
+
 void rb_direct_click_handler(void *arg)
 {
 	((main_widget *) arg)->send_uav_info_cmd("motor rb d");
@@ -310,6 +327,11 @@ void rb_direct_click_handler(void *arg)
 void rb_reverse_click_handler(void *arg)
 {
 	((main_widget *) arg)->send_uav_info_cmd("motor rb r");
+}
+
+void rb_save_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("motor rb s");
 }
 
 
@@ -377,10 +399,13 @@ void float_setting::set_value(const string &s)
 	string t;
 
 	t = s;
-	t.erase(t.find_last_not_of("0\r\n") + 1);
 
-	if (t.back() == '.')
-		t.pop_back();
+	if (t.find('.') != std::string::npos) {
+		t.erase(t.find_last_not_of("0\r\n") + 1);
+
+		if (t.back() == '.')
+			t.pop_back();
+	}
 
 	if (t.empty())
 		t = "0";
@@ -456,13 +481,15 @@ void button_setting::click_handler()
 }
 
 mode_setting::mode_setting(QWidget *parent, string n, string c,
-	commands_tree *cmdstree, vector<string> modes)
+	commands_tree *cmdstree, vector<string> modes, string init)
 		: setting(parent, n, c, cmdstree)
 {
 	box = new QComboBox();
 
 	for (auto it = begin(modes); it != end(modes); ++it)
 		box->addItem((*it).c_str());
+
+	mode_setting::set_value(init);
 }
 
 mode_setting::~mode_setting()
@@ -618,6 +645,64 @@ commands_tree *commands_tree::get_child(const string &s)
 void commands_tree::set_setting(setting *s)
 {
 	cmdsetting = s;
+}
+
+void main_widget::update_motors_mapping(int motoridx)
+{
+	setting *st[4];
+	set<string> ss;
+	int i;
+
+	st[0] = this->tabs["motors"]->get_group("left-top")->get_setting("output");
+	st[1] = this->tabs["motors"]->get_group("left-bottom")->get_setting("output");
+	st[2] = this->tabs["motors"]->get_group("right-top")->get_setting("output");
+	st[3] = this->tabs["motors"]->get_group("right-bottom")->get_setting("output");
+
+	ss = set<string>({st[0]->get_value(), st[1]->get_value(),
+		st[2]->get_value(), st[3]->get_value()});
+
+	for (i = 0; i < 4; ++i) {
+		if (i != motoridx
+				&& st[i]->get_value() == st[motoridx]->get_value()) {
+			set<string> ssd;
+			set<string> ssp;
+
+			ssp = set<string>({"0", "1", "2", "3"});
+
+			set_difference(ssp.begin(), ssp.end(),
+				ss.begin(), ss.end(), inserter(ssd, ssd.begin()));
+	
+			st[i]->set_value(*(ssd.begin()));
+		}
+	}
+}
+
+void main_widget::lt_item_changed(int idx)
+{
+	(void) idx;
+
+	update_motors_mapping(0);
+}
+
+void main_widget::lb_item_changed(int idx)
+{
+	(void) idx;
+
+	update_motors_mapping(1);
+}
+
+void main_widget::rt_item_changed(int idx)
+{
+	(void) idx;
+
+	update_motors_mapping(2);
+}
+
+void main_widget::rb_item_changed(int idx)
+{
+	(void) idx;
+
+	update_motors_mapping(3);
 }
 
 main_widget::main_widget(QWidget *parent)
@@ -799,42 +884,75 @@ main_widget::main_widget(QWidget *parent)
 	settings_group *lt = new settings_group(nullptr,
 		"left-top");
 	lt->add_setting(new mode_setting(nullptr, "output",
-		"motor lt", cmdstree, {"0", "1", "2", "3"}));
+		"motor lt", cmdstree, {"0", "1", "2", "3"}, "0"));
 	lt->add_setting_pair(
 		new button_setting(nullptr, "direct", lt_direct_click_handler, this),
 		new button_setting(nullptr, "reverse", lt_reverse_click_handler, this)
 	);
+	lt->add_setting(
+		new button_setting(nullptr, "save direction", lt_save_click_handler, this),
+		false
+	);
+
 	tabs["motors"]->add_group(lt, 0, 0, 1, 1);
 
 	settings_group *lb = new settings_group(nullptr,
 		"left-bottom");
 	lb->add_setting(new mode_setting(nullptr, "output",
-		"motor lb", cmdstree, {"0", "1", "2", "3"}));
+		"motor lb", cmdstree, {"0", "1", "2", "3"}, "1"));
 	lb->add_setting_pair(
 		new button_setting(nullptr, "direct", lb_direct_click_handler, this),
 		new button_setting(nullptr, "reverse", lb_reverse_click_handler, this)
 	);
+	lb->add_setting(
+		new button_setting(nullptr, "save direction", lb_save_click_handler, this),
+		false
+	);
+
 	tabs["motors"]->add_group(lb, 1, 0, 1, 1);
 
 	settings_group *rt = new settings_group(nullptr,
 		"right-top");
 	rt->add_setting(new mode_setting(nullptr, "output",
-		"motor rt", cmdstree, {"0", "1", "2", "3"}));
+		"motor rt", cmdstree, {"0", "1", "2", "3"}, "2"));
 	rt->add_setting_pair(
 		new button_setting(nullptr, "direct", rt_direct_click_handler, this),
 		new button_setting(nullptr, "reverse", rt_reverse_click_handler, this)
 	);
+	rt->add_setting(
+		new button_setting(nullptr, "save direction", rt_save_click_handler, this),
+		false
+	);
+
 	tabs["motors"]->add_group(rt, 0, 1, 1, 1);
 
 	settings_group *rb = new settings_group(nullptr,
 		"right-bottom");
 	rb->add_setting(new mode_setting(nullptr, "output",
-		"motor rb", cmdstree, {"0", "1", "2", "3"}));
+		"motor rb", cmdstree, {"0", "1", "2", "3"}, "3"));
 	rb->add_setting_pair(
 		new button_setting(nullptr, "direct", rb_direct_click_handler, this),
 		new button_setting(nullptr, "reverse", rb_reverse_click_handler, this)
 	);
+	rb->add_setting(
+		new button_setting(nullptr, "save direction", rb_save_click_handler, this),
+		false
+	);
+	
 	tabs["motors"]->add_group(rb, 1, 1, 1, 1);
+
+	connect(lt->get_setting("output")->get_field(),
+		SIGNAL(currentIndexChanged(int)), this,
+		SLOT(lt_item_changed(int)));
+	connect(lb->get_setting("output")->get_field(),
+		SIGNAL(currentIndexChanged(int)), this,
+		SLOT(lb_item_changed(int)));
+	connect(rt->get_setting("output")->get_field(),
+		SIGNAL(currentIndexChanged(int)), this,
+		SLOT(rt_item_changed(int)));
+	connect(rb->get_setting("output")->get_field(),
+		SIGNAL(currentIndexChanged(int)), this,
+		SLOT(rb_item_changed(int)));
 
 	tab->addTab(tabs["pid"], "PID");
 	tab->addTab(tabs["filters"], "Filters");

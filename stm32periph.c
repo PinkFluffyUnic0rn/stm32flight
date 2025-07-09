@@ -69,7 +69,7 @@ void gpio_init(void)
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7
-		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15,
+		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15 | GPIO_PIN_10,
 		GPIO_PIN_RESET);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_3;
@@ -78,7 +78,7 @@ void gpio_init(void)
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7
-		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15 | GPIO_PIN_10;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;

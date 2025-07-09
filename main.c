@@ -451,25 +451,41 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		dev[ESP_DEV].error(dev[ESP_DEV].priv, huart);
 }
 
+// DMA callback for dshot processing
+//
+// hdma -- DMA device that triggered this callback.
+static void dshotdmacb(DMA_HandleTypeDef *hdma)
+{
+	TIM_HandleTypeDef *htim;;
+
+	htim = (TIM_HandleTypeDef *)((DMA_HandleTypeDef *)hdma)->Parent;
+
+	// disable DMA after bit was sent
+	if (hdma == htim->hdma[TIM_DMA_ID_CC1])
+		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC1);
+	else if(hdma == htim->hdma[TIM_DMA_ID_CC2])
+		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC2);
+	else if(hdma == htim->hdma[TIM_DMA_ID_CC3])
+		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC3);
+	else if(hdma == htim->hdma[TIM_DMA_ID_CC4])
+		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
+}
+
 // Fill buffer, that contains PWM duty cycle values of a
-// a DSHOT packet using desired motor thrust value.
+// a DSHOT packet using 16 bit value.
 //
 // buf -- buffer for PWM duty cycle values that is used by DMA.
-// val -- motor thrust value in range from 0.0 to 1.0
-static void dshotsetbuf(uint16_t* buf, float val)
+// val -- 16 bit value from 0 to 2047
+// tele -- 1 if telemetry bit needed, 0 otherwise
+void dshotsetbuf(uint16_t *buf, uint16_t val, int tele)
 {
 	uint16_t pack;
-	uint16_t uival;
 	unsigned int csum;
 	int i;
 
-	// convert motor thrust value from [0.0;1.0]
-	// range to int value in [48; 2047] range
-	uival = (uint16_t) (trimuf(val) * 1999.0 + 0.5) + 48;
-
 	// bit after thrust value is telemetry request,
 	// so just shift because no telemetry is used
-	pack = (uival << 1) | 0;
+	pack = (val << 1) | tele;
 
 	// calculate dshot checksum
 	csum = (pack ^ (pack >> 4) ^ (pack >> 8) ^ (pack >> 12)) & 0xf;
@@ -488,24 +504,14 @@ static void dshotsetbuf(uint16_t* buf, float val)
 	buf[17] = 0;
 }
 
-// DMA callback for dshot processing
-//
-// hdma -- DMA device that triggered this callback.
-static void dshotdmacb(DMA_HandleTypeDef *hdma)
+inline int dshotsetthrust(uint16_t *buf, float v)
 {
-	TIM_HandleTypeDef *htim;;
-	
-	htim = (TIM_HandleTypeDef *)((DMA_HandleTypeDef *)hdma)->Parent;
+	// convert motor thrust value from [0.0;1.0]
+	// range to int value in [48; 2047] range
+	// disable telemetry request bit
+	dshotsetbuf(buf, (uint16_t) (trimuf(v) * 1999.0 + 0.5) + 48, 0);
 
-	// disable DMA after bit was sent
-	if (hdma == htim->hdma[TIM_DMA_ID_CC1])
-		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC1);
-	else if(hdma == htim->hdma[TIM_DMA_ID_CC2])
-		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC2);
-	else if(hdma == htim->hdma[TIM_DMA_ID_CC3])
-		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC3);
-	else if(hdma == htim->hdma[TIM_DMA_ID_CC4])
-		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
+	return 0;
 }
 
 // Send dshot special command to a DSHOT output.
@@ -517,13 +523,11 @@ int dshotcmd(int n, uint16_t cmd)
 	static uint16_t dsbuf[18];
 	DMA_HandleTypeDef *hdma;
 	int timcc;
-	uint16_t pack;
-	unsigned int csum;
 	volatile uint32_t *ccr;
 	int i;
 
-	// select DMA device, TIM channel and CCR register corresponding
-	// to the DSHOT output
+	// select DMA device, TIM channel and CCR
+	// register corresponding to the DSHOT output
 	switch (n) {
 	case 0:
 		hdma = htim1.hdma[TIM_DMA_ID_CC1];
@@ -553,25 +557,8 @@ int dshotcmd(int n, uint16_t cmd)
 		return 0;
 	}
 
-	// bit after thrust value is telemetry request
-	// and should be 1 for special commands
-	pack = (cmd << 1) | 1;
-	
-	// calculate dshot checksum
-	csum = (pack ^ (pack >> 4) ^ (pack >> 8) ^ (pack >> 12)) & 0xf;
-
-	// append checksum to the packet
-	pack = (pack << 4) | csum;
-
-	// construct PWM duty cycle buffer for the packet
-	for(i = 0; i < 16; i++) {
-		dsbuf[i] = (pack & 0x8000) ? DSHOT_1 : DSHOT_0;
-		pack <<= 1;
-	}
-
-	// two bits used to maintain space between packets
-	dsbuf[16] = 0;
-	dsbuf[17] = 0;
+	// construst a PWM duty cycle buffer for dshot ESC
+	dshotsetbuf(dsbuf, cmd, 1);
 
 	// wait for previous DSHOT packet to finish
 	udelay(100);
@@ -594,19 +581,6 @@ int dshotcmd(int n, uint16_t cmd)
 	return 0;
 }
 
-// Send dshot command to set motor's direction.
-//
-// n -- a DSHOT output's number.
-// dir -- 1 is reverse direction, 0 normal direction.
-int dshotspindir(int n, int dir)
-{
-	dshotcmd(n, dir ? 21 : 20);
-	dshotcmd(n, 12);
-	mdelay(35);
-
-	return 0;
-}
-
 /* Set motors thrust
 
       ltd    rtd
@@ -617,10 +591,10 @@ int dshotspindir(int n, int dir)
         /    \
       lbd    rbd
 
-         r ->
+         <- r
 */
 // all values should be between 0.0 and 1.0.
-int setthrust(float rtd, float rbd, float lbd, float ltd)
+int setthrust(float ltd, float rtd, float lbd, float rbd)
 {
 	static uint16_t dsbuf[4][18];
 
@@ -635,15 +609,16 @@ int setthrust(float rtd, float rbd, float lbd, float ltd)
 	logwrite(LOG_RT, rtd);
 
 	if (st.lt < 0 || st.lt > 3 || st.lb < 0 || st.lb > 3
-		|| st.rb < 0 || st.rb > 3 || st.rt < 0 || st.rt > 3)
+			|| st.rb < 0 || st.rb > 3
+			|| st.rt < 0 || st.rt > 3)
 		return 0;
 
 	// construst a PWM duty cycle
 	// buffers for dshot ESCs
-	dshotsetbuf(dsbuf[st.lt], trimuf(ltd));
-	dshotsetbuf(dsbuf[st.lb], trimuf(lbd));
-	dshotsetbuf(dsbuf[st.rt], trimuf(rtd));
-	dshotsetbuf(dsbuf[st.rb], trimuf(rbd));
+	dshotsetthrust(dsbuf[st.lt], ltd);
+	dshotsetthrust(dsbuf[st.lb], lbd);
+	dshotsetthrust(dsbuf[st.rt], rtd);
+	dshotsetthrust(dsbuf[st.rb], rbd);
 
 	// instruct DMA to use the buffers
 	// for streams corresponding to DSHOT ESCs
@@ -1610,10 +1585,10 @@ int stabilize(int ms)
 
 	// calculate weights for motors
 	// thrust calibration values
-	ltm = (1.0 - st.rsc / 2) * (1.0 + st.psc / 2);
-	lbm = (1.0 - st.rsc / 2) * (1.0 - st.psc / 2);
-	rbm = (1.0 + st.rsc / 2) * (1.0 - st.psc / 2);
-	rtm = (1.0 + st.rsc / 2) * (1.0 + st.psc / 2);
+	ltm = (1.0 + st.rsc / 2) * (1.0 + st.psc / 2);
+	rtm = (1.0 - st.rsc / 2) * (1.0 + st.psc / 2);
+	lbm = (1.0 + st.rsc / 2) * (1.0 - st.psc / 2);
+	rbm = (1.0 - st.rsc / 2) * (1.0 - st.psc / 2);
 
 	// if final thrust is greater than
 	// limit set it to the limit
@@ -1624,14 +1599,14 @@ int stabilize(int ms)
 	// 3 pairs of motors: left and right for roll, top and bottom
 	// for pitch and two diagonals (spinning in oposite directions)
 	// for yaw.
-	setthrust(en * ltm * (thrustcor - 0.5 * rollcor
-			+ 0.5 * pitchcor - 0.5 * yawcor),
-		en * lbm * (thrustcor - 0.5 * rollcor
-			- 0.5 * pitchcor + 0.5 * yawcor),
-		en * rbm * (thrustcor + 0.5 * rollcor
+	setthrust(en * ltm * (thrustcor + 0.5 * rollcor
+			+ 0.5 * pitchcor + 0.5 * yawcor),
+		en * rtm * (thrustcor - 0.5 * rollcor
+			+ 0.5 * pitchcor - 0.5 * yawcor),	
+		en * lbm * (thrustcor + 0.5 * rollcor
 			- 0.5 * pitchcor - 0.5 * yawcor),
-		en * rtm * (thrustcor + 0.5 * rollcor
-			+ 0.5 * pitchcor + 0.5 * yawcor));
+		en * rbm * (thrustcor - 0.5 * rollcor
+			- 0.5 * pitchcor + 0.5 * yawcor));
 
 	// update loops counter
 	++loops;
@@ -2400,33 +2375,49 @@ int motorcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "lt") == 0) {
 		if (strcmp(toks[2], "r") == 0)
-			dshotspindir(st.lt, 1);
+			dshotcmd(st.lt, 21);
 		else if (strcmp(toks[2], "d") == 0)
-			dshotspindir(st.lt, 0);
+			dshotcmd(st.lt, 20);
+		else if (strcmp(toks[2], "s") == 0) {
+			dshotcmd(st.lt, 12);
+			mdelay(35);
+		}
 		else
 			st.lt = atoi(toks[2]);
 	}
 	else if (strcmp(toks[1], "lb") == 0) {
 		if (strcmp(toks[2], "r") == 0)
-			dshotspindir(st.lb, 1);
+			dshotcmd(st.lb, 21);
 		else if (strcmp(toks[2], "d") == 0)
-			dshotspindir(st.lb, 0);
+			dshotcmd(st.lb, 20);
+		else if (strcmp(toks[2], "s") == 0) {
+			dshotcmd(st.lb, 12);
+			mdelay(35);
+		}
 		else
 			st.lb = atoi(toks[2]);
 	}
 	else if (strcmp(toks[1], "rb") == 0) {
 		if (strcmp(toks[2], "r") == 0)
-			dshotspindir(st.rb, 1);
+			dshotcmd(st.rb, 21);
 		else if (strcmp(toks[2], "d") == 0)
-			dshotspindir(st.rb, 0);
+			dshotcmd(st.rb, 20);
+		else if (strcmp(toks[2], "s") == 0) {
+			dshotcmd(st.rb, 12);
+			mdelay(35);
+		}
 		else
 			st.rb = atoi(toks[2]);
 	}
 	else if (strcmp(toks[1], "rt") == 0) {
 		if (strcmp(toks[2], "r") == 0)
-			dshotspindir(st.rt, 1);
+			dshotcmd(st.rt, 21);
 		else if (strcmp(toks[2], "d") == 0)
-			dshotspindir(st.rt, 0);
+			dshotcmd(st.rt, 20);
+		else if (strcmp(toks[2], "s") == 0) {
+			dshotcmd(st.rt, 12);
+			mdelay(35);
+		}
 		else
 			st.rt = atoi(toks[2]);
 	}
