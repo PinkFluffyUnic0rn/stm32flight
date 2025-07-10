@@ -1557,7 +1557,7 @@ int stabilize(int ms)
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&tlpf), dt);
+			dsp_getlpf(&valpf), dt);
 	}
 	else if (altmode == ALTMODE_SPEED) {
 		// if consttant climb rate mode, first use climb rate
@@ -1573,7 +1573,7 @@ int stabilize(int ms)
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&tlpf), dt);
+			dsp_getlpf(&valpf), dt);
 	}
 	else {
 		// if no altitude hold, update vertical acceleration PID

@@ -127,8 +127,12 @@ class settings_group : public QWidget
 	Q_OBJECT
 
 public:
-	settings_group(QWidget *parent = 0, string n = string(""));
+	settings_group(QWidget *parent = 0, string n = string(""),
+		bool nsb = false,
+		main_widget *mw = nullptr);
 	~settings_group();
+
+	main_widget *get_main_widget() { return _main_widget; }
 
 	void add_setting(setting *s, bool addlabel = true);
 	void add_setting_pair(setting *s1, setting *s2);
@@ -143,6 +147,8 @@ private:
 	string name;
 	QGroupBox *group;
 	QGridLayout *layout;
+	main_widget *_main_widget;
+	bool has_send_button;
 	
 	int layout_last;
 	
@@ -156,7 +162,9 @@ public:
 		string name = string(""),
 		vector<string> s = vector<string>(),
 		vector<string> c = vector<string>(),
-		commands_tree *cmdstree = nullptr);
+		commands_tree *cmdstree = nullptr,
+		bool nsb = false,
+		main_widget *mw = nullptr);
 };
 
 class settings_tab : public QWidget
