@@ -1583,6 +1583,11 @@ int stabilize(int ms)
 			dsp_getlpf(&tlpf), dt);
 	}
 
+	if (en < 0.5) {
+		pitchpv.s = rollpv.s = pitchspv.s = rollspv.s = yawpv.s
+			= yawspv.s = tpv.s = cpv.s = apv.s = 0;
+	}
+
 	// calculate weights for motors
 	// thrust calibration values
 	ltm = (1.0 + st.rsc / 2) * (1.0 + st.psc / 2);

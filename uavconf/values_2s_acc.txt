@@ -24,7 +24,7 @@ ctrl thrust 0.9
 ctrl climbrate 1.5
 ctrl spitch 1
 ctrl sroll 1
-ctrl syaw 1
+ctrl syaw 1.5
 ctrl yaw 2
 irc frequency 5645
 irc power 25
@@ -43,21 +43,21 @@ motor lt 2
 motor rb 1
 motor rt 0
 pid altitude d 0
-pid altitude i 0.025
+pid altitude i 0.03
 pid altitude p 0.4
 pid tilt d 0
-pid tilt i 0.1
-pid tilt p 10
-pid climbrate d 0.0001
+pid tilt i 0
+pid tilt p 9
+pid climbrate d 0
 pid climbrate i 0
 pid climbrate p 0.3
-pid stilt d 0
-pid stilt i 0
-pid stilt p 0.1
+pid stilt d 0.00375
+pid stilt i 2
+pid stilt p 0.42
 pid throttle d 0
-pid throttle i 0
+pid throttle i 0.01
 pid throttle p 5
-pid syaw d 0.001
+pid syaw d 0.0005
 pid syaw i 0
 pid syaw p -2.5
 pid yaw d 0
