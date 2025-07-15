@@ -1583,9 +1583,18 @@ int stabilize(int ms)
 			dsp_getlpf(&tlpf), dt);
 	}
 
-	if (en < 0.5) {
-		pitchpv.s = rollpv.s = pitchspv.s = rollspv.s = yawpv.s
-			= yawspv.s = tpv.s = cpv.s = apv.s = 0;
+	// disable I-term for all PID-controller,
+	// if disarmeed of no throttle
+	if (en < 0.5 || thrustcor < 0.01) {
+		dsp_resetpids(&pitchpv);
+		dsp_resetpids(&rollpv);
+		dsp_resetpids(&pitchspv);
+		dsp_resetpids(&rollspv);
+		dsp_resetpids(&yawpv);
+		dsp_resetpids(&yawspv);
+		dsp_resetpids(&tpv);
+		dsp_resetpids(&cpv);
+		dsp_resetpids(&apv);
 	}
 
 	// calculate weights for motors

@@ -17,6 +17,9 @@
 // convert degrees to radians
 #define deg2rad(v) ((v) / 180.0 * M_PI)
 
+// reset PID controller's I-term
+#define dsp_resetpids(pid) ((pid)->s = 0)
+
 // low-pass filter's order
 enum DSP_LPFORDER {
 	DSP_LPFORDER_1 = 0,	// first order
