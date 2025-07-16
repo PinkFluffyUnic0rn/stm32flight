@@ -1585,7 +1585,13 @@ int stabilize(int ms)
 
 	// disable I-term for all PID-controller,
 	// if disarmeed of no throttle
-	if (en < 0.5 || thrustcor < 0.01) {
+	if (en < 0.5 
+		|| (altmode == ALTMODE_ACCEL 
+			&& thrustcor < 0.35 * st.accelmax)
+		|| (altmode == ALTMODE_SPEED
+			&& thrustcor < -0.95 * st.climbratemax)
+		|| (altmode == ALTMODE_POS
+			&& thrustcor < -0.01)) {
 		dsp_resetpids(&pitchpv);
 		dsp_resetpids(&rollpv);
 		dsp_resetpids(&pitchspv);
@@ -2771,8 +2777,10 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// 7 value is less than -25
 	if (cd->chf[ERLS_CH_THRMODE] < -0.25) {
 		altmode = ALTMODE_ACCEL;
-		thrust = (cd->chf[ERLS_CH_THRUST] + 0.75)
-			/ 1.75 * st.accelmax;;
+
+		thrust = (cd->chf[ERLS_CH_THRUST] + 0.5)
+			/ 1.5 * st.accelmax;;
+
 	}
 	else if (cd->chf[ERLS_CH_THRMODE] > 0.25) {
 		altmode = ALTMODE_POS;
