@@ -37,7 +37,7 @@
 // Data receiving pin, it's is high when ESP8285
 // processing received data to indicate that it
 // unable to receive new data now
-#define GOT_GPIO 0
+#define GOT_GPIO 2
 
 // UDP send/receive buffer size
 #define BUFSIZE	2048

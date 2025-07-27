@@ -3,7 +3,9 @@
 #include "global.h"
 
 ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
 DMA_HandleTypeDef hdma_adc1;
+DMA_HandleTypeDef hdma_adc2;
 I2C_HandleTypeDef hi2c1;
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
@@ -57,7 +59,7 @@ void systemclock_config(void)
 		error_handler();
 }
 
-void gpio_init(void)
+static void gpio_init(void)
 {
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 
@@ -66,10 +68,11 @@ void gpio_init(void)
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3 | GPIO_PIN_15,
+		GPIO_PIN_RESET);
 
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7
-		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15 | GPIO_PIN_10,
+		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15,
 		GPIO_PIN_RESET);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_3;
@@ -78,7 +81,7 @@ void gpio_init(void)
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7
-		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15 | GPIO_PIN_10;
+		| GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -89,11 +92,16 @@ void gpio_init(void)
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+	GPIO_InitStruct.Pin = GPIO_PIN_15;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 	HAL_NVIC_SetPriority(EXTI1_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 }
 
-void dma_init(void)
+static void dma_init(void)
 {
 	__HAL_RCC_DMA2_CLK_ENABLE();
 	__HAL_RCC_DMA1_CLK_ENABLE();
@@ -116,6 +124,9 @@ void dma_init(void)
 	HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 
+	HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+
 	HAL_NVIC_SetPriority(DMA2_Stream4_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 	
@@ -126,7 +137,7 @@ void dma_init(void)
 	HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 }
 
-void i2c_init(void)
+static void i2c_init(void)
 {
 	hi2c1.Instance = I2C1;
 	hi2c1.Init.ClockSpeed = 100000;
@@ -142,7 +153,7 @@ void i2c_init(void)
 		error_handler();
 }
 
-void spi1_init(void)
+static void spi1_init(void)
 {
 	hspi1.Instance = SPI1;
 	hspi1.Init.Mode = SPI_MODE_MASTER;
@@ -161,7 +172,7 @@ void spi1_init(void)
 		error_handler();
 }
 
-void spi2_init(void)
+static void spi2_init(void)
 {
 	hspi2.Instance = SPI2;
 	hspi2.Init.Mode = SPI_MODE_MASTER;
@@ -170,7 +181,7 @@ void spi2_init(void)
 	hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
 	hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
 	hspi2.Init.NSS = SPI_NSS_SOFT;
-	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
 	hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
 	hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -180,7 +191,7 @@ void spi2_init(void)
 		error_handler();
 }
 
-void tim1_init(void)
+static void tim1_init(void)
 {
 	TIM_MasterConfigTypeDef sMasterConfig = {0};
 	TIM_OC_InitTypeDef sConfigOC = {0};
@@ -236,7 +247,7 @@ void tim1_init(void)
 	HAL_TIM_MspPostInit(&htim1);
 }
 
-void tim8_init(void)
+static void tim8_init(void)
 {
 	TIM_ClockConfigTypeDef sClockSourceConfig = {0};
 	TIM_MasterConfigTypeDef sMasterConfig = {0};
@@ -266,7 +277,7 @@ void tim8_init(void)
 	HAL_TIM_Base_Start_IT(&htim8);
 }
 
-void tim10_init(void)
+static void tim10_init(void)
 {
 	htim10.Instance = TIM10;
 	htim10.Init.Prescaler = DELAYPRESCALER - 1;
@@ -281,7 +292,7 @@ void tim10_init(void)
 	HAL_TIM_Base_Start_IT(&htim10);
 }
 
-void adc1_init(void)
+static void adc1_init(void)
 {
 	ADC_ChannelConfTypeDef sConfig = {0};
 
@@ -300,14 +311,40 @@ void adc1_init(void)
 	if (HAL_ADC_Init(&hadc1) != HAL_OK)
 		error_handler();
 
-	sConfig.Channel = ADC_CHANNEL_1;
+	sConfig.Channel = ADC_CHANNEL_14;
 	sConfig.Rank = 1;
 	sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 		error_handler();
 }
 
-void usart1_init()
+static void adc2_init(void)
+{
+	ADC_ChannelConfTypeDef sConfig = {0};
+
+	hadc2.Instance = ADC2;
+	hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
+	hadc2.Init.Resolution = ADC_RESOLUTION_12B;
+	hadc2.Init.ScanConvMode = DISABLE;
+	hadc2.Init.ContinuousConvMode = ENABLE;
+	hadc2.Init.DiscontinuousConvMode = DISABLE;
+	hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+	hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+	hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	hadc2.Init.NbrOfConversion = 1;
+	hadc2.Init.DMAContinuousRequests = ENABLE;
+	hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+	if (HAL_ADC_Init(&hadc2) != HAL_OK)
+		error_handler();
+
+	sConfig.Channel = ADC_CHANNEL_15;
+	sConfig.Rank = 1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+	if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+		error_handler();
+}
+
+static void usart1_init()
 {
 	huart1.Instance = USART1;
 	huart1.Init.BaudRate = 115200;
@@ -322,7 +359,7 @@ void usart1_init()
 		error_handler();
 }
 
-void usart2_init()
+static void usart2_init()
 {
 	huart2.Instance = USART2;
 	huart2.Init.BaudRate = 921600;
@@ -337,7 +374,7 @@ void usart2_init()
 		error_handler();
 }
 
-void usart3_init()
+static void usart3_init()
 {
 	huart3.Instance = USART3;
 	huart3.Init.BaudRate = 115200;
@@ -352,7 +389,7 @@ void usart3_init()
 		error_handler();
 }
 
-void uart4_init()
+static void uart4_init()
 {
 	huart4.Instance = UART4;
 	huart4.Init.BaudRate = 921600;
@@ -367,7 +404,7 @@ void uart4_init()
 		error_handler();
 }
 
-void uart5_init()
+static void uart5_init()
 {
 	huart5.Instance = UART5;
 	huart5.Init.BaudRate = 9600;
@@ -380,6 +417,25 @@ void uart5_init()
 
 	if (HAL_HalfDuplex_Init(&huart5) != HAL_OK)
 		error_handler();
+}
+
+void periph_init()
+{
+	gpio_init();
+	dma_init();
+	tim1_init();
+	tim8_init();
+	tim10_init();
+	i2c_init();
+	spi1_init();
+	spi2_init();
+	adc1_init();
+	adc2_init();
+	usart1_init();
+	usart2_init();
+	usart3_init();
+	uart4_init();
+	uart5_init();
 }
 
 void error_handler(void)

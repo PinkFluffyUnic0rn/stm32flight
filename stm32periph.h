@@ -2,6 +2,7 @@
 
 // STM32 perithery contexts
 extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
 extern DMA_HandleTypeDef hdma_adc1;
 extern I2C_HandleTypeDef hi2c1;
 extern SPI_HandleTypeDef hspi1;
@@ -24,22 +25,11 @@ extern DMA_HandleTypeDef hdma_tim1_ch3;
 extern DMA_HandleTypeDef hdma_tim1_ch2;
 extern DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 
-// STM32 clocks and periphery devices initilization
+// STM32 initilization
 void systemclock_config();
-void gpio_init();
-void i2c_init();
-void spi1_init();
-void spi2_init();
-void dma_init();
-void tim1_init();
-void tim8_init();
-void tim10_init();
-void adc1_init(void);
-void usart1_init();
-void usart2_init();
-void usart3_init();
-void uart4_init();
-void uart5_init();
+
+// STM32 periphery devices initilization
+void periph_init();
 
 // MCU hardware errors handler. Disarm immediately
 // in case of any of such error.

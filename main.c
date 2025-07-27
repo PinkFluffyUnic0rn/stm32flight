@@ -44,7 +44,8 @@
 #define HP_FREQ 25
 #define QMC_FREQ 100
 #define TELE_FREQ 10
-#define LOG_FREQ 64
+#define LOG_FREQ 128
+#define POWER_FREQ 500
 
 // MCU flash address where quadcopter settings is stored
 #define USER_FLASH 0x080e0000
@@ -52,15 +53,15 @@
 // quadcopter setting's slot
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
 
-// maximum telemetry packets count, depends on onboard flash size
-#define LOG_MAXPACKS \
-	(W25_TOTALSIZE / sizeof(struct logpack))
-
 // log packets buffer size
-#define LOG_BUFSIZE (W25_PAGESIZE / sizeof(struct logpack))
+#define LOG_BUFSIZE W25_PAGESIZE
+
+// log packets per buffer
+#define LOG_PACKSPERBUF (LOG_BUFSIZE / (sizeof(float) * st.logpacksize))
 
 // log packet size
-#define LOG_PACKSIZE	32
+#define LOG_MAXPACKSIZE	32
+#define LOG_FIELDSTRSIZE 38
 
 // log packet values positions
 #define LOG_ACC_X	0
@@ -74,30 +75,36 @@
 #define LOG_MAG_Z	8
 #define LOG_BAR_TEMP	9
 #define LOG_BAR_ALT	10
-#define LOG_ACCPT_X	11
-#define LOG_ACCPT_Y	12
-#define LOG_ACCPT_Z	13
-#define LOG_ROLL	14
-#define LOG_PITCH	15
-#define LOG_YAW		16
-#define LOG_CLIMBRATE	17
-#define LOG_ALT		18
-#define LOG_LT		19
-#define LOG_LB		20
-#define LOG_RB		21
-#define LOG_RT		22
-#define LOG_CRSFCH0	23
-#define LOG_CRSFCH1	24
-#define LOG_CRSFCH2	25
-#define LOG_CRSFCH3	26
-#define LOG_CRSFCH4	27
-#define LOG_CRSFCH5	28
-#define LOG_CRSFCH6	29
-#define LOG_CRSFCH7	30
-#define LOG_BAT		31
+#define LOG_ROLL	11
+#define LOG_PITCH	12
+#define LOG_YAW		13
+#define LOG_CLIMBRATE	14
+#define LOG_ALT		15
+#define LOG_LT		16
+#define LOG_LB		17
+#define LOG_RB		18
+#define LOG_RT		19
+#define LOG_BAT		20
+#define LOG_CUR		21
+#define LOG_CRSFCH0	22
+#define LOG_CRSFCH1	23
+#define LOG_CRSFCH2	24
+#define LOG_CRSFCH3	25
+#define LOG_CRSFCH4	26
+#define LOG_CRSFCH5	27
+#define LOG_CRSFCH6	28
+#define LOG_CRSFCH7	29
+#define LOG_CRSFCH8	30
+#define LOG_CRSFCH9	31
+#define LOG_CRSFCH10	32
+#define LOG_CRSFCH11	33
+#define LOG_CRSFCH12	34
+#define LOG_CRSFCH13	35
+#define LOG_CRSFCH14	36
+#define LOG_CRSFCH15	37
 
 // Timer events count
-#define TEV_COUNT	7
+#define TEV_COUNT	8
 
 // Timer events IDs
 #define TEV_PID 	0
@@ -107,6 +114,7 @@
 #define TEV_QMC		4
 #define TEV_LOG		5
 #define TEV_TELE	6
+#define TEV_POWER	7
 
 // Timeout in seconds before quadcopter disarm
 // when got no data from ERLS receiver
@@ -128,11 +136,6 @@
 #define ERLS_CH_ONOFF		7
 #define ERLS_CH_ALTCALIB	8
 #define ERLS_CH_SETSLOT		15
-
-// set value in current log frame
-// pos -- value's position inside the frame
-// val -- value itself
-#define logwrite(pos, val) logbuf[logbufpos].data[(pos)] = (val);
 
 enum ALTMODE {
 	ALTMODE_ACCEL	= 0,
@@ -250,6 +253,10 @@ struct settings {
 	
 	int ircpower, ircfreq; // IRC Tramp VTX power and frequency
 	int lt, lb, rb, rt; // motors ESC outputs numbers
+
+	int logfreq;			// log frequency
+	int logpacksize;		// log size
+	int fieldid[LOG_FIELDSTRSIZE];	// id for every log field
 };
 
 // Values got from GNSS module using NMEA protocol
@@ -287,7 +294,7 @@ struct gnss_data {
 
 // telemetry packet stored in onboard flash
 struct logpack {
-	float data[LOG_PACKSIZE];
+	float data[LOG_MAXPACKSIZE];
 };
 
 // stabilization modes short codes that is
@@ -295,6 +302,18 @@ struct logpack {
 const char *attmodestr[] = {"ac", "st", "sp", "ps"};
 const char *yawmodestr[] = {"sp", "cs"};
 const char *altmodestr[] = {"tr", "cl", "al"};
+const char *logfieldstr[LOG_FIELDSTRSIZE] = {
+	"acc_x", "acc_y", "acc_z",
+	"gyro_x", "gyro_y", "gyro_z",
+	"mag_x", "mag_y", "mag_z",
+	"bar_temp", "bar_alt",
+	"roll", "pitch", "yaw",
+	"climbrate", "alt",
+	"lt", "lb", "rb", "rt",
+	"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7",
+	"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15",
+	"bat", "cur"
+};
 
 // Flight controller board's devices drivers
 struct cdevice dev[DEV_COUNT];
@@ -302,6 +321,7 @@ struct bdevice flashdev;
 
 // DSP contexts
 struct dsp_lpf batlpf;
+struct dsp_lpf currlpf;
 
 struct dsp_lpf valpf;
 struct dsp_lpf tlpf;
@@ -398,24 +418,7 @@ int logtotal = 0;
 int logbufpos = 0;
 int logflashpos = 0;
 size_t logsize = 0;
-struct logpack logbuf[LOG_BUFSIZE];
-
-// Get battery voltage from ADC.
-//
-// hadc -- ADC context.
-float batteryvoltage()
-{
-	uint32_t v;
-
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 1);
-
-	v = HAL_ADC_GetValue(&hadc1);
-
-	HAL_ADC_Stop(&hadc1);
-
-	return (v / (float) 0xfff * 17.85882);
-}
+float logbuf[LOG_BUFSIZE / sizeof(float)];
 
 // external interrupt callback. It calls interrupt hadlers from
 // drivers for devices that use external interrupts.
@@ -449,6 +452,72 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	if (DEVITENABLED(dev[ESP_DEV].status))
 		dev[ESP_DEV].error(dev[ESP_DEV].priv, huart);
+}
+
+// Get battery voltage from ADC.
+//
+// hadc -- ADC context.
+float batteryvoltage()
+{
+	uint32_t v;
+
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, 1);
+
+	v = HAL_ADC_GetValue(&hadc1);
+
+	HAL_ADC_Stop(&hadc1);
+
+	return (v / (float) 0xfff * 17.85882);
+}
+
+// Get esc current from ADC.
+//
+// hadc -- ADC context.
+float esccurrent()
+{
+	uint32_t v;
+
+	HAL_ADC_Start(&hadc2);
+	HAL_ADC_PollForConversion(&hadc2, 1);
+
+	v = HAL_ADC_GetValue(&hadc2);
+
+	HAL_ADC_Stop(&hadc2);
+
+	return (v / (float) 0xfff);
+}
+
+int logfieldstrn(const char *s)
+{
+	int i;
+
+	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
+		if (strcmp(s, logfieldstr[i]) == 0)
+			break;
+	}
+	
+	if (i >= LOG_FIELDSTRSIZE)
+		return (-1);
+
+	return i;
+}
+
+// set value in current log frame
+// pos -- value's position inside the frame
+// val -- value itself
+void logwrite(int pos, float val)
+{
+	if (st.logpacksize < 0 || st.logpacksize > LOG_FIELDSTRSIZE)
+		return;
+
+	if (pos < 0 || pos > LOG_FIELDSTRSIZE)
+		return;
+
+	if (st.fieldid[pos] < 0 || st.fieldid[pos] > LOG_MAXPACKSIZE)
+		return;
+
+	logbuf[logbufpos * st.logpacksize + st.fieldid[pos]] = val;
 }
 
 // DMA callback for dshot processing
@@ -747,6 +816,8 @@ static void espdev_init()
 	d.rstpin = GPIO_PIN_14;
 	d.bootgpio = GPIOC;
 	d.bootpin = GPIO_PIN_15;
+	d.busygpio = GPIOB;
+	d.busypin = GPIO_PIN_15;
 	d.intpin = GPIO_PIN_1;
 
 	if (esp_initdevice(&d, dev + ESP_DEV) < 0) {
@@ -905,7 +976,8 @@ int setstabilize(int init)
 		PID_FREQ, init);
 
 	// init battery voltage low-pass filter
-	dsp_setlpf1f(&batlpf, 100.0, PID_FREQ, init);
+	dsp_setlpf1f(&batlpf, 100.0, POWER_FREQ, init);
+	dsp_setlpf1f(&currlpf, 100.0, POWER_FREQ, init);
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_setlpf1t(&altlpf, st.atcoef, HP_FREQ, init);
@@ -1113,8 +1185,12 @@ int sprintvalues(char *s)
 		(double) st.yaw0);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"battery: %0.3f\n\r",
+		"battery: %0.3f\r\n",
 		(double) (dsp_getlpf(&batlpf)));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"esc current: %0.3f\r\n",
+		(double) (dsp_getlpf(&currlpf)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"motors state: %.3f\r\n", (double) en);
@@ -1346,20 +1422,23 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 	if (from > to)
 		return (-1);
 
+	if (st.logpacksize < 0 || st.logpacksize > LOG_MAXPACKSIZE)
+		return (-1);
+
 	// run through all writable space in the flash
-	for (fp = from; fp < to; fp += LOG_BUFSIZE) {
+	for (fp = from; fp < to; fp += LOG_PACKSPERBUF) {
 		int bp;
 
 		// read batch of log frames into log buffer
 		flashdev.read(flashdev.priv,
-			fp * sizeof(struct logpack), logbuf,
-			LOG_BUFSIZE * sizeof(struct logpack));
+			sizeof(float) * fp * st.logpacksize, logbuf,
+			LOG_BUFSIZE);
 
 		// for every read frame
-		for (bp = 0; bp < LOG_BUFSIZE; ++bp) {
+		for (bp = 0; bp < LOG_PACKSPERBUF; ++bp) {
 			char *data;
 			int i;
-
+		
 			if (fp + bp < from || fp + bp >= to)
 				continue;
 
@@ -1368,9 +1447,12 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 			// put all frame's values into a string
 			sprintf(data, "%d ", fp + bp);
 
-			for (i = 0; i < LOG_PACKSIZE; ++i) {
+			for (i = 0; i < st.logpacksize; ++i) {
+				int rec;
+
+				rec = bp * st.logpacksize;
 				sprintf(data + strlen(data), "%0.5f ",
-					(double) logbuf[bp].data[i]);
+					(double) logbuf[rec + i]);
 			}
 
 			sprintf(data + strlen(data), "\r\n");
@@ -1382,6 +1464,7 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 			// send this string into debug connection
 			d->write(d->priv, buf, strlen(buf));
 		}
+
 	}
 
 	return 1;
@@ -1401,7 +1484,7 @@ int stabilize(int ms)
 	float gy, gx, gz;
 	float ay, ax, az;
 	float dt;
-
+	
 	// emergency disarm happened
 	if (emergencydisarm) {
 		setthrust(0.0, 0.0, 0.0, 0.0);
@@ -1415,7 +1498,7 @@ int stabilize(int ms)
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 	// update battery voltage
-	logwrite(LOG_BAT, dsp_updatelpf(&batlpf, batteryvoltage()));
+	logwrite(LOG_BAT, dsp_getlpf(&batlpf));
 
 	// toggle arming indication led
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,
@@ -1437,10 +1520,6 @@ int stabilize(int ms)
 	ax = dsp_updatelpf(&accxpt1, id.afx) - st.ax0;
 	ay = dsp_updatelpf(&accypt1, id.afy) - st.ay0;
 	az = dsp_updatelpf(&acczpt1, id.afz) - st.az0;
-
-	logwrite(LOG_ACCPT_X, ax);
-	logwrite(LOG_ACCPT_Y, ay);
-	logwrite(LOG_ACCPT_Z, az);
 
 	// update vertical acceleration low-pass filter
 	dsp_updatelpf(&tlpf, id.afz);
@@ -1772,15 +1851,17 @@ int logupdate(int ms)
 	if (logtotal >= logsize)
 		return 0;
 
-	if (++logbufpos < LOG_BUFSIZE)
+	if (st.logpacksize < 0 || st.logpacksize > LOG_MAXPACKSIZE)
 		return 0;
 
-	logtotal += sizeof(struct logpack);
+	if (++logbufpos < LOG_PACKSPERBUF)
+		return 0;
 
-	flashdev.write(flashdev.priv, logflashpos, logbuf,
-		LOG_BUFSIZE * sizeof(struct logpack));
+	logtotal += sizeof(float) * st.logpacksize;
 
-	logflashpos += LOG_BUFSIZE * sizeof(struct logpack);
+	flashdev.write(flashdev.priv, logflashpos, logbuf, LOG_BUFSIZE);
+
+	logflashpos += LOG_BUFSIZE;
 	logbufpos = 0;
 
 	return 0;
@@ -1794,6 +1875,7 @@ int telesend(int ms)
 	const char *am;
 
 	tele.bat = dsp_getlpf(&batlpf);
+	tele.curr = dsp_getlpf(&currlpf);
 	
 	if (tele.bat < 6.0)
 		tele.batrem = (tele.bat - 3.5) / 0.7;
@@ -1807,7 +1889,7 @@ int telesend(int ms)
 		tele.batrem = (tele.bat - 21) / 3.5;
 		
 	tele.batrem = trimf(100.0 * tele.batrem, 0.0, 100.0);
-		
+
 	tele.lat = gnss.lat + gnss.latmin / 60.0;
 	tele.lon = gnss.lon + gnss.lonmin / 60.0;
 	tele.speed = gnss.speed;
@@ -1845,6 +1927,14 @@ int telesend(int ms)
 	dev[CRSF_DEV].write(dev[CRSF_DEV].priv, &tele,
 		sizeof(struct crsf_tele));
 
+	return 0;
+}
+
+int powercheck(int ms)
+{
+	dsp_updatelpf(&batlpf, batteryvoltage());
+	dsp_updatelpf(&currlpf, esccurrent());
+		
 	return 0;
 }
 
@@ -2241,7 +2331,13 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		if (atoi(toks[2]) > W25_TOTALSIZE)
 			return (-1);
 
-		logsize = atoi(toks[2]) * sizeof(struct logpack);
+
+		if (st.logpacksize < 0
+				|| st.logpacksize > LOG_MAXPACKSIZE)
+			return (-1);
+
+		logsize = atoi(toks[2]) * sizeof(float)
+			* st.logpacksize;
 
 		// enable writeonly mode if log writing is enabled
 		flashdev.ioctl(flashdev.priv,
@@ -2288,6 +2384,32 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		// write end marker
 		sprintf(s, "-end-\r\n");
 		d->write(d->priv, s, strlen(s));
+	}
+	else if (strcmp(toks[1], "freq") == 0) {
+		st.logfreq = atoi(toks[2]);
+
+		return 0;
+	}
+	else if (strcmp(toks[1], "record") == 0) {
+		if (strcmp(toks[2], "size") == 0) {
+			unsigned int p;
+
+			for (p = 1; p < atoi(toks[3]); p <<= 1);
+
+			st.logpacksize = p;
+		}
+		else {
+			int strn;
+
+			strn = logfieldstrn(toks[2]);
+
+			if (strn < 0)
+				return (-1);
+
+			st.fieldid[strn] = atoi(toks[3]);
+		}
+		
+		return 0;
 	}
 	else
 		return (-1);
@@ -2660,6 +2782,28 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 
 		isfloat = 0;
 	}
+	else if (strcmp(toks[1], "log") == 0) {
+		if (strcmp(toks[2], "freq") == 0)
+			vi = st.logfreq;
+		else if (strcmp(toks[2], "record") == 0) {
+			if (strcmp(toks[3], "size") == 0)
+				vi = st.logpacksize;
+			else {
+				int strn;
+
+				strn = logfieldstrn(toks[3]);
+
+				if (strn < 0)
+					return (-1);
+
+				vi = st.fieldid[strn];
+			}
+		}
+		else
+			return (-1);
+			
+		isfloat = 0;
+	}	
 	else if (strcmp(toks[1], "motor") == 0) {
 		if (strcmp(toks[2], "lt") == 0)
 			vi = st.lt;
@@ -2900,20 +3044,7 @@ int main(void)
 	HAL_Delay(1000);
 
 	// init stm32 periphery
-	gpio_init();
-	dma_init();
-	tim1_init();
-	tim8_init();
-	tim10_init();
-	i2c_init();
-	spi1_init();
-	spi2_init();
-	adc1_init();
-	usart1_init();
-	usart2_init();
-	usart3_init();
-	uart4_init();
-	uart5_init();
+	periph_init();
 
 	// reading settings from memory current
 	// memory slot, which is 0 at start
@@ -2942,6 +3073,7 @@ int main(void)
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
 	inittimev(evs + TEV_LOG, LOG_FREQ, logupdate);
 	inittimev(evs + TEV_TELE, TELE_FREQ, telesend);
+	inittimev(evs + TEV_POWER, POWER_FREQ, powercheck);
 
 	// initilize debug commands
 	addcommand("r", rcmd);

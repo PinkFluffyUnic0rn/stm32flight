@@ -17,6 +17,9 @@ struct esp_device {
 	GPIO_TypeDef *bootgpio;
 	uint16_t bootpin;
 
+	GPIO_TypeDef *busygpio;
+	uint16_t busypin;
+
 	uint16_t intpin;
 };
 

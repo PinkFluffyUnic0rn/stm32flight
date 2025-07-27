@@ -191,7 +191,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	buf[1] = 10;
 	buf[2] = 0x08;
 	batpack->voltage = endian2((int16_t)(tele->bat * 10));
-	batpack->current = 0;
+	batpack->current = endian2((int16_t)(tele->curr * 10));
 	batpack->cap[0] = batpack->cap[1] = batpack->cap[2] = 0; 
 	batpack->rem = (int8_t)(tele->batrem);
 	buf[11] = crc8(buf + 2, 9);
