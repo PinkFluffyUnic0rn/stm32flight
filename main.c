@@ -310,9 +310,9 @@ const char *logfieldstr[LOG_FIELDSTRSIZE] = {
 	"roll", "pitch", "yaw",
 	"climbrate", "alt",
 	"lt", "lb", "rb", "rt",
+	"bat", "cur",
 	"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7",
-	"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15",
-	"bat", "cur"
+	"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15"
 };
 
 // Flight controller board's devices drivers
@@ -508,13 +508,7 @@ int logfieldstrn(const char *s)
 // val -- value itself
 void logwrite(int pos, float val)
 {
-	if (st.logpacksize < 0 || st.logpacksize > LOG_FIELDSTRSIZE)
-		return;
-
-	if (pos < 0 || pos > LOG_FIELDSTRSIZE)
-		return;
-
-	if (st.fieldid[pos] < 0 || st.fieldid[pos] > LOG_MAXPACKSIZE)
+	if (st.fieldid[pos] < 0 || st.fieldid[pos] > st.logpacksize)
 		return;
 
 	logbuf[logbufpos * st.logpacksize + st.fieldid[pos]] = val;
@@ -676,11 +670,6 @@ int setthrust(float ltd, float rtd, float lbd, float rbd)
 	logwrite(LOG_LB, lbd);
 	logwrite(LOG_RB, rbd);
 	logwrite(LOG_RT, rtd);
-
-	if (st.lt < 0 || st.lt > 3 || st.lb < 0 || st.lb > 3
-			|| st.rb < 0 || st.rb > 3
-			|| st.rt < 0 || st.rt > 3)
-		return 0;
 
 	// construst a PWM duty cycle
 	// buffers for dshot ESCs
@@ -920,6 +909,36 @@ int writesettings(int slot)
 	return 0;
 }
 
+// Validate current settings. Reset settings
+// that has wrong values to default
+int validatesettings()
+{
+	int i;
+
+	if (!irc_ispowervalid(st.ircpower))
+		st.ircpower = IRC_POWER_25;
+	if (!irc_isfreqvalid(st.ircpower))
+		st.ircfreq = IRC_FREQ_5733;
+
+	if (st.lt < 0 || st.lt > 3)	st.lt = 0;
+	if (st.lb < 0 || st.lb > 3)	st.lb = 1;
+	if (st.rb < 0 || st.rb > 3)	st.rb = 2;
+	if (st.rt < 0 || st.rt > 3)	st.rt = 3;
+
+	if (st.logfreq < 0 || st.logfreq > 4096)
+		st.logfreq = 128;
+
+	if (st.logpacksize < 0 || st.logpacksize > LOG_MAXPACKSIZE)
+		st.logpacksize = 0;
+
+	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
+		if (st.fieldid[i] < 0 || st.fieldid[i] > LOG_MAXPACKSIZE)
+			st.fieldid[i] = i;
+	}
+
+	return 0;
+}
+
 // Read setting from internal MCU flash.
 //
 // slot -- offset in settings array in flash.
@@ -928,6 +947,8 @@ int readsettings(int slot)
 	memcpy(&st, (void *) (USER_FLASH
 			+ slot * sizeof(struct settings)),
 		sizeof(struct settings));
+
+	validatesettings();
 
 	return 0;
 }
@@ -1422,9 +1443,6 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 	if (from > to)
 		return (-1);
 
-	if (st.logpacksize < 0 || st.logpacksize > LOG_MAXPACKSIZE)
-		return (-1);
-
 	// run through all writable space in the flash
 	for (fp = from; fp < to; fp += LOG_PACKSPERBUF) {
 		int bp;
@@ -1526,7 +1544,6 @@ int stabilize(int ms)
 
 	// offset gyroscope readings by values, calculater
 	// at power on and convert result into radians
-
 	gx = deg2rad(dsp_updatelpf(&gyroxpt1, id.gfx) - st.gx0);
 	gy = deg2rad(dsp_updatelpf(&gyroypt1, id.gfy) - st.gy0);
 	gz = deg2rad(dsp_updatelpf(&gyrozpt1, id.gfz) - st.gz0);
@@ -1849,9 +1866,6 @@ int qmcupdate(int ms)
 int logupdate(int ms)
 {
 	if (logtotal >= logsize)
-		return 0;
-
-	if (st.logpacksize < 0 || st.logpacksize > LOG_MAXPACKSIZE)
 		return 0;
 
 	if (++logbufpos < LOG_PACKSPERBUF)

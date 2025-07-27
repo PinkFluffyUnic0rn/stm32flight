@@ -51,6 +51,10 @@ struct irc_device {
 	enum IRC_FREQ frequency;
 };
 
+int irc_ispowervalid(int v);
+
+int irc_isfreqvalid(int v);
+
 int irc_initdevice(void *is, struct cdevice *dev);
 
 #endif

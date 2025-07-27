@@ -13,13 +13,13 @@
 static struct irc_device irc_devs[IRC_MAXDEVS];
 static size_t irc_devcount = 0;
 
-static int ispowervalid(int v)
+int irc_ispowervalid(int v)
 {
 	return isvalinlist(v, 5, IRC_POWER_25, IRC_POWER_100,
 		IRC_POWER_200, IRC_POWER_400, IRC_POWER_600);
 }
 
-static int isfreqvalid(int v)
+int irc_isfreqvalid(int v)
 {
 	return isvalinlist(v, 39, IRC_FREQ_5865, IRC_FREQ_5845,
 		IRC_FREQ_5825, IRC_FREQ_5805, IRC_FREQ_5785,
@@ -121,7 +121,7 @@ int irc_configure(void *d, const char *cmd, ...)
 
 			freq = va_arg(args, int);
 
-			if (!isfreqvalid(freq))
+			if (!irc_isfreqvalid(freq))
 				freq = IRC_FREQ_5733;
 
 			for (r = 0; r < IRC_RETRIES; ++r) {
@@ -148,7 +148,7 @@ int irc_configure(void *d, const char *cmd, ...)
 
 			power = va_arg(args, int);
 				
-			if (!ispowervalid(power))
+			if (!irc_ispowervalid(power))
 				power = IRC_POWER_25;
 
 			for (r = 0; r < IRC_RETRIES; ++r) {	
