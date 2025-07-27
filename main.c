@@ -414,7 +414,6 @@ int elrstimeout = ELRS_TIMEOUT;
 int emergencydisarm = 0;
 
 // Log bufferization controlling variables
-int logtotal = 0;
 int logbufpos = 0;
 int logflashpos = 0;
 size_t logsize = 0;
@@ -932,8 +931,8 @@ int validatesettings()
 		st.logpacksize = 0;
 
 	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-		if (st.fieldid[i] < 0 || st.fieldid[i] > LOG_MAXPACKSIZE)
-			st.fieldid[i] = i;
+		if (st.fieldid[i] < 0)
+			st.fieldid[i] = 0xff;
 	}
 
 	return 0;
@@ -1416,17 +1415,19 @@ int eraseflash(const struct cdevice *d, size_t size)
 		// use sector erase command otherwise
 		if ((size - pos) >= W25_BLOCKSIZE) {
 			flashdev.eraseblock(flashdev.priv, pos);
-			pos += W25_BLOCKSIZE;
 
 			sprintf(s, "erased block at %u\r\n", pos);
 			d->write(d->priv, s, strlen(s));
+			
+			pos += W25_BLOCKSIZE;
 		}
 		else {
 			flashdev.erasesector(flashdev.priv, pos);
-			pos += W25_SECTORSIZE;
 
 			sprintf(s, "erased sector at %u\r\n", pos);
 			d->write(d->priv, s, strlen(s));
+			
+			pos += W25_SECTORSIZE;
 		}
 	}
 
@@ -1865,13 +1866,11 @@ int qmcupdate(int ms)
 // ms -- microsecond passed from last callback invocation.
 int logupdate(int ms)
 {
-	if (logtotal >= logsize)
+	if (logflashpos >= logsize)
 		return 0;
-
+		
 	if (++logbufpos < LOG_PACKSPERBUF)
 		return 0;
-
-	logtotal += sizeof(float) * st.logpacksize;
 
 	flashdev.write(flashdev.priv, logflashpos, logbuf, LOG_BUFSIZE);
 
@@ -2340,34 +2339,28 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		sprintf(s, "erasing flash...\r\n");
 		d->write(d->priv, s, strlen(s));
 
-		// set log size (0 is valid and
-		// means to disable logging)
-		if (atoi(toks[2]) > W25_TOTALSIZE)
-			return (-1);
-
-
-		if (st.logpacksize < 0
-				|| st.logpacksize > LOG_MAXPACKSIZE)
-			return (-1);
-
 		logsize = atoi(toks[2]) * sizeof(float)
 			* st.logpacksize;
+
+		// set log size (0 is valid and
+		// means to disable logging)
+		if (logsize > W25_TOTALSIZE)
+			return (-1);
+
+		// erase log flash no
+		// respond during this process
+		eraseflash(d, logsize);
 
 		// enable writeonly mode if log writing is enabled
 		flashdev.ioctl(flashdev.priv,
 			(logsize == 0)
 			? W25_IOCTL_READWRITE : W25_IOCTL_WRITEONLY);
 
-		// erase log flash no
-		// respond during this process
-		eraseflash(d, logsize);
-
 		// notify user when telemetry flash is erased
 		sprintf(s,"erased %u bytes of flash\r\n", logsize);
 		d->write(d->priv, s, strlen(s));
 
 		// enable telemetry
-		logtotal = 0;
 		logflashpos = 0;
 		logbufpos = 0;
 	}
