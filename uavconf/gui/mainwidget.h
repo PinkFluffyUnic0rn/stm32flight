@@ -167,6 +167,21 @@ public:
 		main_widget *mw = nullptr);
 };
 
+
+class uint_settings_group : public settings_group
+{
+public:
+	uint_settings_group(QWidget *parent = 0,
+		string name = string(""),
+		vector<string> s = vector<string>(),
+		vector<string> c = vector<string>(),
+		commands_tree *cmdstree = nullptr,
+		bool nsb = false,
+		main_widget *mw = nullptr);
+};
+
+
+
 class settings_tab : public QWidget
 {
 	Q_OBJECT

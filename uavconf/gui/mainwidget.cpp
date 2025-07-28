@@ -444,10 +444,13 @@ void uint_setting::set_value(const string &s)
 	string t;
 
 	t = s;
-	t.erase(t.find_last_not_of("0\r\n") + 1);
 
-	if (t.back() == '.')
-		t.pop_back();
+	if (t.find('.') != std::string::npos) {
+		t.erase(t.find_last_not_of("0\r\n") + 1);
+
+		if (t.back() == '.')
+			t.pop_back();
+	}
 
 	if (t.empty())
 		t = "0";
@@ -555,6 +558,7 @@ settings_group::settings_group(QWidget *parent, string n,
 {
 	group = new QGroupBox(QString::fromStdString(name),
 		dynamic_cast<QWidget *>(this));
+
 	layout = new QGridLayout(group);
 
 	if (nsb) {
@@ -624,6 +628,20 @@ float_settings_group::float_settings_group(QWidget *parent,
 
 	for (i = 0; i < s.size(); ++i) {
 		add_setting(new float_setting(nullptr,
+			s[i], c[i], cmdstree));
+	}
+}
+
+uint_settings_group::uint_settings_group(QWidget *parent,
+	string name, vector<string> s, vector<string> c,
+		commands_tree *cmdstree, bool nsb,
+		main_widget *mw)
+		: settings_group(parent, name, nsb, mw)
+{
+	size_t i;
+
+	for (i = 0; i < s.size(); ++i) {
+		add_setting(new uint_setting(nullptr,
 			s[i], c[i], cmdstree));
 	}
 }
@@ -926,7 +944,79 @@ main_widget::main_widget(QWidget *parent)
 		false);
 
 	tabs["log"]->add_group(log_write, 0, 0, 1, 1);
-	tabs["log"]->add_group(log_read, 0, 1, 1, 1);
+	tabs["log"]->add_group(log_read, 1, 0, 1, 1);
+
+	tabs["log"]->add_group(new uint_settings_group(nullptr,
+		"Record fields 1",
+		{
+			"record size", "acc_x", "acc_y", "acc_z",
+			"gyro_x", "gyro_y", "gyro_z",
+			"max_x", "mag_y", "mag_z",
+			"bar_temp", "bar_alt",
+			"roll", /* "pitch", "yaw",
+			"climbrate", "alt",
+			"lt", "lb", "rb", "rt",
+			"bat", "cur",
+			"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7",
+			"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15"
+	*/	},
+		{
+			"log record size", 
+			"log record acc_x", "log record acc_y", "log record acc_z",
+			"log record gyro_x", "log record gyro_y", "log record gyro_z",
+			"log record mag_x", "log record mag_y", "log record mag_z",
+			"log record bar_temp", "log record bar_alt",
+			"log record roll", /*"log record pitch", "log record yaw",
+			"log record climbrate", "log record alt",
+			"log record lt", "log record lb", "log record rb", "log record rt",
+			"log record bar", "log record cur",
+			"log record ch0", "log record ch1",
+			"log record ch2", "log record ch3",
+			"log record ch4", "log record ch5",
+			"log record ch6", "log record ch7",
+			"log record ch8", "log record ch9",
+			"log record ch10", "log record ch11",
+			"log record ch12", "log record ch13",
+			"log record ch14", "log record ch15"
+	*/	},
+		cmdstree, true, this), 0, 1, 2, 1);
+
+	tabs["log"]->add_group(new uint_settings_group(nullptr,
+		"Record fields 2",
+		{
+			"pitch", "yaw",
+			"climbrate", "alt",
+			"lt", "lb", "rb", "rt",
+			"bat", "cur",
+			"ch0", "ch1", "ch2"
+		},
+		{
+			"log record pitch", "log record yaw",
+			"log record climbrate", "log record alt",
+			"log record lt", "log record lb", "log record rb", "log record rt",
+			"log record bat", "log record cur",
+			"log record ch0", "log record ch1",
+			"log record ch2",
+		},
+		cmdstree, true, this), 0, 2, 2, 1);
+	
+
+	tabs["log"]->add_group(new uint_settings_group(nullptr,
+		"Record fields 3",
+		{
+			"ch3", "ch4", "ch5", "ch6", "ch7",
+			"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15"
+		},
+		{
+			"log record ch3",
+			"log record ch4", "log record ch5",
+			"log record ch6", "log record ch7",
+			"log record ch8", "log record ch9",
+			"log record ch10", "log record ch11",
+			"log record ch12", "log record ch13",
+			"log record ch14", "log record ch15"
+		},
+		cmdstree, true, this), 0, 3, 2, 1);
 
 	settings_group *irc = new settings_group(nullptr, "IRC",
 		true, this);
