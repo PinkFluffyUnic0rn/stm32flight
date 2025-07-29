@@ -2395,6 +2395,11 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 	else if (strcmp(toks[1], "freq") == 0) {
 		st.logfreq = atoi(toks[2]);
 
+		if (st.logfreq < 0 || st.logfreq > 4096)
+			st.logfreq = 128;
+
+		modifytimev(evs + TEV_LOG, st.logfreq);
+
 		return 0;
 	}
 	else if (strcmp(toks[1], "record") == 0) {
@@ -2402,6 +2407,9 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 			unsigned int p;
 
 			for (p = 1; p < atoi(toks[3]); p <<= 1);
+
+			if (p > LOG_MAXPACKSIZE)
+				p = LOG_MAXPACKSIZE;
 
 			st.logpacksize = p;
 		}

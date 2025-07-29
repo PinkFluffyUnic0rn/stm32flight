@@ -10,6 +10,13 @@ int inittimev(struct timev *ev, int freq, int (*cb)(int))
 	return 0;
 }
 
+int modifytimev(struct timev *ev, int freq)
+{
+	inittimev(ev, freq, ev->cb);
+
+	return 0;
+}
+
 int resettimev(struct timev *ev)
 {
 	ev->rem += ev->ms - TICKSPERSEC / (ev)->freq;

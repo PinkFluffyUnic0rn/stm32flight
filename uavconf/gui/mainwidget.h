@@ -119,6 +119,7 @@ public:
 	void set_value(const string &s);
 
 private:
+	int def_idx;
 	QComboBox *box;	
 };
 
@@ -167,7 +168,6 @@ public:
 		main_widget *mw = nullptr);
 };
 
-
 class uint_settings_group : public settings_group
 {
 public:
@@ -180,7 +180,19 @@ public:
 		main_widget *mw = nullptr);
 };
 
-
+class mode_settings_group : public settings_group
+{
+public:
+	mode_settings_group(QWidget *parent = 0,
+		string name = string(""),
+		vector<string> s = vector<string>(),
+		vector<string> c = vector<string>(),
+		commands_tree *cmdstree = nullptr,
+		vector<string> modes = vector<string>(),
+		string init = string(""), 
+		bool nsb = false,
+		main_widget *mw = nullptr);
+};
 
 class settings_tab : public QWidget
 {
@@ -192,8 +204,10 @@ public:
 
 	void add_group(settings_group *s, int r, int c,
 		int rs = 1, int cs = 1);
-	void add_setting(setting *s, int r, int c, int
-		rs = 1, int cs = 1);
+	void add_setting(setting *s, int r, int c,
+		int rs = 1, int cs = 1);
+	void add_widget(QWidget *w, int r, int c,
+		int rs = 1, int cs = 1);
 
 	settings_group *get_group(string name) { return groups[name]; }
 	const setting *get_setting(string name) { return settings[name]; }

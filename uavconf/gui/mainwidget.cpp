@@ -492,7 +492,11 @@ mode_setting::mode_setting(QWidget *parent, string n, string c,
 	for (auto it = begin(modes); it != end(modes); ++it)
 		box->addItem((*it).c_str());
 
-	mode_setting::set_value(init);
+
+	if ((def_idx = box->findText(QString::fromStdString(init))) < 0)
+		def_idx = 0;
+
+	box->setCurrentIndex(def_idx);
 }
 
 mode_setting::~mode_setting()
@@ -510,7 +514,7 @@ void mode_setting::set_value(const string &s)
 	int idx;
 
 	if ((idx = box->findText(QString::fromStdString(s))) < 0)
-		idx = 0;
+		idx = def_idx;
 
 	box->setCurrentIndex(idx);
 }
@@ -529,13 +533,14 @@ void partial_send_click_handler(void *arg)
 	for (auto s = begin(sts); s != end(sts); ++s) {
 		if (s->second->get_command().empty())
 			continue;
+	
 
 		conf += s->second->get_command()
 			+ string(" ")
 			+ s->second->get_value()
 			+ string("\n");
 	}
-
+		
 	if (g->get_main_widget() == NULL)
 		return;
 
@@ -646,6 +651,20 @@ uint_settings_group::uint_settings_group(QWidget *parent,
 	}
 }
 
+mode_settings_group::mode_settings_group(QWidget *parent,
+	string name, vector<string> s, vector<string> c,
+		commands_tree *cmdstree, vector<string> modes,
+		string init, bool nsb, main_widget *mw)
+		: settings_group(parent, name, nsb, mw)
+{
+	size_t i;
+
+	for (i = 0; i < s.size(); ++i) {
+		add_setting(new mode_setting(nullptr,
+			s[i], c[i], cmdstree, modes, init));
+	}
+}
+
 settings_tab::settings_tab(QWidget *parent) : QWidget(parent)
 {
 	grid = new QGridLayout(this);
@@ -674,6 +693,12 @@ void settings_tab::add_setting(setting *s,
 {
 	settings[s->get_name()] = s;
 	grid->addWidget(s, r, c, rs, cs);
+}
+
+void settings_tab::add_widget(QWidget *w,
+	int r, int c, int rs, int cs)
+{
+	grid->addWidget(w, r, c, rs, cs);
 }
 
 terminal::terminal(QWidget *parent) : QWidget(parent)
@@ -929,6 +954,7 @@ main_widget::main_widget(QWidget *parent)
 
 	settings_group *log_write = new settings_group(nullptr, "Log write");
 	settings_group *log_read = new settings_group(nullptr, "Log read");
+	settings_group *log_config = new settings_group(nullptr, "Log config", true, this);
 
 	log_write->add_setting(new uint_setting(nullptr,
 		"records count"));
@@ -943,72 +969,71 @@ main_widget::main_widget(QWidget *parent)
 	log_read->add_setting(new button_setting(nullptr, "load log", log_load_click_handler, this),
 		false);
 
-	tabs["log"]->add_group(log_write, 0, 0, 1, 1);
-	tabs["log"]->add_group(log_read, 1, 0, 1, 1);
+	log_config->add_setting(new mode_setting(nullptr, "Record size",
+		"log record size", cmdstree, {"1", "2", "4", "8", "16", "32"}, "8"));
+	log_config->add_setting(new uint_setting(nullptr, "Log frequency",
+		"log freq", cmdstree));
 
-	tabs["log"]->add_group(new uint_settings_group(nullptr,
+	tabs["log"]->add_group(log_config, 0, 0, 1, 2);
+	tabs["log"]->add_group(log_write, 1, 0, 1, 2);
+	tabs["log"]->add_group(log_read, 2, 0, 1, 2);
+
+	tabs["log"]->add_group(new mode_settings_group(nullptr,
 		"Record fields 1",
 		{
-			"record size", "acc_x", "acc_y", "acc_z",
+			"acc_x", "acc_y", "acc_z",
 			"gyro_x", "gyro_y", "gyro_z",
 			"max_x", "mag_y", "mag_z",
 			"bar_temp", "bar_alt",
-			"roll", /* "pitch", "yaw",
-			"climbrate", "alt",
-			"lt", "lb", "rb", "rt",
-			"bat", "cur",
-			"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7",
-			"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15"
-	*/	},
+			"roll", "pitch"
+		},
 		{
-			"log record size", 
 			"log record acc_x", "log record acc_y", "log record acc_z",
 			"log record gyro_x", "log record gyro_y", "log record gyro_z",
 			"log record mag_x", "log record mag_y", "log record mag_z",
 			"log record bar_temp", "log record bar_alt",
-			"log record roll", /*"log record pitch", "log record yaw",
-			"log record climbrate", "log record alt",
-			"log record lt", "log record lb", "log record rb", "log record rt",
-			"log record bar", "log record cur",
-			"log record ch0", "log record ch1",
-			"log record ch2", "log record ch3",
-			"log record ch4", "log record ch5",
-			"log record ch6", "log record ch7",
-			"log record ch8", "log record ch9",
-			"log record ch10", "log record ch11",
-			"log record ch12", "log record ch13",
-			"log record ch14", "log record ch15"
-	*/	},
-		cmdstree, true, this), 0, 1, 2, 1);
+			"log record roll", "log record pitch",
+		},
+		cmdstree, {
+			"0", "1", "2", "3", "4", "5", "6", "7",
+			"8", "9", "10", "11", "12", "13", "14", "15",
+			"16", "17", "18", "19", "20", "21", "22", "23",
+			"24", "25", "26", "27", "28", "29", "30", "31",
+			"99"
+		}, "99", true, this), 0, 2, 3, 1);
 
-	tabs["log"]->add_group(new uint_settings_group(nullptr,
+	tabs["log"]->add_group(new mode_settings_group(nullptr,
 		"Record fields 2",
 		{
-			"pitch", "yaw",
-			"climbrate", "alt",
+			"yaw", "climbrate", "alt",
 			"lt", "lb", "rb", "rt",
 			"bat", "cur",
-			"ch0", "ch1", "ch2"
+			"ch0", "ch1", "ch2", "ch3"
 		},
 		{
-			"log record pitch", "log record yaw",
+			"log record yaw",
 			"log record climbrate", "log record alt",
 			"log record lt", "log record lb", "log record rb", "log record rt",
 			"log record bat", "log record cur",
 			"log record ch0", "log record ch1",
-			"log record ch2",
+			"log record ch2", "log record ch3",
 		},
-		cmdstree, true, this), 0, 2, 2, 1);
+		cmdstree, {
+			"0", "1", "2", "3", "4", "5", "6", "7",
+			"8", "9", "10", "11", "12", "13", "14", "15",
+			"16", "17", "18", "19", "20", "21", "22", "23",
+			"24", "25", "26", "27", "28", "29", "30", "31",
+			"99"
+		}, "99", true, this), 0, 3, 3, 1);
 	
 
-	tabs["log"]->add_group(new uint_settings_group(nullptr,
+	tabs["log"]->add_group(new mode_settings_group(nullptr,
 		"Record fields 3",
 		{
-			"ch3", "ch4", "ch5", "ch6", "ch7",
+			"ch4", "ch5", "ch6", "ch7",
 			"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15"
 		},
 		{
-			"log record ch3",
 			"log record ch4", "log record ch5",
 			"log record ch6", "log record ch7",
 			"log record ch8", "log record ch9",
@@ -1016,7 +1041,13 @@ main_widget::main_widget(QWidget *parent)
 			"log record ch12", "log record ch13",
 			"log record ch14", "log record ch15"
 		},
-		cmdstree, true, this), 0, 3, 2, 1);
+		cmdstree, {
+			"0", "1", "2", "3", "4", "5", "6", "7",
+			"8", "9", "10", "11", "12", "13", "14", "15",
+			"16", "17", "18", "19", "20", "21", "22", "23",
+			"24", "25", "26", "27", "28", "29", "30", "31",
+			"99"
+		}, "99", true, this), 0, 4, 3, 1);
 
 	settings_group *irc = new settings_group(nullptr, "IRC",
 		true, this);
