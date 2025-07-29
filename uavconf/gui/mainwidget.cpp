@@ -777,19 +777,73 @@ void main_widget::record_size_item_changed(int idx)
 	}
 }
 
-void main_widget::update_motors_mapping(int motoridx)
+void main_widget::record_field_item_changed(int idx)
+{
+	setting *st[32];
+	set<string> ss;
+	set<string> ssp;
+	int fieldidx;
+	int i;
+	
+	(void) idx;
+
+	fieldidx = 0;
+
+	for (i = 0; i < 32; ++i) {
+		string g;
+
+		if (i >= 0 && i < 11)
+			g = "Record fields 0-10";
+		else if (i >= 11 && i < 22)
+			g = "Record fields 11-21";
+		else
+			g = "Record fields 22-31";
+
+		st[i] = tabs["log"]->get_group(g)
+			->get_setting(std::to_string(i));
+	}
+
+	for (i = 0; i < 32; ++i) {
+		if (sender() == st[i]->get_field()) {
+			fieldidx = i;
+			break;
+		}
+	}
+	
+	for (i = 0; i < 32; ++i) {
+		if (i != fieldidx
+				&& st[i]->get_value() == st[fieldidx]->get_value()
+				&& st[i]->get_value() != "none") {
+			st[i]->set_value("none");
+		}
+	}
+}
+
+void main_widget::motor_mapping_item_changed(int idx)
 {
 	setting *st[4];
 	set<string> ss;
+	int motoridx;
 	int i;
+	
+	(void) idx;
+
+	motoridx = 0;
 
 	st[0] = this->tabs["motors"]->get_group("left-top")->get_setting("output");
 	st[1] = this->tabs["motors"]->get_group("left-bottom")->get_setting("output");
 	st[2] = this->tabs["motors"]->get_group("right-top")->get_setting("output");
 	st[3] = this->tabs["motors"]->get_group("right-bottom")->get_setting("output");
 
-	ss = set<string>({st[0]->get_value(), st[1]->get_value(),
-		st[2]->get_value(), st[3]->get_value()});
+	for (i = 0; i < 4; ++i) {
+		if (sender() == st[i]->get_field()) {
+			motoridx = i;
+			break;
+		}
+	}
+
+	for (i = 0; i < 4; ++i)
+		ss.insert(st[i]->get_value());
 
 	for (i = 0; i < 4; ++i) {
 		if (i != motoridx
@@ -807,37 +861,11 @@ void main_widget::update_motors_mapping(int motoridx)
 	}
 }
 
-void main_widget::lt_item_changed(int idx)
-{
-	(void) idx;
-
-	update_motors_mapping(0);
-}
-
-void main_widget::lb_item_changed(int idx)
-{
-	(void) idx;
-
-	update_motors_mapping(1);
-}
-
-void main_widget::rt_item_changed(int idx)
-{
-	(void) idx;
-
-	update_motors_mapping(2);
-}
-
-void main_widget::rb_item_changed(int idx)
-{
-	(void) idx;
-
-	update_motors_mapping(3);
-}
-
 main_widget::main_widget(QWidget *parent)
 	: QWidget(parent), catchuavout(true)
 {
+	int i;
+
 	grid = new QGridLayout(this);
 	tab = new QTabWidget;
 	term = new terminal();
@@ -1002,8 +1030,6 @@ main_widget::main_widget(QWidget *parent)
 		SIGNAL(currentIndexChanged(int)), this,
 		SLOT(record_size_item_changed(int)));
 
-
-
 	log_config->add_setting(new uint_setting(nullptr, "Log frequency",
 		"log freq", cmdstree));
 
@@ -1076,6 +1102,29 @@ main_widget::main_widget(QWidget *parent)
 			"ch7", "ch8", "ch9", "ch10", "ch11", "ch12",
 			"ch13", "ch14", "ch15", "none"
 		}, "none", true, this), 0, 4, 3, 1);
+
+
+	for (i = 0; i < 32; ++i) {
+		string g;
+
+		if (i >= 0 && i < 11)
+			g = "Record fields 0-10";
+		else if (i >= 11 && i < 22)
+			g = "Record fields 11-21";
+		else
+			g = "Record fields 22-31";
+
+		connect(tabs["log"]->get_group(g)
+			->get_setting(std::to_string(i))->get_field(),
+			SIGNAL(currentIndexChanged(int)), this,
+			SLOT(record_field_item_changed(int)));
+	}
+
+	connect(log_config->get_setting("Record size")->get_field(),
+		SIGNAL(currentIndexChanged(int)), this,
+		SLOT(record_size_item_changed(int)));
+
+
 
 	settings_group *irc = new settings_group(nullptr, "IRC",
 		true, this);
@@ -1154,16 +1203,16 @@ main_widget::main_widget(QWidget *parent)
 
 	connect(lt->get_setting("output")->get_field(),
 		SIGNAL(currentIndexChanged(int)), this,
-		SLOT(lt_item_changed(int)));
+		SLOT(motor_mapping_item_changed(int)));
 	connect(lb->get_setting("output")->get_field(),
 		SIGNAL(currentIndexChanged(int)), this,
-		SLOT(lb_item_changed(int)));
+		SLOT(motor_mapping_item_changed(int)));
 	connect(rt->get_setting("output")->get_field(),
 		SIGNAL(currentIndexChanged(int)), this,
-		SLOT(rt_item_changed(int)));
+		SLOT(motor_mapping_item_changed(int)));
 	connect(rb->get_setting("output")->get_field(),
 		SIGNAL(currentIndexChanged(int)), this,
-		SLOT(rb_item_changed(int)));
+		SLOT(motor_mapping_item_changed(int)));
 
 	tab->addTab(tabs["pid"], "PID");
 	tab->addTab(tabs["filters"], "Filters");

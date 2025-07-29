@@ -279,20 +279,15 @@ public:
 	
 public slots:
 	void record_size_item_changed(int idx);
-	void lt_item_changed(int idx);
-	void lb_item_changed(int idx);
-	void rt_item_changed(int idx);
-	void rb_item_changed(int idx);
+	void record_field_item_changed(int idx);
+	void motor_mapping_item_changed(int idx);
 
 protected:
 	void keyPressEvent(QKeyEvent *event) override;
 
 private:	
 	void return_pressed();
-
 	void timer_handler();
-
-	void update_motors_mapping(int motoridx);
 
 	bool catchuavout;
 	struct sockaddr_in rsi;
