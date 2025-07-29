@@ -751,6 +751,32 @@ void commands_tree::set_setting(setting *s)
 	cmdsetting = s;
 }
 
+void main_widget::record_size_item_changed(int idx)
+{
+	int size;
+	int i;
+
+	(void) idx;
+
+	size = stoi(tabs["log"]->get_group("Log config")
+		->get_setting("Record size")->get_value());
+
+	for (i = 0; i < 32; ++i) {
+		string g;
+
+		if (i >= 0 && i < 11)
+			g = "Record fields 0-10";
+		else if (i >= 11 && i < 22)
+			g = "Record fields 11-21";
+		else
+			g = "Record fields 22-31";
+
+		tabs["log"]->get_group(g)
+			->get_setting(std::to_string(i))
+			->get_field()->setEnabled((i < size));
+	}
+}
+
 void main_widget::update_motors_mapping(int motoridx)
 {
 	setting *st[4];
@@ -971,6 +997,13 @@ main_widget::main_widget(QWidget *parent)
 
 	log_config->add_setting(new mode_setting(nullptr, "Record size",
 		"log record size", cmdstree, {"1", "2", "4", "8", "16", "32"}, "8"));
+
+	connect(log_config->get_setting("Record size")->get_field(),
+		SIGNAL(currentIndexChanged(int)), this,
+		SLOT(record_size_item_changed(int)));
+
+
+
 	log_config->add_setting(new uint_setting(nullptr, "Log frequency",
 		"log freq", cmdstree));
 
@@ -979,75 +1012,70 @@ main_widget::main_widget(QWidget *parent)
 	tabs["log"]->add_group(log_read, 2, 0, 1, 2);
 
 	tabs["log"]->add_group(new mode_settings_group(nullptr,
-		"Record fields 1",
+		"Record fields 0-10",
 		{
-			"acc_x", "acc_y", "acc_z",
-			"gyro_x", "gyro_y", "gyro_z",
-			"max_x", "mag_y", "mag_z",
-			"bar_temp", "bar_alt",
-			"roll", "pitch"
+			"0", "1", "2", "3", "4", "5",
+			"6", "7", "8", "9", "10"
 		},
 		{
-			"log record acc_x", "log record acc_y", "log record acc_z",
-			"log record gyro_x", "log record gyro_y", "log record gyro_z",
-			"log record mag_x", "log record mag_y", "log record mag_z",
-			"log record bar_temp", "log record bar_alt",
-			"log record roll", "log record pitch",
+			"log record 0", "log record 1", "log record 2",
+			"log record 3", "log record 4", "log record 5",
+			"log record 6", "log record 7", "log record 8",
+			"log record 9", "log record 10"
 		},
 		cmdstree, {
-			"0", "1", "2", "3", "4", "5", "6", "7",
-			"8", "9", "10", "11", "12", "13", "14", "15",
-			"16", "17", "18", "19", "20", "21", "22", "23",
-			"24", "25", "26", "27", "28", "29", "30", "31",
-			"99"
-		}, "99", true, this), 0, 2, 3, 1);
+			"acc_x", "acc_y", "acc_z", "gyro_x", "gyro_y",
+			"gyro_z", "mag_x", "mag_y", "mag_z", "bar_temp",
+			"bar_alt", "roll", "pitch", "yaw", "climbrate",
+			"alt", "lt", "lb", "rb", "rt", "bat", "cur",
+			"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6",
+			"ch7", "ch8", "ch9", "ch10", "ch11", "ch12",
+			"ch13", "ch14", "ch15", "none"
+		}, "none", true, this), 0, 2, 3, 1);
 
 	tabs["log"]->add_group(new mode_settings_group(nullptr,
-		"Record fields 2",
+		"Record fields 11-21",
 		{
-			"yaw", "climbrate", "alt",
-			"lt", "lb", "rb", "rt",
-			"bat", "cur",
-			"ch0", "ch1", "ch2", "ch3"
+			"11", "12", "13", "14", "15", "16",
+			"17", "18", "19", "20", "21"
 		},
 		{
-			"log record yaw",
-			"log record climbrate", "log record alt",
-			"log record lt", "log record lb", "log record rb", "log record rt",
-			"log record bat", "log record cur",
-			"log record ch0", "log record ch1",
-			"log record ch2", "log record ch3",
+			"log record 11", "log record 12", "log record 13",
+			"log record 14", "log record 15", "log record 16",
+			"log record 17", "log record 18", "log record 19",
+			"log record 20", "log record 21"
 		},
 		cmdstree, {
-			"0", "1", "2", "3", "4", "5", "6", "7",
-			"8", "9", "10", "11", "12", "13", "14", "15",
-			"16", "17", "18", "19", "20", "21", "22", "23",
-			"24", "25", "26", "27", "28", "29", "30", "31",
-			"99"
-		}, "99", true, this), 0, 3, 3, 1);
-	
+			"acc_x", "acc_y", "acc_z", "gyro_x", "gyro_y",
+			"gyro_z", "mag_x", "mag_y", "mag_z", "bar_temp",
+			"bar_alt", "roll", "pitch", "yaw", "climbrate",
+			"alt", "lt", "lb", "rb", "rt", "bat", "cur",
+			"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6",
+			"ch7", "ch8", "ch9", "ch10", "ch11", "ch12",
+			"ch13", "ch14", "ch15", "none"
+		}, "none", true, this), 0, 3, 3, 1);
 
 	tabs["log"]->add_group(new mode_settings_group(nullptr,
-		"Record fields 3",
+		"Record fields 22-31",
 		{
-			"ch4", "ch5", "ch6", "ch7",
-			"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15"
+			"22", "23", "24", "25", "26", "27",
+			"28", "29", "30", "31"
 		},
 		{
-			"log record ch4", "log record ch5",
-			"log record ch6", "log record ch7",
-			"log record ch8", "log record ch9",
-			"log record ch10", "log record ch11",
-			"log record ch12", "log record ch13",
-			"log record ch14", "log record ch15"
+			"log record 22", "log record 23", "log record 24",
+			"log record 25", "log record 26", "log record 27",
+			"log record 28", "log record 29", "log record 30",
+			"log record 31"
 		},
 		cmdstree, {
-			"0", "1", "2", "3", "4", "5", "6", "7",
-			"8", "9", "10", "11", "12", "13", "14", "15",
-			"16", "17", "18", "19", "20", "21", "22", "23",
-			"24", "25", "26", "27", "28", "29", "30", "31",
-			"99"
-		}, "99", true, this), 0, 4, 3, 1);
+			"acc_x", "acc_y", "acc_z", "gyro_x", "gyro_y",
+			"gyro_z", "mag_x", "mag_y", "mag_z", "bar_temp",
+			"bar_alt", "roll", "pitch", "yaw", "climbrate",
+			"alt", "lt", "lb", "rb", "rt", "bat", "cur",
+			"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6",
+			"ch7", "ch8", "ch9", "ch10", "ch11", "ch12",
+			"ch13", "ch14", "ch15", "none"
+		}, "none", true, this), 0, 4, 3, 1);
 
 	settings_group *irc = new settings_group(nullptr, "IRC",
 		true, this);
@@ -1164,6 +1192,8 @@ main_widget::main_widget(QWidget *parent)
 	grid->addWidget(settings["connect"]->get_field(), 5, 2);
 	grid->addWidget(settings["send"]->get_field(), 5, 3);
 	grid->addWidget(term, 0, 4, 6, 2);
+
+	record_size_item_changed(0);
 
 	setWindowTitle(tr("Settings"));
 }

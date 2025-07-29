@@ -53,17 +53,17 @@
 // quadcopter setting's slot
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
 
-// log packets buffer size
+// log records buffer size
 #define LOG_BUFSIZE W25_PAGESIZE
 
-// log packets per buffer
-#define LOG_PACKSPERBUF (LOG_BUFSIZE / (sizeof(float) * st.logpacksize))
+// log records per buffer
+#define LOG_RECSPERBUF (LOG_BUFSIZE / (sizeof(float) * st.logrecsize))
 
-// log packet size
-#define LOG_MAXPACKSIZE	32
+// log record size
+#define LOG_MAXRECSIZE	32
 #define LOG_FIELDSTRSIZE 38
 
-// log packet values positions
+// log record values positions
 #define LOG_ACC_X	0
 #define LOG_ACC_Y	1
 #define LOG_ACC_Z	2
@@ -163,6 +163,12 @@ enum MAGVARDIR {
 	MAGVARDIR_W = 1
 };
 
+enum CONFVALTYPE {
+	CONFVALTYPE_INT		= 0,
+	CONFVALTYPE_FLOAT	= 1,
+	CONFVALTYPE_STRING	= 2
+};
+
 // Quadcopter settings structure stored in MCU's flash
 struct settings {
 	float mx0, my0, mz0;	// magnetometer offset values for X, Y
@@ -255,7 +261,7 @@ struct settings {
 	int lt, lb, rb, rt; // motors ESC outputs numbers
 
 	int logfreq;			// log frequency
-	int logpacksize;		// log size
+	int logrecsize;		// log size
 	int fieldid[LOG_FIELDSTRSIZE];	// id for every log field
 };
 
@@ -290,11 +296,6 @@ struct gnss_data {
 
 	int quality;			// link quality
 	uint8_t satellites;		// satellites count
-};
-
-// telemetry packet stored in onboard flash
-struct logpack {
-	float data[LOG_MAXPACKSIZE];
 };
 
 // stabilization modes short codes that is
@@ -507,10 +508,10 @@ int logfieldstrn(const char *s)
 // val -- value itself
 void logwrite(int pos, float val)
 {
-	if (st.fieldid[pos] < 0 || st.fieldid[pos] > st.logpacksize)
+	if (st.fieldid[pos] < 0 || st.fieldid[pos] > st.logrecsize)
 		return;
 
-	logbuf[logbufpos * st.logpacksize + st.fieldid[pos]] = val;
+	logbuf[logbufpos * st.logrecsize + st.fieldid[pos]] = val;
 }
 
 // DMA callback for dshot processing
@@ -925,10 +926,10 @@ int validatesettings()
 	if (st.rt < 0 || st.rt > 3)	st.rt = 3;
 
 	if (st.logfreq < 0 || st.logfreq > 4096)
-		st.logfreq = 128;
+		st.logfreq = LOG_FREQ;
 
-	if (st.logpacksize < 0 || st.logpacksize > LOG_MAXPACKSIZE)
-		st.logpacksize = 0;
+	if (st.logrecsize < 0 || st.logrecsize > LOG_MAXRECSIZE)
+		st.logrecsize = 0;
 
 	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
 		if (st.fieldid[i] < 0)
@@ -1445,16 +1446,16 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 		return (-1);
 
 	// run through all writable space in the flash
-	for (fp = from; fp < to; fp += LOG_PACKSPERBUF) {
+	for (fp = from; fp < to; fp += LOG_RECSPERBUF) {
 		int bp;
 
 		// read batch of log frames into log buffer
 		flashdev.read(flashdev.priv,
-			sizeof(float) * fp * st.logpacksize, logbuf,
+			sizeof(float) * fp * st.logrecsize, logbuf,
 			LOG_BUFSIZE);
 
 		// for every read frame
-		for (bp = 0; bp < LOG_PACKSPERBUF; ++bp) {
+		for (bp = 0; bp < LOG_RECSPERBUF; ++bp) {
 			char *data;
 			int i;
 		
@@ -1466,10 +1467,10 @@ int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
 			// put all frame's values into a string
 			sprintf(data, "%d ", fp + bp);
 
-			for (i = 0; i < st.logpacksize; ++i) {
+			for (i = 0; i < st.logrecsize; ++i) {
 				int rec;
 
-				rec = bp * st.logpacksize;
+				rec = bp * st.logrecsize;
 				sprintf(data + strlen(data), "%0.5f ",
 					(double) logbuf[rec + i]);
 			}
@@ -1869,7 +1870,7 @@ int logupdate(int ms)
 	if (logflashpos >= logsize)
 		return 0;
 		
-	if (++logbufpos < LOG_PACKSPERBUF)
+	if (++logbufpos < LOG_RECSPERBUF)
 		return 0;
 
 	flashdev.write(flashdev.priv, logflashpos, logbuf, LOG_BUFSIZE);
@@ -2340,7 +2341,7 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		d->write(d->priv, s, strlen(s));
 
 		logsize = atoi(toks[2]) * sizeof(float)
-			* st.logpacksize;
+			* st.logrecsize;
 
 		// set log size (0 is valid and
 		// means to disable logging)
@@ -2408,20 +2409,27 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 
 			for (p = 1; p < atoi(toks[3]); p <<= 1);
 
-			if (p > LOG_MAXPACKSIZE)
-				p = LOG_MAXPACKSIZE;
+			if (p > LOG_MAXRECSIZE)
+				p = LOG_MAXRECSIZE;
 
-			st.logpacksize = p;
+			st.logrecsize = p;
 		}
 		else {
 			int strn;
+			int i;
 
-			strn = logfieldstrn(toks[2]);
+			if (strcmp(toks[3], "none") == 0)
+				return 0;
 
-			if (strn < 0)
+			if ((strn = logfieldstrn(toks[3])) < 0)
 				return (-1);
 
-			st.fieldid[strn] = atoi(toks[3]);
+			for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
+				if (st.fieldid[i] == atoi(toks[2]))
+					st.fieldid[i] = 99;
+			}
+
+			st.fieldid[strn] = atoi(toks[2]);
 		}
 		
 		return 0;
@@ -2593,11 +2601,12 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	const char **p;
 	char *data;
-	int isfloat;
+	enum CONFVALTYPE valtype;
 	float v;
 	int vi;
+	const char *si;
 
-	isfloat = 1;
+	valtype = CONFVALTYPE_FLOAT;
 
 	if (strcmp(toks[1], "pid") == 0) {
 		if (strcmp(toks[2], "tilt") == 0) {
@@ -2673,7 +2682,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		else
 			return (-1);
 	
-		isfloat = 1;
+		valtype = CONFVALTYPE_FLOAT;
 	}
 	else if (strcmp(toks[1], "compl") == 0) {
 		if (strcmp(toks[2], "attitude") == 0)
@@ -2687,7 +2696,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		else
 			return (-1);
 
-		isfloat = 1;
+		valtype = CONFVALTYPE_FLOAT;
 	}
 	else if (strcmp(toks[1], "lpf") == 0) {
 		if (strcmp(toks[2], "gyro") == 0)
@@ -2705,7 +2714,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		else
 			return (-1);
 
-		isfloat = 1;
+		valtype = CONFVALTYPE_FLOAT;
 	}
 	else if (strcmp(toks[1], "adj") == 0) {
 		if (strcmp(toks[2], "rollthrust") == 0)
@@ -2759,7 +2768,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		else
 			return (-1);
 
-		isfloat = 1;
+		valtype = CONFVALTYPE_FLOAT;
 	}
 	else if (strcmp(toks[1], "ctrl") == 0) {
 		if (strcmp(toks[2], "thrust") == 0)
@@ -2785,7 +2794,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		else
 			return (-1);
 
-		isfloat = 1;
+		valtype = CONFVALTYPE_FLOAT;
 	}
 	else if (strcmp(toks[1], "irc") == 0) {
 		if (strcmp(toks[2], "frequency") == 0)
@@ -2795,29 +2804,43 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		else
 			return (-1);
 
-		isfloat = 0;
+		valtype = CONFVALTYPE_INT;
 	}
 	else if (strcmp(toks[1], "log") == 0) {
-		if (strcmp(toks[2], "freq") == 0)
+		if (strcmp(toks[2], "freq") == 0) {
 			vi = st.logfreq;
+			valtype = CONFVALTYPE_INT;
+		}
 		else if (strcmp(toks[2], "record") == 0) {
-			if (strcmp(toks[3], "size") == 0)
-				vi = st.logpacksize;
+			if (strcmp(toks[3], "size") == 0) {
+				vi = st.logrecsize;
+				valtype = CONFVALTYPE_INT;
+			}
 			else {
-				int strn;
+				int recn;
+				int i;
 
-				strn = logfieldstrn(toks[3]);
+				recn = atoi(toks[3]);
 
-				if (strn < 0)
+				if (recn < 0 || recn > LOG_MAXRECSIZE)
 					return (-1);
 
-				vi = st.fieldid[strn];
+				for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
+					if (st.fieldid[i] == recn)
+						break;
+				}
+			
+				if (i >= LOG_FIELDSTRSIZE)
+					si = "none";
+				else
+					si = logfieldstr[i];
+
+				valtype = CONFVALTYPE_STRING;
 			}
 		}
 		else
 			return (-1);
 			
-		isfloat = 0;
 	}	
 	else if (strcmp(toks[1], "motor") == 0) {
 		if (strcmp(toks[2], "lt") == 0)
@@ -2829,7 +2852,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		else if (strcmp(toks[2], "rt") == 0)
 			vi = st.rt;
 		
-		isfloat = 0;
+		valtype = 0;
 	}
 	else
 		return (-1);
@@ -2840,10 +2863,19 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	for (p = toks + 1; *p != NULL; ++p)
 		sprintf(data + strlen(data), "%s ", *p);
 
-	if (isfloat)
+	switch (valtype) {
+	case CONFVALTYPE_FLOAT:
 		sprintf(data + strlen(data), "%f\r\n", (double) v);
-	else	
+		break;
+
+	case CONFVALTYPE_INT:
 		sprintf(data + strlen(data), "%d\r\n", vi);
+		break;
+
+	case CONFVALTYPE_STRING:
+		sprintf(data + strlen(data), "%s\r\n", si);
+		break;
+	}
 
 	sprintf(out, "%05u", crc16((uint8_t *) data, strlen(data)));
 	out[5] = ' ';
@@ -3086,7 +3118,7 @@ int main(void)
 	inittimev(evs + TEV_CALIB, CALIB_FREQ, magcalib);
 	inittimev(evs + TEV_HP, HP_FREQ, hpupdate);
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
-	inittimev(evs + TEV_LOG, LOG_FREQ, logupdate);
+	inittimev(evs + TEV_LOG, st.logfreq, logupdate);
 	inittimev(evs + TEV_TELE, TELE_FREQ, telesend);
 	inittimev(evs + TEV_POWER, POWER_FREQ, powercheck);
 

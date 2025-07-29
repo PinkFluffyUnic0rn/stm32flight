@@ -278,6 +278,7 @@ public:
 	map<string, settings_tab *> get_tabs() { return tabs; }
 	
 public slots:
+	void record_size_item_changed(int idx);
 	void lt_item_changed(int idx);
 	void lb_item_changed(int idx);
 	void rt_item_changed(int idx);
