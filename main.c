@@ -8,7 +8,9 @@
 #include "stm32f4xx_hal.h"
 
 #include "stm32periph.h"
+#include "settings.h"
 #include "dsp.h"
+#include "log.h"
 #include "crc.h"
 #include "global.h"
 #include "timev.h"
@@ -37,72 +39,6 @@
 #define IRC_DEV		7
 #define DEV_COUNT	8
 
-// Periodic events frequencies
-#define PID_FREQ 4000
-#define CHECK_FREQ 1
-#define CALIB_FREQ 25
-#define HP_FREQ 25
-#define QMC_FREQ 100
-#define TELE_FREQ 10
-#define LOG_FREQ 128
-#define POWER_FREQ 500
-
-// MCU flash address where quadcopter settings is stored
-#define USER_FLASH 0x080e0000
-
-// quadcopter setting's slot
-#define USER_SETSLOTS (0x80 / sizeof(struct settings))
-
-// log records buffer size
-#define LOG_BUFSIZE W25_PAGESIZE
-
-// log records per buffer
-#define LOG_RECSPERBUF (LOG_BUFSIZE / (sizeof(float) * st.logrecsize))
-
-// log record size
-#define LOG_MAXRECSIZE	32
-#define LOG_FIELDSTRSIZE 38
-
-// log record values positions
-#define LOG_ACC_X	0
-#define LOG_ACC_Y	1
-#define LOG_ACC_Z	2
-#define LOG_GYRO_X	3
-#define LOG_GYRO_Y	4
-#define LOG_GYRO_Z	5
-#define LOG_MAG_X	6
-#define LOG_MAG_Y	7
-#define LOG_MAG_Z	8
-#define LOG_BAR_TEMP	9
-#define LOG_BAR_ALT	10
-#define LOG_ROLL	11
-#define LOG_PITCH	12
-#define LOG_YAW		13
-#define LOG_CLIMBRATE	14
-#define LOG_ALT		15
-#define LOG_LT		16
-#define LOG_LB		17
-#define LOG_RB		18
-#define LOG_RT		19
-#define LOG_BAT		20
-#define LOG_CUR		21
-#define LOG_CRSFCH0	22
-#define LOG_CRSFCH1	23
-#define LOG_CRSFCH2	24
-#define LOG_CRSFCH3	25
-#define LOG_CRSFCH4	26
-#define LOG_CRSFCH5	27
-#define LOG_CRSFCH6	28
-#define LOG_CRSFCH7	29
-#define LOG_CRSFCH8	30
-#define LOG_CRSFCH9	31
-#define LOG_CRSFCH10	32
-#define LOG_CRSFCH11	33
-#define LOG_CRSFCH12	34
-#define LOG_CRSFCH13	35
-#define LOG_CRSFCH14	36
-#define LOG_CRSFCH15	37
-
 // Timer events count
 #define TEV_COUNT	8
 
@@ -115,6 +51,15 @@
 #define TEV_LOG		5
 #define TEV_TELE	6
 #define TEV_POWER	7
+
+// Periodic events frequencies
+#define PID_FREQ 4000
+#define CHECK_FREQ 1
+#define CALIB_FREQ 25
+#define HP_FREQ 25
+#define QMC_FREQ 100
+#define TELE_FREQ 10
+#define POWER_FREQ 500
 
 // Timeout in seconds before quadcopter disarm
 // when got no data from ERLS receiver
@@ -169,102 +114,6 @@ enum CONFVALTYPE {
 	CONFVALTYPE_STRING	= 2
 };
 
-// Quadcopter settings structure stored in MCU's flash
-struct settings {
-	float mx0, my0, mz0;	// magnetometer offset values for X, Y
-				// and Z axes determinted by
-				// calibration procedure
-
-	float mxsc, mysc, mzsc;	// megnetormeter scaling values for Z,
-				// Y and Z axes determinted by
-				// calibration procedure
-
-	float magdecl;		// magnetic declination
-
-	float ax0, ay0, az0;	// accelometer offset values for X, Y
-				// and Z axes
-
-	float gx0, gy0, gz0;	// gyroscope offset values for X, Y
-				// and Z axes
-
-	float rsc, psc;		// motor thrust scaling for roll and
-				// pitch side motors, because not all
-				// motors are abolutely equal
-
-	float roll0, pitch0, yaw0; // roll, pitch and yaw offset values
-
-	float thrustmax;	// maximum thrust value
-	float rollmax, pitchmax; // maximum roll and pitch angles in Pi
-
-
-	float rollspeed;	// roll rotation speed in Pi for
-				// single loop tilt mode
-	float pitchspeed;	// pitch rotation speed in Pi for
-				// single loop tilt mode
-	float yawspeed;		// yaw rotation speed in Pi for
-				// single loop yaw mode
-	float yawtargetspeed;	// yaw target change speed in Pi for
-				// dual loop yaw mode
-	float accelmax;		// maximum acceleration in g for
-				// single loop throttle mode
-	float climbratemax;	// maximum climbrate in m/s for
-				// dual loop throttle mode
-	float altmax;		// maximum altitude in m for triple
-				// loop mode (altitude hold mode)
-
-	float atctcoef;		// time coefficient for pitch/roll
-				// complimentary filter
-	float yctcoef;		// time coefficient for yaw
-				// complimentary filter
-	float ttcoef;		// time coefficient for vertical axis
-				// acceleration pow-pass filter
-	float vatcoef;		// time coefficient for vertical
-				// acceleration pow-pass filter
-
-	float accpt1freq;	// cut-off frequency for
-				// accelerometer PT1 filter
-
-	float gyropt1freq;	// cut-off frequency for
-				// gyroscope PT1 filter
-	
-	float dpt1freq;		// cut-off frequency for PID D term
-
-	float atcoef;		// time coefficient for altitude
-				// low-pass filter
-	float cctcoef;		// time coefficient for climb rate
-				// complimentary filter
-	float actcoef;		// time coefficient for altitude
-				// complimentary filter
-
-	int speedpid;	// 1 if single PID loop for roll/pitch is used,
-			// 0 if double loop is used
-
-	int yawspeedpid; // 1 if single PID loop for yaw is used, 0 if
-			 // double loop is used
-
-	float p, i, d;	// P/I/D values for roll/pitch (used only in
-			// double roll/pitch PID loop mode)
-
-	float sp, si, sd;	// P/I/D values for roll/pitch
-				// rotation speed
-
-	float yp, yi, yd; // P/I/D values for yaw (used only in double
-			  // yaw PID loop mode)
-
-	float ysp, ysi, ysd;	// P/I/D values for yaw rotation speed
-
-	float zsp, zsi,	zsd; // P/I/D values for vertical acceleration
-	float cp, ci, cd; // P/I/D values for climb rate
-	float ap, ai, ad; // P/I/D values for altitude
-	
-	int ircpower, ircfreq; // IRC Tramp VTX power and frequency
-	int lt, lb, rb, rt; // motors ESC outputs numbers
-
-	int logfreq;			// log frequency
-	int logrecsize;		// log size
-	int fieldid[LOG_FIELDSTRSIZE];	// id for every log field
-};
-
 // Values got from GNSS module using NMEA protocol
 struct gnss_data {
 	enum GNSSSTATUS status;		// GNSS data status
@@ -303,18 +152,6 @@ struct gnss_data {
 const char *attmodestr[] = {"ac", "st", "sp", "ps"};
 const char *yawmodestr[] = {"sp", "cs"};
 const char *altmodestr[] = {"tr", "cl", "al"};
-const char *logfieldstr[LOG_FIELDSTRSIZE] = {
-	"acc_x", "acc_y", "acc_z",
-	"gyro_x", "gyro_y", "gyro_z",
-	"mag_x", "mag_y", "mag_z",
-	"bar_temp", "bar_alt",
-	"roll", "pitch", "yaw",
-	"climbrate", "alt",
-	"lt", "lb", "rb", "rt",
-	"bat", "cur",
-	"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7",
-	"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15"
-};
 
 // Flight controller board's devices drivers
 struct cdevice dev[DEV_COUNT];
@@ -393,9 +230,6 @@ float alt0 = 0.0;
 // Current settings slot
 int curslot = 0;
 
-// Settings
-struct settings st;
-
 // Timer events
 struct timev evs[TEV_COUNT];
 
@@ -413,12 +247,6 @@ int elrstimeout = ELRS_TIMEOUT;
 // emergency disarm triggered, further
 // arming is possible only after reboot
 int emergencydisarm = 0;
-
-// Log bufferization controlling variables
-int logbufpos = 0;
-int logflashpos = 0;
-size_t logsize = 0;
-float logbuf[LOG_BUFSIZE / sizeof(float)];
 
 // external interrupt callback. It calls interrupt hadlers from
 // drivers for devices that use external interrupts.
@@ -488,32 +316,6 @@ float esccurrent()
 	return (v / (float) 0xfff);
 }
 
-int logfieldstrn(const char *s)
-{
-	int i;
-
-	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-		if (strcmp(s, logfieldstr[i]) == 0)
-			break;
-	}
-	
-	if (i >= LOG_FIELDSTRSIZE)
-		return (-1);
-
-	return i;
-}
-
-// set value in current log frame
-// pos -- value's position inside the frame
-// val -- value itself
-void logwrite(int pos, float val)
-{
-	if (st.fieldid[pos] < 0 || st.fieldid[pos] >= st.logrecsize)
-		return;
-
-	logbuf[logbufpos * st.logrecsize + st.fieldid[pos]] = val;
-}
-
 // DMA callback for dshot processing
 //
 // hdma -- DMA device that triggered this callback.
@@ -567,6 +369,11 @@ void dshotsetbuf(uint16_t *buf, uint16_t val, int tele)
 	buf[17] = 0;
 }
 
+// Fill buffer, that contains PWM duty cycle values of a
+// a DSHOT packet with thrust value.
+//
+// buf -- buffer for PWM duty cycle values that is used by DMA.
+// v -- value from 0.0 to 1.0
 inline int dshotsetthrust(uint16_t *buf, float v)
 {
 	// convert motor thrust value from [0.0;1.0]
@@ -666,10 +473,10 @@ int setthrust(float ltd, float rtd, float lbd, float rbd)
 		ltd = rtd = rbd = lbd = 0.0;
 
 	// put motors thrust values into log
-	logwrite(LOG_LT, ltd);
-	logwrite(LOG_LB, lbd);
-	logwrite(LOG_RB, rbd);
-	logwrite(LOG_RT, rtd);
+	log_write(LOG_LT, ltd);
+	log_write(LOG_LB, lbd);
+	log_write(LOG_RB, rbd);
+	log_write(LOG_RT, rtd);
 
 	// construst a PWM duty cycle
 	// buffers for dshot ESCs
@@ -872,85 +679,6 @@ static void uartdev_init()
 	}
 
 	uartprintf("UART device initilized\r\n");
-}
-
-// write quadcopter settings into internal MCU flash.
-//
-// slot -- offset in settings array in flash.
-int writesettings(int slot)
-{
-	struct settings s[6];
-	uint32_t sz;
-	uint32_t *pt;
-	uint32_t addr;
-	int j;
-
-	memcpy(s, (void *) (USER_FLASH), sizeof(struct settings) * 6);
-
-	__disable_irq();
-	HAL_FLASH_Unlock();
-
-	FLASH_Erase_Sector(FLASH_SECTOR_11,  VOLTAGE_RANGE_3);
-
-	memcpy(s + slot, &st, sizeof(struct settings));
-
-	sz = sizeof(struct settings) * 6;
-	pt = (uint32_t *) s;
-	
-	addr = USER_FLASH;
-	for (j = 0; j < sz / 4; ++j) {
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr, pt[j]);
-		addr += 4;
-	}
-
-	HAL_FLASH_Lock();
-	__enable_irq();
-
-	return 0;
-}
-
-// Validate current settings. Reset settings
-// that has wrong values to default
-int validatesettings()
-{
-	int i;
-
-	if (!irc_ispowervalid(st.ircpower))
-		st.ircpower = IRC_POWER_25;
-	if (!irc_isfreqvalid(st.ircpower))
-		st.ircfreq = IRC_FREQ_5733;
-
-	if (st.lt < 0 || st.lt > 3)	st.lt = 0;
-	if (st.lb < 0 || st.lb > 3)	st.lb = 1;
-	if (st.rb < 0 || st.rb > 3)	st.rb = 2;
-	if (st.rt < 0 || st.rt > 3)	st.rt = 3;
-
-	if (st.logfreq < 0 || st.logfreq > 4096)
-		st.logfreq = LOG_FREQ;
-
-	if (st.logrecsize < 0 || st.logrecsize > LOG_MAXRECSIZE)
-		st.logrecsize = 0;
-
-	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-		if (st.fieldid[i] < 0)
-			st.fieldid[i] = 0xff;
-	}
-
-	return 0;
-}
-
-// Read setting from internal MCU flash.
-//
-// slot -- offset in settings array in flash.
-int readsettings(int slot)
-{
-	memcpy(&st, (void *) (USER_FLASH
-			+ slot * sizeof(struct settings)),
-		sizeof(struct settings));
-
-	validatesettings();
-
-	return 0;
 }
 
 // Init/set stabilization loop.
@@ -1393,103 +1121,6 @@ int sprintffilters(char *s)
 	return 0;
 }
 
-// Erase log flash to prepare at for writing,
-// erasing starts from address 0.
-//
-// size -- bytes count to erase.
-int eraseflash(const struct cdevice *d, size_t size)
-{
-	size_t pos;
-	char s[255];
-
-	// if erase size equals total flash size,
-	// use chip erase command
-	if (size == W25_TOTALSIZE) {
-		flashdev.eraseall(flashdev.priv);
-		return 0;
-	}
-
-	// else erase flash block-by-block, sector-by-sector
-	for (pos = 0; pos < size; ) {
-		// if remained size is more than block size
-		// use block erase command,
-		// use sector erase command otherwise
-		if ((size - pos) >= W25_BLOCKSIZE) {
-			flashdev.eraseblock(flashdev.priv, pos);
-
-			sprintf(s, "erased block at %u\r\n", pos);
-			d->write(d->priv, s, strlen(s));
-			
-			pos += W25_BLOCKSIZE;
-		}
-		else {
-			flashdev.erasesector(flashdev.priv, pos);
-
-			sprintf(s, "erased sector at %u\r\n", pos);
-			d->write(d->priv, s, strlen(s));
-			
-			pos += W25_SECTORSIZE;
-		}
-	}
-
-	return 0;
-}
-
-// Print all log values into debug connection.
-//
-// s -- string user as buffer.
-int printlog(const struct cdevice *d, char *buf, size_t from, size_t to)
-{
-	int fp;
-
-	if (from > to)
-		return (-1);
-
-	// run through all writable space in the flash
-	for (fp = from; fp < to; fp += LOG_RECSPERBUF) {
-		int bp;
-
-		// read batch of log frames into log buffer
-		flashdev.read(flashdev.priv,
-			sizeof(float) * fp * st.logrecsize, logbuf,
-			LOG_BUFSIZE);
-
-		// for every read frame
-		for (bp = 0; bp < LOG_RECSPERBUF; ++bp) {
-			char *data;
-			int i;
-		
-			if (fp + bp < from || fp + bp >= to)
-				continue;
-
-			data = buf + 6;
-
-			// put all frame's values into a string
-			sprintf(data, "%d ", fp + bp);
-
-			for (i = 0; i < st.logrecsize; ++i) {
-				int rec;
-
-				rec = bp * st.logrecsize;
-				sprintf(data + strlen(data), "%0.5f ",
-					(double) logbuf[rec + i]);
-			}
-
-			sprintf(data + strlen(data), "\r\n");
-
-			sprintf(buf, "%05u",
-				crc16((uint8_t *) data, strlen(data)));
-			buf[5] = ' ';
-
-			// send this string into debug connection
-			d->write(d->priv, buf, strlen(buf));
-		}
-
-	}
-
-	return 1;
-}
-
 // Stabilization loop. Callback for TEV_PID periodic event. It is the
 // place where is almost all work happening.
 //
@@ -1518,7 +1149,7 @@ int stabilize(int ms)
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 	// update battery voltage
-	logwrite(LOG_BAT, dsp_getlpf(&batlpf));
+	log_write(LOG_BAT, dsp_getlpf(&batlpf));
 
 	// toggle arming indication led
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,
@@ -1529,12 +1160,12 @@ int stabilize(int ms)
 		sizeof(struct icm_data));
 
 	// write accelerometer and gyroscope values into log
-	logwrite(LOG_ACC_X, id.afx);
-	logwrite(LOG_ACC_Y, id.afy);
-	logwrite(LOG_ACC_Z, id.afz);
-	logwrite(LOG_GYRO_X, id.gfx);
-	logwrite(LOG_GYRO_Y, id.gfy);
-	logwrite(LOG_GYRO_Z, id.gfz);
+	log_write(LOG_ACC_X, id.afx);
+	log_write(LOG_ACC_Y, id.afy);
+	log_write(LOG_ACC_Z, id.afz);
+	log_write(LOG_GYRO_X, id.gfx);
+	log_write(LOG_GYRO_Y, id.gfy);
+	log_write(LOG_GYRO_Z, id.gfz);
 
 	// apply accelerometer offsets
 	ax = dsp_updatelpf(&accxpt1, id.afx) - st.ax0;
@@ -1591,9 +1222,9 @@ int stabilize(int ms)
 	}
 
 	// write roll, pitch and yaw values into log
-	logwrite(LOG_ROLL, roll);
-	logwrite(LOG_PITCH, pitch);
-	logwrite(LOG_YAW, yaw);
+	log_write(LOG_ROLL, roll);
+	log_write(LOG_PITCH, pitch);
+	log_write(LOG_YAW, yaw);
 
 	if (speedpid) {
 		// if in single PID loop mode for tilt
@@ -1813,8 +1444,8 @@ int hpupdate(int ms)
 		sizeof(struct hp_data));
 
 	// write barometer temperature and altitude values into log
-	logwrite(LOG_BAR_TEMP, hd.tempf);
-	logwrite(LOG_BAR_ALT, hd.altf);
+	log_write(LOG_BAR_TEMP, hd.tempf);
+	log_write(LOG_BAR_ALT, hd.altf);
 
 	prevalt = dsp_getlpf(&altlpf);
 
@@ -1834,8 +1465,8 @@ int hpupdate(int ms)
 		prevalt);
 
 	// write climbrate and altitude values into log
-	logwrite(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
-	logwrite(LOG_ALT, dsp_getlpf(&altlpf));
+	log_write(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
+	log_write(LOG_ALT, dsp_getlpf(&altlpf));
 
 	return 0;
 }
@@ -1854,9 +1485,9 @@ int qmcupdate(int ms)
 		sizeof(struct qmc_data));
 
 	// write magnetometer values into log
-	logwrite(LOG_MAG_X, qmcdata.fx);
-	logwrite(LOG_MAG_Y, qmcdata.fy);
-	logwrite(LOG_MAG_Z, qmcdata.fz);
+	log_write(LOG_MAG_X, qmcdata.fx);
+	log_write(LOG_MAG_Y, qmcdata.fy);
+	log_write(LOG_MAG_Z, qmcdata.fz);
 
 	return 0;
 }
@@ -1867,16 +1498,7 @@ int qmcupdate(int ms)
 // ms -- microsecond passed from last callback invocation.
 int logupdate(int ms)
 {
-	if (logflashpos >= logsize)
-		return 0;
-
-	if (++logbufpos < LOG_RECSPERBUF)
-		return 0;
-
-	flashdev.write(flashdev.priv, logflashpos, logbuf, LOG_BUFSIZE);
-
-	logflashpos += LOG_BUFSIZE;
-	logbufpos = 0;
+	log_update();
 
 	return 0;
 }
@@ -2336,41 +1958,11 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		en = 0.0;
 		setthrust(0.0, 0.0, 0.0, 0.0);
 
-		// notify user when erasing is started
-		sprintf(s, "erasing flash...\r\n");
-		d->write(d->priv, s, strlen(s));
-
-		logsize = atoi(toks[2]) * sizeof(float)
-			* st.logrecsize;
-
-		// set log size (0 is valid and
-		// means to disable logging)
-		if (logsize > W25_TOTALSIZE)
-			return (-1);
-
-		// erase log flash no
-		// respond during this process
-		eraseflash(d, logsize);
-
-		// enable writeonly mode if log writing is enabled
-		flashdev.ioctl(flashdev.priv,
-			(logsize == 0)
-			? W25_IOCTL_READWRITE : W25_IOCTL_WRITEONLY);
-
-		// notify user when telemetry flash is erased
-		sprintf(s,"erased %u bytes of flash\r\n", logsize);
-		d->write(d->priv, s, strlen(s));
-
-		// enable telemetry
-		logflashpos = 0;
-		logbufpos = 0;
+		log_set(atoi(toks[2]), d, s);
 	}
 	else if (strcmp(toks[1], "rget") == 0) {
-		// enable read/write mode if reading log
-		flashdev.ioctl(flashdev.priv, W25_IOCTL_READWRITE);
-
 		// print records from specified range
-		if (printlog(d, s, atoi(toks[2]), atoi(toks[3])) < 0)
+		if (log_print(d, s, atoi(toks[2]), atoi(toks[3])) < 0)
 			return (-1);
 
 		// write end marker
@@ -2380,12 +1972,9 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 	else if (strcmp(toks[1], "bget") == 0) {
 		const char **p;
 
-		// enable read/write mode if reading log
-		flashdev.ioctl(flashdev.priv, W25_IOCTL_READWRITE);
-	
 		// print every record whose number is in arguments
 		for (p = toks + 2; strlen(*p) != 0; ++p) {
-			if (printlog(d, s, atoi(*p), atoi(*p) + 1) < 0)
+			if (log_print(d, s, atoi(*p), atoi(*p) + 1) < 0)
 				return (-1);
 		}
 
@@ -2421,7 +2010,7 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 			if (strcmp(toks[3], "none") == 0)
 				return 0;
 
-			if ((strn = logfieldstrn(toks[3])) < 0)
+			if ((strn = log_fieldstrn(toks[3])) < 0)
 				return (-1);
 
 			for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
@@ -2894,14 +2483,14 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	int slot;
 
 	// write first 8 channels values into log	
-	logwrite(LOG_CRSFCH0, cd->chf[ERLS_CH_ROLL]);
-	logwrite(LOG_CRSFCH1, cd->chf[ERLS_CH_PITCH]);
-	logwrite(LOG_CRSFCH2, cd->chf[ERLS_CH_THRUST]);
-	logwrite(LOG_CRSFCH3, cd->chf[ERLS_CH_YAW]);
-	logwrite(LOG_CRSFCH4, cd->chf[ERLS_CH_YAWMODE]);
-	logwrite(LOG_CRSFCH5, cd->chf[ERLS_CH_ATTMODE]);
-	logwrite(LOG_CRSFCH6, cd->chf[ERLS_CH_THRMODE]);
-	logwrite(LOG_CRSFCH7, cd->chf[ERLS_CH_ONOFF]);
+	log_write(LOG_CRSFCH0, cd->chf[ERLS_CH_ROLL]);
+	log_write(LOG_CRSFCH1, cd->chf[ERLS_CH_PITCH]);
+	log_write(LOG_CRSFCH2, cd->chf[ERLS_CH_THRUST]);
+	log_write(LOG_CRSFCH3, cd->chf[ERLS_CH_YAW]);
+	log_write(LOG_CRSFCH4, cd->chf[ERLS_CH_YAWMODE]);
+	log_write(LOG_CRSFCH5, cd->chf[ERLS_CH_ATTMODE]);
+	log_write(LOG_CRSFCH6, cd->chf[ERLS_CH_THRMODE]);
+	log_write(LOG_CRSFCH7, cd->chf[ERLS_CH_ONOFF]);
 
 	// channel 8 on remote is used to turn on/off
 	// erls control. If this channel has low state, all remote
@@ -3111,6 +2700,9 @@ int main(void)
 
 	// initilize stabilization routine
 	setstabilize(0);
+
+	// set device that is used to logging
+	log_setdev(&flashdev);
 
 	// initilize periodic events
 	inittimev(evs + TEV_PID, PID_FREQ, stabilize);

@@ -1,7 +1,11 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+// Get systick value as second in float value
 #define getsysticksf() ((float) HAL_GetTick() / 1000.0)
+
+// Check if int value is power of 2
+#define ispow2(v) ((v != 0) && ((v & (v - 1)) == 0))
 
 // Print data into debug UART interface.
 //

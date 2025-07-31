@@ -6,9 +6,6 @@
 #include "global.h"
 #include "util.h"
 
-// delay timer tick duration in nanoseconds
-// #define NSECPERTICK (1000 / (OCSFREQ / DELAYPRESCALER / 1000000))
-
 // delay timer handler
 extern TIM_HandleTypeDef htim10;
 

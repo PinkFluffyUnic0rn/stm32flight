@@ -1,6 +1,8 @@
 #ifndef W25_H
 #define W25_H
 
+#include "stm32periph.h"
+
 #include "device.h"
 
 #define W25_PAGESIZE 256
