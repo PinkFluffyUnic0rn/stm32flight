@@ -1,6 +1,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#define getsysticksf() ((float) HAL_GetTick() / 1000.0)
+
 // Print data into debug UART interface.
 //
 // format, ... -- arguments same as for printf.

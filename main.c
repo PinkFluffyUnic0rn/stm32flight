@@ -508,7 +508,7 @@ int logfieldstrn(const char *s)
 // val -- value itself
 void logwrite(int pos, float val)
 {
-	if (st.fieldid[pos] < 0 || st.fieldid[pos] > st.logrecsize)
+	if (st.fieldid[pos] < 0 || st.fieldid[pos] >= st.logrecsize)
 		return;
 
 	logbuf[logbufpos * st.logrecsize + st.fieldid[pos]] = val;
@@ -1869,7 +1869,7 @@ int logupdate(int ms)
 {
 	if (logflashpos >= logsize)
 		return 0;
-		
+
 	if (++logbufpos < LOG_RECSPERBUF)
 		return 0;
 

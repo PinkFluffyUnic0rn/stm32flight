@@ -10,10 +10,10 @@
 static struct w25_device devs[W25_MAXDEVS];
 size_t devcount = 0;
 
-#define W25_WTIMEOUT 100000
+#define W25_WTIMEOUT 150000000
 #define W25_CETIMEOUT 100000
-#define W25_SETIMEOUT 400
-#define W25_BETIMEOUT 3000
+#define W25_SETIMEOUT 600000
+#define W25_BETIMEOUT 3000000
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 

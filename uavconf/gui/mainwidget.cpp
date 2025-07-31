@@ -111,7 +111,7 @@ void connect_click_handler(void *arg)
 
 	}
 
-	mw->write_to_terminal(string("Connected to UAV"));
+	mw->write_to_terminal(string("Connected to UAV\n"));
 
 	mw->string_to_conf(conf);
 	
