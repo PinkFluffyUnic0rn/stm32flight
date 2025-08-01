@@ -1353,7 +1353,7 @@ void main_widget::get_uav_log(string &s)
 		 	->get_setting("from")->get_value()),
 		stoi(tabs["log"]->get_group("Log read")
 		 	->get_setting("to")->get_value()),
-		&output, &outsize);
+		&output, &outsize, write_term, (void *) term);
 
 	if (outsize == 0)
 		return;

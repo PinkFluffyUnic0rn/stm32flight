@@ -23,7 +23,7 @@
 #define BUFSZ 1024
 
 // UDP packet receive timeout
-#define UDPTIMEOUT 200000
+#define UDPTIMEOUT 1000000
 
 // minimum and maximum wait time for
 // UAV configuration command to execute
@@ -70,8 +70,8 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi)
 	}
 
 	// set timeout for receiving UDP packet
-	tv.tv_sec = 0;
-	tv.tv_usec = UDPTIMEOUT;
+	tv.tv_sec = UDPTIMEOUT / 1000000;
+	tv.tv_usec = UDPTIMEOUT % 1000000;
 	if (setsockopt(*lsfd, SOL_SOCKET, SO_RCVTIMEO,
 			&tv, sizeof(tv)) < 0) {
 		fprintf(stderr, "cannot open set socket option\n");
@@ -231,7 +231,8 @@ int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	// zero-terminate string got from network
 	out[rsz] = '\0';
 
-	outfunc(data, out + 6);
+	if (outfunc != NULL)
+		outfunc(data, out + 6);
 
 
 
@@ -446,7 +447,6 @@ int parserecords(char *logbuf, size_t logbufoffset, int *records)
 		// if record number is correct, store current record's
 		// values offset in raw data buffer to ordered records
 		// output array
-//		if (n < LOGSIZE)
 		records[n] = val - logbuf;
 
 skip:
@@ -489,7 +489,8 @@ int reqlogrecords(int lsfd, const struct sockaddr_in *rsi,
 // rsi -- remote IP address.
 int getlog(int lsfd, const struct sockaddr_in *rsi,
 	int loadfrom, int loadto,
-	char **output, size_t *outsize)
+	char **output, size_t *outsize,
+	void (*outfunc) (void *, const char *), void *data)
 {
 	struct loggetdata d;
 	int *recs;
@@ -551,6 +552,12 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 			// send current range command
 			sprintf(cmd, "log rget %d %d\r\n", rb, re + 1);
 
+			if (outfunc != NULL) {
+				cmd[strlen(cmd) - 2] = '\0';
+				outfunc(data, cmd);
+				cmd[strlen(cmd)] = '\r';
+			}
+
 			// request log records
 			reqlogrecords(lsfd, rsi, cmd,
 				&d, &logtotalsz, recs);
@@ -599,6 +606,9 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 			// number in batch
 			if (reccount == BATCHSIZE || (i == (loadto - 1)
 					&& reccount != 0)) {
+				if (outfunc != NULL)
+					outfunc(data, cmd);
+
 				// add newline character
 				// to current batch command
 				sprintf(cmd + strlen(cmd), "\n");

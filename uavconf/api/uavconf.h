@@ -20,7 +20,8 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 		void (*outfunc) (void *, const char *), void *data);
 
 int getlog(int lsfd, const struct sockaddr_in *rsi,
-	int loadfrom, int loadto, char **output, size_t *outsize);
+	int loadfrom, int loadto, char **output, size_t *outsize,
+	void (*outfunc) (void *, const char *), void *data);
 
 int recvoutput(int lsfd, const struct sockaddr_in *rsi, char *buf);
 
