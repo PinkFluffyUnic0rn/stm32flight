@@ -299,7 +299,7 @@ float batteryvoltage()
 	return (v / (float) 0xfff * 17.85882);
 }
 
-// Get esc current from ADC.
+// Get ESC current from ADC.
 //
 // hadc -- ADC context.
 float esccurrent()
@@ -313,7 +313,7 @@ float esccurrent()
 
 	HAL_ADC_Stop(&hadc2);
 
-	return (v / (float) 0xfff);
+	return (v / (float) 0xfff * st.currscale + st.curroffset);
 }
 
 // DMA callback for dshot processing
@@ -1937,6 +1937,14 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 		else
 			return (-1);
 	}
+	else if (strcmp(toks[1], "curr") == 0) {
+		if (strcmp(toks[2], "offset") == 0)
+			st.curroffset = atof(toks[3]);
+		else if (strcmp(toks[2], "scale") == 0)
+			st.currscale = atof(toks[3]);
+		else
+			return (-1);
+	}
 	else
 		return (-1);
 
@@ -2351,6 +2359,14 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				v = st.mzsc;
 			else if (strcmp(toks[3], "decl") == 0)
 				v = st.magdecl;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "curr") == 0) {
+			if (strcmp(toks[3], "offset") == 0)
+				v = st.curroffset;
+			else if (strcmp(toks[3], "scale") == 0)
+				v = st.currscale;
 			else
 				return (-1);
 		}

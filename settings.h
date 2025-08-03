@@ -109,7 +109,10 @@ struct settings {
 	float zsp, zsi,	zsd; // P/I/D values for vertical acceleration
 	float cp, ci, cd; // P/I/D values for climb rate
 	float ap, ai, ad; // P/I/D values for altitude
-	
+
+	float curroffset;	// ESC's current meter offset
+	float currscale;	// ESC's current meter scale
+
 	int ircpower, ircfreq; // IRC Tramp VTX power and frequency
 	int lt, lb, rb, rt; // motors ESC outputs numbers
 
