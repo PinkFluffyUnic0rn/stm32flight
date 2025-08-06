@@ -4,16 +4,18 @@ adj acc z 0
 adj pitch 0
 adj roll 0
 adj yaw 0
-adj gyro x -0.2
-adj gyro y -0.4
-adj gyro z 0.6
-adj mag x0 20
-adj mag y0 -55
-adj mag z0 0
+adj curr offset 0
+adj curr scale 412.5
+adj gyro x -0.431
+adj gyro y -0.409
+adj gyro z -0.304
+adj mag x0 -143
+adj mag y0 33
+adj mag z0 229
 adj mag decl 0.3264
-adj mag xscale 1.0137
+adj mag xscale 1.016
 adj mag yscale 1
-adj mag zscale 1.0279
+adj mag zscale 1.054
 adj pitchthrust 0
 adj rollthrust 0
 ctrl accel 0.5
@@ -26,7 +28,7 @@ ctrl spitch 1
 ctrl sroll 1
 ctrl syaw 1.5
 ctrl yaw 2
-irc frequency 5645
+irc frequency 5733
 irc power 25
 compl altitude 2
 compl attitude 0.75
@@ -38,10 +40,44 @@ lpf altitude 1
 lpf climb 0.25
 lpf d 100
 lpf gyro 40
-motor lb 3
-motor lt 2
-motor rb 1
-motor rt 0
+log freq 256
+log record size 8
+log record 0 acc_x
+log record 1 acc_y
+log record 10 mag_z
+log record 2 acc_z
+log record 3 gyro_x
+log record 4 gyro_y
+log record 5 gyro_z
+log record 6 roll
+log record 7 pitch
+log record 8 mag_x
+log record 9 mag_y
+log record 11 bar_temp
+log record 12 bar_alt
+log record 13 none
+log record 14 none
+log record 15 yaw
+log record 16 climbrate
+log record 17 alt
+log record 18 lt
+log record 19 lb
+log record 20 rb
+log record 21 rt
+log record 22 bat
+log record 23 cur
+log record 24 ch0
+log record 25 ch1
+log record 26 ch2
+log record 27 ch3
+log record 28 ch4
+log record 29 ch5
+log record 30 ch6
+log record 31 ch7
+motor lb 1
+motor lt 0
+motor rb 3
+motor rt 2
 pid altitude d 0
 pid altitude i 0
 pid altitude p 0.5

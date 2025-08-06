@@ -1,59 +1,61 @@
 main board:
-c1	0.1 uF
+c1	1 uF
 c2	0.1 uF
 c3	18 pF
 c4	18 pF
 c5	0.1 uF
-c6	0.1 uF
+c6	0.01 uF
+c7	0.1 uF
+c8	2.2 uF
 c9	0.1 uF
+c10	0.1 uF
 c11	2.2 uF
-c12	0.1 uF
-c13	0.1 uF
-c14	2.2 uF
-c15	5.6 pF
-l1	18 pF
-c16	18 pF
+c12	18 pF
+c13	18 pF
+c14	5.6 pF
+c15	4.7 uF
+c16	4.7 uF
 c17	0.1 uF
-c18	10 uF
-c19	0.1 uF
-c20	0.22 uF
-c21	4.7 uF
-c22	0.1 uF
-c23	2.2 uF
-c24	0.01 uF
+c18	0.22 uF
+c19	4.7 uF
+c20	2.2 uF
+c21	0.1 uF
+c22	0.01 uF
+c23	0.01 uF
+c24	0.1 uF
+c25	1 uF
 c26	0.1 uF
 c27	0.1 uF
-c28	0.1 uF
-c29	0.1 uF
-c31	0.1 uF
 
-c7	12 kOhm
-c8	0 Ohm
-c30	10 kOhm
-c10	0 Ohm
-r1	10k
-r2	3 kOhm
-r3	10 kOhm
-r4	3 kOhm
-r5	10 kOhm
-r6	10 kOhm
-r7	1k
-r8	1k
-r9	10k
-r10	10k
+r1	12 kOhm
+r2	10 kOhm
+r3	0 kOhm
+r4	0 kOhm
+r5	0 kOhm
+r6	680 Ohm
+r7	10 kOhm
+r8	10 kOhm
+r9	3 kOhm
+r10	10 kOhm
+r11	10 kOhm
+r12	10 kOhm
+r13	1 kOhm
+r14	1 kOhm
+r15	10 kOhm
+r16	10 kOhm
 
-c25	mH
-l2	mH
+cr1	20 mHz
+cr2	40 mHz
 
 led1:	orange led
 led2:	blue led
-u1:	AMS1117-3.3
-u2:	STM32F405RGT6
-u3:	ESP8285
-u4:	HP206C
-u5:	W25Q128FVSIG
-u6:	ICM-42688-P
-u7:	QMC5883L
+u1	LDL1117S33R
+u2	STM32F405RGT6
+u3	ESP8285
+u4	HP206C
+u5	W25Q128VSIG
+u6	QMC5883L
+u7	ICM-42688-P
 
 dc-dc converter:
 l1:	10 uH
