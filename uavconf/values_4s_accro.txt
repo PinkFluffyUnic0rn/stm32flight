@@ -79,20 +79,20 @@ motor lt 0
 motor rb 3
 motor rt 2
 pid altitude d 0
-pid altitude i 0.0
-pid altitude p 0.6
+pid altitude i 0.02
+pid altitude p 0.3
 pid tilt d 0
 pid tilt i 0
-pid tilt p 12
-pid climbrate d 0.0
+pid tilt p 7
+pid climbrate d 0.0001
 pid climbrate i 0
-pid climbrate p 0.18
+pid climbrate p 0.3
 pid stilt d 0.001875
-pid stilt i 2
+pid stilt i 5.88
 pid stilt p 0.21
 pid throttle d 0
-pid throttle i 5
-pid throttle p 5
+pid throttle i 0
+pid throttle p 2.5
 pid syaw d 0
 pid syaw i 0
 pid syaw p -1
