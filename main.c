@@ -19,7 +19,7 @@
 
 #include "device.h"
 #include "icm42688.h"
-#include "hp206c.h"
+#include "dps368.h"
 #include "esp8266.h"
 #include "qmc5883l.h"
 #include "crsf.h"
@@ -30,7 +30,7 @@
 
 // device numbers
 #define ICM_DEV		0
-#define HP_DEV		1
+#define DPS_DEV		1
 #define QMC_DEV		2
 #define CRSF_DEV	3
 #define M10_DEV		4
@@ -46,7 +46,7 @@
 #define TEV_PID 	0
 #define TEV_CHECK 	1
 #define TEV_CALIB	2
-#define TEV_HP		3
+#define TEV_DPS		3
 #define TEV_QMC		4
 #define TEV_LOG		5
 #define TEV_TELE	6
@@ -56,7 +56,7 @@
 #define PID_FREQ 4000
 #define CHECK_FREQ 1
 #define CALIB_FREQ 25
-#define HP_FREQ 25
+#define DPS_FREQ 128
 #define QMC_FREQ 100
 #define TELE_FREQ 10
 #define POWER_FREQ 500
@@ -163,7 +163,9 @@ struct dsp_lpf currlpf;
 
 struct dsp_lpf valpf;
 struct dsp_lpf tlpf;
+
 struct dsp_lpf altlpf;
+struct dsp_lpf templpf;
 
 struct dsp_lpf accxpt1;
 struct dsp_lpf accypt1;
@@ -196,7 +198,6 @@ struct dsp_pidval apv;
 
 // Global storage for sensor data
 // that aquired in separate events
-float temp;
 struct qmc_data qmcdata;
 struct gnss_data  gnss;
 struct crsf_tele tele;
@@ -532,17 +533,18 @@ static void esc_init()
 }
 
 // Init HP206c barometer.
-static void hp_init()
+static void dps_init()
 {
-	struct hp_device d;
+	struct dps_device d;
 
 	d.hi2c = &hi2c1;
-	d.osr = HP_OSR_512;
+	d.rate = DPS_RATE_32;
+	d.osr = DPS_OSR_16;
 
-	if (hp_initdevice(&d, dev + HP_DEV) >= 0)
-		uartprintf("HP206C initilized\r\n");
+	if (dps_initdevice(&d, dev + DPS_DEV) >= 0)
+		uartprintf("DPS368 initilized\r\n");
 	else
-		uartprintf("failed to initilize HP206C\r\n");
+		uartprintf("failed to initilize DPS368\r\n");
 }
 
 // Init IRC tramp video transmitter.
@@ -691,8 +693,8 @@ int setstabilize(int init)
 	dsp_setcompl(&rollcompl, st.atctcoef, PID_FREQ, init);
 	dsp_setcompl(&yawcompl, st.yctcoef, PID_FREQ, init);
 
-	dsp_setcompl(&climbratecompl, st.cctcoef, HP_FREQ, init);
-	dsp_setcompl(&altcompl, st.actcoef, HP_FREQ, init);
+	dsp_setcompl(&climbratecompl, st.cctcoef, DPS_FREQ, init);
+	dsp_setcompl(&altcompl, st.actcoef, DPS_FREQ, init);
 
 	// init roll and pitch position PID controller contexts
 	dsp_setpid(&pitchpv, st.p, st.i, st.d, st.dpt1freq,
@@ -729,9 +731,10 @@ int setstabilize(int init)
 	dsp_setlpf1f(&currlpf, 100.0, POWER_FREQ, init);
 
 	// init low-pass fitlers for altitude and vertical acceleration
-	dsp_setlpf1t(&altlpf, st.atcoef, HP_FREQ, init);
+	dsp_setunity(&templpf, init);
+	dsp_setunity(&altlpf, init);
+	dsp_setunity(&valpf, init);
 	dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, init);
-	dsp_setlpf1t(&valpf, st.vatcoef, PID_FREQ, init);
 
 	// init low-pass fitlers for accelerometer x, y and z axes
 	dsp_setlpf1f(&accxpt1, st.accpt1freq, PID_FREQ, init);
@@ -1113,7 +1116,7 @@ int sprintffilters(char *s)
 		"climb rate compl tc: %.6f\r\n", (double) st.cctcoef);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"altitude lpf tc: %.6f\r\n", (double) st.atcoef);
+		"altitude lpf cut-off: %.6f\r\n", (double) st.apt1freq);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"altitude compl tc: %.6f\r\n", (double) st.actcoef);
@@ -1422,13 +1425,13 @@ int magcalib(int ms)
 	return 0;
 }
 
-// Get readings from barometer. Callback for TEV_HP periodic event.
+// Get readings from barometer. Callback for TEV_DPS periodic event.
 //
 // ms -- microsecond passed from last callback invocation.
-int hpupdate(int ms)
+int dpsupdate(int ms)
 {
-	struct hp_data hd;
-	float prevalt;
+	struct dps_data hd;
+	float prevalt, alt;
 	float dt;
 
 	dt = ms / (float) TICKSPERSEC;
@@ -1436,12 +1439,12 @@ int hpupdate(int ms)
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 	// if barometer isn't initilized, return
-	if (dev[HP_DEV].status != DEVSTATUS_INIT)
+	if (dev[DPS_DEV].status != DEVSTATUS_INIT)
 		return 0;
 
 	// read barometer values
-	dev[HP_DEV].read(dev[HP_DEV].priv, &hd,
-		sizeof(struct hp_data));
+	dev[DPS_DEV].read(dev[DPS_DEV].priv, &hd,
+		sizeof(struct dps_data));
 
 	// write barometer temperature and altitude values into log
 	log_write(LOG_BAR_TEMP, hd.tempf);
@@ -1450,23 +1453,24 @@ int hpupdate(int ms)
 	prevalt = dsp_getlpf(&altlpf);
 
 	// update altitude low-pass filter and temperature reading
-	dsp_updatelpf(&altlpf, hd.altf);
-	temp = hd.tempf;
+	alt = dsp_updatelpf(&altlpf, hd.altf);
+	dsp_updatelpf(&templpf, hd.tempf);
 
 	// calculate climb rate from vertical acceleration and
 	// barometric altitude defference using complimentary filter
 	dsp_updatecompl(&climbratecompl,
 		9.80665 * (dsp_getlpf(&valpf) - 1.0) * dt,
-		(dsp_getlpf(&altlpf) - prevalt) / dt);
+		(alt - prevalt) / dt);
 
 	// calculate presice altitiude from climb rate and
 	// barometric altitude using complimentary filter
 	dsp_updatecompl(&altcompl, dsp_getcompl(&climbratecompl) * dt,
-		prevalt);
+		alt);
 
 	// write climbrate and altitude values into log
 	log_write(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
-	log_write(LOG_ALT, dsp_getlpf(&altlpf));
+
+	log_write(LOG_ALT, dsp_getcompl(&altcompl));
 
 	return 0;
 }
@@ -1624,7 +1628,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 
 		snprintf(out, INFOLEN,
 			"temp: %f; alt: %f; climb rate: %f\r\n",
-			(double) temp, (double) alt,
+			(double) dsp_getlpf(&templpf), (double) alt,
 			(double) dsp_getcompl(&climbratecompl));
 	}
 	else if (strcmp(toks[1], "dev") == 0)
@@ -1811,11 +1815,11 @@ int complcmd(const struct cdevice *dev, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		st.cctcoef = atof(toks[2]);
-		dsp_setcompl(&climbratecompl, st.cctcoef, HP_FREQ, 0);
+		dsp_setcompl(&climbratecompl, st.cctcoef, DPS_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		st.actcoef = atof(toks[2]);
-		dsp_setcompl(&altcompl, st.actcoef, HP_FREQ, 0);
+		dsp_setcompl(&altcompl, st.actcoef, DPS_FREQ, 0);
 	}
 
 	return 0;
@@ -1866,16 +1870,6 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 		st.ttcoef = atof(toks[2]);
 
 		dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, 0);
-	}
-	else if (strcmp(toks[1], "vaccel") == 0) {
-		st.vatcoef = atof(toks[2]);
-
-		dsp_setlpf1t(&valpf, st.vatcoef, PID_FREQ, 0);
-	}
-	else if (strcmp(toks[1], "altitude") == 0) {
-		st.atcoef = atof(toks[2]);
-
-		dsp_setlpf1t(&altlpf, st.atcoef, HP_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -1942,6 +1936,12 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 			st.curroffset = atof(toks[3]);
 		else if (strcmp(toks[2], "scale") == 0)
 			st.currscale = atof(toks[3]);
+		else
+			return (-1);
+	}
+	else if (strcmp(toks[1], "althold") == 0) {
+		if (strcmp(toks[2], "hover") == 0)
+			st.hoverthrottle = atof(toks[3]);
 		else
 			return (-1);
 	}
@@ -2307,7 +2307,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		else if (strcmp(toks[2], "vaccel") == 0)
 			v = st.vatcoef;
 		else if (strcmp(toks[2], "altitude") == 0)
-			v = st.atcoef;
+			v = st.apt1freq;
 		else
 			return (-1);
 
@@ -2367,6 +2367,12 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				v = st.curroffset;
 			else if (strcmp(toks[3], "scale") == 0)
 				v = st.currscale;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "althold") == 0) {
+			if (strcmp(toks[3], "hover") == 0)
+				v = st.hoverthrottle;
 			else
 				return (-1);
 		}
@@ -2711,7 +2717,7 @@ int main(void)
 	w25dev_init();
 	m10dev_init();
 	uartdev_init();
-	hp_init();
+	dps_init();
 	irc_init();
 
 	// initilize stabilization routine
@@ -2724,7 +2730,7 @@ int main(void)
 	inittimev(evs + TEV_PID, PID_FREQ, stabilize);
 	inittimev(evs + TEV_CHECK, CHECK_FREQ, checkconnection);
 	inittimev(evs + TEV_CALIB, CALIB_FREQ, magcalib);
-	inittimev(evs + TEV_HP, HP_FREQ, hpupdate);
+	inittimev(evs + TEV_DPS, DPS_FREQ, dpsupdate);
 	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
 	inittimev(evs + TEV_LOG, st.logfreq, logupdate);
 	inittimev(evs + TEV_TELE, TELE_FREQ, telesend);

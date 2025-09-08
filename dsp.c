@@ -2,6 +2,17 @@
 
 #include "dsp.h"
 
+int dsp_setunity(struct dsp_lpf *ir, int init)
+{
+	if (init)
+		ir->s1 = 0.0;
+
+	ir->alpha = 0.0;
+	ir->order = DSP_LPFORDER_0;
+
+	return 0;
+}
+
 int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq, int init)
 {
 	if (init)

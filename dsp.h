@@ -22,9 +22,10 @@
 
 // low-pass filter's order
 enum DSP_LPFORDER {
-	DSP_LPFORDER_1 = 0,	// first order
-	DSP_LPFORDER_2 = 1,	// secord order
-	DSP_LPFORDER_3 = 2	// third order
+	DSP_LPFORDER_0 = 0,	// unity filter
+	DSP_LPFORDER_1 = 1,	// first order
+	DSP_LPFORDER_2 = 2,	// secord order
+	DSP_LPFORDER_3 = 3	// third order
 };
 
 // low pas filter context
@@ -53,6 +54,14 @@ struct dsp_compl {
 	float s;
 	float coef;
 };
+
+// set new unity filter using time constant value. Just conventional
+// function to use lpf structure for signals, that doesn't
+// need low-pass filtering.
+//
+// ir -- unity filter context.
+// init -- 1, if internal values initializaion required, 0 otherwise.
+int dsp_setunity(struct dsp_lpf *ir, int init);
 
 // set new first order low-pass filter using time constant value.
 //

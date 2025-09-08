@@ -82,7 +82,7 @@ struct settings {
 	
 	float dpt1freq;		// cut-off frequency for PID D term
 
-	float atcoef;		// time coefficient for altitude
+	float apt1freq;		// time coefficient for altitude
 				// low-pass filter
 	float cctcoef;		// time coefficient for climb rate
 				// complimentary filter
@@ -112,6 +112,8 @@ struct settings {
 
 	float curroffset;	// ESC's current meter offset
 	float currscale;	// ESC's current meter scale
+
+	float hoverthrottle;	// hover throttle value
 
 	int ircpower, ircfreq; // IRC Tramp VTX power and frequency
 	int lt, lb, rb, rt; // motors ESC outputs numbers

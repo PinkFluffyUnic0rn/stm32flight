@@ -148,11 +148,19 @@ int log_update()
 	if (logflashpos >= logsize)
 		return 0;
 
-	if (++logbufpos < LOG_RECSPERBUF)
+	if (++logbufpos < LOG_RECSPERBUF) {
+		memcpy(logbuf + logbufpos * st.logrecsize,
+			logbuf + (logbufpos - 1) * st.logrecsize,
+			st.logrecsize * sizeof(float));
+
 		return 0;
+	}
 
 	flashdev->write(flashdev->priv, logflashpos,
 		logbuf, LOG_BUFSIZE);
+
+	memcpy(logbuf, logbuf + (LOG_RECSPERBUF - 1) * st.logrecsize,
+		st.logrecsize * sizeof(float));
 
 	logflashpos += LOG_BUFSIZE;
 	logbufpos = 0;

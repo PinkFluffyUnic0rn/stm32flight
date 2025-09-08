@@ -927,8 +927,8 @@ main_widget::main_widget(QWidget *parent)
 		cmdstree, true, this), 3, 0, 2, 1); 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Low-pass filters",
-		{"gyroscope",	"accelerometer",	"d-term",	"climb rate",	"acceleration",	"altitude"},
-		{"lpf gyro",	"lpf accel",		"lpf d",	"lpf climb",	"lpf vaccel",	"lpf altitude"},
+		{"gyroscope",	"accelerometer",	"d-term",	"climb rate"},
+		{"lpf gyro",	"lpf accel",		"lpf d",	"lpf climb"},
 		cmdstree, true, this), 3, 1, 2, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
@@ -961,6 +961,12 @@ main_widget::main_widget(QWidget *parent)
 		{"roll",		"pitch"},
 		{"adj rollthrust", 	"adj pitchthrust"},
 		cmdstree, true, this), 2, 2);
+
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"Altitude hold",
+		{"hover throttle"},
+		{"adj althold hover"},
+		cmdstree, true, this), 3, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Current meter adjustments",
