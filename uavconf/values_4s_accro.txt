@@ -1,6 +1,7 @@
 adj acc x 0
 adj acc y 0
 adj acc z 0
+adj althold hover 0.3
 adj pitch 0
 adj roll 0
 adj yaw 0
@@ -34,9 +35,7 @@ compl altitude 2
 compl attitude 0.75
 compl climbrate 1.5
 compl yaw 1.5
-lpf vaccel 0.25
 lpf accel 40
-lpf altitude 1
 lpf climb 0.25
 lpf d 100
 lpf gyro 40

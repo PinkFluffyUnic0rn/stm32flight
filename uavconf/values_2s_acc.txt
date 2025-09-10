@@ -1,6 +1,7 @@
 adj acc x 0
 adj acc y 0
 adj acc z 0
+adj althold hover 0.6
 adj pitch 0
 adj roll 0
 adj yaw 0
@@ -30,23 +31,21 @@ ctrl syaw 1.5
 ctrl yaw 2
 irc frequency 5733
 irc power 25
-compl altitude 2
+compl altitude 1
 compl attitude 0.75
-compl climbrate 1.5
+compl climbrate 1
 compl yaw 1.5
-lpf vaccel 0.25
 lpf accel 40
-lpf altitude 1
 lpf climb 0.25
 lpf d 100
 lpf gyro 40
-log freq 32
+log freq 1024
 log record size 4
-log record 0 mag_x
-log record 1 mag_y
+log record 0 alt
+log record 1 climbrate
 log record 10 none
-log record 2 mag_z
-log record 3 gyro_x
+log record 2 bar_alt
+log record 3 acc_z
 log record 4 gyro_y
 log record 5 gyro_z
 log record 6 roll
@@ -54,12 +53,12 @@ log record 7 pitch
 log record 8 none
 log record 9 none
 log record 11 bar_temp
-log record 12 bar_alt
+log record 12 none
 log record 13 none
 log record 14 none
 log record 15 yaw
-log record 16 climbrate
-log record 17 alt
+log record 16 none
+log record 17 none
 log record 18 lt
 log record 19 lb
 log record 20 rb

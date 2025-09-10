@@ -163,6 +163,7 @@ struct dsp_lpf currlpf;
 
 struct dsp_lpf valpf;
 struct dsp_lpf tlpf;
+struct dsp_lpf vtlpf;
 
 struct dsp_lpf altlpf;
 struct dsp_lpf templpf;
@@ -735,6 +736,7 @@ int setstabilize(int init)
 	dsp_setunity(&altlpf, init);
 	dsp_setunity(&valpf, init);
 	dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, init);
+	dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, init);
 
 	// init low-pass fitlers for accelerometer x, y and z axes
 	dsp_setlpf1f(&accxpt1, st.accpt1freq, PID_FREQ, init);
@@ -1137,6 +1139,7 @@ int stabilize(int ms)
 	float vx, vy, vz;
 	float gy, gx, gz;
 	float ay, ax, az;
+	float ht;
 	float dt;
 	
 	// emergency disarm happened
@@ -1216,6 +1219,12 @@ int stabilize(int ms)
 	dsp_updatelpf(&valpf, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
+	dsp_updatelpf(&vtlpf, (vx * ax + vy * ay + vz * az)
+		/ sqrtf(vx * vx + vy * vy + vz * vz));
+
+	ht = dsp_getlpf(&vtlpf) / dsp_getlpf(&tlpf)
+		* st.hoverthrottle;
+
 	// if vertical acceleration is negative, most likely
 	// quadcopter is upside down, perform emergency disarm
 	if (dsp_getlpf(&tlpf) < -0.5) {
@@ -1289,7 +1298,7 @@ int stabilize(int ms)
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&valpf), dt);
+			dsp_getlpf(&vtlpf), dt);
 	}
 	else if (altmode == ALTMODE_SPEED) {
 		// if consttant climb rate mode, first use climb rate
@@ -1305,7 +1314,7 @@ int stabilize(int ms)
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&valpf), dt);
+			dsp_getlpf(&vtlpf), dt) + ht;
 	}
 	else {
 		// if no altitude hold, update vertical acceleration PID
@@ -2581,7 +2590,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		altmode = ALTMODE_ACCEL;
 
 		thrust = (cd->chf[ERLS_CH_THRUST] + 0.5)
-			/ 1.5 * st.accelmax;;
+			/ 1.5 * st.accelmax;
 
 	}
 	else if (cd->chf[ERLS_CH_THRMODE] > 0.25) {

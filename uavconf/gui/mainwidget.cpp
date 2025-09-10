@@ -927,7 +927,7 @@ main_widget::main_widget(QWidget *parent)
 		cmdstree, true, this), 3, 0, 2, 1); 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Low-pass filters",
-		{"gyroscope",	"accelerometer",	"d-term",	"climb rate"},
+		{"gyroscope",	"accelerometer",	"d-term",	"acceleration"},
 		{"lpf gyro",	"lpf accel",		"lpf d",	"lpf climb"},
 		cmdstree, true, this), 3, 1, 2, 1);
 
