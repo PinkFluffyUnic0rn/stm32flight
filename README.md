@@ -30,7 +30,7 @@ Devices
  * Magnetometer: QMC5883L
  * Remote control: ERLS CRSF receiver
  * Telemetry/debug/config: ESP8285
- * Barometer: HP206C
+ * Barometer: DPS368
 
 Project structure
 =========
@@ -59,7 +59,8 @@ ERLS receiver to interract with the main MCU through UART.
 esp8285 through SPI.
     * `hmc5883l.c` and `hmc5883l.h` -- driver for an HMC5883L
 magnetometer (currently unused).
-    * `hp206c.c` -- driver for a HP206C barometer.
+    * `hp206c.c` and  `hp206c.h` -- driver for a HP206C barometer.
+    * `dps368.c` and  `dps368.h` -- driver for a DPS368 barometer.
     * `mpu6500.c` and `mpu6500.h` -- I2C driver for mpu6050 and mpu6500
 IMUs (accelerometer + gyroscope).
     * `qmc5883l.c` and `qmc5883l.h` -- driver for an QMC5883L
@@ -102,7 +103,9 @@ by this UAV. Listed commands should be sent using UDP/IP to address
  * `r` -- turn off motors
  * `c [altitude]` -- recalibrate and set altitude reference value.
  * `calib mag (on|off)` -- enter/escape magnetometer calibration mode
- * `flash write` -- write settings into MCU's internal flash.
+ * `flash (write|read) {N}` -- write/read settings into/from MCU's
+ internal flash slot '{N}'.
+ * `system esp (flash|run)` -- set onboard wi-fi chip to flash/run mode.
  * `info (mpu | qmc | hp | | dev | values | pid | gnss | ctrl | filter)`
 -- get various values and infomation:
     * `mpu` -- ICM-42688-P IMU data.
@@ -119,8 +122,11 @@ than `0` start logging. If `{l}` is `0`, stop logging.
 and end with `{e} - 1`.
  * `log bget {n1}...{nN}` -- get batch of log records with numbers
 `{n1}...{nN}`.
+ * `log freq {val}` -- set log frequency.
+ * `log record size {val}` -- set log record size.
+ * `log {N} {name}` -- set '{N}'-th log field to value named '{name}'.
  * `pid (tilt|yaw) mode (single/double)` -- switch to single/double PID
-loop mode for tilt/yaw
+loop mode for tilt/yaw.
  * `pid (tilt|stilt|yaw|syaw|throttle/climbrate/altitude) (p|i|d) {val}`
 -- set PID controller values:
     * `tilt` -- tilt PID controler P/I/D value.
@@ -140,8 +146,8 @@ yaw value.
 barometer data to get climb speed value.
     * `altitude` -- filter that mixing climb rate value and barometer
 data to get altitude value.
- * `lpf (climb|vaccel/altitude) {val}` -- set low-pass filter's time
-constant for climb speed/vertical acceleration/altitude.
+ * `lpf (gyro/accel/d/climb) {val}` -- set low-pass filter's time
+constant for gyroscope/accelerometer/d/vertical acceleration.
  * `adj (rollthrust/pitchthrust) {val}` -- adjust motors thrust.
  * `adj (roll|pitch|yaw) {val}` -- set offset for roll/pitch/yaw
 (only for dual PID loop mode).
@@ -149,8 +155,13 @@ constant for climb speed/vertical acceleration/altitude.
  * `adj gyro (x|y|z) {val}` -- set x/y/z offset for gyroscope
  * `adj mag (x0|y0|z0|xscale|yscale|zscale|decl) {val}` -- set x/y/z
 offset, x/y/z scale or magnetic declination for magnetometer 
+ * `adj curr (offset|scale) {val}` -- set current meter offset/scale
+value.
+ * `adj althold hover {val}` -- set hover throttle.
  * `ctrl (roll|pitch) {val}` -- set maximum roll/pitch tilt value
 in radians.
+ * `ctrl (sroll|spitch) {val}` -- set roll/pitch rotation speed in for
+single loop mode in radians.
  * `ctrl (syaw|yaw) {val}` -- set yaw rotation speed for single/double
 loop mode in radians.
  * `ctrl accel {val}` -- set maximum acceleration for throttle loop.
