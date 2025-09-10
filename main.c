@@ -733,10 +733,11 @@ int setstabilize(int init)
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_setunity(&templpf, init);
-	dsp_setunity(&altlpf, init);
+	//dsp_setunity(&altlpf, init);
 	dsp_setunity(&valpf, init);
 	dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, init);
 	dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, init);
+	dsp_setlpf1t(&altlpf, st.ttcoef, DPS_FREQ, init);
 
 	// init low-pass fitlers for accelerometer x, y and z axes
 	dsp_setlpf1f(&accxpt1, st.accpt1freq, PID_FREQ, init);

@@ -164,54 +164,11 @@ Log records got by commands `log rget` and `log bget` are just lines
 with set of space separated numeric strings and have such format:
 
 ```
-    {CRC} {number} {v0} ... {v31}
+    {CRC} {number} {v0} ... {vN}
 
 ```
 , where `{CRC}` is CRC-8 sum of record line, `{number}` -- record
-number and `{v0} ... {v31}` -- 31 record values.
-
-Log records sampled 64 times per second, so it is possible to get
-exact time from log start for each record, by it's number. For example,
-record with number `1234` was sampled at `45763 / 64 = 715.04` seconds
-from logging start, or, at 11 minutes and 55.04 seconds.
-
-Record values store various values that have meaning during flight. They
-are listed below:
-
-| number |value                           |
-|--------|--------------------------------|
-|0       |accelerometer scaled raw X value|
-|1       |accelerometer scaled raw Y value|
-|2       |accelerometer scaled raw Z value|
-|3       |gyroscope scaled raw X value    |
-|4       |gyroscope scaled raw Y value    |
-|5       |gyroscope scaled raw Z value    |
-|6       |magnetometer raw X value        |
-|7       |magnetometer raw Y value        |
-|8       |magnetometer raw Z value        |
-|9       |barometer temperature           |
-|10      |barometer altitude              |
-|11      |filtered accelerometer X value  |
-|12      |filtered accelerometer Y value  |
-|13      |filtered accelerometer Z value  |
-|14      |calculated roll value           |
-|15      |calculated pitch value          |
-|16      |calculated yaw value            |
-|17      |calculated climb rate           |
-|18      |calculated altitude             |
-|19      |left-forward motor's thrust     |
-|20      |left-backward motor's thrust    |
-|21      |right-forward motor's thrust    |
-|22      |right-backward motor's thrust   |
-|23      |eLRS channel 0 value            |
-|24      |eLRS channel 1 value            |
-|25      |eLRS channel 2 value            |
-|26      |eLRS channel 3 value            |
-|27      |eLRS channel 4 value            |
-|28      |eLRS channel 5 value            |
-|29      |eLRS channel 6 value            |
-|30      |eLRS channel 7 value            |
-|31      |battery voltage                 |
+number and `{v0} ... {vN}` -- N record values.
 
 Quadcopter parameters
 ==========
