@@ -80,6 +80,7 @@
 #define ERLS_CH_THRMODE		6
 #define ERLS_CH_ONOFF		7
 #define ERLS_CH_ALTCALIB	8
+#define ERLS_CH_HOVER		10
 #define ERLS_CH_SETSLOT		15
 
 enum ALTMODE {
@@ -220,6 +221,7 @@ int speedpid = 0;	// 1 if only gyroscope if used for yaw
 			// stabilization, 0 if accelerometer is used
 int yawspeedpid = 0;	// 1 if only gyroscope if used for yaw
 			// stabilization, 0 if magnetometer is used
+int hovermode = 0;;
 
 int magcalibmode = 0; // 1 when magnetometer calibration mode
 		      // is enabled, 0 otherwise
@@ -1299,7 +1301,7 @@ int stabilize(int ms)
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&vtlpf), dt);
+			dsp_getlpf(&vtlpf), dt) + ht;
 	}
 	else if (altmode == ALTMODE_SPEED) {
 		// if consttant climb rate mode, first use climb rate
@@ -1321,8 +1323,15 @@ int stabilize(int ms)
 		// if no altitude hold, update vertical acceleration PID
 		// controller using next low-pass filtered value of
 		// vertical acceleration and target got from ERLS remote
-		thrustcor = dsp_pid(&tpv, thrust + 1.0,
-			dsp_getlpf(&tlpf), dt);
+	
+		if (hovermode) {
+			thrustcor = dsp_pid(&tpv, thrust + 1.0,
+				dsp_getlpf(&vtlpf), dt) + ht;
+		} 
+		else {
+			thrustcor = dsp_pid(&tpv, thrust + 1.0,
+				dsp_getlpf(&tlpf), dt);
+		}
 	}
 
 	// disable I-term for all PID-controller,
@@ -1876,10 +1885,12 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 		dsp_setpid(&cpv, st.cp, st.ci, st.cd,
 			st.dpt1freq, PID_FREQ, 0);
 	}
-	else if (strcmp(toks[1], "climb") == 0) {
+	else if (strcmp(toks[1], "vaccel") == 0) {
 		st.ttcoef = atof(toks[2]);
 
 		dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, 0);
+		dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, 0);
+		dsp_setlpf1t(&altlpf, st.ttcoef, DPS_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -2312,12 +2323,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 			v = st.accpt1freq;
 		else if (strcmp(toks[2], "d") == 0)
 			v = st.dpt1freq;
-		else if (strcmp(toks[2], "climb") == 0)
-			v = st.ttcoef;
 		else if (strcmp(toks[2], "vaccel") == 0)
-			v = st.vatcoef;
-		else if (strcmp(toks[2], "altitude") == 0)
-			v = st.apt1freq;
+			v = st.ttcoef;
 		else
 			return (-1);
 
@@ -2590,8 +2597,18 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	if (cd->chf[ERLS_CH_THRMODE] < -0.25) {
 		altmode = ALTMODE_ACCEL;
 
-		thrust = (cd->chf[ERLS_CH_THRUST] + 0.5)
-			/ 1.5 * st.accelmax;
+
+		if (cd->chf[ERLS_CH_HOVER] < 0.0) {
+			hovermode = 0;
+			thrust = (cd->chf[ERLS_CH_THRUST] + 0.5)
+				/ 1.5 * st.accelmax;
+		}
+		else {
+			hovermode = 1;
+
+			thrust = (cd->chf[ERLS_CH_THRUST])
+				/ 2.0 * st.accelmax;
+		}
 
 	}
 	else if (cd->chf[ERLS_CH_THRMODE] > 0.25) {

@@ -10,13 +10,13 @@ adj curr scale 412.5
 adj gyro x -0.431
 adj gyro y -0.409
 adj gyro z -0.304
-adj mag x0 -143
-adj mag y0 33
-adj mag z0 229
+adj mag x0 656
+adj mag y0 111
+adj mag z0 11
 adj mag decl 0.3264
-adj mag xscale 1.016
-adj mag yscale 1
-adj mag zscale 1.054
+adj mag xscale 1
+adj mag yscale 1.039
+adj mag zscale 1.089
 adj pitchthrust 0
 adj rollthrust 0
 ctrl accel 0.5

@@ -1,7 +1,7 @@
 adj acc x 0
 adj acc y 0
 adj acc z 0
-adj althold hover 0.6
+adj althold hover 0.756
 adj pitch 0
 adj roll 0
 adj yaw 0
@@ -10,13 +10,13 @@ adj curr scale 412.5
 adj gyro x -0.431
 adj gyro y -0.409
 adj gyro z -0.304
-adj mag x0 -143
-adj mag y0 33
-adj mag z0 229
+adj mag x0 656
+adj mag y0 111
+adj mag z0 11
 adj mag decl 0.3264
-adj mag xscale 1.016
-adj mag yscale 1
-adj mag zscale 1.054
+adj mag xscale 1
+adj mag yscale 1.039
+adj mag zscale 1.089
 adj pitchthrust 0
 adj rollthrust 0
 ctrl accel 0.5
@@ -35,16 +35,16 @@ compl altitude 1
 compl attitude 0.75
 compl climbrate 1
 compl yaw 1.5
+lpf vaccel 0.25
 lpf accel 40
-lpf climb 0.25
 lpf d 100
 lpf gyro 40
-log freq 1024
+log freq 128
 log record size 4
-log record 0 alt
-log record 1 climbrate
+log record 0 mag_x
+log record 1 mag_y
 log record 10 none
-log record 2 bar_alt
+log record 2 mag_z
 log record 3 acc_z
 log record 4 gyro_y
 log record 5 gyro_z
@@ -85,13 +85,13 @@ pid tilt i 0
 pid tilt p 9
 pid climbrate d 0
 pid climbrate i 0
-pid climbrate p 0.08
+pid climbrate p 0.2
 pid stilt d 0.00375
 pid stilt i 2
 pid stilt p 0.42
 pid throttle d 0
-pid throttle i 10
-pid throttle p 10
+pid throttle i 20
+pid throttle p 5
 pid syaw d 0.0005
 pid syaw i 0
 pid syaw p -2.5
