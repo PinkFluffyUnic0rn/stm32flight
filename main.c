@@ -1225,7 +1225,7 @@ int stabilize(int ms)
 	dsp_updatelpf(&vtlpf, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
-	ht = dsp_getlpf(&vtlpf) / dsp_getlpf(&tlpf)
+	ht = dsp_getlpf(&tlpf) / dsp_getlpf(&vtlpf)
 		* st.hoverthrottle;
 
 	// if vertical acceleration is negative, most likely
