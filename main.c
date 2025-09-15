@@ -1319,16 +1319,21 @@ int stabilize(int ms)
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
 			dsp_getlpf(&vtlpf), dt) + ht;
 	}
-	else {
-		// if no altitude hold, update vertical acceleration PID
-		// controller using next low-pass filtered value of
-		// vertical acceleration and target got from ERLS remote
-	
+	else {	
 		if (hovermode) {
+			// if no altitude hold and hover throttle mode
+			// is enabled, update vertical acceleration PID
+			// controller using next low-pass filtered
+			// value of vertical acceleration and target
+			// got from ERLS remote
 			thrustcor = dsp_pid(&tpv, thrust + 1.0,
 				dsp_getlpf(&vtlpf), dt) + ht;
-		} 
+		}
 		else {
+			// if no altitude hold and hover throttle mode
+			// is disabled, update thrust PID controller
+			// using next low-pass filtered value of thrust
+			// and target got from ERLS remote
 			thrustcor = dsp_pid(&tpv, thrust + 1.0,
 				dsp_getlpf(&tlpf), dt);
 		}
@@ -1338,11 +1343,11 @@ int stabilize(int ms)
 	// if disarmeed of no throttle
 	if (en < 0.5 
 		|| (altmode == ALTMODE_ACCEL 
-			&& thrustcor < 0.35 * st.accelmax)
+			&& thrust < 0)
 		|| (altmode == ALTMODE_SPEED
-			&& thrustcor < -0.95 * st.climbratemax)
+			&& thrust < -0.95 * st.climbratemax)
 		|| (altmode == ALTMODE_POS
-			&& thrustcor < -0.01)) {
+			&& thrust < 0.01)) {
 		dsp_resetpids(&pitchpv);
 		dsp_resetpids(&rollpv);
 		dsp_resetpids(&pitchspv);

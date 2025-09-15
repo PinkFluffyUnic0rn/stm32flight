@@ -20,6 +20,10 @@
 // reset PID controller's I-term
 #define dsp_resetpids(pid) ((pid)->s = 0)
 
+// crop PID controller's I-term
+#define dsp_croppids(pid, v) \
+	((pid)->s = ((pid)->s > (v)) ? (v) : (pid)->s)
+
 // low-pass filter's order
 enum DSP_LPFORDER {
 	DSP_LPFORDER_0 = 0,	// unity filter
