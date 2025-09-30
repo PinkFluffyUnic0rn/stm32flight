@@ -256,8 +256,9 @@ int emergencydisarm = 0;
 // drivers for devices that use external interrupts.
 void HAL_GPIO_EXTI_Callback(uint16_t pin)
 {
-	if (DEVITENABLED(dev[ESP_DEV].status))
+	if (DEVITENABLED(dev[ESP_DEV].status)) {
 		dev[ESP_DEV].interrupt(dev[ESP_DEV].priv, &pin);
+	}
 }
 
 // UART receive callback. It calls interrupt handlers from
@@ -1346,7 +1347,7 @@ int stabilize(int ms)
 			&& thrust < 0)
 		|| (altmode == ALTMODE_SPEED
 			&& thrust < -0.95 * st.climbratemax)
-		|| (altmode == ALTMODE_POS
+		|| (altmode == ALTMODE_POS && !hovermode
 			&& thrust < 0.01)) {
 		dsp_resetpids(&pitchpv);
 		dsp_resetpids(&rollpv);

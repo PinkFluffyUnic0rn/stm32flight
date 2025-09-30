@@ -1,7 +1,7 @@
 adj acc x 0
 adj acc y 0
 adj acc z 0
-adj althold hover 0.3
+adj althold hover 0.382
 adj pitch 0
 adj roll 0
 adj yaw 0
@@ -78,20 +78,20 @@ motor lt 0
 motor rb 3
 motor rt 2
 pid altitude d 0
-pid altitude i 0.02
-pid altitude p 0.3
+pid altitude i 0.0
+pid altitude p 0.5
 pid tilt d 0
 pid tilt i 0
 pid tilt p 7
-pid climbrate d 0.0001
+pid climbrate d 0.0
 pid climbrate i 0
-pid climbrate p 0.3
+pid climbrate p 0.2
 pid stilt d 0.001875
 pid stilt i 5.88
 pid stilt p 0.21
 pid throttle d 0
-pid throttle i 0
-pid throttle p 2.5
+pid throttle i 20
+pid throttle p 3
 pid syaw d 0
 pid syaw i 0
 pid syaw p -1
