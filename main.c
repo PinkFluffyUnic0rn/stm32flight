@@ -1226,8 +1226,7 @@ int stabilize(int ms)
 	dsp_updatelpf(&vtlpf, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
-	ht = dsp_getlpf(&tlpf) / dsp_getlpf(&vtlpf)
-		* st.hoverthrottle;
+	ht = st.hoverthrottle / (cosf(-pitch) * cosf(-roll));
 
 	// if vertical acceleration is negative, most likely
 	// quadcopter is upside down, perform emergency disarm
