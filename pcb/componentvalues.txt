@@ -1,5 +1,4 @@
-main board:
-c1	1 uF
+c1	4.7 uF
 c2	0.1 uF
 c3	18 pF
 c4	18 pF
@@ -12,58 +11,58 @@ c10	0.1 uF
 c11	2.2 uF
 c12	18 pF
 c13	18 pF
-c14	5.6 pF
-c15	4.7 uF
-c16	4.7 uF
-c17	0.1 uF
-c18	0.22 uF
-c19	4.7 uF
-c20	2.2 uF
-c21	0.1 uF
-c22	0.01 uF
+c14	0.1 uF
+c15	0.1 uF
+c16	5.6 pF
+c17	1 uF
+c18	0.1 uF
+c19	0.22 uF
+c20	4.7 uF
+c21	2.2 uF
+c22	0.1 uF
 c23	0.01 uF
-c24	0.1 uF
-c25	1 uF
-c26	0.1 uF
+c24	0.01 uF
+c25	0.1 uF
+c26	1 uF
 c27	0.1 uF
+c28	0.1 uF
 
-r1	12 kOhm
-r2	10 kOhm
-r3	0 kOhm
-r4	0 kOhm
-r5	0 kOhm
-r6	680 Ohm
-r7	10 kOhm
-r8	10 kOhm
-r9	3 kOhm
-r10	10 kOhm
-r11	10 kOhm
-r12	10 kOhm
-r13	1 kOhm
-r14	1 kOhm
-r15	10 kOhm
-r16	10 kOhm
+r1	12k
+r2	10k
+r3	-
+r4	-
+r5	0 Ohm
+r6	3k
+r7	10k
+r8	10k
+r9	10k
+r10	680 Ohm
+r11	10k
+r12	10k
+r13	10k
+r14	1k
+r15	1k
+r16	10k
+r17	10k
+r18	1k
+r19	1k
+r20	1k
+
+l1	-
+l2	-
 
 cr1	20 mHz
 cr2	40 mHz
+led1	orange led
+led2	blue led
+pwr	green led
+led4	yellow led
+led5	red led
 
-led1:	orange led
-led2:	blue led
 u1	LDL1117S33R
 u2	STM32F405RGT6
 u3	ESP8285
-u4	HP206C
+u4	DPS368
 u5	W25Q128VSIG
 u6	QMC5883L
 u7	ICM-42688-P
-
-dc-dc converter:
-l1:	10 uH
-r1:	10 kOhm
-r2:	3.3 kOhm
-r3:	680 Ohm
-r4:	3 kOhm
-c1:	0.1 uF
-c2:	10 uF
-c3:	100 uF
-u1:	tps5430
