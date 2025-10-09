@@ -9,7 +9,7 @@
 #include <QWidget>
 #include <QObject>
 #include <QtWidgets>
-
+#include <QRegularExpressionValidator>
 
 using namespace std;
 
@@ -55,14 +55,14 @@ public:
 		string c = string(""),
 		commands_tree *cmdstree = nullptr);
 	~float_setting();
-
+	
 	QWidget *get_field() { return edit; }
 	string get_value() const;
 	void set_value(const string &s);
 
 private:
 	QLineEdit *edit;
-	QRegExpValidator *validator;
+	QRegularExpressionValidator *validator;
 };
 
 class uint_setting : public setting
@@ -80,7 +80,7 @@ public:
 
 private:
 	QLineEdit *edit;
-	QRegExpValidator *validator;
+	QRegularExpressionValidator *validator;
 };
 
 class button_setting : public setting
@@ -123,7 +123,7 @@ private:
 	QComboBox *box;	
 };
 
-class settings_group : public QWidget
+class settings_group : public QGroupBox
 {
 	Q_OBJECT
 
@@ -143,10 +143,9 @@ public:
 	map<string, setting *> &get_settings() { return settings; }
 	
 	setting *get_setting(const string &n) { return settings[n]; }
-	
+
 private:
 	string name;
-	QGroupBox *group;
 	QGridLayout *layout;
 	main_widget *_main_widget;
 	bool has_send_button;
@@ -194,7 +193,7 @@ public:
 		main_widget *mw = nullptr);
 };
 
-class settings_tab : public QWidget
+class settings_tab : public QScrollArea
 {
 	Q_OBJECT
 
@@ -214,6 +213,7 @@ public:
 
 	map<string, settings_group *>  &get_groups() { return groups; }
 
+	void updatesize();
 private:
 	QGridLayout *grid;
 
@@ -288,6 +288,8 @@ protected:
 private:	
 	void return_pressed();
 	void timer_handler();
+	void repaint_handler();
+	void tab_bar_scroll();
 
 	bool catchuavout;
 	struct sockaddr_in rsi;
@@ -302,6 +304,7 @@ private:
 	QTabWidget *tab;
 	QGridLayout *grid;
 	QTimer *timer;
+	QTimer *repaint_timer;
 };
 
 #endif

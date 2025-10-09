@@ -36,7 +36,8 @@ void write_conf(void *c, const char *s)
 void open_click_handler(void *arg)
 {
 	QString name;
-	ifstream infile;
+	QFile infile;
+	QByteArray in;
 	stringstream buf;
 	main_widget *mw;
 		
@@ -44,18 +45,22 @@ void open_click_handler(void *arg)
 
 	name = QFileDialog::getOpenFileName(mw, "Open file",
 		"", "Text files (*.txt)");
+	
+	infile.setFileName(name);
+	infile.open(QIODevice::ReadOnly);
 
-	infile.open(name.toStdString());	
+	in = infile.readAll();
 
-	buf << infile.rdbuf();
+	mw->string_to_conf(in.constData());
 
-	mw->string_to_conf(buf.str());
+	infile.close();
 }
 
 void save_click_handler(void *arg)
 {
 	QString name;
-	ofstream outfile;
+	QFile outfile;
+	QDataStream out;
 	string conf;
 	main_widget *mw;
 
@@ -66,9 +71,13 @@ void save_click_handler(void *arg)
 
 	conf = mw->conf_to_string();
 
-	outfile.open(name.toStdString());
+	outfile.setFileName(name);
 
-	outfile << conf;
+	outfile.open(QIODevice::WriteOnly);
+	
+	out.setDevice(&outfile);
+
+	out.writeRawData(conf.c_str(), strlen(conf.c_str()));
 
 	outfile.close();
 }
@@ -202,7 +211,8 @@ void log_read_click_handler(void *arg)
 void log_load_click_handler(void *arg)
 {
 	QString name;
-	ofstream outfile;
+	QFile outfile;
+	QDataStream out;
 	string output;
 	main_widget *mw;
 
@@ -215,9 +225,13 @@ void log_load_click_handler(void *arg)
 	name = QFileDialog::getSaveFileName(mw, "Save file", "",
 		"Text files (*.txt)");
 
-	outfile.open(name.toStdString());
+	outfile.setFileName(name);
 
-	outfile << string(output);
+	outfile.open(QIODevice::WriteOnly);
+	
+	out.setDevice(&outfile);
+
+	out.writeRawData(output.c_str(), strlen(output.c_str()));
 
 	outfile.close();
 
@@ -372,8 +386,8 @@ float_setting::float_setting(QWidget *parent, string n, string c,
 {
 	edit = new QLineEdit();
 
-	validator = new QRegExpValidator(	
-		QRegExp("[-]{0,1}\\d{0,}\\.\\d{0,}"),0);
+	validator = new QRegularExpressionValidator(	
+		QRegularExpression("[-]{0,1}\\d{0,}\\.\\d{0,}"),0);
 
 	edit->setValidator(validator);
 
@@ -418,7 +432,8 @@ uint_setting::uint_setting(QWidget *parent, string n, string c,
 {
 	edit = new QLineEdit();
 
-	validator = new QRegExpValidator(QRegExp("\\d{0,}"),0);
+	validator = new QRegularExpressionValidator(
+		QRegularExpression("\\d{0,}"),0);
 
 	edit->setValidator(validator);
 
@@ -558,13 +573,15 @@ void partial_send_click_handler(void *arg)
 
 settings_group::settings_group(QWidget *parent, string n,
 	bool nsb, main_widget *mw)
-		: QWidget(parent), name(n), _main_widget(mw),
+		: QGroupBox(QString::fromStdString(n), parent),
+			name(n), _main_widget(mw),
 			has_send_button(nsb), layout_last(0)
 {
-	group = new QGroupBox(QString::fromStdString(name),
-		dynamic_cast<QWidget *>(this));
+	layout = new QGridLayout();
 
-	layout = new QGridLayout(group);
+	this->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+
+	this->setLayout(layout);
 
 	if (nsb) {
 		settings["send"] = new button_setting(nullptr, "send",
@@ -581,7 +598,6 @@ settings_group::~settings_group()
 		delete it->second;
 
 	delete layout;
-	delete group;
 }
 
 void settings_group::add_setting(setting *s, bool addlabel)
@@ -610,6 +626,8 @@ void settings_group::add_setting(setting *s, bool addlabel)
 		layout->addWidget(w, layout_last, 0, 1, 2);
 		++layout_last;
 	}
+	
+	this->adjustSize();
 }
 
 void settings_group::add_setting_pair(setting *s1, setting *s2)
@@ -621,6 +639,8 @@ void settings_group::add_setting_pair(setting *s1, setting *s2)
 	layout->addWidget(s2->get_field(), layout_last, 1);
 
 	++layout_last;
+	
+	this->adjustSize();
 }
 
 float_settings_group::float_settings_group(QWidget *parent,
@@ -665,9 +685,17 @@ mode_settings_group::mode_settings_group(QWidget *parent,
 	}
 }
 
-settings_tab::settings_tab(QWidget *parent) : QWidget(parent)
+settings_tab::settings_tab(QWidget *parent) : QScrollArea(parent)
 {
-	grid = new QGridLayout(this);
+	QWidget *content = new QWidget;
+
+	grid = new QGridLayout;
+
+	content->setLayout(grid);
+
+	QScroller::grabGesture(this, QScroller::TouchGesture);
+	this->setWidgetResizable(true);
+	this->setWidget(content);
 }
 
 settings_tab::~settings_tab()
@@ -686,6 +714,7 @@ void settings_tab::add_group(settings_group *s,
 {
 	groups[s->get_name()] = s;
 	grid->addWidget(s, r, c, rs, cs);
+	this->adjustSize();
 }
 
 void settings_tab::add_setting(setting *s,
@@ -693,12 +722,14 @@ void settings_tab::add_setting(setting *s,
 {
 	settings[s->get_name()] = s;
 	grid->addWidget(s, r, c, rs, cs);
+	this->adjustSize();
 }
 
 void settings_tab::add_widget(QWidget *w,
 	int r, int c, int rs, int cs)
 {
 	grid->addWidget(w, r, c, rs, cs);
+	this->adjustSize();
 }
 
 terminal::terminal(QWidget *parent) : QWidget(parent)
@@ -861,6 +892,12 @@ void main_widget::motor_mapping_item_changed(int idx)
 	}
 }
 
+
+void main_widget::tab_bar_scroll()
+{
+	qDebug("hello!");
+}
+
 main_widget::main_widget(QWidget *parent)
 	: QWidget(parent), catchuavout(true)
 {
@@ -869,7 +906,10 @@ main_widget::main_widget(QWidget *parent)
 	grid = new QGridLayout(this);
 	tab = new QTabWidget;
 	term = new terminal();
-	
+
+	tab->tabBar()->setElideMode(Qt::ElideRight);
+	tab->tabBar()->setUsesScrollButtons(false);
+
 	cmdstree = new commands_tree;
 
 	initsocks(&lsfd, &rsi);
@@ -950,29 +990,30 @@ main_widget::main_widget(QWidget *parent)
 		"Magnetometer offsets",
 		{"X",		"Y",		"Z",		"declination"},
 		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl"},
-		cmdstree, true, this), 2, 0, 2, 1);
+		cmdstree, true, this), 1, 0, 2, 1);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Magnetometer scale",
 		{"X",			"Y",			"Z"},
 		{"adj mag xscale", 	"adj mag yscale",	"adj mag zscale"},
-		cmdstree, true, this), 2, 1, 2, 1);
-	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Motor scale",
-		{"roll",		"pitch"},
-		{"adj rollthrust", 	"adj pitchthrust"},
-		cmdstree, true, this), 2, 2);
+		cmdstree, true, this), 1, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Altitude hold",
 		{"hover throttle"},
 		{"adj althold hover"},
-		cmdstree, true, this), 3, 1);
+		cmdstree, true, this), 2, 1);
+
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"Motor scale",
+		{"roll",		"pitch"},
+		{"adj rollthrust", 	"adj pitchthrust"},
+		cmdstree, true, this), 1, 2);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Current meter adjustments",
 		{"offset",		"scale"},
 		{"adj curr offset", 	"adj curr scale"},
-		cmdstree, true, this), 3, 2);
+		cmdstree, true, this), 2, 2);
 
 
 	tabs["control"]->add_group(new float_settings_group(nullptr,
@@ -1248,12 +1289,25 @@ main_widget::main_widget(QWidget *parent)
 	connect(timer, &QTimer::timeout, this, &main_widget::timer_handler);
 	timer->start(1);
 
+	repaint_timer = new QTimer(this);
+	connect(timer, &QTimer::timeout, this, &main_widget::repaint_handler);
+	timer->start(17);
+
+	#if defined(ANDROID)
+	grid->addWidget(tab, 1, 0, 6, 4);
+	grid->addWidget(settings["open"]->get_field(), 0, 0);
+	grid->addWidget(settings["save"]->get_field(), 0, 1);
+	grid->addWidget(settings["connect"]->get_field(), 0, 2);
+	grid->addWidget(settings["send"]->get_field(), 0, 3);
+	grid->addWidget(term, 7, 0, 3, 4);
+	#else
 	grid->addWidget(tab, 0, 0, 5, 4);
 	grid->addWidget(settings["open"]->get_field(), 5, 0);
 	grid->addWidget(settings["save"]->get_field(), 5, 1);
 	grid->addWidget(settings["connect"]->get_field(), 5, 2);
 	grid->addWidget(settings["send"]->get_field(), 5, 3);
 	grid->addWidget(term, 0, 4, 6, 2);
+	#endif
 
 	record_size_item_changed(0);
 
@@ -1415,7 +1469,7 @@ void main_widget::return_pressed()
 void main_widget::timer_handler()
 {
 	char buf[BUFSZ];
-
+	
 	if (!catchuavout)
 		return;
 
@@ -1424,4 +1478,9 @@ void main_widget::timer_handler()
 
 	term->add_output(string(buf));
 	QCoreApplication::processEvents();
+}
+
+void main_widget::repaint_handler()
+{
+	this->repaint();
 }
