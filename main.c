@@ -230,6 +230,7 @@ int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
 
 // Pressure and altitude initial values
 float alt0 = 0.0;
+float goffset = 0.0;
 
 // Current settings slot
 int curslot = 0;
@@ -736,7 +737,6 @@ int setstabilize(int init)
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_setunity(&templpf, init);
-	//dsp_setunity(&altlpf, init);
 	dsp_setunity(&valpf, init);
 	dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, init);
 	dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, init);
@@ -791,32 +791,32 @@ int sprintpos(char *s, struct icm_data *id)
 	s[0] = '\0';
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "accel: ",
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n", "accel: ",
 		(double) dsp_getlpf(&accxpt1),
 		(double) dsp_getlpf(&accypt1),
 		(double) dsp_getlpf(&acczpt1));	
 	
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r", "gyro: ",
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n", "gyro: ",
 		(double) dsp_getlpf(&gyroxpt1),
 		(double) dsp_getlpf(&gyroypt1),
 		(double) dsp_getlpf(&gyrozpt1));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		"accel corrected: ",
 		(double) (dsp_getlpf(&accxpt1) - st.ax0),
 		(double) (dsp_getlpf(&accypt1) - st.ay0),
 		(double) (dsp_getlpf(&acczpt1) - st.az0));
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		"gyro corrected: ",
 		(double) (dsp_getlpf(&gyroxpt1) - st.gx0),
 		(double) (dsp_getlpf(&gyroypt1) - st.gy0),
 		(double) (dsp_getlpf(&gyrozpt1) - st.gz0));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\n\r",
+		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\r\n",
 		(double) (dsp_getcompl(&rollcompl) - st.roll0),
 		(double) (dsp_getcompl(&pitchcompl) - st.pitch0),
 		(double) circf(dsp_getcompl(&yawcompl) - st.yaw0));
@@ -830,8 +830,8 @@ int sprintpos(char *s, struct icm_data *id)
 		(double) dsp_getlpf(&valpf));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"presice  altitude: %f\r\n",
-		(double) (dsp_getcompl(&altcompl) - alt0));
+		"g offset: %f\r\n", (double) goffset);
+
 
 	return 0;
 }
@@ -845,12 +845,12 @@ int sprintqmc(char *s, struct qmc_data *hd)
 	s[0] = '\0';
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"x = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		"x = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		(double) qmcdata.fx, (double) qmcdata.fy,
 		(double) qmcdata.fz);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"corrected: x = %0.3f; y = %0.3f; z = %0.3f\n\r",
+		"corrected: x = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		(double) (st.mxsc * (qmcdata.fx + st.mx0)),
 		(double) (st.mysc * (qmcdata.fy + st.my0)),
 		(double) (st.mzsc * (qmcdata.fz + st.mz0)));
@@ -1287,7 +1287,7 @@ int stabilize(int ms)
 		// ELRS remote to update altitude PID controller and
 		// get it's next correction value
 		thrustcor = dsp_pid(&apv, thrust,
-			dsp_getlpf(&altlpf) - alt0, dt);
+			dsp_getcompl(&altcompl) - alt0, dt);
 
 		// then use altitude correction value and climb rate
 		// calculated by complimentary filter (barometer
@@ -1493,7 +1493,6 @@ int dpsupdate(int ms)
 
 	// write climbrate and altitude values into log
 	log_write(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
-
 	log_write(LOG_ALT, dsp_getcompl(&altcompl));
 
 	return 0;
@@ -1560,7 +1559,7 @@ int telesend(int ms)
 	tele.course = gnss.course;
 	tele.alt = gnss.altitude;
 	tele.sats = gnss.satellites;
-	tele.balt = dsp_getlpf(&altlpf) - alt0;
+	tele.balt = dsp_getcompl(&altcompl) - alt0;
 	tele.vspeed = dsp_getcompl(&climbratecompl);
 	tele.roll = dsp_getcompl(&rollcompl) - st.roll0;
 	tele.pitch = dsp_getcompl(&pitchcompl) - st.pitch0;
@@ -1646,14 +1645,25 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 		sprintqmc(out, &hd);
 	}
 	else if (strcmp(toks[1], "hp") == 0) {
-		float alt;
+		struct dps_data dd;
 
-		alt = dsp_getlpf(&altlpf) - alt0;
+		dev[DPS_DEV].read(dev[DPS_DEV].priv, &dd,
+			sizeof(struct dps_data));
 
 		snprintf(out, INFOLEN,
-			"temp: %f; alt: %f; climb rate: %f\r\n",
-			(double) dsp_getlpf(&templpf), (double) alt,
-			(double) dsp_getcompl(&climbratecompl));
+			"baro temp: %f; baro alt: %f\r\n",
+			(double) dd.tempf, (double) dd.altf);
+
+		snprintf(out + strlen(out), INFOLEN - strlen(out),
+			"filtered temp: %f; filtered alt: %f\r\n",
+			(double) dsp_getlpf(&templpf),
+			(double) dsp_getlpf(&altlpf));
+
+		snprintf(out + strlen(out), INFOLEN - strlen(out),
+			"climb rate: %f\r\nalt: %f\r\nref alt: %f\r\n",
+			(double) dsp_getcompl(&climbratecompl),
+			(double) dsp_getcompl(&altcompl),
+			(double) alt0);
 	}
 	else if (strcmp(toks[1], "dev") == 0)
 		sprintdevs(out);
@@ -2628,8 +2638,10 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 	// if channel 9 is active (it's no-fix button on remote used
 	// for testing), set reference altitude from current altitude
-	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0)
-		alt0 = dsp_getlpf(&altlpf);
+	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0) {
+		alt0 = dsp_getcompl(&altcompl);
+		goffset = 1.0 - dsp_getlpf(&valpf);
+	}
 
 	// set acceleromter stabilization mode, if channel 6 has value
 	// more than 25, set gyroscope only stabilization mode, if
