@@ -231,6 +231,7 @@ int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
 // Pressure and altitude initial values
 float alt0 = 0.0;
 float goffset = 0.0;
+float gscale = 1.0;
 
 // Current settings slot
 int curslot = 0;
@@ -830,8 +831,16 @@ int sprintpos(char *s, struct icm_data *id)
 		(double) dsp_getlpf(&valpf));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"accel: %f\r\n", (double) sqrt(
+			pow(dsp_getlpf(&accxpt1) - st.ax0, 2.0) 
+			+ pow(dsp_getlpf(&accypt1) - st.ay0, 2.0)
+			+ pow(dsp_getlpf(&acczpt1) - st.az0, 2.0)));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"g offset: %f\r\n", (double) goffset);
 
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"g scale: %f\r\n", (double) gscale);
 
 	return 0;
 }
@@ -1483,8 +1492,8 @@ int dpsupdate(int ms)
 	// calculate climb rate from vertical acceleration and
 	// barometric altitude defference using complimentary filter
 	dsp_updatecompl(&climbratecompl,
-		9.80665 * (dsp_getlpf(&valpf) - 1.0) * dt,
-		(alt - prevalt) / dt);
+		9.80665 * (dsp_getlpf(&valpf) + goffset - 1.0) * dt,
+			(alt - prevalt) / dt);
 
 	// calculate presice altitiude from climb rate and
 	// barometric altitude using complimentary filter
@@ -2640,6 +2649,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// for testing), set reference altitude from current altitude
 	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0) {
 		alt0 = dsp_getcompl(&altcompl);
+		gscale = 1.0 / dsp_getlpf(&valpf);
 		goffset = 1.0 - dsp_getlpf(&valpf);
 	}
 
