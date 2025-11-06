@@ -27,7 +27,7 @@ struct timev {
 // ev -- periodic event's context.
 // freq -- periodic event's frequency in Hz (calls per second).
 // cb -- callback that is called by this event.
-int inittimev(struct timev *ev, int freq, int (*cb)(int));
+int inittimev(struct timev *ev, int phase, int freq, int (*cb)(int));
 
 // Update periodic event's frequency
 //

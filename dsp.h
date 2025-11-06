@@ -20,6 +20,10 @@
 // reset PID controller's I-term
 #define dsp_resetpids(pid) ((pid)->s = 0)
 
+// reset bilinear PID controller
+#define dsp_resetpidbl(pid) ((pid)->e[0] = (pid)->e[1] \
+	= (pid)->v[0] = (pid)->v[1] = 0.0)
+
 // crop PID controller's I-term
 #define dsp_croppids(pid, v) \
 	((pid)->s = ((pid)->s > (v)) ? (v) : (pid)->s)
@@ -49,6 +53,23 @@ struct dsp_pidval {
 	struct dsp_lpf dlpf;
 	float pe;
 	float s;
+};
+
+// bilinear PID context
+// it holds PID controller P, I and D coefficients and
+// accumelated data between calls.
+struct dsp_pidblval {
+	float kp, ki, kd;
+	struct dsp_lpf dlpf;
+
+	float a[3];
+	float b[3];
+	
+	float e[2];
+	float v[2];
+
+	int step;
+	int depth;
 };
 
 // complimentary filter context
@@ -112,6 +133,17 @@ float dsp_updatelpf(struct dsp_lpf *ir, float v);
 float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 	float dcutoff, int freq, int init);
 
+// set new P, I and D coefficient for a bilinear PID controller.
+//
+// pv -- PID controller context.
+// kp -- P coefficient.
+// ki -- I coefficient.
+// kd -- D coefficient.
+// dcoutoff -- D low-pass filter cut-off frequency.
+// init -- 1, if internal values initializaion required, 0 otherwise.
+float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
+	float kd, float dcutoff, int freq, int init);
+
 // calculate next PID controller's correction value.
 //
 // pv -- PID controller context.
@@ -120,6 +152,15 @@ float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 // dt -- time delta, i.e. time passed from previous correction
 // 	value calculation.
 float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt);
+
+// calculate next bilinear PID controller's correction value.
+//
+// pv -- bilinear PID controller context.
+// target -- desired value (setpoint).
+// val -- current value.
+// dt -- time delta, i.e. time passed from previous correction
+// 	value calculation.
+float dsp_pidbl(struct dsp_pidblval *pv, float target, float val);
 
 // calculate next PID controller's correction value
 // 	in circular way: [-Pi:Pi] range is used, correction's

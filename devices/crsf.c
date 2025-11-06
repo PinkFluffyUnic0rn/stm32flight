@@ -170,6 +170,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	struct attitude *attpack;
 	struct battery *batpack;
 	uint8_t buf[64];
+	static uint8_t bufcommon[128];
 
 	d = dev;
 	tele = dt;
@@ -185,8 +186,8 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	memcpy(buf + 3, tele->mode, 14);
 	(buf + 3)[13] = '\0';
 	buf[15] = crc8(buf + 2, 13);
-
-	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 17, 1000);
+	
+	memcpy(bufcommon, buf, 17);
 
 	buf[1] = 10;
 	buf[2] = 0x08;
@@ -196,7 +197,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	batpack->rem = (int8_t)(tele->batrem);
 	buf[11] = crc8(buf + 2, 9);
 
-	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 12, 1000);
+	memcpy(bufcommon + 17, buf, 12);
 
 	buf[1] = 17;
 	buf[2] = 0x02;
@@ -208,7 +209,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	gpspack->sats = tele->sats;
 	buf[18] = crc8(buf + 2, 16);
 
-	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 19, 1000);
+	memcpy(bufcommon + 29, buf, 19);
 
 	buf[1] = 6;
 	buf[2] = 0x09;
@@ -216,7 +217,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	baltpack->vspeed = endian2((int16_t)(tele->vspeed * 100.0));
 	buf[7] = crc8(buf + 2, 5);
 
-	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 8, 1000);
+	memcpy(bufcommon + 48, buf, 8);
 
 	buf[1] = 8;
 	buf[2] = 0x1e;
@@ -225,15 +226,16 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	attpack->yaw = endian2((int16_t)(tele->yaw * 1e4));
 	buf[9] = crc8(buf + 2, 7);
 
-	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 10, 1000);
+	memcpy(bufcommon + 56, buf, 10);
 
 	buf[1] = 4;
 	buf[2] = 0x07;
 	*((int16_t *)(buf + 3)) = endian2((int16_t)(tele->vspeed * 100.0));
 	buf[5] = crc8(buf + 2, 3);
 
-	HAL_UART_Transmit(d->huart, (uint8_t *) buf, 6, 1000);
+	memcpy(bufcommon + 66, buf, 6);
 
+	HAL_UART_Transmit_DMA(d->huart, (uint8_t *) bufcommon, 72);
 
 	return 0;
 }

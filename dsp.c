@@ -84,6 +84,66 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt)
 	return v;
 }
 
+float dsp_pidbl(struct dsp_pidblval *pv, float target, float val)
+{
+	float e, v;
+
+	e = target - val;
+
+	switch (pv->step) {
+	case 0:
+		v = pv->a[0] * e;
+		break;
+	case 1:
+		v = pv->a[0] * e
+			+ pv->a[1] * pv->e[0] + pv->b[1] * pv->v[0];
+		break;
+	default:
+		v = pv->a[0] * e
+			+ pv->a[1] * pv->e[0] + pv->b[1] * pv->v[0]
+			+ pv->a[2] * pv->e[1] + pv->b[2] * pv->v[1];
+		break;
+	}
+
+	pv->e[1] = pv->e[0];
+	pv->v[1] = pv->v[0];
+	pv->e[0] = e;
+	pv->v[0] = v;
+
+	if (pv->step < pv->depth)
+		++pv->step;
+
+	return v;
+}
+
+float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
+	float kd, float dcutoff, int freq, int init)
+{
+	float ts, tf, tt, c;
+
+	pv->step = 0;
+	pv->depth = 2;
+
+	ts = 1.0 / (float) freq;
+	tf = 1.0 / dcutoff;
+	tt = ts * ts;
+
+	c = 1.0 / (4.0 * tf + 2.0 * ts);
+
+	pv->a[0] = (4.0 * kd + 4.0 * tf * kp
+		+ 2.0 * kp * ts + ki * tt + 2.0 * tf * ki * ts) * c;
+	pv->a[1] = (2.0 * ki * tt - 8.0 * kd - 8.0 * tf * kp) * c;
+	pv->a[2] = (4.0 * kd + 4.0 * tf * kp 
+		- 2.0 * kp * ts + ki * tt - 2.0 * tf * ki * ts) * c;
+	pv->b[0] = 1.0;
+	pv->b[1] = 8.0 * tf * c;
+	pv->b[2] = -(4.0 * tf - 2.0 * ts) * c;
+
+	dsp_setlpf1f(&(pv->dlpf), dcutoff, freq, init);
+
+	return 0;
+}
+
 float dsp_circpid(struct dsp_pidval *pv, float target,
 	float val, float dt)
 {

@@ -54,13 +54,18 @@ int dps_getdata(void *d, void *dt, size_t sz)
 	struct dps_data *data;
 	float scf[] = { 524288.0, 1572864.0, 3670016.0, 7864320.0,
 		253952.0, 516096.0, 1040384.0, 2088960.0 };
-	uint8_t buf[16];
+	static uint8_t buf[16];
+	static int init = 0;
 	float psc, tsc;
 
 	data = (struct dps_data *) dt;
 	dev = (struct dps_device *) d;
+	
+	if (!init) {
+		dps_read(dev, DPS_PRS, buf, 6);
 
-	dps_read(dev, DPS_PRS, buf, 6);
+		init = 1;
+	}
 
 	psc = twocompl((buf[0] << 16) | (buf[1] << 8) | buf[2], 24)
 		/ scf[dev->osr];
@@ -76,6 +81,9 @@ int dps_getdata(void *d, void *dt, size_t sz)
 	
 	data->altf = (1.0f - powf(data->pressf / 101325.0f, 0.190295f))
 		* 44330.0f;
+
+	HAL_I2C_Mem_Read_DMA(dev->hi2c, DPS_ADDR << 1, DPS_PRS,
+		1, buf, 6);
 
 	return 0;
 }

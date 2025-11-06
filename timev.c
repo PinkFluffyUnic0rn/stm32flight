@@ -1,6 +1,6 @@
 #include "timev.h"
 
-int inittimev(struct timev *ev, int freq, int (*cb)(int))
+int inittimev(struct timev *ev, int phase, int freq, int (*cb)(int))
 {
 	ev->ms = 0;
 	ev->rem = 0;
@@ -12,7 +12,7 @@ int inittimev(struct timev *ev, int freq, int (*cb)(int))
 
 int modifytimev(struct timev *ev, int freq)
 {
-	inittimev(ev, freq, ev->cb);
+	inittimev(ev, 0, freq, ev->cb);
 
 	return 0;
 }

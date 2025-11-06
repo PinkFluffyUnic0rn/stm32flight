@@ -40,22 +40,20 @@
 #define DEV_COUNT	8
 
 // Timer events count
-#define TEV_COUNT	8
+#define TEV_COUNT	7
 
 // Timer events IDs
 #define TEV_PID 	0
 #define TEV_CHECK 	1
-#define TEV_CALIB	2
-#define TEV_DPS		3
-#define TEV_QMC		4
-#define TEV_LOG		5
-#define TEV_TELE	6
-#define TEV_POWER	7
+#define TEV_DPS		2
+#define TEV_QMC		3
+#define TEV_LOG		4
+#define TEV_TELE	5
+#define TEV_POWER	6
 
 // Periodic events frequencies
 #define PID_FREQ 4000
 #define CHECK_FREQ 1
-#define CALIB_FREQ 25
 #define DPS_FREQ 128
 #define QMC_FREQ 100
 #define TELE_FREQ 10
@@ -223,8 +221,6 @@ int yawspeedpid = 0;	// 1 if only gyroscope if used for yaw
 			// stabilization, 0 if magnetometer is used
 int hovermode = 0;;
 
-int magcalibmode = 0; // 1 when magnetometer calibration mode
-		      // is enabled, 0 otherwise
 int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
 	      // is > 50)
 
@@ -596,7 +592,7 @@ static void icm_init()
 static void qmc_init()
 {
 	struct qmc_device d;
-
+	
 	d.hi2c = &hi2c1;
 	d.scale = QMC_SCALE_8;
 	d.rate = QMC_RATE_100;
@@ -1154,7 +1150,11 @@ int stabilize(int ms)
 	float ay, ax, az;
 	float ht;
 	float dt;
-	
+
+	// debug pin switching
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4,
+		!(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4)));
+
 	// emergency disarm happened
 	if (emergencydisarm) {
 		setthrust(0.0, 0.0, 0.0, 0.0);
@@ -1327,6 +1327,7 @@ int stabilize(int ms)
 		// thrust correction value
 		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
 			dsp_getlpf(&vtlpf), dt) + ht;
+
 	}
 	else {	
 		if (hovermode) {
@@ -1337,6 +1338,7 @@ int stabilize(int ms)
 			// got from ERLS remote
 			thrustcor = dsp_pid(&tpv, thrust + 1.0,
 				dsp_getlpf(&vtlpf), dt) + ht;
+
 		}
 		else {
 			// if no altitude hold and hover throttle mode
@@ -1366,6 +1368,7 @@ int stabilize(int ms)
 		dsp_resetpids(&tpv);
 		dsp_resetpids(&cpv);
 		dsp_resetpids(&apv);
+
 	}
 
 	// calculate weights for motors
@@ -1408,7 +1411,7 @@ int checkconnection(int ms)
 	// decrease ERLS timeout counter
 	if (elrstimeout != 0)
 		--elrstimeout;
-
+	
 	// if timeout conter reached 0 and no ERLS
 	// packet came, disarm immediately
 	if (elrstimeout <= 0) {
@@ -1424,40 +1427,6 @@ int checkconnection(int ms)
 	return 0;
 }
 
-// If magnetometer calibration mode is enabled, send magnetometer
-// readings into debug wi-fi connection. Callback for TEV_CALIB
-// periodic event.
-//
-// ms -- microsecond passed from last callback invocation.
-int magcalib(int ms)
-{
-	struct qmc_data hd;
-	char s[INFOLEN];
-
-	// this callback is only for magnetometer calibration
-	// mode, so quit if this mode isn't enabled
-	if (!magcalibmode)
-		return 0;
-
-	// if magnetometer isn't initilized, return
-	if (dev[QMC_DEV].status != DEVSTATUS_INIT)
-		return 0;
-
-	// read magnetometer values
-	dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
-		sizeof(struct qmc_data));
-
-	// send them to debug wifi connection
-	sprintf(s, "%f %f %f\r\n",
-		(double) (st.mxsc * (hd.fx + st.mx0)),
-		(double) (st.mysc * (hd.fy + st.my0)),
-		(double) (st.mzsc * (hd.fz + st.mz0)));
-
-	dev[ESP_DEV].write(dev[ESP_DEV].priv, s, strlen(s));
-
-	return 0;
-}
-
 // Get readings from barometer. Callback for TEV_DPS periodic event.
 //
 // ms -- microsecond passed from last callback invocation.
@@ -1466,7 +1435,7 @@ int dpsupdate(int ms)
 	struct dps_data hd;
 	float prevalt, alt;
 	float dt;
-
+	
 	dt = ms / (float) TICKSPERSEC;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
@@ -1515,7 +1484,6 @@ int qmcupdate(int ms)
 	// if magnetometer isn't initilized, return
 	if (dev[QMC_DEV].status != DEVSTATUS_INIT)
 		return 0;
-
 	// read magnetometer values
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
@@ -1534,6 +1502,7 @@ int qmcupdate(int ms)
 // ms -- microsecond passed from last callback invocation.
 int logupdate(int ms)
 {
+	return 0;
 	log_update();
 
 	return 0;
@@ -1545,7 +1514,7 @@ int logupdate(int ms)
 int telesend(int ms)
 {
 	const char *am;
-
+	
 	tele.bat = dsp_getlpf(&batlpf);
 	tele.curr = dsp_getlpf(&currlpf);
 	
@@ -1730,6 +1699,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&rollpv, st.p, st.i, st.d,
 			st.dpt1freq, PID_FREQ, 0);
+
 	}
 	else if (strcmp(toks[1], "stilt") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.sp = v;
@@ -1741,6 +1711,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&rollspv, st.sp, st.si, st.sd,
 			st.dpt1freq, PID_FREQ, 0);
+
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
 		if (strcmp(toks[2], "mode") == 0) {
@@ -1758,6 +1729,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 
 		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
 			st.dpt1freq, PID_FREQ, 0);
+
 	}
 	else if (strcmp(toks[1], "syaw") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.ysp = v;
@@ -1794,27 +1766,6 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 
 		dsp_setpid(&apv, st.ap, st.ai, st.ad,
 			st.dpt1freq, PID_FREQ, 0);
-	}
-	else
-		return (-1);
-
-	return 0;
-}
-
-// "calib" command handler. Turn on/off devices calibration modes.
-//
-// dev -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
-int calibcmd(const struct cdevice *dev, const char **toks, char *out)
-{
-	if (strcmp(toks[1], "mag") == 0) {
-		if (strcmp(toks[2], "on") == 0)
-			magcalibmode = 1;
-		else if (strcmp(toks[2], "off") == 0)
-			magcalibmode = 0;
-		else
-			return (-1);
 	}
 	else
 		return (-1);
@@ -1891,7 +1842,7 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "d") == 0) {
 		st.dpt1freq = atof(toks[2]);
-		
+
 		dsp_setpid(&pitchpv, st.p, st.i, st.d,
 			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&rollpv, st.p, st.i, st.d,
@@ -1908,6 +1859,7 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&cpv, st.cp, st.ci, st.cd,
 			st.dpt1freq, PID_FREQ, 0);
+
 	}
 	else if (strcmp(toks[1], "vaccel") == 0) {
 		st.ttcoef = atof(toks[2]);
@@ -2781,21 +2733,21 @@ int main(void)
 	log_setdev(&flashdev);
 
 	// initilize periodic events
-	inittimev(evs + TEV_PID, PID_FREQ, stabilize);
-	inittimev(evs + TEV_CHECK, CHECK_FREQ, checkconnection);
-	inittimev(evs + TEV_CALIB, CALIB_FREQ, magcalib);
-	inittimev(evs + TEV_DPS, DPS_FREQ, dpsupdate);
-	inittimev(evs + TEV_QMC, QMC_FREQ, qmcupdate);
-	inittimev(evs + TEV_LOG, st.logfreq, logupdate);
-	inittimev(evs + TEV_TELE, TELE_FREQ, telesend);
-	inittimev(evs + TEV_POWER, POWER_FREQ, powercheck);
+	inittimev(evs + TEV_PID, 0, PID_FREQ, stabilize);
+	inittimev(evs + TEV_CHECK, 0, CHECK_FREQ, checkconnection);
+	inittimev(evs + TEV_DPS, 1 * DPS_FREQ / 5, DPS_FREQ, dpsupdate);
+	inittimev(evs + TEV_QMC, 2 * QMC_FREQ / 5, QMC_FREQ, qmcupdate);
+	inittimev(evs + TEV_LOG, 0, st.logfreq, logupdate);
+	inittimev(evs + TEV_TELE, 3 * TELE_FREQ / 5, 
+		TELE_FREQ, telesend);
+	inittimev(evs + TEV_POWER, 4 * POWER_FREQ / 5,
+		POWER_FREQ, powercheck);
 
 	// initilize debug commands
 	addcommand("r", rcmd);
 	addcommand("c", ccmd);
 	addcommand("info", infocmd);
 	addcommand("pid", pidcmd);
-	addcommand("calib", calibcmd);
 	addcommand("flash", flashcmd);
 	addcommand("compl", complcmd);
 	addcommand("lpf", lpfcmd);
@@ -2861,7 +2813,7 @@ int main(void)
 		// get microseconds passed in this iteration
 		// one iteration duration should take at least
 		// some time, 100us was choosen
-		while ((c = __HAL_TIM_GET_COUNTER(&htim8)) < 100);
+		while ((c = __HAL_TIM_GET_COUNTER(&htim8)) < 1);
 
 		// update periodic events timers
 		for (i = 0; i < TEV_COUNT; ++i)
