@@ -125,7 +125,7 @@ float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
 	pv->depth = 2;
 
 	ts = 1.0 / (float) freq;
-	tf = 1.0 / dcutoff;
+	tf = 1.0 / (dcutoff * 2.0 * M_PI);
 	tt = ts * ts;
 
 	c = 1.0 / (4.0 * tf + 2.0 * ts);
@@ -138,8 +138,6 @@ float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
 	pv->b[0] = 1.0;
 	pv->b[1] = 8.0 * tf * c;
 	pv->b[2] = -(4.0 * tf - 2.0 * ts) * c;
-
-	dsp_setlpf1f(&(pv->dlpf), dcutoff, freq, init);
 
 	return 0;
 }

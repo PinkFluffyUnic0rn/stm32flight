@@ -60,7 +60,6 @@ struct dsp_pidval {
 // accumelated data between calls.
 struct dsp_pidblval {
 	float kp, ki, kd;
-	struct dsp_lpf dlpf;
 
 	float a[3];
 	float b[3];
