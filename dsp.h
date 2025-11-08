@@ -59,13 +59,16 @@ struct dsp_pidval {
 // it holds PID controller P, I and D coefficients and
 // accumelated data between calls.
 struct dsp_pidblval {
-	float kp, ki, kd;
+	float itresh;
 
 	float a[3];
 	float b[3];
+	float ia[3];
 	
 	float e[2];
 	float v[2];
+	float iv[2];
+	float i;
 
 	int step;
 	int depth;
@@ -141,7 +144,7 @@ float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 // dcoutoff -- D low-pass filter cut-off frequency.
 // init -- 1, if internal values initializaion required, 0 otherwise.
 float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
-	float kd, float dcutoff, int freq, int init);
+	float kd, float itresh, float dcutoff, int freq, int init);
 
 // calculate next PID controller's correction value.
 //
@@ -160,6 +163,11 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt);
 // dt -- time delta, i.e. time passed from previous correction
 // 	value calculation.
 float dsp_pidbl(struct dsp_pidblval *pv, float target, float val);
+
+// reset bilinear PID controller's I-term
+//
+// pv -- bilinear PID controller context.
+int dsp_resetpidbls(struct dsp_pidblval *pv);
 
 // calculate next PID controller's correction value
 // 	in circular way: [-Pi:Pi] range is used, correction's

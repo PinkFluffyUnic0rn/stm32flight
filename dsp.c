@@ -68,6 +68,37 @@ float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 	return 0;
 }
 
+float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
+	float kd, float itresh, float dcutoff, int freq, int init)
+{
+	float ts, tf, tt, c;
+
+	pv->step = 0;
+	pv->depth = 2;
+
+	pv->itresh = itresh;
+
+	ts = 1.0 / (float) freq;
+	tf = 1.0 / (dcutoff * 2.0 * M_PI);
+	tt = ts * ts;
+
+	c = 1.0 / (4.0 * tf + 2.0 * ts);
+
+	pv->a[0] = (4.0 * kd + 4.0 * tf * kp + 2.0 * kp * ts) * c;
+	pv->a[1] = (-8.0 * kd - 8.0 * tf * kp) * c;
+	pv->a[2] = (4.0 * kd + 4.0 * tf * kp - 2.0 * kp * ts) * c;
+	pv->ia[0] = ki * (tt + 2.0 * tf * ts) * c;
+	pv->ia[1] = ki * (2.0 * tt) * c;
+	pv->ia[2] = ki * (tt - 2.0 * tf * ts) * c;
+
+	pv->b[0] = 1.0;
+	pv->b[1] = 8.0 * tf * c;
+	pv->b[2] = -(4.0 * tf - 2.0 * ts) * c;
+
+
+	return 0;
+}
+
 float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt)
 {
 	float e, v;
@@ -86,58 +117,61 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt)
 
 float dsp_pidbl(struct dsp_pidblval *pv, float target, float val)
 {
-	float e, v;
+	float e, v, vs;
 
 	e = target - val;
 
 	switch (pv->step) {
 	case 0:
+		pv->i = pv->ia[0] * e;
 		v = pv->a[0] * e;
+		vs = v + pv->i;
 		break;
 	case 1:
+		pv->i = pv->ia[0] * e
+			+ pv->ia[1] * pv->e[0] + pv->b[1] * pv->iv[0];
+		
 		v = pv->a[0] * e
 			+ pv->a[1] * pv->e[0] + pv->b[1] * pv->v[0];
+		
+		vs = v + pv->i;
+	
 		break;
 	default:
+		pv->i = pv->ia[0] * e
+			+ pv->ia[1] * pv->e[0] + pv->b[1] * pv->iv[0]
+			+ pv->ia[2] * pv->e[1] + pv->b[2] * pv->iv[1];
+
 		v = pv->a[0] * e
 			+ pv->a[1] * pv->e[0] + pv->b[1] * pv->v[0]
 			+ pv->a[2] * pv->e[1] + pv->b[2] * pv->v[1];
+		
+		vs = v + pv->i;
+
 		break;
 	}
 
+	if (pv->i < -pv->itresh)
+		pv->iv[0] = pv->i = -pv->itresh;
+	else if (pv->i > pv->itresh)
+		pv->iv[0] = pv->i = pv->itresh;
+
 	pv->e[1] = pv->e[0];
 	pv->v[1] = pv->v[0];
+	pv->iv[1] = pv->iv[0];
 	pv->e[0] = e;
 	pv->v[0] = v;
+	pv->iv[0] = pv->i;
 
 	if (pv->step < pv->depth)
 		++pv->step;
 
-	return v;
+	return vs;
 }
 
-float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
-	float kd, float dcutoff, int freq, int init)
+int dsp_resetpidbls(struct dsp_pidblval *pv)
 {
-	float ts, tf, tt, c;
-
-	pv->step = 0;
-	pv->depth = 2;
-
-	ts = 1.0 / (float) freq;
-	tf = 1.0 / (dcutoff * 2.0 * M_PI);
-	tt = ts * ts;
-
-	c = 1.0 / (4.0 * tf + 2.0 * ts);
-
-	pv->a[0] = (4.0 * kd + 4.0 * tf * kp
-		+ 2.0 * kp * ts + ki * tt + 2.0 * tf * ki * ts) * c;
-	pv->a[1] = (2.0 * ki * tt - 8.0 * kd - 8.0 * tf * kp) * c;
-	pv->a[2] = (4.0 * kd + 4.0 * tf * kp 
-		- 2.0 * kp * ts + ki * tt - 2.0 * tf * ki * ts) * c;
-	pv->b[0] = 1.0;
-	pv->b[1] = 8.0 * tf * c;
-	pv->b[2] = -(4.0 * tf - 2.0 * ts) * c;
+	pv->iv[0] = pv->iv[1] = pv->iv[2] = pv->i = 0.0;
 
 	return 0;
 }
