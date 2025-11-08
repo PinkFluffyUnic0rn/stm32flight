@@ -186,15 +186,15 @@ struct dsp_compl yawcompl;
 struct dsp_compl climbratecompl;
 struct dsp_compl altcompl;
 
-struct dsp_pidval pitchpv;
-struct dsp_pidval rollpv;
-struct dsp_pidval pitchspv;
-struct dsp_pidval rollspv;
+struct dsp_pidblval pitchpv;
+struct dsp_pidblval rollpv;
+struct dsp_pidblval pitchspv;
+struct dsp_pidblval rollspv;
 struct dsp_pidval yawpv;
-struct dsp_pidval yawspv;
-struct dsp_pidval tpv;
-struct dsp_pidval cpv;
-struct dsp_pidval apv;
+struct dsp_pidblval yawspv;
+struct dsp_pidblval tpv;
+struct dsp_pidblval cpv;
+struct dsp_pidblval apv;
 
 // Global storage for sensor data
 // that aquired in separate events
@@ -699,33 +699,33 @@ int setstabilize(int init)
 	dsp_setcompl(&altcompl, st.actcoef, DPS_FREQ, init);
 
 	// init roll and pitch position PID controller contexts
-	dsp_setpid(&pitchpv, st.p, st.i, st.d, st.dpt1freq,
+	dsp_setpidbl(&pitchpv, st.p, st.i, st.d, 1.5, st.dpt1freq,
 		PID_FREQ, init);
-	dsp_setpid(&rollpv, st.p, st.i, st.d, st.dpt1freq,
+	dsp_setpidbl(&rollpv, st.p, st.i, st.d, 1.5, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init roll, pitch and yaw speed PID controller contexts
-	dsp_setpid(&pitchspv, st.sp, st.si, st.sd,
-		st.dpt1freq, PID_FREQ, init);
-	dsp_setpid(&rollspv, st.sp, st.si, st.sd,
-		st.dpt1freq, PID_FREQ, init);
-	dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd,
-		st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(&pitchspv, st.sp, st.si, st.sd,
+		0.5, st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(&rollspv, st.sp, st.si, st.sd,
+		0.5, st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
+		1.5, st.dpt1freq, PID_FREQ, init);
 
 	// init yaw position PID controller's context
 	dsp_setpid(&yawpv, st.yp, st.yi, st.yd, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init vertical acceleration PID controller's context
-	dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd, st.dpt1freq,
+	dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd, 1000.5, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init climbrate PID controller's context
-	dsp_setpid(&cpv, st.cp, st.ci, st.cd, st.dpt1freq,
+	dsp_setpidbl(&cpv, st.cp, st.ci, st.cd, 1.5, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init altitude PID controller's context
-	dsp_setpid(&apv, st.ap, st.ai, st.ad, st.dpt1freq,
+	dsp_setpidbl(&apv, st.ap, st.ai, st.ad, 1.5, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init battery voltage low-pass filter
@@ -1255,28 +1255,28 @@ int stabilize(int ms)
 		// (called accro mode), use only rotation speed values
 		// from the gyroscope. Update speed PID controllers for
 		// roll and pitch and get next correction values.
-		rollcor = dsp_pid(&rollspv, rolltarget, gy, dt);
-		pitchcor = dsp_pid(&pitchspv, pitchtarget, gx, dt);
+		rollcor = dsp_pidbl(&rollspv, rolltarget, gy);
+		pitchcor = dsp_pidbl(&pitchspv, pitchtarget, gx);
 	}
 	else {
 		// if in double loop mode for tilt (most commonly used
 		// mode), first update roll and pitch POSITION PID
 		// controllers using currect roll and values and targets
 		// got from ERLS and get next correction values.
-		rollcor = dsp_pid(&rollpv, rolltarget, roll, dt);
-		pitchcor = dsp_pid(&pitchpv, pitchtarget, pitch, dt);
+		rollcor = dsp_pidbl(&rollpv, rolltarget, roll);
+		pitchcor = dsp_pidbl(&pitchpv, pitchtarget, pitch);
 
 		// then use this values to update roll and pitch speed
 		// PID controllers and get next SPEED correction values.
-		rollcor = dsp_pid(&rollspv, rollcor, gy, dt);
-		pitchcor = dsp_pid(&pitchspv, pitchcor, gx, dt);
+		rollcor = dsp_pidbl(&rollspv, rollcor, gy);
+		pitchcor = dsp_pidbl(&pitchspv, pitchcor, gx);
 	}
 
 	if (yawspeedpid) {
 		// if single PID loop mode for yaw is used just use
 		// rotation speed values around axis Z to upadte yaw PID
 		// controller and get next yaw correciton value
-		yawcor = dsp_pid(&yawspv, yawtarget, gz, dt);
+		yawcor = dsp_pidbl(&yawspv, yawtarget, gz);
 	}
 	else {
 		// if in double loop mode for yaw, first use yaw value
@@ -1287,7 +1287,7 @@ int stabilize(int ms)
 
 		// then use this value to update yaw speed PID
 		// controller and get next yaw SPEED correction value
-		yawcor = dsp_pid(&yawspv, yawcor, gz, dt);
+		yawcor = dsp_pidbl(&yawspv, yawcor, gz);
 	}
 
 	if (altmode == ALTMODE_POS) {
@@ -1295,22 +1295,22 @@ int stabilize(int ms)
 		// got from barometer readings and target altitude from
 		// ELRS remote to update altitude PID controller and
 		// get it's next correction value
-		thrustcor = dsp_pid(&apv, thrust,
-			dsp_getcompl(&altcompl) - alt0, dt);
+		thrustcor = dsp_pidbl(&apv, thrust,
+			dsp_getcompl(&altcompl) - alt0);
 
 		// then use altitude correction value and climb rate
 		// calculated by complimentary filter (barometer
 		// differentiating and accelerometer Z-axis integration)
 		// to update climb rate PID controller and get it's next
 		// correction value
-		thrustcor = dsp_pid(&cpv, thrustcor,
-			dsp_getcompl(&climbratecompl), dt);
+		thrustcor = dsp_pidbl(&cpv, thrustcor,
+			dsp_getcompl(&climbratecompl));
 
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
-		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&vtlpf), dt) + ht;
+		thrustcor = dsp_pidbl(&tpv, thrustcor + 1.0,
+			dsp_getlpf(&vtlpf)) + ht;
 	}
 	else if (altmode == ALTMODE_SPEED) {
 		// if consttant climb rate mode, first use climb rate
@@ -1319,15 +1319,14 @@ int stabilize(int ms)
 		// and target climb rate from ELRS remote to update
 		// climb rate PID controller and get it's next
 		// correction value
-		thrustcor = dsp_pid(&cpv, thrust,
-			dsp_getcompl(&climbratecompl), dt);
+		thrustcor = dsp_pidbl(&cpv, thrust,
+			dsp_getcompl(&climbratecompl));
 
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
-		thrustcor = dsp_pid(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&vtlpf), dt) + ht;
-
+		thrustcor = dsp_pidbl(&tpv, thrustcor + 1.0,
+			dsp_getlpf(&vtlpf)) + ht;
 	}
 	else {	
 		if (hovermode) {
@@ -1336,39 +1335,35 @@ int stabilize(int ms)
 			// controller using next low-pass filtered
 			// value of vertical acceleration and target
 			// got from ERLS remote
-			thrustcor = dsp_pid(&tpv, thrust + 1.0,
-				dsp_getlpf(&vtlpf), dt) + ht;
-
+			thrustcor = dsp_pidbl(&tpv, thrust + 1.0,
+				dsp_getlpf(&vtlpf)) + ht;
 		}
 		else {
 			// if no altitude hold and hover throttle mode
 			// is disabled, update thrust PID controller
 			// using next low-pass filtered value of thrust
 			// and target got from ERLS remote
-			thrustcor = dsp_pid(&tpv, thrust + 1.0,
-				dsp_getlpf(&tlpf), dt);
+			thrustcor = dsp_pidbl(&tpv, thrust + 1.0,
+				dsp_getlpf(&tlpf));
 		}
 	}
 
 	// disable I-term for all PID-controller,
 	// if disarmeed of no throttle
-	if (en < 0.5 
-		|| (altmode == ALTMODE_ACCEL 
-			&& thrust < 0)
+	if (en < 0.5
+		|| (altmode == ALTMODE_ACCEL && thrust < 0)
 		|| (altmode == ALTMODE_SPEED
 			&& thrust < -0.95 * st.climbratemax)
-		|| (altmode == ALTMODE_POS && !hovermode
-			&& thrust < 0.01)) {
-		dsp_resetpids(&pitchpv);
-		dsp_resetpids(&rollpv);
-		dsp_resetpids(&pitchspv);
-		dsp_resetpids(&rollspv);
+		|| (altmode == ALTMODE_POS && thrust < 0.01)) {
+		dsp_resetpidbls(&pitchpv);
+		dsp_resetpidbls(&rollpv);
+		dsp_resetpidbls(&pitchspv);
+		dsp_resetpidbls(&rollspv);
 		dsp_resetpids(&yawpv);
-		dsp_resetpids(&yawspv);
-		dsp_resetpids(&tpv);
-		dsp_resetpids(&cpv);
-		dsp_resetpids(&apv);
-
+		dsp_resetpidbls(&yawspv);
+		dsp_resetpidbls(&tpv);
+		dsp_resetpidbls(&cpv);
+		dsp_resetpidbls(&apv);
 	}
 
 	// calculate weights for motors
@@ -1695,11 +1690,10 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.d = v;
 		else					return (-1);
 
-		dsp_setpid(&pitchpv, st.p, st.i, st.d,
-			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpid(&rollpv, st.p, st.i, st.d,
-			st.dpt1freq, PID_FREQ, 0);
-
+		dsp_setpidbl(&pitchpv, st.p, st.i, st.d,
+			1.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&rollpv, st.p, st.i, st.d,
+			1.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "stilt") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.sp = v;
@@ -1707,11 +1701,10 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.sd = v;
 		else					return (-1);
 
-		dsp_setpid(&pitchspv, st.sp, st.si, st.sd,
-			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpid(&rollspv, st.sp, st.si, st.sd,
-			st.dpt1freq, PID_FREQ, 0);
-
+		dsp_setpidbl(&pitchspv, st.sp, st.si, st.sd,
+			0.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&rollspv, st.sp, st.si, st.sd,
+			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
 		if (strcmp(toks[2], "mode") == 0) {
@@ -1737,8 +1730,8 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.ysd = v;
 		else					return (-1);
 
-		dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd,
-			st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
+			1.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "throttle") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.zsp = v;
@@ -1746,8 +1739,8 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.zsd = v;
 		else					return (-1);
 
-		dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd,
-			st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd,
+			1000.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.cp = v;
@@ -1755,8 +1748,8 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.cd = v;
 		else					return (-1);
 
-		dsp_setpid(&cpv, st.cp, st.ci, st.cd,
-			st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&cpv, st.cp, st.ci, st.cd,
+			1.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.ap = v;
@@ -1764,8 +1757,8 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.ad = v;
 		else					return (-1);
 
-		dsp_setpid(&apv, st.ap, st.ai, st.ad,
-			st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&apv, st.ap, st.ai, st.ad,
+			1.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -1843,23 +1836,22 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 	else if (strcmp(toks[1], "d") == 0) {
 		st.dpt1freq = atof(toks[2]);
 
-		dsp_setpid(&pitchpv, st.p, st.i, st.d,
-			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpid(&rollpv, st.p, st.i, st.d,
-			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpid(&pitchspv, st.sp, st.si, st.sd,
-			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpid(&rollspv, st.sp, st.si, st.sd,
-			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpid(&yawspv, st.ysp, st.ysi, st.ysd,
-			st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&pitchpv, st.p, st.i, st.d,
+			1.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&rollpv, st.p, st.i, st.d,
+			1.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&pitchspv, st.sp, st.si, st.sd,
+			1.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&rollspv, st.sp, st.si, st.sd,
+			1.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
+			1.5, st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
 			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpid(&tpv, st.zsp, st.zsi, st.zsd,
-			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpid(&cpv, st.cp, st.ci, st.cd,
-			st.dpt1freq, PID_FREQ, 0);
-
+		dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd,
+			1000.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(&cpv, st.cp, st.ci, st.cd,
+			1.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "vaccel") == 0) {
 		st.ttcoef = atof(toks[2]);
@@ -2572,7 +2564,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// 7 value is less than -25
 	if (cd->chf[ERLS_CH_THRMODE] < -0.25) {
 		altmode = ALTMODE_ACCEL;
-
 
 		if (cd->chf[ERLS_CH_HOVER] < 0.0) {
 			hovermode = 0;
