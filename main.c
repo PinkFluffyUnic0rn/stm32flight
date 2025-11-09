@@ -286,8 +286,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 }
 
 // Get battery voltage from ADC.
-//
-// hadc -- ADC context.
 float batteryvoltage()
 {
 	uint32_t v;
@@ -303,8 +301,6 @@ float batteryvoltage()
 }
 
 // Get ESC current from ADC.
-//
-// hadc -- ADC context.
 float esccurrent()
 {
 	uint32_t v;
