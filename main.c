@@ -695,9 +695,9 @@ int setstabilize(int init)
 	dsp_setcompl(&altcompl, st.actcoef, DPS_FREQ, init);
 
 	// init roll and pitch position PID controller contexts
-	dsp_setpidbl(&pitchpv, st.p, st.i, st.d, 1.5, st.dpt1freq,
+	dsp_setpidbl(&pitchpv, st.p, st.i, st.d, 0.5, st.dpt1freq,
 		PID_FREQ, init);
-	dsp_setpidbl(&rollpv, st.p, st.i, st.d, 1.5, st.dpt1freq,
+	dsp_setpidbl(&rollpv, st.p, st.i, st.d, 0.5, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init roll, pitch and yaw speed PID controller contexts
@@ -706,22 +706,22 @@ int setstabilize(int init)
 	dsp_setpidbl(&rollspv, st.sp, st.si, st.sd,
 		0.5, st.dpt1freq, PID_FREQ, init);
 	dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
-		1.5, st.dpt1freq, PID_FREQ, init);
+		0.5, st.dpt1freq, PID_FREQ, init);
 
 	// init yaw position PID controller's context
 	dsp_setpid(&yawpv, st.yp, st.yi, st.yd, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init vertical acceleration PID controller's context
-	dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd, 1000.5, st.dpt1freq,
+	dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd, 0.5, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init climbrate PID controller's context
-	dsp_setpidbl(&cpv, st.cp, st.ci, st.cd, 1.5, st.dpt1freq,
+	dsp_setpidbl(&cpv, st.cp, st.ci, st.cd, 0.5, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init altitude PID controller's context
-	dsp_setpidbl(&apv, st.ap, st.ai, st.ad, 1.5, st.dpt1freq,
+	dsp_setpidbl(&apv, st.ap, st.ai, st.ad, 0.5, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init battery voltage low-pass filter
@@ -1347,7 +1347,8 @@ int stabilize(int ms)
 	// disable I-term for all PID-controller,
 	// if disarmeed of no throttle
 	if (en < 0.5
-		|| (altmode == ALTMODE_ACCEL && thrust < 0)
+		|| (altmode == ALTMODE_ACCEL && thrust < 0
+			&& !hovermode)
 		|| (altmode == ALTMODE_SPEED
 			&& thrust < -0.95 * st.climbratemax)
 		|| (altmode == ALTMODE_POS && thrust < 0.01)) {
@@ -1687,9 +1688,9 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpidbl(&pitchpv, st.p, st.i, st.d,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 		dsp_setpidbl(&rollpv, st.p, st.i, st.d,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "stilt") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.sp = v;
@@ -1727,7 +1728,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "throttle") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.zsp = v;
@@ -1736,7 +1737,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd,
-			1000.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.cp = v;
@@ -1745,7 +1746,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpidbl(&cpv, st.cp, st.ci, st.cd,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		if (strcmp(toks[2], "p") == 0)		st.ap = v;
@@ -1754,7 +1755,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else					return (-1);
 
 		dsp_setpidbl(&apv, st.ap, st.ai, st.ad,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -1833,21 +1834,21 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 		st.dpt1freq = atof(toks[2]);
 
 		dsp_setpidbl(&pitchpv, st.p, st.i, st.d,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 		dsp_setpidbl(&rollpv, st.p, st.i, st.d,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 		dsp_setpidbl(&pitchspv, st.sp, st.si, st.sd,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 		dsp_setpidbl(&rollspv, st.sp, st.si, st.sd,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 		dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
 			st.dpt1freq, PID_FREQ, 0);
 		dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd,
-			1000.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 		dsp_setpidbl(&cpv, st.cp, st.ci, st.cd,
-			1.5, st.dpt1freq, PID_FREQ, 0);
+			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "vaccel") == 0) {
 		st.ttcoef = atof(toks[2]);
