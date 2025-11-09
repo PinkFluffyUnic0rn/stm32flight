@@ -1,7 +1,14 @@
+/**
+* @file crc.h
+* @brief CRC calculation
+*/
+
 #ifndef CRC_H
 #define CRC_H
 
-// CRC-8 values table
+/**
+* @brief CRC-8 values table
+*/
 static const uint8_t crc8_tbl [] = {
 	0x00, 0xd5, 0x7f, 0xaa, 0xfe, 0x2b, 0x81, 0x54,
 	0x29, 0xfc, 0x56, 0x83, 0xd7, 0x02, 0xa8, 0x7d,
@@ -37,7 +44,9 @@ static const uint8_t crc8_tbl [] = {
 	0xad, 0x78, 0xd2, 0x07, 0x53, 0x86, 0x2c, 0xf9
 };
 
-// CRC-16 values table
+/**
+* @brief CRC-16 values table
+*/
 static const uint16_t crc16_tbl[] = {
 	0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
 	0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
@@ -73,10 +82,12 @@ static const uint16_t crc16_tbl[] = {
 	0xfbcf, 0xea46, 0xd8dd, 0xc954, 0xbdeb, 0xac62, 0x9ef9, 0x8f70
 };
 
-// CRC-8 calculation.
-//
-// data -- data buffer that need CRC.
-// len -- data buffer length.
+/**
+* @brief CRC-8 calculation.
+* @param data data buffer that need CRC
+* @param len data buffer length
+* @return calculated CRC-8
+*/
 static inline uint8_t crc8(const uint8_t *data, uint8_t len)
 {
 	uint8_t crc;
@@ -89,10 +100,12 @@ static inline uint8_t crc8(const uint8_t *data, uint8_t len)
 	return crc;
 }
 
-// CRC-16 calculation.
-//
-// data -- data buffer that need CRC.
-// len -- data buffer length
+/**
+* @brief CRC-16 calculation.
+* @param data data buffer that need CRC
+* @param len data buffer length
+* @return calculated CRC-16
+*/
 static inline unsigned short crc16(const uint8_t *data, uint16_t len)
 {
 	unsigned short crc;
