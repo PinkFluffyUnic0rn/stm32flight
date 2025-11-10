@@ -63,7 +63,7 @@
 	((pid)->s = ((pid)->s > (v)) ? (v) : (pid)->s)
 
 /**
-* @brief Low-pass filter's order
+* @brief Low-pass filter's order.
 */
 enum DSP_LPFORDER {
 	DSP_LPFORDER_0 = 0,	/*!< unity filter */
@@ -74,7 +74,7 @@ enum DSP_LPFORDER {
 
 /**
 * @brief Low pass filter context it holds lpf's
-* alpha and accumulated filter data between calls
+* alpha and accumulated filter data between calls.
 */
 struct dsp_lpf {
 	float s1;			/*!< accumulated value */

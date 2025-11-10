@@ -1,3 +1,8 @@
+/**
+* @file main.c
+* @brief Main file with entry point
+*/
+
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -28,230 +33,324 @@
 #include "uartconf.h"
 #include "irc.h"
 
-// device numbers
-#define ICM_DEV		0
-#define DPS_DEV		1
-#define QMC_DEV		2
-#define CRSF_DEV	3
-#define M10_DEV		4
-#define ESP_DEV		5
-#define UART_DEV	6
-#define IRC_DEV		7
-#define DEV_COUNT	8
+/**
+* @defgroup DEVNUMBERS
+* @brief Character devices numbers
+* @{
+*/
+#define ICM_DEV		0	/*!< IMU device number */
+#define DPS_DEV		1	/*!< barometer device number */
+#define QMC_DEV		2	/*!< magnetometer device number */
+#define CRSF_DEV	3	/*!< eLRS device number */
+#define M10_DEV		4	/*!< GNSS device number */
+#define ESP_DEV		5	/*!< ESP device number */
+#define UART_DEV	6	/*!< UART debug device number */
+#define IRC_DEV		7	/*!< video TX device number */
+/**
+* @}
+*/
 
-// Timer events count
-#define TEV_COUNT	7
+#define DEV_COUNT	8	/*!< character devices count */
 
-// Timer events IDs
-#define TEV_PID 	0
-#define TEV_CHECK 	1
-#define TEV_DPS		2
-#define TEV_QMC		3
-#define TEV_LOG		4
-#define TEV_TELE	5
-#define TEV_POWER	6
+#define TEV_COUNT	7	/*!< Timer events count */
 
-// Periodic events frequencies
-#define PID_FREQ 4000
-#define CHECK_FREQ 1
-#define DPS_FREQ 128
-#define QMC_FREQ 100
-#define TELE_FREQ 10
-#define POWER_FREQ 500
+/**
+* @defgroup TIMEREVENTIDS
+* @brief Timer events IDs
+* @{
+*/
+#define TEV_PID 	0	/*!< PID event ID */
+#define TEV_CHECK 	1	/*!< connection check event ID */
+#define TEV_DPS		2	/*!< barometer update event ID */
+#define TEV_QMC		3	/*!< magnetometer update event ID */
+#define TEV_LOG		4	/*!< log update event ID */
+#define TEV_TELE	5	/*!< telemetry send event ID */
+#define TEV_POWER	6	/*!< battery power update event ID */
+/**
+* @}
+*/
 
-// Timeout in seconds before quadcopter disarm
-// when got no data from ERLS receiver
+/**
+* @defgroup EVENTFREQUENCIES
+* @brief Periodic events frequencies
+* @{
+*/
+#define PID_FREQ 4000	/*!< PID event frequency */
+#define CHECK_FREQ 1	/*!< connection check event frequency */
+#define DPS_FREQ 128	/*!< barometer update event frequency */
+#define QMC_FREQ 100	/*!< magnetometer update event frequency */
+#define TELE_FREQ 10	/*!< telemetry send event frequency */
+#define POWER_FREQ 500	/*!< battery power update event frequency */
+/**
+* @}
+*/
+
+/**
+* @brief timeout in seconds before quadcopter disarm
+	when got no data from ERLS receiver
+*/
 #define ELRS_TIMEOUT 2
 
-// Time required to register button push,
-// used for buttons and switches that controls
-// time consuming functions
+/**
+* @brief time required to register button push,
+	used for buttons and switches that controls
+	time consuming functions
+*/
 #define ELRS_PUSHTIMEOUT 0.1
 
-// eRLS channels mapping
-#define ERLS_CH_ROLL		0
-#define ERLS_CH_PITCH		1
-#define ERLS_CH_THRUST		2
-#define ERLS_CH_YAW		3
-#define ERLS_CH_YAWMODE		4
-#define ERLS_CH_ATTMODE		5
-#define ERLS_CH_THRMODE		6
-#define ERLS_CH_ONOFF		7
-#define ERLS_CH_ALTCALIB	8
-#define ERLS_CH_HOVER		10
-#define ERLS_CH_SETSLOT		15
+/**
+* @defgroup ERLSCHANNELS
+* @brief eRLS channels mapping
+* @{
+*/
+#define ERLS_CH_ROLL		0	/*!< roll channel */
+#define ERLS_CH_PITCH		1	/*!< pitch channel */
+#define ERLS_CH_THRUST		2	/*!< throttle channel */
+#define ERLS_CH_YAW		3	/*!< yaw channel */
+#define ERLS_CH_YAWMODE		4	/*!< yaw mode channel */
+#define ERLS_CH_ATTMODE		5	/*!< attitude mode channel */
+#define ERLS_CH_THRMODE		6	/*!< altitude mode channel */
+#define ERLS_CH_ONOFF		7	/*!< on/off channel */
+#define ERLS_CH_ALTCALIB	8	/*!< recalibration channel */
+#define ERLS_CH_HOVER		10	/*!< hover mode channel */
+#define ERLS_CH_SETSLOT		15	/*!< settings slot channel */
+/**
+* @}
+*/
 
+/**
+* @brief Altitude control mode.
+*/
 enum ALTMODE {
-	ALTMODE_ACCEL	= 0,
-	ALTMODE_SPEED	= 1,
-	ALTMODE_POS	= 2
+	ALTMODE_ACCEL	= 0,	/*!< acceleration stabilization */
+	ALTMODE_SPEED	= 1,	/*!< climb rate stabilization */
+	ALTMODE_POS	= 2	/*!< altitude stabilization */
 };
 
+/**
+* @brief GNSS data status.
+*/
 enum GNSSSTATUS {
-	GNSSSTATUS_VALID = 0,
-	GNSSSTATUS_INVALID = 1
+	GNSSSTATUS_VALID = 0,	/*!< data is valid */
+	GNSSSTATUS_INVALID = 1	/*!< data is invalid */
 };
 
+/**
+* @brief Latitude direction.
+*/
 enum LATDIR {
-	LATDIR_N = 0,
-	LATDIR_S = 1
+	LATDIR_N = 0,	/*!< north */
+	LATDIR_S = 1,	/*!< south */
 };
 
+/**
+* @brief Longitude direction.
+*/
 enum LONDIR {
-	LONDIR_E = 0,
-	LONDIR_W = 1
+	LONDIR_E = 0,	/*!< east */
+	LONDIR_W = 1	/*!< west */
 };
 
+/**
+* @brief Magnetic declination direction.
+*/
 enum MAGVARDIR {
-	MAGVARDIR_E = 0,
-	MAGVARDIR_W = 1
+	MAGVARDIR_E = 0,	/*!< east */
+	MAGVARDIR_W = 1		/*!< west */
 };
 
+/**
+* @brief Configuration value type.
+*/
 enum CONFVALTYPE {
-	CONFVALTYPE_INT		= 0,
-	CONFVALTYPE_FLOAT	= 1,
-	CONFVALTYPE_STRING	= 2
+	CONFVALTYPE_INT		= 0,	/*!< integer */
+	CONFVALTYPE_FLOAT	= 1,	/*!< float */
+	CONFVALTYPE_STRING	= 2	/*!< string */
 };
 
-// Values got from GNSS module using NMEA protocol
+/**
+* @brief Values got from GNSS module using NMEA protocol
+*/
 struct gnss_data {
-	enum GNSSSTATUS status;		// GNSS data status
-					// 1 if valid, 0 otherwise
+	enum GNSSSTATUS status;		/*!< GNSS data status 
+					1 if valid, 0 otherwise */
 
-	float time;			// seconds passed from 00:00 UTC
-	char date[10];			// date in format dd.mm.yy
+	float time;			/*!< seconds passed from
+					00:00 UTC */
+	char date[10];			/*!< date in format dd.mm.yy */
 
-	uint8_t lat;			// latitude
-	float latmin;			// latitude minutes
-	enum LATDIR latdir;		// latitude direction, 1 if
-					// south, 0 if north
+	uint8_t lat;			/*!< latitude */
+	float latmin;			/*!< latitude minutes */
+	enum LATDIR latdir;		/*!< latitude direction, 1 if
+					south, 0 if north */
 
-	uint8_t lon;			// longitude
-	float lonmin;			// longitude minutes
-	enum LONDIR londir;		// longitude direction, 1 if
-					// west, 0 if east
+	uint8_t lon;			/*!< longitude */
+	float lonmin;			/*!< longitude minutes */
+	enum LONDIR londir;		/*!< longitude direction, 1 if */
+					/*!< west, 0 if east */
 
-	float magvar;			// magnetic declination in
-					// degrees
-	enum MAGVARDIR  magvardir;	// magnetic declination
-					// direction, 0 if east, 1 if
-					// west
+	float magvar;			/*!< magnetic declination in
+					degrees */
+	enum MAGVARDIR  magvardir;	/*!< magnetic declination
+					direction, 0 if east, 1 if
+					west */
 
-	float speed;			// speed in knots
-	float course;			// course toward north pole
-					// in degrees
-	float altitude;			// altitude in meters
+	float speed;			/*!< speed in knots */
+	float course;			/*!< course toward north pole
+					in degrees */
+	float altitude;			/*!< altitude in meters */
 
-	int quality;			// link quality
-	uint8_t satellites;		// satellites count
+	int quality;			/*!< link quality */
+	uint8_t satellites;		/*!< satellites count */
 };
 
-// stabilization modes short codes that is
-// sent to eLRS remote inside telemetry packets
-const char *attmodestr[] = {"ac", "st", "sp", "ps"};
-const char *yawmodestr[] = {"sp", "cs"};
-const char *altmodestr[] = {"tr", "cl", "al"};
+/**
+* @defgroup MODESTR
+* @brief Stabilization modes short codes that is
+	sent to eLRS remote inside telemetry packets
+* @{
+*/
+const char *attmodestr[] = {"ac", "st", "sp", "ps"}; /*!< attitude mode */
+const char *yawmodestr[] = {"sp", "cs"};	/*!< yaw mode */
+const char *altmodestr[] = {"tr", "cl", "al"};	/*!< altitude mode */
+/**
+* @}
+*/
 
-// Flight controller board's devices drivers
+
+/**
+* @brief Flight controller board's character devices drivers
+*/
 struct cdevice dev[DEV_COUNT];
+
+/**
+* @brief Flight controller board's block device (memory chip)
+*/
 struct bdevice flashdev;
 
-// DSP contexts
-struct dsp_lpf batlpf;
-struct dsp_lpf currlpf;
+/**
+* @defgroup DSPCONTEXTS
+* @brief DSP contexts
+* @{
+*/
+struct dsp_lpf batlpf;	/*!< battery voltage low-pass filter */
+struct dsp_lpf currlpf;	/*!< battery voltage low-pass filter */
 
-struct dsp_lpf valpf;
-struct dsp_lpf tlpf;
-struct dsp_lpf vtlpf;
+struct dsp_lpf valpf;	/*!< vertical acceleration unity filter */
+struct dsp_lpf tlpf;	/*!< trust acceleration low-pass filter */
+struct dsp_lpf vtlpf;	/*!< vertical acceleration low-pass filter */
 
-struct dsp_lpf altlpf;
-struct dsp_lpf templpf;
+struct dsp_lpf altlpf;	/*!< altitude low-pass filter */
+struct dsp_lpf templpf;	/*!< temperature low-pass filter */
 
-struct dsp_lpf accxpt1;
-struct dsp_lpf accypt1;
-struct dsp_lpf acczpt1;
+struct dsp_lpf accxpt1;	/*!< accelerometer x low-pass filter */
+struct dsp_lpf accypt1;	/*!< accelerometer y low-pass filter */
+struct dsp_lpf acczpt1;	/*!< accelerometer z low-pass filter */
 
-struct dsp_lpf gyroxpt1;
-struct dsp_lpf gyroypt1;
-struct dsp_lpf gyrozpt1;
+struct dsp_lpf gyroxpt1;	/*!< gyroscope x low-pass filter */
+struct dsp_lpf gyroypt1;	/*!< gyroscope y low-pass filter */
+struct dsp_lpf gyrozpt1;	/*!< gyroscope z low-pass filter */
 
-struct dsp_lpf magxlpf;
-struct dsp_lpf magylpf;
-struct dsp_lpf magzlpf;
+struct dsp_lpf magxlpf;	/*!< gyroscope x low-pass filter */
+struct dsp_lpf magylpf;	/*!< gyroscope y low-pass filter */
+struct dsp_lpf magzlpf;	/*!< gyroscope z low-pass filter */
 
-struct dsp_compl pitchcompl;
-struct dsp_compl rollcompl;
-struct dsp_compl yawcompl;
+struct dsp_compl pitchcompl;	/*!< pitch low-pass filter */
+struct dsp_compl rollcompl;	/*!< roll low-pass filter */
+struct dsp_compl yawcompl;	/*!< yaw low-pass filter */
 
-struct dsp_compl climbratecompl;
-struct dsp_compl altcompl;
+struct dsp_compl climbratecompl; /*!< climb rate complimentary filter */
+struct dsp_compl altcompl; /*!< altitude complimentary filter */
 
-struct dsp_pidblval pitchpv;
-struct dsp_pidblval rollpv;
-struct dsp_pidblval pitchspv;
-struct dsp_pidblval rollspv;
-struct dsp_pidval yawpv;
-struct dsp_pidblval yawspv;
-struct dsp_pidblval tpv;
-struct dsp_pidblval cpv;
-struct dsp_pidblval apv;
+struct dsp_pidblval pitchpv;	/*!< pitch PID context */
+struct dsp_pidblval rollpv;	/*!< roll PID context */
+struct dsp_pidblval pitchspv;	/*!< pitch speed PID context */
+struct dsp_pidblval rollspv;	/*!< roll speed PID context */
+struct dsp_pidval yawpv;	/*!< yaw PID context */
+struct dsp_pidblval yawspv;	/*!< yaw speed PID context */
+struct dsp_pidblval tpv;	/*!< vertical acceleration PID context */
+struct dsp_pidblval cpv;	/*!< climb rate PID context */
+struct dsp_pidblval apv;	/*!< altitude PID context */
+/**
+* @}
+*/
 
-// Global storage for sensor data
-// that aquired in separate events
-struct qmc_data qmcdata;
-struct gnss_data  gnss;
-struct crsf_tele tele;
+/**
+* @defgroup GLOBALSTORAGE
+* @brief Global storage for sensor
+	data that aquired in separate events
+* @{
+*/
+struct qmc_data qmcdata;	/*!< magnetometer data */
+struct gnss_data gnss;		/*!< GNSS data */
+struct crsf_tele tele;		/*!< telemetry values */
+/**
+* @}
+*/
 
-// Control values
-float thrust = 0.0; // motors basic thrust
-float rolltarget = 0.0; // roll PID target
-float pitchtarget = 0.0; // pitch PID target
-float yawtarget = 0.0; // yaw PID target
-float ltm = 1.0; // left-top motor thrust scaling
-float lbm = 1.0; // left-bot motor thrust scaling
-float rtm = 1.0; // right-top motor thrust scaling
-float rbm = 1.0; // right-bot motor thrust scaling
-float en = 0.0; // 1.0 when motors turned on, 0.0 otherwise
-enum ALTMODE altmode = 0; // ALTMODE_POS if in altitude hold mode,
-			  // ALTMODE_SPEED if climbrate control mode,
-			  // ALTMODE_ACCEL if acceleration control mode
-int speedpid = 0;	// 1 if only gyroscope if used for yaw
-			// stabilization, 0 if accelerometer is used
-int yawspeedpid = 0;	// 1 if only gyroscope if used for yaw
-			// stabilization, 0 if magnetometer is used
-int hovermode = 0;;
+/**
+* @defgroup CONTROLVALUES
+* @brief Control values
+* @{
+*/
+float thrust = 0.0; /*!< motors basic thrust */
+float rolltarget = 0.0; /*!< roll PID target */
+float pitchtarget = 0.0; /*!< pitch PID target */
+float yawtarget = 0.0; /*!< yaw PID target */
+float ltm = 1.0; /*!< left-top motor thrust scaling */
+float lbm = 1.0; /*!< left-bot motor thrust scaling */
+float rtm = 1.0; /*!< right-top motor thrust scaling */
+float rbm = 1.0; /*!< right-bot motor thrust scaling */
+float en = 0.0; /*!< 1.0 when motors turned on, 0.0 otherwise */
+enum ALTMODE altmode = 0; /*!< ALTMODE_POS if in altitude hold mode,
+			ALTMODE_SPEED if climbrate control mode,
+			ALTMODE_ACCEL if acceleration control mode */
+int speedpid = 0;	/*!<  1 if only gyroscope if used for yaw
+			stabilization, 0 if accelerometer is used */
+int yawspeedpid = 0;	/*!< 1 if only gyroscope if used for yaw
+			stabilization, 0 if magnetometer is used */
+int hovermode = 0; /*!< hover mode, when throttle is
+			controlled relative to hover throttle */
 
-int elrs = 0; // 1 when ELRS control is active (ELRS remote's channel 8
-	      // is > 50)
+int elrs = 0; /*!< 1 when ELRS control is active (ELRS remote's
+		channel 8 is > 50) */
 
-// Pressure and altitude initial values
-float alt0 = 0.0;
-float goffset = 0.0;
-float gscale = 1.0;
+/**
+* @}
+*/
 
-// Current settings slot
-int curslot = 0;
+float alt0 = 0.0;	/*!< reference altitude */
+float goffset = 0.0;	/*!< free fall acceleration (g) value offset */
+float gscale = 1.0;	/*!< free fall acceleration (g) value scale */
 
-// Timer events
-struct timev evs[TEV_COUNT];
+int curslot = 0; /*!< current settings slot */
 
-// Stabilization loops counter
-int loops = 0;
+struct timev evs[TEV_COUNT]; /*!< timer events */
 
-// Stabilization loops performed in last second
-int loopscount = 0;
+int loops = 0; /*!< stabilization loops counter */
 
-// Timeout counter for the ELRS reciver. Set to ELRS_TIMEOUT after
-// receiving useful packet from receiver and decreased by 1 every
-// second. If it falls to 0, quadcopter disarms.
+int loopscount = 0; /*!< stabilization loops performed in last second */
+
+/**
+* @brief Timeout counter for the ELRS reciver. Set to
+	ELRS_TIMEOUT after receiving useful packet from receiver
+	and decreased by 1 every second. If it falls to 0,
+	quadcopter disarms.
+*/
 int elrstimeout = ELRS_TIMEOUT;
 
-// emergency disarm triggered, further
-// arming is possible only after reboot
+/**
+* @brief emergency disarm triggered, further
+	arming is possible only after reboot
+*/
 int emergencydisarm = 0;
 
-// external interrupt callback. It calls interrupt hadlers from
-// drivers for devices that use external interrupts.
+/**
+* @brief External interrupt callback. It calls interrupt handlers
+	from drivers for devices that use external interrupts.
+* @param pin number of pin triggered the callback
+* @return none
+*/
 void HAL_GPIO_EXTI_Callback(uint16_t pin)
 {
 	if (DEVITENABLED(dev[ESP_DEV].status)) {
@@ -259,10 +358,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
 	}
 }
 
-// UART receive callback. It calls interrupt handlers from
-// drivers for devices working through UART.
-//
-// huart -- context for UART triggered that callback.
+/**
+* @brief UART receive callback. It calls interrupt handlers
+	from drivers for devices working through UART.
+* @param huart context for UART triggered that callback
+* @return none
+*/
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (DEVITENABLED(dev[M10_DEV].status))
@@ -275,17 +376,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		dev[UART_DEV].interrupt(dev[UART_DEV].priv, huart);
 }
 
-// UART error callback. Calls UART error handlers from
-// drivers for devices working through UART.
-//
-// huart -- context for UART triggered that callback.
+/**
+* @brief UART error callback. Calls UART error handlers
+	from drivers for devices working through UART.
+* @param huart context for UART triggered that callback.
+* @return none
+*/
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	if (DEVITENABLED(dev[ESP_DEV].status))
 		dev[ESP_DEV].error(dev[ESP_DEV].priv, huart);
 }
 
-// Get battery voltage from ADC.
+/**
+* @brief Get battery voltage from ADC.
+* @return battery voltage
+*/
 float batteryvoltage()
 {
 	uint32_t v;
@@ -300,7 +406,10 @@ float batteryvoltage()
 	return (v / (float) 0xfff * 17.85882);
 }
 
-// Get ESC current from ADC.
+/**
+* @brief Get ESC current from ADC.
+* @return battery current in amperes
+*/
 float esccurrent()
 {
 	uint32_t v;
@@ -315,9 +424,11 @@ float esccurrent()
 	return (v / (float) 0xfff * st.currscale + st.curroffset);
 }
 
-// DMA callback for dshot processing
-//
-// hdma -- DMA device that triggered this callback.
+/**
+* @brief DMA callback for dshot processing.
+* @param hdma DMA device that triggered this callback
+* @return none
+*/
 static void dshotdmacb(DMA_HandleTypeDef *hdma)
 {
 	TIM_HandleTypeDef *htim;;
@@ -335,12 +446,13 @@ static void dshotdmacb(DMA_HandleTypeDef *hdma)
 		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
 }
 
-// Fill buffer, that contains PWM duty cycle values of a
-// a DSHOT packet using 16 bit value.
-//
-// buf -- buffer for PWM duty cycle values that is used by DMA.
-// val -- 16 bit value from 0 to 2047
-// tele -- 1 if telemetry bit needed, 0 otherwise
+/**
+* @brief Fill buffer, that contains PWM duty cycle values of a
+	a DSHOT packet using 16 bit value.
+* @param buf buffer for PWM duty cycle values that is used by DMA
+* @param val 16 bit value from 0 to 2047
+* @param tele 1 if telemetry bit needed, 0 otherwise
+*/
 void dshotsetbuf(uint16_t *buf, uint16_t val, int tele)
 {
 	uint16_t pack;
@@ -368,11 +480,13 @@ void dshotsetbuf(uint16_t *buf, uint16_t val, int tele)
 	buf[17] = 0;
 }
 
-// Fill buffer, that contains PWM duty cycle values of a
-// a DSHOT packet with thrust value.
-//
-// buf -- buffer for PWM duty cycle values that is used by DMA.
-// v -- value from 0.0 to 1.0
+/**
+* @brief Fill buffer, that contains PWM duty cycle values of a
+	a DSHOT packet with thrust value.
+* @param buf buffer for PWM duty cycle values that is used by DMA
+* @param v value from 0.0 to 1.0
+* @return always 0
+*/
 inline int dshotsetthrust(uint16_t *buf, float v)
 {
 	// convert motor thrust value from [0.0;1.0]
@@ -383,10 +497,12 @@ inline int dshotsetthrust(uint16_t *buf, float v)
 	return 0;
 }
 
-// Send dshot special command to a DSHOT output.
-//
-// n -- a DSHOT output's number.
-// cmd -- command number.
+/**
+* @brief Send dshot special command to a DSHOT output.
+* @param n a DSHOT output's number
+* @param cmd command number
+* @return always 0
+*/
 int dshotcmd(int n, uint16_t cmd)
 {
 	static uint16_t dsbuf[18];
@@ -450,22 +566,29 @@ int dshotcmd(int n, uint16_t cmd)
 	return 0;
 }
 
-/* Set motors thrust
-
-      ltd    rtd
-        \    /
-   p     \  /
-   |
-   v     /  \
-        /    \
-      lbd    rbd
-
-         <- r
+/**
+* @brief Set motors thrust. All values should be between 0.0 and 1.0.
+* @param left-top motor thrust
+* @param right-top motor thrust
+* @param left-bottom motor thrust
+* @param right-bottom motor thrust
+* @return always 0
 */
-// all values should be between 0.0 and 1.0.
 int setthrust(float ltd, float rtd, float lbd, float rbd)
 {
 	static uint16_t dsbuf[4][18];
+
+	/*
+	      ltd    rtd
+		\    /
+	   p     \  /
+	   |
+	   v     /  \
+		/    \
+	      lbd    rbd
+
+		 <- r
+	*/
 
 	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
 		|| isnan(lbd) || !elrs)
@@ -508,7 +631,10 @@ int setthrust(float ltd, float rtd, float lbd, float rbd)
 	return 0;
 }
 
-// Init ESC's.
+/**
+* @brief Init ESC's.
+* @return none
+*/
 static void esc_init()
 {
 	__HAL_TIM_SET_AUTORELOAD(&htim1, DSHOT_BITLEN);
@@ -530,7 +656,10 @@ static void esc_init()
 	setthrust(0.0, 0.0, 0.0, 0.0);
 }
 
-// Init HP206c barometer.
+/**
+* @brief Init HP206c barometer.
+* @return none
+*/
 static void dps_init()
 {
 	struct dps_device d;
@@ -545,7 +674,10 @@ static void dps_init()
 		uartprintf("failed to initilize DPS368\r\n");
 }
 
-// Init IRC tramp video transmitter.
+/**
+* @brief Init IRC tramp video transmitter.
+* @return none
+*/
 static void irc_init()
 {
 	struct irc_device d;
@@ -560,7 +692,10 @@ static void irc_init()
 		uartprintf("failed to initilize IRC device\r\n");
 }
 
-// Init ICM-42688-P IMU.
+/**
+* @brief Init ICM-42688-P IMU.
+* @return none
+*/
 static void icm_init()
 {
 	struct icm_device d;
@@ -584,7 +719,10 @@ static void icm_init()
 		uartprintf("failed to initilize ICM-42688\r\n");
 }
 
-// Init QMC5883L magnetometer.
+/**
+* @brief Init QMC5883L magnetometer.
+* @return none
+*/
 static void qmc_init()
 {
 	struct qmc_device d;
@@ -600,7 +738,10 @@ static void qmc_init()
 		uartprintf("failed to initilize QMC5883L\r\n");
 }
 
-// Init ESP8285.
+/**
+* @brief Init ESP8285.
+* @return none
+*/
 static void espdev_init()
 {
 	struct esp_device d;
@@ -624,7 +765,10 @@ static void espdev_init()
 	uartprintf("ESP8266 initilized\r\n");
 }
 
-// Init ERLS receiver driver.
+/**
+* @brief Init ERLS receiver driver.
+* @return none
+*/
 static void crsfdev_init()
 {
 	struct crsf_device d;
@@ -634,7 +778,10 @@ static void crsfdev_init()
 	crsf_initdevice(&d, dev + CRSF_DEV);
 }
 
-// Init W25Q onboard flash memory.
+/**
+* @brief Init W25Q onboard flash memory.
+* @return none
+*/
 static void w25dev_init()
 {
 	struct w25_device d;
@@ -651,7 +798,10 @@ static void w25dev_init()
 	uartprintf("W25Q initilized\r\n");
 }
 
-// Init GNSS module.
+/**
+* @brief Init GNSS module.
+* @return none
+*/
 static void m10dev_init()
 {
 	struct m10_device d;
@@ -666,7 +816,10 @@ static void m10dev_init()
 	uartprintf("GPS device initilized\r\n");
 }
 
-// Init UART config connection.
+/**
+* @brief Init UART config connection.
+* @return none
+*/
 static void uartdev_init()
 {
 	struct uart_device d;
@@ -681,9 +834,11 @@ static void uartdev_init()
 	uartprintf("UART device initilized\r\n");
 }
 
-// Init/set stabilization loop.
-//
-// init -- if called during initilization.
+/**
+* @brief Init/set stabilization loop.
+* @param init 1, if called during initilization, 0 otherwise
+* @return always 0
+*/
 int setstabilize(int init)
 {
 	// init complementary filters contexts
@@ -753,14 +908,16 @@ int setstabilize(int init)
 	return 0;
 }
 
-// calculate tilt compensated heading direction using magnetometer
-// readings, roll value and pitch value.
-//
-// r -- roll value.
-// p -- pitch value.
-// x -- magnetometer's X axis value.
-// y -- magnetometer's Y axis value.
-// z -- magnetometer's Z axis value.
+/**
+* @brief Calculate tilt compensated heading direction
+	using magnetometer readings, roll value and pitch value.
+* @param r roll value
+* @param p pitch value
+* @param x magnetometer's X axis value
+* @param y magnetometer's Y axis value
+* @param z magnetometer's Z axis value
+* @return tilt compensated heading
+*/
 float qmc_heading(float r, float p, float x, float y, float z)
 {
 	x = st.mxsc * (x + st.mx0);
@@ -774,11 +931,13 @@ float qmc_heading(float r, float p, float x, float y, float z)
 	return circf(atan2f(y, x) + st.magdecl);
 }
 
-// Print quadcopter's postion and tilt data into a string.
-//
-// s -- output string.
-// md -- accelerometer and gyroscope data.
-// hd -- magnetometer data.
+/**
+* @brief Print quadcopter's postion and tilt data into a string.
+* @param s output string
+* @param md accelerometer and gyroscope data
+* @param hd magnetometer data
+* @return always 0
+*/
 int sprintpos(char *s, struct icm_data *id)
 {
 	s[0] = '\0';
@@ -837,10 +996,12 @@ int sprintpos(char *s, struct icm_data *id)
 	return 0;
 }
 
-// Print magmetometer data into a string.
-//
-// s -- output string.
-// hd -- magnetometer data.
+/**
+* @brief Print magmetometer data into a string.
+* @param s output string.
+* @param hd magnetometer data.
+* @return always 0
+*/
 int sprintqmc(char *s, struct qmc_data *hd)
 {
 	s[0] = '\0';
@@ -865,9 +1026,11 @@ int sprintqmc(char *s, struct qmc_data *hd)
 	return 0;
 }
 
-// Print all devices statuses into a string.
-//
-// s -- output string.
+/**
+* @brief Print all devices statuses into a string.
+* @param s output string
+* @return always 0
+*/
 int sprintdevs(char *s)
 {
 	int i;
@@ -902,9 +1065,11 @@ int sprintdevs(char *s)
 	return 0;
 }
 
-// Print various configuration values into a string.
-//
-// s -- output string.
+/**
+* @brief Print various configuration values into a string.
+* @param s output string
+* @return always 0
+*/
 int sprintvalues(char *s)
 {
 	s[0] = '\0';
@@ -960,9 +1125,11 @@ int sprintvalues(char *s)
 	return 0;
 }
 
-// Print all PID values into a string.
-//
-// s -- output string.
+/**
+* @brief Print all PID values into a string.
+* @param s output string
+* @return always 0
+*/
 int sprintpid(char *s)
 {
 	s[0] = '\0';
@@ -1014,9 +1181,11 @@ int sprintpid(char *s)
 	return 0;
 }
 
-// Print all GNSS values into a string.
-//
-// s -- output string.
+/**
+* @brief Print all GNSS values into a string.
+* @param s output string
+* @return always 0
+*/
 int sprintgnss(char *s) {
 	s[0] = '\0';
 
@@ -1044,9 +1213,11 @@ int sprintgnss(char *s) {
 	return 0;
 }
 
-// Print all control scaling values.
-//
-// s -- output string.
+/**
+* @brief Print all control scaling values.
+* @param s output string
+* @return always 0
+*/
 int sprintfctrl(char *s)
 {
 	s[0] = '\0';
@@ -1091,9 +1262,11 @@ int sprintfctrl(char *s)
 	return 0;
 }
 
-// Print filters coefficients into a string.
-//
-// s -- output string.
+/**
+* @brief Print filters coefficients into a string.
+* @param s output string
+* @return always 0
+*/
 int sprintffilters(char *s)
 {
 	s[0] = '\0';
@@ -1131,10 +1304,12 @@ int sprintffilters(char *s)
 	return 0;
 }
 
-// Stabilization loop. Callback for TEV_PID periodic event. It is the
-// place where is almost all work happening.
-//
-// ms -- microsecond passed from last callback invocation.
+/**
+* @brief Stabilization loop. Callback for TEV_PID periodic event.
+	It is the place where is almost all work happening.
+* @param ms microsecond passed from last callback invocation
+* @return always 0
+*/
 int stabilize(int ms)
 {
 	struct icm_data id;
@@ -1394,10 +1569,12 @@ int stabilize(int ms)
 	return 0;
 }
 
-// Check if ERLS connection is alive, disarm if not. Callback for
-// TEV_CHECK periodic event.
-//
-// ms -- microsecond passed from last callback invocation.
+/**
+* @brief Check if ERLS connection is alive, disarm if not. Callback
+	for TEV_CHECK periodic event.
+* @param ms microsecond passed from last callback invocation
+* @return always 0
+*/
 int checkconnection(int ms)
 {
 	// decrease ERLS timeout counter
@@ -1419,9 +1596,12 @@ int checkconnection(int ms)
 	return 0;
 }
 
-// Get readings from barometer. Callback for TEV_DPS periodic event.
-//
-// ms -- microsecond passed from last callback invocation.
+/**
+* @brief Get readings from barometer. Callback for
+	TEV_DPS periodic event.
+* @param ms microsecond passed from last callback invocation
+* @return always 0
+*/
 int dpsupdate(int ms)
 {
 	struct dps_data hd;
@@ -1468,9 +1648,12 @@ int dpsupdate(int ms)
 	return 0;
 }
 
-// Get readings from magnetomer. Callback for TEV_QMC periodic event.
-//
-// ms -- microsecond passed from last callback invocation.
+/**
+* @brief Get readings from magnetomer. Callback for TEV_QMC
+	periodic event.
+* @param ms microsecond passed from last callback invocation
+* @return always 0
+*/
 int qmcupdate(int ms)
 {
 	// if magnetometer isn't initilized, return
@@ -1488,10 +1671,13 @@ int qmcupdate(int ms)
 	return 0;
 }
 
-// Update log frame. If buffer isn't full, just move buffer pointer,
-// otherwise save buffer content into flash and set buffer pointer to 0.
-//
-// ms -- microsecond passed from last callback invocation.
+/**
+* @brief Update log frame. If buffer isn't full, just move
+	buffer pointer, otherwise save buffer content into flash and
+	set buffer pointer to 0.
+* @param ms microsecond passed from last callback invocation
+* @return always 0
+*/
 int logupdate(int ms)
 {
 	return 0;
@@ -1499,10 +1685,12 @@ int logupdate(int ms)
 
 	return 0;
 }
-	
-// Send telemetry through ELRS.
-//
-// ms -- microsecond passed from last callback invocation.
+
+/**
+* @brief Send telemetry through ELRS.
+* @param ms microsecond passed from last callback invocation
+* @return always 0
+*/
 int telesend(int ms)
 {
 	const char *am;
@@ -1563,6 +1751,11 @@ int telesend(int ms)
 	return 0;
 }
 
+/**
+* @brief Update battery voltage and current.
+* @param ms microsecond passed from last callback invocation
+* @return always 0
+*/
 int powercheck(int ms)
 {
 	dsp_updatelpf(&batlpf, batteryvoltage());
@@ -1571,9 +1764,12 @@ int powercheck(int ms)
 	return 0;
 }
 
-// Disarm command handler.
-//
-// toks -- list of parsed command tokens.
+/**
+* @brief Disarm command handler.
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return always 0
+*/
 int rcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	en = 0.0;
@@ -1581,9 +1777,12 @@ int rcmd(const struct cdevice *dev, const char **toks, char *out)
 	return 0;
 }
 
-// Recalibrate command handler.
-//
-// toks -- list of parsed command tokens.
+/**
+* @brief Recalibrate command handler.
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return always 0
+*/
 int ccmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	setstabilize(1);
@@ -1591,11 +1790,14 @@ int ccmd(const struct cdevice *dev, const char **toks, char *out)
 	return 0;
 }
 
-// "info" command handler. Print various sensor and control values.
-//
-// d -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "info" command handler. Print various
+	sensor and control values.
+* @param d charter device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 1 otherwise
+*/
 int infocmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "mpu") == 0) {
@@ -1662,11 +1864,13 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	return 1;
 }
 
-// "pid" command handler. Configure PID values.
-//
-// dev -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "pid" command handler. Configure PID values.
+* @param d charter device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	float v;
@@ -1763,12 +1967,14 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 	return 0;
 }
 
-// "flash" command handler. Write/read MCU's internal flash
-// used for storing configuraton.
-//
-// dev -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "flash" command handler. Write/read MCU's
+	internal flash used for storing configuraton.
+* @param d charter device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int flashcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "write") == 0)
@@ -1781,11 +1987,14 @@ int flashcmd(const struct cdevice *dev, const char **toks, char *out)
 	return 0;
 }
 
-// "compl" command handler. Configure pitch/roll complimentary filters.
-//
-// dev -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "compl" command handler. Configure
+	pitch/roll complimentary filters.
+* @param d charter device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int complcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "attitude") == 0) {
@@ -1809,11 +2018,13 @@ int complcmd(const struct cdevice *dev, const char **toks, char *out)
 	return 0;
 }
 
-// "lpf" command handler. Configure low-pass filters.
-//
-// dev -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "lpf" command handler. Configure low-pass filters.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "gyro") == 0) {
@@ -1863,11 +2074,13 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 	return 0;
 }
 
-// "adj" command handler. Configure various offset/scale values.
-//
-// dev -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "adj" command handler. Configure various offset/scale values.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	float v;
@@ -1937,11 +2150,13 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 	return 0;
 }
 
-// "log" command handler. Start/stop/get flight log.
-//
-// d -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "log" command handler. Start/stop/get flight log.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int logcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	char s[INFOLEN];
@@ -2024,11 +2239,13 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 }
 
 
-// "ctrl" command handler. Configure control ranges scaling.
-//
-// d -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "ctrl" command handler. Configure control ranges scaling.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	float v;
@@ -2061,11 +2278,13 @@ int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 	return 0;
 }
 
-// "system" command handler. Run system commands.
-//
-// d -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "system" command handler. Run system commands.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int systemcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "esp") == 0) {
@@ -2082,11 +2301,13 @@ int systemcmd(const struct cdevice *d, const char **toks, char *out)
 	return 0;
 }
 
-// "irc" command handler. Configure IRC tramp video transmitter.
-//
-// d -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "irc" command handler. Configure IRC tramp video transmitter.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int irccmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "frequency") == 0) {
@@ -2113,12 +2334,14 @@ int irccmd(const struct cdevice *d, const char **toks, char *out)
 	return 0;
 }
 
-// "motor" command handler. Configure motors output
-// number and direction.
-//
-// d -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "motor" command handler. Configure motors
+	output number and direction.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
 int motorcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "lt") == 0) {
@@ -2175,11 +2398,13 @@ int motorcmd(const struct cdevice *d, const char **toks, char *out)
 	return 0;
 }
 
-// "get" command handler. Get current configuration values.
-//
-// d -- charter device device that got this command.
-// toks -- list of parsed command tokens.
-// out -- command's output.
+/**
+* @brief "get" command handler. Get current configuration values.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 1 otherwise
+*/
 int getcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	const char **p;
@@ -2476,10 +2701,12 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	return 1;
 }
 
-// Set control values using CRSF packet.
-//
-// cd -- CRSF packet
-// ms -- microsecond passed from last CRSF packet
+/**
+* @brief Set control values using CRSF packet.
+* @param cd -- CRSF packet
+* @param ms -- microsecond passed from last CRSF packet
+* @return always 0
+*/
 int crsfcmd(const struct crsf_data *cd, int ms)
 {
 	static float slottimeout = ELRS_PUSHTIMEOUT;
@@ -2632,9 +2859,11 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	return 0;
 }
 
-// Store data got from NMEA message.
-//
-// nd -- data got from GNSS device through NMEA protocol.
+/**
+* @brief Store data got from NMEA message.
+* @param nd data got from GNSS device through NMEA protocol
+* @return always 0
+*/
 int m10msg(struct m10_data *nd)
 {
 	// got only altitude and signal quality data from GGA messages.
@@ -2674,7 +2903,10 @@ int m10msg(struct m10_data *nd)
 	return 0;
 }
 
-// Entry point
+/**
+* @brief Entry point
+* @return none
+*/
 int main(void)
 {
 	int elrsus;
