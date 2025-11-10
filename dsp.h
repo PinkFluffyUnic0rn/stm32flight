@@ -196,7 +196,7 @@ float dsp_updatelpf(struct dsp_lpf *ir, float v);
 * @param init 1, if internal values initializaion required, 0 otherwise.
 * @return always 0
 */
-float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
+int dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 	float dcutoff, int freq, int init);
 
 /**
@@ -210,7 +210,7 @@ float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 * @param init 1, if internal values initializaion required, 0 otherwise.
 * @return always 0
 */
-float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
+int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
 	float kd, float itresh, float dcutoff, int freq, int init);
 
 /**

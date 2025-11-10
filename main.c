@@ -217,7 +217,6 @@ const char *altmodestr[] = {"tr", "cl", "al"};	/*!< altitude mode */
 * @}
 */
 
-
 /**
 * @brief Flight controller board's character devices drivers
 */
@@ -1680,7 +1679,6 @@ int qmcupdate(int ms)
 */
 int logupdate(int ms)
 {
-	return 0;
 	log_update();
 
 	return 0;

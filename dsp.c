@@ -51,7 +51,7 @@ float dsp_updatelpf(struct dsp_lpf *ir, float v)
 	return ir->s1;
 }
 
-float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
+int dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 	float dcutoff, int freq, int init)
 {
 	if (init) {
@@ -68,7 +68,7 @@ float dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 	return 0;
 }
 
-float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
+int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
 	float kd, float itresh, float dcutoff, int freq, int init)
 {
 	float ts, tf, tt, c;
@@ -94,7 +94,6 @@ float dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
 	pv->b[0] = 1.0;
 	pv->b[1] = 8.0 * tf * c;
 	pv->b[2] = -(4.0 * tf - 2.0 * ts) * c;
-
 
 	return 0;
 }
