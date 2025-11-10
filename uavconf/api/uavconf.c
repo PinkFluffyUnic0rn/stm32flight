@@ -212,7 +212,7 @@ int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	rsis = sizeof(rsi);
 	if ((rsz = recvfrom(lsfd, out, BUFSZ, 0,
 			(struct sockaddr *) &rsi, &rsis)) <= 0) {
-		
+
 		// it no response and maximum wait time haven't
 		// already reached, increase it
 		wait = (wait < MAXWAIT) ? (wait * 15 / 10) :  wait;
@@ -220,7 +220,7 @@ int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 		return (-1);
 	}
 
-	
+
 	// CRC-16 check output	
 	out[5] = '\0';
 	if (strtol(out, &endptr, 10)
@@ -273,7 +273,7 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	rsis = sizeof(rsi);
 	if ((rsz = recvfrom(lsfd, out, BUFSZ, 0,
 			(struct sockaddr *) &rsi, &rsis)) <= 0) {
-		
+
 		// it no response and maximum wait time haven't
 		// already reached, increase it
 		wait = (wait < MAXWAIT) ? (wait * 15 / 10) :  wait;
@@ -511,14 +511,14 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 	d.sz = 0;
 	d.maxsz = 0;
 	d.bufoffset = 0;
-	
+
 	logtotalsz = 0;
 
 	// set all records in ordered records array to
 	// negative, marking they wasn't gotten yeat
 	for (i = 0; i < loadto; ++i)
 		recs[i] = -1;
-	
+
 	// while new log records ranges were
 	// downloaded in previous interation
 	check = 1;
@@ -600,7 +600,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 				// increase record batch size counter
 				++reccount;
 			}
-	
+
 			// if current batch size is enough or it is a
 			// last record and there is at least one record
 			// number in batch
@@ -669,9 +669,9 @@ int recvoutput(int lsfd, const struct sockaddr_in *rsi, char *buf)
 			(struct sockaddr *) &rsi, &rsis)) <= 0) {
 			return (-1);
 		}
-			
+
 		buf[rsz] = '\0';
-		
+
 		return 0;
 	}
 

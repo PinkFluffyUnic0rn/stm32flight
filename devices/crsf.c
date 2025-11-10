@@ -66,7 +66,7 @@ int crsf_interrupt(void *dev, const void *h)
 	uint8_t b;
 
 	d = dev;
-	
+
 	if (((UART_HandleTypeDef *)h)->Instance != d->huart->Instance)
 		return 0;
 
@@ -97,15 +97,15 @@ int crsf_interrupt(void *dev, const void *h)
 	}
 	else if (Packstate == 3) {
 		Pack[Packw].pl[Pack[Packw].len - Packrest - 1] = b;
-		
+
 		--Packrest;
-	
+
 		if (Packrest == 1)
 			Packstate = 4;
 	}
 	else if (Packstate == 4) {
 		Pack[Packw].crc = b;
-			
+
 		Packstate = 0;
 	}
 
@@ -134,13 +134,13 @@ int crsf_read(void *dev, void *dt, size_t sz)
 		Packr = (Packr + 1) % RXCIRCSIZE;
 		return (-1);
 	}
-	
+
 	if (crc8((uint8_t *)(Pack + Packr) + 1, 0x17)
 			!= Pack[Packr].crc) {
 		Packr = (Packr + 1) % RXCIRCSIZE;
 		return (-1);
 	}
-	
+
 	merged = value = 0;
 	curb = 0;
 
@@ -186,7 +186,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	memcpy(buf + 3, tele->mode, 14);
 	(buf + 3)[13] = '\0';
 	buf[15] = crc8(buf + 2, 13);
-	
+
 	memcpy(bufcommon, buf, 17);
 
 	buf[1] = 10;
@@ -256,7 +256,7 @@ int crsf_initdevice(void *is, struct cdevice *dev)
 	int r; 
 
 	memmove(crsf_devs + crsf_devcount, is, sizeof(struct crsf_device));
-	
+
 	sprintf(dev->name, "%s_%d", "crsf", crsf_devcount);
 
 	dev->priv = crsf_devs + crsf_devcount;
@@ -265,7 +265,7 @@ int crsf_initdevice(void *is, struct cdevice *dev)
 	dev->interrupt = crsf_interrupt;
 
 	r = crsf_init(crsf_devs + crsf_devcount++);
-	
+
 	dev->status = (r == 0) ? DEVSTATUS_INIT : DEVSTATUS_FAILED;
 
 	return 0;

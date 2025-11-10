@@ -60,7 +60,7 @@ int dps_getdata(void *d, void *dt, size_t sz)
 
 	data = (struct dps_data *) dt;
 	dev = (struct dps_device *) d;
-	
+
 	if (!init) {
 		dps_read(dev, DPS_PRS, buf, 6);
 
@@ -78,7 +78,7 @@ int dps_getdata(void *d, void *dt, size_t sz)
 		+ tsc * psc * (dev->c11 + psc * dev->c21);
 
 	data->tempf = (dev->c0 * 0.5 + dev->c1 * tsc);
-	
+
 	data->altf = (1.0f - powf(data->pressf / 101325.0f, 0.190295f))
 		* 44330.0f;
 
@@ -142,7 +142,7 @@ int dps_initdevice(void *is, struct cdevice *dev)
 	int r;
 
 	memmove(dps_devs + dps_devcount, is, sizeof(struct dps_device));
-	
+
 	sprintf(dev->name, "%s_%d", "dps368", dps_devcount);
 
 	dev->priv = dps_devs + dps_devcount;

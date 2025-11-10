@@ -112,7 +112,7 @@ int m10_interrupt(void *dev, const void *h)
 
 	if (((UART_HandleTypeDef *)h)->Instance != d->huart->Instance)
 		return 0;
-	
+
 	b = Rxbuf;
 
 	switch (State) {
@@ -120,7 +120,7 @@ int m10_interrupt(void *dev, const void *h)
 		if (b == 0xb5) {
 			Msg[Msgw].cnt = 0;
 			Msg[Msgw].type = M10_MSGTYPE_UBX;
-			
+
 			Msg[Msgw].ubx[Msg[Msgw].cnt++] = b;
 
 			State = M10_ITSTATE_UBXSYNC2;
@@ -149,14 +149,14 @@ int m10_interrupt(void *dev, const void *h)
 				goto drop;
 
 			Msg[Msgw].field[Msg[Msgw].cnt] = Pos;
-			
+
 			Msg[Msgw].xorgot ^= b;
 		}
 		else if (b == '*')
 			State = M10_ITSTATE_NMEAXORH;
 		else  {
 			Msg[Msgw].msg[Pos++] = b;
-			
+
 			Msg[Msgw].xorgot ^= b;
 		}
 
@@ -177,7 +177,7 @@ int m10_interrupt(void *dev, const void *h)
 			goto drop;
 
 		State = M10_ITSTATE_NMEALF;
-	
+
 		break;
 
 	case M10_ITSTATE_NMEALF:
@@ -188,38 +188,38 @@ int m10_interrupt(void *dev, const void *h)
 			Msgw = (Msgw + 1) % RXCIRCSIZE;
 
 		State = M10_ITSTATE_START;
-	
+
 		break;
 
 	case M10_ITSTATE_UBXSYNC2:
 		if (b != 0x62)
 			goto drop;
-			
+
 		Msg[Msgw].ubx[Msg[Msgw].cnt++] = b;
-	
+
 		State = M10_ITSTATE_UBXCLASS;
-		
+
 		break;
 
 	case M10_ITSTATE_UBXCLASS:
 		if (Msg[Msgw].cnt >= NMEA_MAXFIELDCOUNT) goto drop;
-		
+
 		Msg[Msgw].ubx[Msg[Msgw].cnt++] = b;
 
 		State = M10_ITSTATE_UBXID;
 		break;
-	
+
 	case M10_ITSTATE_UBXID:
 		if (Msg[Msgw].cnt >= NMEA_MAXFIELDCOUNT) goto drop;
-		
+
 		Msg[Msgw].ubx[Msg[Msgw].cnt++] = b;
-	
+
 		State = M10_ITSTATE_UBXLENL;
 		break;
 
 	case M10_ITSTATE_UBXLENL:
 		if (Msg[Msgw].cnt >= NMEA_MAXFIELDCOUNT) goto drop;
-		
+
 		Msg[Msgw].ubx[Msg[Msgw].cnt++] = b;
 
 		Ubxlen = b;
@@ -227,49 +227,49 @@ int m10_interrupt(void *dev, const void *h)
 		State = M10_ITSTATE_UBXLENH;
 
 		break;
-	
+
 	case M10_ITSTATE_UBXLENH:
 		if (Msg[Msgw].cnt >= NMEA_MAXFIELDCOUNT) goto drop;
-		
+
 		Msg[Msgw].ubx[Msg[Msgw].cnt++] = b;
-	
+
 		Ubxlen |= (b << 8);
-	
+
 		State = M10_ITSTATE_UBXCHAR;
-	
+
 		break;
 
 	case M10_ITSTATE_UBXCHAR:
 		if (Msg[Msgw].cnt >= NMEA_MAXFIELDCOUNT) goto drop;
-	
+
 		Msg[Msgw].ubx[Msg[Msgw].cnt++] = b;
-		
+
 		--Ubxlen;
-		
+
 		if (Ubxlen == 0)
 			State = M10_ITSTATE_UBXCHECKA;
-		
+
 		break;
 
 	case M10_ITSTATE_UBXCHECKA:
 		if (Msg[Msgw].cnt >= NMEA_MAXFIELDCOUNT) goto drop;
-		
+
 		Msg[Msgw].ubx[Msg[Msgw].cnt++] = b;
-	
+
 		State = M10_ITSTATE_UBXCHECKB;
-		
+
 		break;
 
 	case M10_ITSTATE_UBXCHECKB:
 		if (Msg[Msgw].cnt >= NMEA_MAXFIELDCOUNT) goto drop;
-		
+
 		Msg[Msgw].ubx[Msg[Msgw].cnt++] = b;
 
 		if ((Msgw + 1) % RXCIRCSIZE != Msgr)
 			Msgw = (Msgw + 1) % RXCIRCSIZE;
 
 		State = 0;
-	
+
 		break;
 	}
 
@@ -284,7 +284,7 @@ drop:
 int m10_error(void *dev, const void *h)
 {
 	struct m10_device *d;
-	
+
 	d = dev;
 
 	if (((UART_HandleTypeDef *)h)->Instance != d->huart->Instance)
@@ -307,7 +307,7 @@ static int ubx_receivemsgs(struct m10_msg *m, const uint8_t **msg,
 		}
 
 		memcpyv(m, Msg + Msgr, sizeof(struct m10_msg));
-		
+
 		Msgr = (Msgr + 1) % RXCIRCSIZE;
 
 		if (m->type != M10_MSGTYPE_UBX) {
@@ -342,7 +342,7 @@ static int ubx_send(struct m10_device *m10, uint8_t class, uint8_t id,
 	const uint8_t *msg[2];
 	uint32_t msglen[2];
 	int i;	
-	
+
 	buf[0] = 0xb5;
 	buf[1] = 0x62;
 	buf[2] = class;
@@ -366,7 +366,7 @@ static int ubx_send(struct m10_device *m10, uint8_t class, uint8_t id,
 
 	for (i = 0; i < UBX_RETRIES; ++i) {
 		HAL_UART_Transmit(m10->huart, buf, 6 + size + 2, 1000);
-	
+
 		if (noack)
 			return 0;
 
@@ -382,7 +382,7 @@ static int _ubx_valset1(struct m10_device *m10, uint32_t id, uint8_t v,
 	int noack)
 {
 	uint8_t buf[16];
-	
+
 	buf[0] = 0x0;
 	buf[1] = 0x1;
 	buf[2] = 0x0;
@@ -400,10 +400,10 @@ static int _ubx_valset1(struct m10_device *m10, uint32_t id, uint8_t v,
 static float m10_time(const char *p)
 {
 	char buf[16];
-	
+
 	if (strlen(p) < 9)
 		return 0.0;
-	
+
 	memmove(buf + 0, p, 2);
 	buf[2] = '\0';
 
@@ -420,21 +420,21 @@ static float m10_time(const char *p)
 static int m10_latitude(const char *p, uint8_t *lat, float *latmin)
 {
 	char buf[16];
-	
+
 	if (strlen(p) < 5) {
 		*lat = 0;
 		*latmin = 0.0;
-		
+
 		return 0;
 	}
-	
+
 	memmove(buf + 0, p, 2);
 	buf[2] = '\0';
 	strcpy(buf + 3, p + 2);
 
 	*lat = atoi(buf + 0);
 	*latmin = strtof(buf + 3, NULL);
-	
+
 	return 0;
 }
 
@@ -448,7 +448,7 @@ static int m10_longitude(const char *p, uint8_t *lon, float *lonmin)
 
 		return 0;
 	}
-	
+
 	memmove(buf + 0, p, 3);
 	buf[3] = '\0';
 	strcpy(buf + 4, p + 3);
@@ -487,18 +487,18 @@ int m10_read(void *dev, void *dt, size_t sz)
 		return (-1);
 
 	memcpyv(&m, Msg + Msgr, sizeof(struct m10_msg));
-	
+
 	Msgr = (Msgr + 1) % RXCIRCSIZE;
 
 	if (m.type == M10_MSGTYPE_UBX)
 		return (-1);
-	
+
 	if (m.xorgot != m.xorshould)
 		return (-1);
 
 	if (strcmp(m.msg + m.field[0], "GNGGA") == 0 ) {
 		data->type = M10_TYPE_GGA;
-		
+
 		if (m.cnt < 13)
 			return (-1);
 
@@ -520,12 +520,12 @@ int m10_read(void *dev, void *dt, size_t sz)
 	}
 	else if (strcmp(m.msg + m.field[0], "GNRMC") == 0 ) {
 		data->type = M10_TYPE_RMC;
-		
+
 		if (m.cnt < 13)
 			return (-1);
 
 		data->rmc.time = m10_time(m.msg + m.field[1]);
-	
+
 		data->rmc.fstatus = (m.msg + m.field[2])[0] == 'A';
 
 		m10_latitude(m.msg + m.field[3], &(data->rmc.lat),
@@ -535,7 +535,7 @@ int m10_read(void *dev, void *dt, size_t sz)
 		m10_longitude(m.msg + m.field[5], &(data->rmc.lon),
 			&(data->rmc.lonmin));
 		data->rmc.londir = (m.msg + m.field[6])[0];
-		
+
 		data->rmc.speed = strtof(m.msg + m.field[7], NULL);
 		data->rmc.course = strtof(m.msg + m.field[8], NULL);
 
@@ -555,7 +555,7 @@ int m10_read(void *dev, void *dt, size_t sz)
 int m10_init(struct m10_device *m10)
 {
 	Msgw = Msgr = 0;
-	
+
 	HAL_UART_Receive_DMA(m10->huart, &Rxbuf, 1);
 
 	if (ubx_valset1na(m10, UBX_UART1OUTPROT_UBX, 1) < 0)
@@ -584,7 +584,7 @@ int m10_initdevice(void *is, struct cdevice *dev)
 	int r; 
 
 	memmove(m10_devs + m10_devcount, is, sizeof(struct m10_device));
-	
+
 	sprintf(dev->name, "%s_%d", "m10", m10_devcount);
 
 	dev->priv = m10_devs + m10_devcount;
@@ -593,10 +593,10 @@ int m10_initdevice(void *is, struct cdevice *dev)
 	dev->interrupt = m10_interrupt;
 
 	dev->status = DEVSTATUS_IT;
-	
+
 	r = m10_init(m10_devs + m10_devcount++);
-	
+
 	dev->status = (r == 0) ? DEVSTATUS_INIT : DEVSTATUS_FAILED;
-		
+
 	return 0;
 };

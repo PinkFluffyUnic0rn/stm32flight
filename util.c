@@ -39,7 +39,7 @@ int udelay(int us)
 	int c;
 
 	__HAL_TIM_SET_COUNTER(&htim10, 0);
-		
+
 	while ((c = __HAL_TIM_GET_COUNTER(&htim10)) < us);
 
 	return 0;

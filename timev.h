@@ -28,11 +28,11 @@
 	settings and data needed beetween calls
 */
 struct timev {
-	int ms;			// microseconds passed from
-				// last triggering
+	int ms;			/*!< microseconds passed from */
+				/*!< last triggering */
 	int rem;
-	int freq;		// event frequency
-	int (*cb)(int);		// event callback
+	int freq;		/*!< event frequency */
+	int (*cb)(int);		/*!< event callback */
 };
 
 /**

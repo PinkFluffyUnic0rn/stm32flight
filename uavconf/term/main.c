@@ -64,7 +64,7 @@ int handlecmd(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 	else if (strcmp(cmd, "r") == 0) {
 		char *output;
 		size_t outsize;
-		
+
 		getlog(lsfd, rsi, 0, LOGSIZE, &output, &outsize,
 			NULL, NULL);
 

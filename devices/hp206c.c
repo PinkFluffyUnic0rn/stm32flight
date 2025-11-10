@@ -34,7 +34,7 @@ int hp_getdata(void *d, void *dt, size_t sz)
 
 	if (sz < sizeof(struct hp_data))
 		return (-1);
-	
+
 	c = HP_AT;
 	HAL_I2C_Master_Transmit(dev->hi2c, HP_ADDR << 1, &c, 1, 1000);
 	HAL_I2C_Master_Receive(dev->hi2c, (HP_ADDR << 1) | 0x1, buf, 6,
@@ -62,7 +62,7 @@ int hp_init(struct hp_device *dev)
 
 	c = HP_ADCCVT | dev->osr << 2;
 	HAL_I2C_Master_Transmit(dev->hi2c, HP_ADDR << 1, &c, 1, 1000);
-	
+
 	for (i = 0; i < 10; ++i) {
 		struct hp_data hd;
 
@@ -79,7 +79,7 @@ int hp_initdevice(void *is, struct cdevice *dev)
 	int r;
 
 	memmove(hp_devs + hp_devcount, is, sizeof(struct hp_device));
-	
+
 	sprintf(dev->name, "%s_%d", "hp206c", hp_devcount);
 
 	dev->priv = hp_devs + hp_devcount;

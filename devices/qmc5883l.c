@@ -39,7 +39,7 @@ int qmc_getintdata(struct qmc_device *dev, struct qmc_data *data)
 {
 	static uint8_t buf[6];
 	static int init = 0;
-	
+
 	if (!init) {
 		qmc_read(dev, QMC_DATA, buf, 6);
 
@@ -52,7 +52,7 @@ int qmc_getintdata(struct qmc_device *dev, struct qmc_data *data)
 	data->x = buf[0] | buf[1] << 8;
 	data->y = buf[2] | buf[3] << 8;
 	data->z = buf[4] | buf[5] << 8;
-	
+
 	return 0;
 }
 
@@ -99,7 +99,7 @@ int qmc_initdevice(void *is, struct cdevice *dev)
 	int r;
 
 	memmove(qmc_devs + qmc_devcount, is, sizeof(struct qmc_device));
-	
+
 	sprintf(dev->name, "%s_%d", "qmc5883l", qmc_devcount);
 
 	dev->priv = qmc_devs + qmc_devcount;

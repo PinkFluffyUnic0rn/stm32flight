@@ -100,7 +100,7 @@ struct dsp_pidval {
 * coefficients and accumelated data between calls.
 */
 struct dsp_pidblval {
-	float itresh;	/*!< I-term maximum value */
+	float imax;	/*!< I-term maximum value */
 
 	float a[3];	/*!< 'a' Z-transform derived coefficients
 			without I-term related terms */
@@ -211,7 +211,7 @@ int dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 * @return always 0
 */
 int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
-	float kd, float itresh, float dcutoff, int freq, int init);
+	float kd, float imax, float dcutoff, int freq, int init);
 
 /**
 * @brief Calculate next PID controller's correction value.

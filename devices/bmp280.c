@@ -55,7 +55,7 @@ int bmp_write(struct bmp_device *dev, uint8_t addr, uint8_t val)
 {
 	HAL_I2C_Mem_Write(dev->hi2c, BMP_ADDR << 1, addr,
 		1, &val, 1, 1000);
-	
+
 	return bmp_waitwrite(dev);
 }
 
@@ -87,10 +87,10 @@ float bmp_pressf(struct bmp_device *dev, int32_t adc_P)
 	var1 = (((float) dev->digp[3]) * var1 * var1 / 524288.0
 		+ ((float) dev->digp[2]) * var1) / 524288.0;
 	var1 = (1.0 + var1 / 32768.0) * ((float) dev->digp1);
-	
+
 	if (var1 == 0.0)
 		return 0;
-	
+
 	p = 1048576.0 - (float) adc_P;
 	p = (p - (var2 / 4096.0)) * 6250.0 / var1;
 	var1 = ((float) dev->digp[9]) * p * p / 2147483648.0;
@@ -130,19 +130,19 @@ int bmp_init(struct bmp_device *dev,
 	enum BMP_MODE m)
 {
 	uint8_t trimdata[25];
-	
+
 	if (bmp_write(dev, BMP_RESET, 0xb6) < 0)
 		return (-1);
 
 	if (bmp_write(dev, BMP_CONFIG, (sb << 5) | iir) < 0)
 		return (-1);
-	
+
 	if (bmp_write(dev, BMP_CTRLMEAS, (os << 5) | (os << 2) | m) < 0)
 		return (-1);
 
 	memset(trimdata, 0, 25);
 	bmp_read(dev, BMP_CALIB, trimdata, 25);
-	
+
 	dev->digt1	= (trimdata[1] << 8) | trimdata[0];
 	dev->digt[2]	= (trimdata[3] << 8) | trimdata[2];
 	dev->digt[3]	= (trimdata[5] << 8) | trimdata[4];
@@ -164,7 +164,7 @@ int bmp_initdevice(void *is, struct cdevice *dev)
 	int r;
 
 	memmove(bmp_devs + bmp_devcount, is, sizeof(struct bmp_device));
-	
+
 	sprintf(dev->name, "%s_%d", "bmp280", bmp_devcount);
 
 	dev->priv = bmp_devs + bmp_devcount;

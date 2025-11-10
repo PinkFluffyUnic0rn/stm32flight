@@ -69,14 +69,14 @@ int dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 }
 
 int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
-	float kd, float itresh, float dcutoff, int freq, int init)
+	float kd, float imax, float dcutoff, int freq, int init)
 {
 	float ts, tf, tt, c;
 
 	pv->step = 0;
 	pv->depth = 2;
 
-	pv->itresh = itresh;
+	pv->imax = imax;
 
 	ts = 1.0 / (float) freq;
 	tf = 1.0 / (dcutoff * 2.0 * M_PI);
@@ -126,6 +126,7 @@ float dsp_pidbl(struct dsp_pidblval *pv, float target, float val)
 		v = pv->a[0] * e;
 		vs = v + pv->i;
 		break;
+
 	case 1:
 		pv->i = pv->ia[0] * e
 			+ pv->ia[1] * pv->e[0] + pv->b[1] * pv->iv[0];
@@ -136,6 +137,7 @@ float dsp_pidbl(struct dsp_pidblval *pv, float target, float val)
 		vs = v + pv->i;
 	
 		break;
+
 	default:
 		pv->i = pv->ia[0] * e
 			+ pv->ia[1] * pv->e[0] + pv->b[1] * pv->iv[0]
@@ -150,10 +152,10 @@ float dsp_pidbl(struct dsp_pidblval *pv, float target, float val)
 		break;
 	}
 
-	if (pv->i < -pv->itresh)
-		pv->iv[0] = pv->i = -pv->itresh;
-	else if (pv->i > pv->itresh)
-		pv->iv[0] = pv->i = pv->itresh;
+	if (pv->i < -pv->imax)
+		pv->iv[0] = pv->i = -pv->imax;
+	else if (pv->i > pv->imax)
+		pv->iv[0] = pv->i = pv->imax;
 
 	pv->e[1] = pv->e[0];
 	pv->v[1] = pv->v[0];

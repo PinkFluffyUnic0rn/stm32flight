@@ -55,7 +55,7 @@ int esp_interrupt(void *dev, const void *p)
 	uint8_t buf[ESP_SPIPACKSIZE];
 
 	d = dev;
-	
+
 	if (*((uint16_t *) p) != d->intpin)
 		return 0;
 
@@ -95,7 +95,7 @@ int esp_send(void *d, void *dt, size_t sz)
 	int pos;
 	size_t l;
 	char *data;
-	
+
 	dev = d;
 	data = dt;
 
@@ -126,8 +126,6 @@ int esp_send(void *d, void *dt, size_t sz)
 
 		HAL_GPIO_WritePin(dev->csgpio, dev->cspin,
 			GPIO_PIN_RESET);
-		
-//		udelay(5);
 
 		b = 0x2;
 		HAL_SPI_Transmit(dev->hspi, &b, 1, 1000);

@@ -148,7 +148,7 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 {
 	struct w25_device *dev;
 	uint8_t sbuf[4];
-	
+
 	dev = (struct w25_device *) d;
 
 	// if (dev->writemode == W25_IOCTL_READWRITE) ??
@@ -180,7 +180,7 @@ int w25_eraseall(void *d)
 {
 	struct w25_device *dev;
 	uint8_t sbuf[4];
-	
+
 	dev = (struct w25_device *) d;
 
 	w25_waitwrite(dev, W25_WTIMEOUT);
@@ -204,7 +204,7 @@ int w25_erasesector(void *d, size_t addr)
 {
 	struct w25_device *dev;
 	uint8_t sbuf[4];
-	
+
 	dev = (struct w25_device *) d;
 
 	w25_waitwrite(dev, W25_WTIMEOUT);
@@ -231,7 +231,7 @@ int w25_eraseblock(void *d, size_t addr)
 {
 	struct w25_device *dev;
 	uint8_t sbuf[4];
-	
+
 	dev = (struct w25_device *) d;
 
 	w25_waitwrite(dev, W25_WTIMEOUT);
@@ -259,7 +259,7 @@ int w25_writesector(void *d, size_t addr, const void *data,
 {
 	struct w25_device *dev;
 	int i;
-	
+
 	dev = (struct w25_device *) d;
 
 	for (i = 0; i < sz; i += min(W25_PAGESIZE, sz - i))
@@ -272,7 +272,7 @@ int w25_ioctl(void *d, int req, ...)
 {
 	struct w25_device *dev;
 	dev = (struct w25_device *) d;
-	
+
 	dev->writemode = req;
 
 	return 0;
@@ -283,7 +283,7 @@ int w25_initdevice(void *is, struct bdevice *dev)
 	int r;
 
 	memmove(devs + devcount, is, sizeof(struct w25_device));
-	
+
 	sprintf(dev->name, "%s_%d", "w25q", devcount);
 
 	dev->priv = devs + devcount;
@@ -301,7 +301,7 @@ int w25_initdevice(void *is, struct bdevice *dev)
 	dev->totalsize = W25_TOTALSIZE;
 
 	devs[devcount].writemode = W25_IOCTL_READWRITE;
-	
+
 	r = w25_init(devs + devcount++);
 
 

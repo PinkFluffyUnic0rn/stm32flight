@@ -141,7 +141,7 @@ int icm_selftest(struct icm_device *dev, struct icm_stdata *stdata)
 
 		stax += data.ax;	stay += data.ay;	staz += data.az;
 		stgx += data.gx;	stgy += data.gy;	stgz += data.gz;
-		
+
 		mdelay(1);
 	}
 
@@ -187,7 +187,7 @@ int icm_init(struct icm_device *dev)
 		return (-1);
 
 	icm_write(dev, ICM_BANKSELECT, 0);
-	
+
 	icm_write(dev, ICM_PWRMGMT, 0x00);
 
 	icm_write(dev, ICM_GYROACCELCONFIG0,
@@ -210,14 +210,14 @@ int icm_init(struct icm_device *dev)
 
 	icm_write(dev, 0x76, 0);
 */
-	
+
 	icm_write(dev, ICM_PWRMGMT, 0x0f);
 
 	icm_write(dev, ICM_GYROCONFIG0,
 		dev->gyroscale << 5 | dev->gyrorate);
 	icm_write(dev, ICM_ACCELCONFIG0,
 		dev->accelscale << 5 | dev->accelrate);
-	
+
 	return 0;
 }
 

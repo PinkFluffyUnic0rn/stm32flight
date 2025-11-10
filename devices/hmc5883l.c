@@ -43,7 +43,7 @@ int hmc_getintdata(struct hmc_device *dev, struct hmc_data *data)
 	data->x = buf[0] << 8 | buf[1];
 	data->y = buf[4] << 8 | buf[5];
 	data->z = buf[2] << 8 | buf[3];
-	
+
 	return 0;
 }
 
@@ -72,7 +72,7 @@ int hmc_getdata(void *d, void *dt, size_t sz)
 int hmc_init(struct hmc_device *dev)
 {
 	char id[3];
-	
+
 	hmc_write(dev, HMC_MODE, 0x0);
 
 	hmc_write(dev, HMC_CONFA, (0x2 << 5) | (dev->rate << 2));
@@ -92,7 +92,7 @@ int hmc_initdevice(void *is, struct cdevice *dev)
 	int r;
 
 	memmove(hmc_devs + hmc_devcount, is, sizeof(struct hmc_device));
-	
+
 	sprintf(dev->name, "%s_%d", "hmc5883l", hmc_devcount);
 
 	dev->priv = hmc_devs + hmc_devcount;

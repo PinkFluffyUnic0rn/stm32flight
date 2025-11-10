@@ -33,7 +33,7 @@ int uart_dequeque(volatile struct fifo *f, char *out)
 {
 	if (f->bot == f->top)
 		return (-1);
-	
+
 	memcpyv(out, f->cmd[f->bot], UART_CMDSIZE);
 
 	f->bot = (f->bot + 1) % UART_FIFOSIZE;
@@ -51,7 +51,7 @@ int uart_interrupt(void *dev, const void *h)
 
 	if (((UART_HandleTypeDef *)h)->Instance != d->huart->Instance)
 		return 0;
-	
+
 	cmd = fifo.cmd[fifo.top] + Rxoffset;
 
 	*cmd = Rxbyte;
@@ -62,7 +62,7 @@ int uart_interrupt(void *dev, const void *h)
 		HAL_UART_Transmit(d->huart, (uint8_t *) "\n", 1, 100);
 
 		*cmd = '\0';
-	
+
 		if ((fifo.top + 1) % UART_FIFOSIZE != fifo.bot)
 			fifo.top = (fifo.top + 1) % UART_FIFOSIZE;
 
@@ -111,7 +111,7 @@ int uart_initdevice(void *is, struct cdevice *dev)
 	dev->error = NULL;
 
 	uart_initfifo(&fifo);
-	
+
 	HAL_UART_Receive_DMA(uart_devs[uart_devcount].huart, &Rxbyte, 1);
 
 	dev->status = DEVSTATUS_INIT;

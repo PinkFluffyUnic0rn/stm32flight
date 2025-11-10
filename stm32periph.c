@@ -131,13 +131,13 @@ static void dma_init(void)
 
 	HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
-	
+
 	HAL_NVIC_SetPriority(DMA1_Stream7_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Stream7_IRQn);
-	
+
 	HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-	
+
 	HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
 
@@ -149,10 +149,10 @@ static void dma_init(void)
 
 	HAL_NVIC_SetPriority(DMA2_Stream4_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn);
-	
+
 	HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
-	
+
 	HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 }
@@ -305,7 +305,7 @@ static void tim10_init(void)
 	htim10.Init.Period = 0xffff;
 	htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	
+
 	if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
 		error_handler();
 

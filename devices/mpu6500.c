@@ -328,7 +328,7 @@ int mpu_init(struct mpu_device *dev)
 		mpu_write(dev, MPU_USERCONTROL, 0x10);
 		mpu_write(dev, MPU_ACCELCONF2, dev->dlpfwidth);
 	}
-	
+
 	mpu_write(dev, MPU_CONF, dev->dlpfwidth);
 
 	mpu_write(dev, MPU_ACCELCONF, dev->accelscale);

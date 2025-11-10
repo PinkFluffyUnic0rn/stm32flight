@@ -52,8 +52,6 @@
 
 #define DEV_COUNT	8	/*!< character devices count */
 
-#define TEV_COUNT	7	/*!< Timer events count */
-
 /**
 * @defgroup TIMEREVENTIDS
 * @brief Timer events IDs
@@ -69,6 +67,8 @@
 /**
 * @}
 */
+
+#define TEV_COUNT	7	/*!< Timer events count */
 
 /**
 * @defgroup EVENTFREQUENCIES
@@ -250,9 +250,9 @@ struct dsp_lpf gyroxpt1;	/*!< gyroscope x low-pass filter */
 struct dsp_lpf gyroypt1;	/*!< gyroscope y low-pass filter */
 struct dsp_lpf gyrozpt1;	/*!< gyroscope z low-pass filter */
 
-struct dsp_lpf magxlpf;	/*!< gyroscope x low-pass filter */
-struct dsp_lpf magylpf;	/*!< gyroscope y low-pass filter */
-struct dsp_lpf magzlpf;	/*!< gyroscope z low-pass filter */
+struct dsp_lpf magxlpf;		/*!< gyroscope x low-pass filter */
+struct dsp_lpf magylpf;		/*!< gyroscope y low-pass filter */
+struct dsp_lpf magzlpf;		/*!< gyroscope z low-pass filter */
 
 struct dsp_compl pitchcompl;	/*!< pitch low-pass filter */
 struct dsp_compl rollcompl;	/*!< roll low-pass filter */
@@ -310,10 +310,8 @@ int yawspeedpid = 0;	/*!< 1 if only gyroscope if used for yaw
 			stabilization, 0 if magnetometer is used */
 int hovermode = 0; /*!< hover mode, when throttle is
 			controlled relative to hover throttle */
-
 int elrs = 0; /*!< 1 when ELRS control is active (ELRS remote's
 		channel 8 is > 50) */
-
 /**
 * @}
 */
@@ -725,7 +723,7 @@ static void icm_init()
 static void qmc_init()
 {
 	struct qmc_device d;
-	
+
 	d.hi2c = &hi2c1;
 	d.scale = QMC_SCALE_8;
 	d.rate = QMC_RATE_100;
@@ -946,7 +944,7 @@ int sprintpos(char *s, struct icm_data *id)
 		(double) dsp_getlpf(&accxpt1),
 		(double) dsp_getlpf(&accypt1),
 		(double) dsp_getlpf(&acczpt1));	
-	
+
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n", "gyro: ",
 		(double) dsp_getlpf(&gyroxpt1),
@@ -1579,7 +1577,7 @@ int checkconnection(int ms)
 	// decrease ERLS timeout counter
 	if (elrstimeout != 0)
 		--elrstimeout;
-	
+
 	// if timeout conter reached 0 and no ERLS
 	// packet came, disarm immediately
 	if (elrstimeout <= 0) {
@@ -1606,7 +1604,7 @@ int dpsupdate(int ms)
 	struct dps_data hd;
 	float prevalt, alt;
 	float dt;
-	
+
 	dt = ms / (float) TICKSPERSEC;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
@@ -1692,10 +1690,10 @@ int logupdate(int ms)
 int telesend(int ms)
 {
 	const char *am;
-	
+
 	tele.bat = dsp_getlpf(&batlpf);
 	tele.curr = dsp_getlpf(&currlpf);
-	
+
 	if (tele.bat < 6.0)
 		tele.batrem = (tele.bat - 3.5) / 0.7;
 	else if (tele.bat < 9.0)
@@ -1706,7 +1704,7 @@ int telesend(int ms)
 		tele.batrem = (tele.bat - 14) / 2.8;
 	else
 		tele.batrem = (tele.bat - 21) / 3.5;
-		
+
 	tele.batrem = trimf(100.0 * tele.batrem, 0.0, 100.0);
 
 	tele.lat = gnss.lat + gnss.latmin / 60.0;
@@ -1758,7 +1756,7 @@ int powercheck(int ms)
 {
 	dsp_updatelpf(&batlpf, batteryvoltage());
 	dsp_updatelpf(&currlpf, esccurrent());
-		
+
 	return 0;
 }
 
@@ -2227,7 +2225,7 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 
 			st.fieldid[strn] = atoi(toks[2]);
 		}
-		
+
 		return 0;
 	}
 	else
@@ -2319,7 +2317,7 @@ int irccmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "power") == 0) {
 		st.ircpower = atoi(toks[2]);
-	
+
 		if (dev[IRC_DEV].status != DEVSTATUS_INIT)
 			return 0;
 
@@ -2487,7 +2485,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		}
 		else
 			return (-1);
-	
+
 		valtype = CONFVALTYPE_FLOAT;
 	}
 	else if (strcmp(toks[1], "compl") == 0) {
@@ -2645,7 +2643,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 					if (st.fieldid[i] == recn)
 						break;
 				}
-			
+
 				if (i >= LOG_FIELDSTRSIZE)
 					si = "none";
 				else
@@ -2656,7 +2654,6 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		}
 		else
 			return (-1);
-			
 	}	
 	else if (strcmp(toks[1], "motor") == 0) {
 		if (strcmp(toks[2], "lt") == 0)
@@ -2667,7 +2664,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 			vi = st.rb;
 		else if (strcmp(toks[2], "rt") == 0)
 			vi = st.rt;
-		
+
 		valtype = 0;
 	}
 	else

@@ -195,7 +195,7 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 
 		// get payload size
 		size = *((uint16_t *) (data + 2));
-		
+
 		// get payload CRC stored in packet
 		crc = data[1];
 

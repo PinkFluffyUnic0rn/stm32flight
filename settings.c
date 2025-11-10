@@ -27,7 +27,7 @@ int writesettings(int slot)
 
 	sz = sizeof(struct settings) * 6;
 	pt = (uint32_t *) s;
-	
+
 	addr = USER_FLASH;
 	for (j = 0; j < sz / 4; ++j) {
 		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr, pt[j]);
