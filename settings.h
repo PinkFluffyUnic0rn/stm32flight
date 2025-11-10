@@ -1,143 +1,299 @@
+/**
+* @file settings.h
+* @brief Settings management functions
+*/
+
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
 #include "global.h"
 #include "log.h"
 
-// MCU flash address where quadcopter settings is stored
+/**
+* @brief MCU flash address where quadcopter settings is stored
+*/
 #define USER_FLASH 0x080e0000
 
-// default settings values
-#define LTDEFNUM 0
-#define LBDEFNUM 1
-#define RBDEFNUM 2
-#define RTDEFNUM 3
+/**
+* @defgroup DEF default settings values
+* @{
+*/
+#define LTDEFNUM 0	/*!< left-top motor default output number */
+#define LBDEFNUM 1	/*!< left-bottom motor default output number */
+#define RBDEFNUM 2	/*!< right-bottom motor default output number */
+#define RTDEFNUM 3	/*!< right-top motor default output number */
 
-#define LOGDEFFREQ 128
-#define LOGDEFRECSIZE 4
-#define LOGFIELDDEFPOS 99
-#define IRCDEFPOWER IRC_POWER_25
-#define IRCDEFFREQ IRC_FREQ_5733
+#define LOGDEFFREQ 128			/*!< default log frequency */
+#define LOGDEFRECSIZE 4			/*!< default log size */
+#define LOGFIELDDEFPOS 99		/*!< default log
+					field position */
+#define IRCDEFPOWER IRC_POWER_25	/*!< default video TX power */
+#define IRCDEFFREQ IRC_FREQ_5733	/*!< default video
+					TX frequency */
+/**
+* @}
+*/
 
-// quadcopter setting's slot
+/**
+* @brief quadcopter setting's slot
+*/
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
 
-// Quadcopter settings structure stored in MCU's flash
+/**
+* @brief Quadcopter settings structure stored in MCU's flash
+*/
 struct settings {
-	float mx0, my0, mz0;	// magnetometer offset values for X, Y
-				// and Z axes determinted by
-				// calibration procedure
 
-	float mxsc, mysc, mzsc;	// megnetormeter scaling values for Z,
-				// Y and Z axes determinted by
-				// calibration procedure
+	/**
+	* @defgroup MAGOFFSET
+	* @brief magnetometer offset values
+		determinted by calibration procedure
+	* @{
+	*/
+	float mx0 /*! x */, my0 /*! y */, mz0 /*! z */;  
+	/**
+	* @}
+	*/
 
-	float magdecl;		// magnetic declination
+	/**
+	* @defgroup MAGSCALE
+	* @brief magnetormeter scaling values
+		determinted by calibration procedure
+	* @{
+	*/
+	float mxsc /*! x */, mysc /*! y */, mzsc /*! z */;
+	/**
+	* @}
+	*/
 
-	float ax0, ay0, az0;	// accelometer offset values for X, Y
-				// and Z axes
+	float magdecl;		/*!< magnetic declination */
 
-	float gx0, gy0, gz0;	// gyroscope offset values for X, Y
-				// and Z axes
+	/**
+	* @defgroup ACCOFFSET
+	* @brief accelometer offset values
+	* @{
+	*/
+	float ax0 /*! x */, ay0 /*! y */, az0 /*! z */;
+	/**
+	* @}
+	*/
 
-	float rsc, psc;		// motor thrust scaling for roll and
-				// pitch side motors, because not all
-				// motors are abolutely equal
+	/**
+	* @defgroup ACCOFFSET
+	* @brief gyroscope offset values
+	* @{
+	*/
+	float gx0 /*! x */, gy0 /*! y */, gz0 /*! z */;
+	/**
+	* @}
+	*/
 
-	float roll0, pitch0, yaw0; // roll, pitch and yaw offset values
+	/**
+	* @defgroup THRUSTSCALE
+	* @brief motor thrust scaling for roll and
+				pitch side motors, because not all
+				motors are abolutely equal
+	* @{
+	*/
+	float rsc /*! roll */, psc /*! pitch */; 
+	/**
+	* @}
+	*/
 
-	float thrustmax;	// maximum thrust value
-	float rollmax, pitchmax; // maximum roll and pitch angles in Pi
+	/**
+	* @defgroup ROTATEOFFSET
+	* @brief rotation offset values
+	* @{
+	*/
+	float roll0 /*! roll */, pitch0 /*! pitch */,  yaw0 /*! yaw */; 
+	/**
+	* @}
+	*/
 
+	float thrustmax;		/*!< maximum thrust value */
 
-	float rollspeed;	// roll rotation speed in Pi for
-				// single loop tilt mode
-	float pitchspeed;	// pitch rotation speed in Pi for
-				// single loop tilt mode
-	float yawspeed;		// yaw rotation speed in Pi for
-				// single loop yaw mode
-	float yawtargetspeed;	// yaw target change speed in Pi for
-				// dual loop yaw mode
-	float accelmax;		// maximum acceleration in g for
-				// single loop throttle mode
-	float climbratemax;	// maximum climbrate in m/s for
-				// dual loop throttle mode
-	float altmax;		// maximum altitude in m for triple
-				// loop mode (altitude hold mode)
+	/**
+	* @defgroup ROTATEMAX
+	* @brief maxiumum rotation values
+	* @{
+	*/
+	float rollmax /*! roll */, pitchmax /*! pitch */;
+	/**
+	* @}
+	*/
 
-	float atctcoef;		// time coefficient for pitch/roll
-				// complimentary filter
-	float yctcoef;		// time coefficient for yaw
-				// complimentary filter
-	float ttcoef;		// time coefficient for vertical axis
-				// acceleration pow-pass filter
-	float vatcoef;		// time coefficient for vertical
-				// acceleration pow-pass filter
+	float rollspeed;	/*!< roll rotation speed in Pi for
+				single loop tilt mode */
+	float pitchspeed;	/*!< pitch rotation speed in Pi for
+				single loop tilt mode */
+	float yawspeed;		/*!< yaw rotation speed in Pi for
+				single loop yaw mode */
+	float yawtargetspeed;	/*!< yaw target change speed in Pi for
+				dual loop yaw mode */
+	float accelmax;		/*!< maximum acceleration in g for
+				single loop throttle mode */
+	float climbratemax;	/*!< maximum climbrate in m/s for
+				dual loop throttle mode */
+	float altmax;		/*!< maximum altitude in m for triple
+				loop mode (altitude hold mode) */
 
-	float accpt1freq;	// cut-off frequency for
-				// accelerometer PT1 filter
+	float atctcoef;		/*!< time coefficient for pitch/roll
+				complimentary filter */
+	float yctcoef;		/*!< time coefficient for yaw
+				complimentary filter */
+	float ttcoef;		/*!< time coefficient for vertical axis
+				acceleration pow-pass filter */
+	float vatcoef;		/*!< time coefficient for vertical
+				acceleration pow-pass filter */
 
-	float gyropt1freq;	// cut-off frequency for
-				// gyroscope PT1 filter
+	float accpt1freq;	/*!< cut-off frequency for
+				accelerometer PT1 filter */
+
+	float gyropt1freq;	/*!< cut-off frequency for
+				gyroscope PT1 filter */
 	
-	float dpt1freq;		// cut-off frequency for PID D term
+	float dpt1freq;		/*!< cut-off frequency for PID D term */
 
-	float apt1freq;		// time coefficient for altitude
-				// low-pass filter
-	float cctcoef;		// time coefficient for climb rate
-				// complimentary filter
-	float actcoef;		// time coefficient for altitude
-				// complimentary filter
+	float apt1freq;		/*!< time coefficient for altitude
+				low-pass filter */
+	float cctcoef;		/*!< time coefficient for climb rate
+				complimentary filter */
+	float actcoef;		/*!< time coefficient for altitude
+				complimentary filter */
 
-	int speedpid;	// 1 if single PID loop for roll/pitch is used,
-			// 0 if double loop is used
+	int speedpid;	/*!< 1 if single PID loop for roll/pitch
+			is used, 0 if double loop is used */
 
-	int yawspeedpid; // 1 if single PID loop for yaw is used, 0 if
-			 // double loop is used
+	int yawspeedpid; /*!< 1 if single PID loop for yaw is used,
+			0 if double loop is used */
 
-	float p, i, d;	// P/I/D values for roll/pitch (used only in
-			// double roll/pitch PID loop mode)
+	/**
+	* @defgroup PIDATTITUDE
+	* @brief P/I/D values for roll/pitch (used only in
+		double roll/pitch PID loop mode)
+	* @{
+	*/
+	float p /*! p */, i /*! i */, d /*! d */;
+	/**
+	* @}
+	*/
 
-	float sp, si, sd;	// P/I/D values for roll/pitch
-				// rotation speed
+	/**
+	* @defgroup PIDROTATION
+	* @brief P/I/D values for roll/pitch rotation speed
+	* @{
+	*/
+	float sp /*! p */, si /*! i */, sd /*! d */;
+	/**
+	* @}
+	*/
 
-	float yp, yi, yd; // P/I/D values for yaw (used only in double
-			  // yaw PID loop mode)
+	/**
+	* @defgroup PIDYAW
+	* @brief P/I/D values for yaw (used only in double
+		yaw PID loop mode)
+	* @{
+	*/
+	float yp /*! p */, yi /*! i */, yd /*! d */;
+	/**
+	* @}
+	*/
 
-	float ysp, ysi, ysd;	// P/I/D values for yaw rotation speed
+	/**
+	* @defgroup PIDYAWROTATION
+	* @brief P/I/D values for yaw rotation speed
+	* @{
+	*/
+	float ysp /*! p */, ysi /*! p */, ysd /*! p */;
+	/**
+	* @}
+	*/
 
-	float zsp, zsi,	zsd; // P/I/D values for vertical acceleration
-	float cp, ci, cd; // P/I/D values for climb rate
-	float ap, ai, ad; // P/I/D values for altitude
+	/**
+	* @defgroup PIDYAWROTATION
+	* @brief P/I/D values for vertical acceleration
+	* @{
+	*/
+	float zsp /*! p */, zsi /*! i */, zsd /*! d */;
+	/**
+	* @}
+	*/
 
-	float curroffset;	// ESC's current meter offset
-	float currscale;	// ESC's current meter scale
+	/**
+	* @defgroup PIDYAWROTATION
+	* @brief P/I/D values for climb rate
+	* @{
+	*/
+	float cp /*! p */, ci /*! i */, cd /*! d */;
+	/**
+	* @}
+	*/
 
-	float hoverthrottle;	// hover throttle value
+	/**
+	* @defgroup PIDYAWROTATION
+	* @brief P/I/D values for altitude
+	* @{
+	*/
+	float ap /*! p */, ai /*! i */, ad /*! d */;
+	/**
+	* @}
+	*/
 
-	int ircpower, ircfreq; // IRC Tramp VTX power and frequency
-	int lt, lb, rb, rt; // motors ESC outputs numbers
+	float curroffset;	/*!< ESC's current meter offset */
+	float currscale;	/*!< ESC's current meter scale */
 
-	int logfreq;			// log frequency
-	int logrecsize;			// log size
-	int fieldid[LOG_FIELDSTRSIZE];	// id for every log field
+	float hoverthrottle;	/*!< hover throttle value */
+
+	/**
+	* @defgroup PIDYAWROTATION
+	* @brief IRC Tramp VTX power and frequency
+	* @{
+	*/
+	int ircpower /*! power */, ircfreq /*! frequency */;
+	/**
+	* @}
+	*/
+
+	/**
+	* @defgroup PIDYAWROTATION
+	* @brief motors ESC outputs numbers
+	* @{
+	*/
+	int lt /*! left-top */, lb /*! left-bottom */,
+	    rb /*! right-bottom */, rt /*! right-top */;
+	/**
+	* @}
+	*/
+
+	int logfreq;			/*!< log frequency */
+	int logrecsize;			/*!< log size */
+	int fieldid[LOG_FIELDSTRSIZE];	/*!< id for every log field */
 };
 
-// Settings
+/**
+* @brief settings
+*/
 extern struct settings st;
 
-// write quadcopter settings into internal MCU flash.
-//
-// slot -- offset in settings array in flash.
+/**
+* @brief write quadcopter settings into internal MCU flash.
+* @param slot offset in settings array in flash.
+* @return always 0
+*/
 int writesettings(int slot);
 
-// Validate current settings. Reset settings
-// that has wrong values to default
+/**
+* @brief Validate current settings. Reset settings
+	that has wrong values to default.
+* @return always 0
+*/
 int validatesettings();
 
-// Read setting from internal MCU flash.
-//
-// slot -- offset in settings array in flash.
+/**
+* @brief Read setting from internal MCU flash.
+* @param slot offset in settings array in flash
+* @return always 0
+*/
 int readsettings(int slot);
 
 #endif
