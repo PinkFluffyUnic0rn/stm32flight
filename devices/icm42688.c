@@ -21,6 +21,7 @@ enum ICM_REGISTER {
 	ICM_GYROCONFIG1		= 81,
 	ICM_GYROACCELCONFIG0	= 82,
 	ICM_ACCELCONFIG1	= 83,
+	ICM_TEMPMEASURE		= 29,
 	ICM_ACCELMEASURE	= 31,
 };
 
@@ -62,15 +63,17 @@ int icm_getintdata(struct icm_device *dev, struct icm_data *data)
 {
 	uint8_t buf[14];
 
-	icm_read(dev, ICM_ACCELMEASURE, buf, 14);
+	icm_read(dev, ICM_TEMPMEASURE, buf, 14);
 
-	data->ax = buf[0] << 8 | buf[1];
-	data->ay = buf[2] << 8 | buf[3];
-	data->az = buf[4] << 8 | buf[5];
+	data->t = buf[0] << 8 | buf[1];
 
-	data->gx = buf[6] << 8 | buf[7];
-	data->gy = buf[8] << 8 | buf[9];
-	data->gz = buf[10] << 8 | buf[11];
+	data->ax = buf[2] << 8 | buf[3];
+	data->ay = buf[4] << 8 | buf[5];
+	data->az = buf[6] << 8 | buf[7];
+
+	data->gx = buf[8] << 8 | buf[9];
+	data->gy = buf[10] << 8 | buf[11];
+	data->gz = buf[12] << 8 | buf[13];
 
 	return 0;
 }
@@ -90,6 +93,8 @@ int icm_getdata(void *d, void *dt, size_t sz)
 		return (-1);
 
 	icm_getintdata(dev, data);
+
+	data->ft = (data->t / 132.48) + 25.0;
 
 	data->afx = (data->ax) / (float) accamp[dev->accelscale];
 	data->afy = (data->ay) / (float) accamp[dev->accelscale];

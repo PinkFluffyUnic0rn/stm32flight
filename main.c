@@ -238,9 +238,12 @@ struct dsp_lpf currlpf;	/*!< battery voltage low-pass filter */
 struct dsp_lpf valpf;	/*!< vertical acceleration unity filter */
 struct dsp_lpf tlpf;	/*!< trust acceleration low-pass filter */
 struct dsp_lpf vtlpf;	/*!< vertical acceleration low-pass filter */
+struct dsp_lpf volpf;	/*!< vertical acceleration filter for g offset */
 
 struct dsp_lpf altlpf;	/*!< altitude low-pass filter */
 struct dsp_lpf templpf;	/*!< temperature low-pass filter */
+
+struct dsp_lpf atemppt1;	/*!< IMU temperature unity filter */
 
 struct dsp_lpf accxpt1;	/*!< accelerometer x low-pass filter */
 struct dsp_lpf accypt1;	/*!< accelerometer y low-pass filter */
@@ -885,7 +888,11 @@ int setstabilize(int init)
 	dsp_setunity(&valpf, init);
 	dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, init);
 	dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, init);
-	dsp_setlpf1t(&altlpf, st.ttcoef, DPS_FREQ, init);
+	dsp_setlpf1t(&volpf, 2.0, PID_FREQ, init);
+	dsp_setunity(&altlpf, init);
+
+	// init low-pass fitlers for IMU temperature sensor
+	dsp_setlpf1t(&atemppt1, 0.5, PID_FREQ, init);
 
 	// init low-pass fitlers for accelerometer x, y and z axes
 	dsp_setlpf1f(&accxpt1, st.accpt1freq, PID_FREQ, init);
@@ -963,6 +970,9 @@ int sprintpos(char *s, struct icm_data *id)
 		(double) (dsp_getlpf(&gyroxpt1) - st.gx0),
 		(double) (dsp_getlpf(&gyroypt1) - st.gy0),
 		(double) (dsp_getlpf(&gyrozpt1) - st.gz0));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"temp: %0.3f\r\n", (double) (dsp_getlpf(&atemppt1)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\r\n",
@@ -1349,15 +1359,19 @@ int stabilize(int ms)
 	// write accelerometer and gyroscope values into log
 	log_write(LOG_ACC_X, id.afx);
 	log_write(LOG_ACC_Y, id.afy);
-	log_write(LOG_ACC_Z, id.afz);
+	log_write(LOG_ACC_Z, id.afz + (id.ft - 25.0) * 0.00058);
 	log_write(LOG_GYRO_X, id.gfx);
 	log_write(LOG_GYRO_Y, id.gfy);
 	log_write(LOG_GYRO_Z, id.gfz);
 
+	// update accelerometer temperature
+	dsp_updatelpf(&atemppt1, id.ft);
+
 	// apply accelerometer offsets
 	ax = dsp_updatelpf(&accxpt1, id.afx) - st.ax0;
 	ay = dsp_updatelpf(&accypt1, id.afy) - st.ay0;
-	az = dsp_updatelpf(&acczpt1, id.afz) - st.az0;
+	az = dsp_updatelpf(&acczpt1, id.afz
+		+ (id.ft - 25.0) * 0.00058) - st.az0;
 
 	// update vertical acceleration low-pass filter
 	dsp_updatelpf(&tlpf, id.afz);
@@ -1402,6 +1416,11 @@ int stabilize(int ms)
 
 	dsp_updatelpf(&vtlpf, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
+
+	dsp_updatelpf(&volpf, (vx * ax + vy * ay + vz * az)
+		/ sqrtf(vx * vx + vy * vy + vz * vz));
+
+	log_write(LOG_CUSTOM0, dsp_getlpf(&valpf));
 
 	ht = st.hoverthrottle / (cosf(-pitch) * cosf(-roll));
 
@@ -1473,12 +1492,16 @@ int stabilize(int ms)
 		// correction value
 		thrustcor = dsp_pidbl(&cpv, thrustcor,
 			dsp_getcompl(&climbratecompl));
+		
+		log_write(LOG_CUSTOM2, thrustcor);
 
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pidbl(&tpv, thrustcor + 1.0,
 			dsp_getlpf(&vtlpf)) + ht;
+		
+		log_write(LOG_CUSTOM3, thrustcor);
 	}
 	else if (altmode == ALTMODE_SPEED) {
 		// if consttant climb rate mode, first use climb rate
@@ -1489,12 +1512,16 @@ int stabilize(int ms)
 		// correction value
 		thrustcor = dsp_pidbl(&cpv, thrust,
 			dsp_getcompl(&climbratecompl));
+		
+		log_write(LOG_CUSTOM2, thrustcor);
 
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pidbl(&tpv, thrustcor + 1.0,
 			dsp_getlpf(&vtlpf)) + ht;
+		
+		log_write(LOG_CUSTOM3, thrustcor);
 	}
 	else {	
 		if (hovermode) {
@@ -1602,7 +1629,9 @@ int checkconnection(int ms)
 int dpsupdate(int ms)
 {
 	struct dps_data hd;
-	float prevalt, alt;
+	//float prevalt, alt;
+	float alt;
+	static float prevalt = 0.0;
 	float dt;
 
 	dt = ms / (float) TICKSPERSEC;
@@ -1621,8 +1650,6 @@ int dpsupdate(int ms)
 	log_write(LOG_BAR_TEMP, hd.tempf);
 	log_write(LOG_BAR_ALT, hd.altf);
 
-	prevalt = dsp_getlpf(&altlpf);
-
 	// update altitude low-pass filter and temperature reading
 	alt = dsp_updatelpf(&altlpf, hd.altf);
 	dsp_updatelpf(&templpf, hd.tempf);
@@ -1631,12 +1658,16 @@ int dpsupdate(int ms)
 	// barometric altitude defference using complimentary filter
 	dsp_updatecompl(&climbratecompl,
 		9.80665 * (dsp_getlpf(&valpf) + goffset - 1.0) * dt,
-			(alt - prevalt) / dt);
+			(dsp_getcompl(&altcompl) - prevalt) / dt);
+	
+	log_write(LOG_CUSTOM1, (dsp_getcompl(&altcompl) - prevalt) / dt);
 
 	// calculate presice altitiude from climb rate and
 	// barometric altitude using complimentary filter
 	dsp_updatecompl(&altcompl, dsp_getcompl(&climbratecompl) * dt,
 		alt);
+	
+	prevalt = dsp_getcompl(&altcompl);
 
 	// write climbrate and altitude values into log
 	log_write(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
@@ -1656,6 +1687,7 @@ int qmcupdate(int ms)
 	// if magnetometer isn't initilized, return
 	if (dev[QMC_DEV].status != DEVSTATUS_INIT)
 		return 0;
+
 	// read magnetometer values
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
@@ -2062,7 +2094,6 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 
 		dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, 0);
 		dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, 0);
-		dsp_setlpf1t(&altlpf, st.ttcoef, DPS_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -2811,8 +2842,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// for testing), set reference altitude from current altitude
 	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0) {
 		alt0 = dsp_getcompl(&altcompl);
-		gscale = 1.0 / dsp_getlpf(&valpf);
-		goffset = 1.0 - dsp_getlpf(&valpf);
+		gscale = 1.0 / dsp_getlpf(&volpf);
+		goffset = 1.0 - dsp_getlpf(&volpf);
 	}
 
 	// set acceleromter stabilization mode, if channel 6 has value

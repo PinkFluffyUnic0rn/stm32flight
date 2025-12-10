@@ -89,9 +89,11 @@ enum ICM_ACCELORDER {
 };
 
 struct icm_data {
+	int16_t t;
 	int16_t ax, ay, az;
 	int16_t gx, gy, gz;
 
+	float ft;
 	float afx, afy, afz;
 	float gfx, gfy, gfz;
 };

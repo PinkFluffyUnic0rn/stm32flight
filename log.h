@@ -27,7 +27,7 @@
 /**
 * @brief log value id's count
 */
-#define LOG_FIELDSTRSIZE 38
+#define LOG_FIELDSTRSIZE 42
 
 /**
 * @defgroup LOG log values id
@@ -71,6 +71,10 @@
 #define LOG_CRSFCH13	35	/*!< CRSF channel 13 */
 #define LOG_CRSFCH14	36	/*!< CRSF channel 14 */
 #define LOG_CRSFCH15	37	/*!< CRSF channel 15 */
+#define LOG_CUSTOM0	38	/*!< custom value 0 for debug */
+#define LOG_CUSTOM1	39	/*!< custom value 1 for debug */
+#define LOG_CUSTOM2	40	/*!< custom value 2 for debug */
+#define LOG_CUSTOM3	41	/*!< custom value 3 for debug */
 /**
 * @}
 */

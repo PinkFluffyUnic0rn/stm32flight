@@ -23,7 +23,8 @@ const char *logfieldstr[LOG_FIELDSTRSIZE] = {
 	"lt", "lb", "rb", "rt",
 	"bat", "cur",
 	"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7",
-	"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15"
+	"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15",
+	"custom0", "custom1", "custom2", "custom3"
 };
 
 static int log_eraseflash(const struct cdevice *d, size_t size)
