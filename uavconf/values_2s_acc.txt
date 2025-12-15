@@ -1,6 +1,7 @@
 adj acc x 0
 adj acc y 0
 adj acc z 0
+adj acc ztscale 0.00058
 adj althold hover 0.756
 adj pitch 0
 adj roll 0
@@ -8,15 +9,15 @@ adj yaw 0
 adj curr offset 0
 adj curr scale 412.5
 adj gyro x -0.297
-adj gyro y -0.210
-adj gyro z -0.130
-adj mag x0 656
-adj mag y0 111
-adj mag z0 11
+adj gyro y -0.21
+adj gyro z -0.13
+adj mag x0 576
+adj mag y0 156
+adj mag z0 5
 adj mag decl 0.3264
 adj mag xscale 1
-adj mag yscale 1.039
-adj mag zscale 1.089
+adj mag yscale 1
+adj mag zscale 1
 adj pitchthrust 0
 adj rollthrust 0
 ctrl accel 0.5
@@ -34,22 +35,23 @@ irc power 25
 compl altitude 1
 compl attitude 0.75
 compl climbrate 1
-compl yaw 1.5
+compl yaw 1
 lpf vaccel 0.25
 lpf accel 40
 lpf d 100
 lpf gyro 40
-log freq 1024
-log record size 4
-log record 0 gyro_x
-log record 1 gyro_y
+lpf mag 0.25
+log freq 128
+log record size 8
+log record 0 mag_x
+log record 1 mag_y
 log record 10 none
-log record 2 gyro_z
-log record 3 acc_z
-log record 4 none
-log record 5 none
-log record 6 roll
-log record 7 pitch
+log record 2 mag_z
+log record 3 ch2
+log record 4 lt
+log record 5 lb
+log record 6 rb
+log record 7 rt
 log record 8 none
 log record 9 none
 log record 11 bar_temp
@@ -59,15 +61,15 @@ log record 14 none
 log record 15 yaw
 log record 16 none
 log record 17 none
-log record 18 lt
-log record 19 lb
-log record 20 rb
-log record 21 rt
+log record 18 none
+log record 19 none
+log record 20 none
+log record 21 none
 log record 22 bat
 log record 23 cur
 log record 24 ch0
-log record 25 ch1
-log record 26 ch2
+log record 25 none
+log record 26 none
 log record 27 ch3
 log record 28 ch4
 log record 29 ch5
@@ -79,20 +81,20 @@ motor rb 3
 motor rt 2
 pid altitude d 0
 pid altitude i 0
-pid altitude p 0.5
+pid altitude p 1.7
 pid tilt d 0
 pid tilt i 0
 pid tilt p 9
 pid climbrate d 0
 pid climbrate i 0
-pid climbrate p 0.2
+pid climbrate p 0.6
 pid stilt d 0.00375
 pid stilt i 2
 pid stilt p 0.42
 pid throttle d 0
-pid throttle i 20
+pid throttle i 5
 pid throttle p 5
-pid syaw d 0.0005
+pid syaw d 0.0
 pid syaw i 0
 pid syaw p -2.5
 pid yaw d 0

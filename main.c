@@ -253,9 +253,9 @@ struct dsp_lpf gyroxpt1;	/*!< gyroscope x low-pass filter */
 struct dsp_lpf gyroypt1;	/*!< gyroscope y low-pass filter */
 struct dsp_lpf gyrozpt1;	/*!< gyroscope z low-pass filter */
 
-struct dsp_lpf magxlpf;		/*!< gyroscope x low-pass filter */
-struct dsp_lpf magylpf;		/*!< gyroscope y low-pass filter */
-struct dsp_lpf magzlpf;		/*!< gyroscope z low-pass filter */
+struct dsp_lpf magxpt1;		/*!< gyroscope x low-pass filter */
+struct dsp_lpf magypt1;		/*!< gyroscope y low-pass filter */
+struct dsp_lpf magzpt1;		/*!< gyroscope z low-pass filter */
 
 struct dsp_compl pitchcompl;	/*!< pitch low-pass filter */
 struct dsp_compl rollcompl;	/*!< roll low-pass filter */
@@ -273,6 +273,10 @@ struct dsp_pidblval yawspv;	/*!< yaw speed PID context */
 struct dsp_pidblval tpv;	/*!< vertical acceleration PID context */
 struct dsp_pidblval cpv;	/*!< climb rate PID context */
 struct dsp_pidblval apv;	/*!< altitude PID context */
+
+struct dsp_lpf yawlpf;
+float avgthrust = 0.0;
+
 /**
 * @}
 */
@@ -321,7 +325,6 @@ int elrs = 0; /*!< 1 when ELRS control is active (ELRS remote's
 
 float alt0 = 0.0;	/*!< reference altitude */
 float goffset = 0.0;	/*!< free fall acceleration (g) value offset */
-float gscale = 1.0;	/*!< free fall acceleration (g) value scale */
 
 int curslot = 0; /*!< current settings slot */
 
@@ -403,7 +406,7 @@ float batteryvoltage()
 
 	HAL_ADC_Stop(&hadc1);
 
-	return (v / (float) 0xfff * 17.85882);
+	return (v / (float) 0xfff * BAT_SCALE);
 }
 
 /**
@@ -593,6 +596,9 @@ int setthrust(float ltd, float rtd, float lbd, float rbd)
 	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
 		|| isnan(lbd) || !elrs)
 		ltd = rtd = rbd = lbd = 0.0;
+
+	avgthrust = (ltd + rtd + rbd + lbd) / 4.0;
+	avgthrust = avgthrust < 0.0 ? 0.0 : avgthrust;
 
 	// put motors thrust values into log
 	log_write(LOG_LT, ltd);
@@ -850,49 +856,49 @@ int setstabilize(int init)
 	dsp_setcompl(&altcompl, st.actcoef, DPS_FREQ, init);
 
 	// init roll and pitch position PID controller contexts
-	dsp_setpidbl(&pitchpv, st.p, st.i, st.d, 0.5, st.dpt1freq,
+	dsp_setpidbl(&pitchpv, st.p, st.i, st.d, PID_MAX_I, st.dpt1freq,
 		PID_FREQ, init);
-	dsp_setpidbl(&rollpv, st.p, st.i, st.d, 0.5, st.dpt1freq,
+	dsp_setpidbl(&rollpv, st.p, st.i, st.d, PID_MAX_I, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init roll, pitch and yaw speed PID controller contexts
 	dsp_setpidbl(&pitchspv, st.sp, st.si, st.sd,
-		0.5, st.dpt1freq, PID_FREQ, init);
+		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
 	dsp_setpidbl(&rollspv, st.sp, st.si, st.sd,
-		0.5, st.dpt1freq, PID_FREQ, init);
+		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
 	dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
-		0.5, st.dpt1freq, PID_FREQ, init);
+		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
 
 	// init yaw position PID controller's context
 	dsp_setpid(&yawpv, st.yp, st.yi, st.yd, st.dpt1freq,
 		PID_FREQ, init);
 
 	// init vertical acceleration PID controller's context
-	dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd, 0.5, st.dpt1freq,
-		PID_FREQ, init);
+	dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd, PID_MAX_I,
+		st.dpt1freq, PID_FREQ, init);
 
 	// init climbrate PID controller's context
-	dsp_setpidbl(&cpv, st.cp, st.ci, st.cd, 0.5, st.dpt1freq,
-		PID_FREQ, init);
+	dsp_setpidbl(&cpv, st.cp, st.ci, st.cd, PID_MAX_I,
+		st.dpt1freq, PID_FREQ, init);
 
 	// init altitude PID controller's context
-	dsp_setpidbl(&apv, st.ap, st.ai, st.ad, 0.5, st.dpt1freq,
-		PID_FREQ, init);
+	dsp_setpidbl(&apv, st.ap, st.ai, st.ad, PID_MAX_I,
+		st.dpt1freq, PID_FREQ, init);
 
 	// init battery voltage low-pass filter
-	dsp_setlpf1f(&batlpf, 100.0, POWER_FREQ, init);
-	dsp_setlpf1f(&currlpf, 100.0, POWER_FREQ, init);
+	dsp_setlpf1f(&batlpf, BAT_CUTOFF, POWER_FREQ, init);
+	dsp_setlpf1f(&currlpf, CUR_CUTOFF, POWER_FREQ, init);
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_setunity(&templpf, init);
 	dsp_setunity(&valpf, init);
 	dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, init);
 	dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, init);
-	dsp_setlpf1t(&volpf, 2.0, PID_FREQ, init);
+	dsp_setlpf1t(&volpf, VA_AVG_TCOEF, PID_FREQ, init);
 	dsp_setunity(&altlpf, init);
 
 	// init low-pass fitlers for IMU temperature sensor
-	dsp_setlpf1t(&atemppt1, 0.5, PID_FREQ, init);
+	dsp_setlpf1t(&atemppt1, TEMP_TCOEF, PID_FREQ, init);
 
 	// init low-pass fitlers for accelerometer x, y and z axes
 	dsp_setlpf1f(&accxpt1, st.accpt1freq, PID_FREQ, init);
@@ -905,9 +911,11 @@ int setstabilize(int init)
 	dsp_setlpf1f(&gyrozpt1, st.gyropt1freq, PID_FREQ, init);
 
 	// init low-pass fitlers for magnetometer x, y and z axes
-	dsp_setlpf1f(&magxlpf, 10.0, PID_FREQ, init);
-	dsp_setlpf1f(&magylpf, 10.0, PID_FREQ, init);
-	dsp_setlpf1f(&magzlpf, 10.0, PID_FREQ, init);
+	dsp_setlpf1t(&magxpt1, st.magpt1freq, QMC_FREQ, init);
+	dsp_setlpf1t(&magypt1, st.magpt1freq, QMC_FREQ, init);
+	dsp_setlpf1t(&magzpt1, st.magpt1freq, QMC_FREQ, init);
+
+	dsp_setunity(&yawlpf, init);
 
 	return 0;
 }
@@ -997,9 +1005,6 @@ int sprintpos(char *s, struct icm_data *id)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"g offset: %f\r\n", (double) goffset);
 
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"g scale: %f\r\n", (double) gscale);
-
 	return 0;
 }
 
@@ -1009,7 +1014,7 @@ int sprintpos(char *s, struct icm_data *id)
 * @param hd magnetometer data.
 * @return always 0
 */
-int sprintqmc(char *s, struct qmc_data *hd)
+int sprintqmc(char *s)
 {
 	s[0] = '\0';
 
@@ -1024,11 +1029,12 @@ int sprintqmc(char *s, struct qmc_data *hd)
 		(double) (st.mysc * (qmcdata.fy + st.my0)),
 		(double) (st.mzsc * (qmcdata.fz + st.mz0)));
 
+//	snprintf(s + strlen(s), INFOLEN - strlen(s),
+//		"heading: %f\r\n", (double) dsp_getlpf(&yawlpf));
+
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"heading: %f\r\n", (double) qmc_heading(
-			dsp_getcompl(&rollcompl) - st.roll0,
-			-(dsp_getcompl(&pitchcompl) - st.pitch0),
-			hd->fx, hd->fy, hd->fz));
+		"heading: %f\r\n", (double) dsp_getcompl(&yawcompl));
+
 
 	return 0;
 }
@@ -1291,6 +1297,9 @@ int sprintffilters(char *s)
 		"accel lpf cut-off: %.6f\r\n", (double) st.accpt1freq);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"mag lpf cut-off: %.6f\r\n", (double) st.magpt1freq);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"d lpf cut-off: %.6f\r\n", (double) st.dpt1freq);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
@@ -1326,6 +1335,7 @@ int stabilize(int ms)
 	float vx, vy, vz;
 	float gy, gx, gz;
 	float ay, ax, az;
+	float va;
 	float ht;
 	float dt;
 
@@ -1356,10 +1366,12 @@ int stabilize(int ms)
 	dev[ICM_DEV].read(dev[ICM_DEV].priv, &id,
 		sizeof(struct icm_data));
 
+	id.afz += (id.ft - 25.0) * st.aztscale;
+
 	// write accelerometer and gyroscope values into log
 	log_write(LOG_ACC_X, id.afx);
 	log_write(LOG_ACC_Y, id.afy);
-	log_write(LOG_ACC_Z, id.afz + (id.ft - 25.0) * 0.00058);
+	log_write(LOG_ACC_Z, id.afz);
 	log_write(LOG_GYRO_X, id.gfx);
 	log_write(LOG_GYRO_Y, id.gfy);
 	log_write(LOG_GYRO_Z, id.gfz);
@@ -1370,8 +1382,7 @@ int stabilize(int ms)
 	// apply accelerometer offsets
 	ax = dsp_updatelpf(&accxpt1, id.afx) - st.ax0;
 	ay = dsp_updatelpf(&accypt1, id.afy) - st.ay0;
-	az = dsp_updatelpf(&acczpt1, id.afz
-		+ (id.ft - 25.0) * 0.00058) - st.az0;
+	az = dsp_updatelpf(&acczpt1, id.afz) - st.az0;
 
 	// update vertical acceleration low-pass filter
 	dsp_updatelpf(&tlpf, id.afz);
@@ -1399,10 +1410,17 @@ int stabilize(int ms)
 	// value. First signal is the speed of the rotation around Z
 	// axis. Second signal is the heading value that is
 	// calculated from magnetometer readings.
+	
 	yaw = circf(dsp_updatecirccompl(&yawcompl, -gz * dt,
 		qmc_heading(roll, -pitch,
 			qmcdata.fx, qmcdata.fy, qmcdata.fz)) - st.yaw0);
 
+/*
+	yaw = dsp_updatelpf(&yawlpf, qmc_heading(roll, -pitch,
+			dsp_getlpf(&magxpt1),
+			dsp_getlpf(&magypt1),
+			dsp_getlpf(&magzpt1))) - st.yaw0;
+*/
 	// calculate gravity direction vector in IMU coordination system
 	// using pitch and roll values;
 	vx = cos(-pitch) * sin(-roll);
@@ -1411,14 +1429,12 @@ int stabilize(int ms)
 
 	// update vertical acceleration using acceleration
 	// vector to gravity vector projection
-	dsp_updatelpf(&valpf, (vx * ax + vy * ay + vz * az)
-		/ sqrtf(vx * vx + vy * vy + vz * vz));
+	va = (vx * ax + vy * ay + vz * az)
+		/ sqrtf(vx * vx + vy * vy + vz * vz);
 
-	dsp_updatelpf(&vtlpf, (vx * ax + vy * ay + vz * az)
-		/ sqrtf(vx * vx + vy * vy + vz * vz));
-
-	dsp_updatelpf(&volpf, (vx * ax + vy * ay + vz * az)
-		/ sqrtf(vx * vx + vy * vy + vz * vz));
+	dsp_updatelpf(&valpf, va);
+	dsp_updatelpf(&vtlpf, va);
+	dsp_updatelpf(&volpf, va);
 
 	log_write(LOG_CUSTOM0, dsp_getlpf(&valpf));
 
@@ -1523,7 +1539,7 @@ int stabilize(int ms)
 		
 		log_write(LOG_CUSTOM3, thrustcor);
 	}
-	else {	
+	else {
 		if (hovermode) {
 			// if no altitude hold and hover throttle mode
 			// is enabled, update vertical acceleration PID
@@ -1629,7 +1645,6 @@ int checkconnection(int ms)
 int dpsupdate(int ms)
 {
 	struct dps_data hd;
-	//float prevalt, alt;
 	float alt;
 	static float prevalt = 0.0;
 	float dt;
@@ -1692,10 +1707,16 @@ int qmcupdate(int ms)
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
 
+	qmcdata.fx += 1559 * avgthrust;
+
 	// write magnetometer values into log
 	log_write(LOG_MAG_X, qmcdata.fx);
 	log_write(LOG_MAG_Y, qmcdata.fy);
 	log_write(LOG_MAG_Z, qmcdata.fz);
+
+	dsp_updatelpf(&magxpt1, qmcdata.fx);
+	dsp_updatelpf(&magypt1, qmcdata.fy);
+	dsp_updatelpf(&magzpt1, qmcdata.fz);
 
 	return 0;
 }
@@ -1749,8 +1770,9 @@ int telesend(int ms)
 	tele.vspeed = dsp_getcompl(&climbratecompl);
 	tele.roll = dsp_getcompl(&rollcompl) - st.roll0;
 	tele.pitch = dsp_getcompl(&pitchcompl) - st.pitch0;
-	tele.yaw = circf(qmc_heading(tele.roll, -tele.pitch,
-		qmcdata.fx, qmcdata.fy, qmcdata.fz) - st.yaw0);
+	tele.yaw = circf(dsp_getcompl(&yawcompl) - st.yaw0);
+//	tele.yaw = dsp_getlpf(&yawlpf);
+
 
 	// fill flight mode string with arm state and
 	// combination of stabilization modes codes
@@ -1836,14 +1858,8 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 
 		sprintpos(out, &id);
 	}
-	else if (strcmp(toks[1], "qmc") == 0) {
-		struct qmc_data hd;
-
-		dev[QMC_DEV].read(dev[QMC_DEV].priv, &hd,
-			sizeof(struct qmc_data));
-
-		sprintqmc(out, &hd);
-	}
+	else if (strcmp(toks[1], "qmc") == 0)
+		sprintqmc(out);
 	else if (strcmp(toks[1], "hp") == 0) {
 		struct dps_data dd;
 
@@ -2069,6 +2085,13 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 		dsp_setlpf1f(&accypt1, st.accpt1freq, PID_FREQ, 0);
 		dsp_setlpf1f(&accypt1, st.accpt1freq, PID_FREQ, 0);
 	}
+	else if (strcmp(toks[1], "mag") == 0) {
+		st.magpt1freq = atof(toks[2]);
+
+		dsp_setlpf1f(&magxpt1, st.magpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(&magypt1, st.magpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(&magypt1, st.magpt1freq, PID_FREQ, 0);
+	}
 	else if (strcmp(toks[1], "d") == 0) {
 		st.dpt1freq = atof(toks[2]);
 
@@ -2126,6 +2149,8 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 			st.ay0 = atof(toks[3]);
 		else if (strcmp(toks[2], "z") == 0)
 			st.az0 = atof(toks[3]);
+		else if (strcmp(toks[2], "ztscale") == 0)
+			st.aztscale = atof(toks[3]);
 		else
 			return (-1);
 	}
@@ -2538,6 +2563,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 			v = st.gyropt1freq;
 		else if (strcmp(toks[2], "accel") == 0)
 			v = st.accpt1freq;
+		else if (strcmp(toks[2], "mag") == 0)
+			v = st.magpt1freq;
 		else if (strcmp(toks[2], "d") == 0)
 			v = st.dpt1freq;
 		else if (strcmp(toks[2], "vaccel") == 0)
@@ -2565,6 +2592,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				v = st.ay0;
 			else if (strcmp(toks[3], "z") == 0)
 				v = st.az0;
+			else if (strcmp(toks[3], "ztscale") == 0)
+				v = st.aztscale;
 			else
 				return (-1);
 		}
@@ -2842,7 +2871,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// for testing), set reference altitude from current altitude
 	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0) {
 		alt0 = dsp_getcompl(&altcompl);
-		gscale = 1.0 / dsp_getlpf(&volpf);
 		goffset = 1.0 - dsp_getlpf(&volpf);
 	}
 

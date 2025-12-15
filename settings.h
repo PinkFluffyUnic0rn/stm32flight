@@ -40,6 +40,25 @@
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
 
 /**
+* @defgroup COMP settings that set at compile time
+* @{
+*/
+#define PID_MAX_I 0.5		/*!< maximum PID I-term value */
+#define BAT_CUTOFF 100.0	/*!< battery voltage sensor
+				filter cut-off frequency */
+#define CUR_CUTOFF 100.0	/*!< battery current sensor
+				filter cut-off frequency */
+#define TEMP_TCOEF 0.5		/*!< PCB temperature filter
+				time coefficient */
+#define VA_AVG_TCOEF 2.0	/*!< averaging low-pass filter
+				time coefficient for vectical
+				acceleration */
+#define BAT_SCALE 17.85882	/*!< battery sensor voltage scale */
+/**
+* @}
+*/
+
+/**
 * @brief Quadcopter settings structure stored in MCU's flash
 */
 struct settings {
@@ -77,9 +96,11 @@ struct settings {
 	/**
 	* @}
 	*/
+	
+	float aztscale /*!< accelerometer z axis thermal scaling */;
 
 	/**
-	* @defgroup ACCOFFSET
+	* @defgroup GYROOFFSET
 	* @brief gyroscope offset values
 	* @{
 	*/
@@ -151,6 +172,9 @@ struct settings {
 
 	float gyropt1freq;	/*!< cut-off frequency for
 				gyroscope PT1 filter */
+	
+	float magpt1freq;	/*!< time coefficient for
+				magnetometer low-pass filter */
 	
 	float dpt1freq;		/*!< cut-off frequency for PID D term */
 

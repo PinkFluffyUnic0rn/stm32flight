@@ -967,14 +967,14 @@ main_widget::main_widget(QWidget *parent)
 		cmdstree, true, this), 3, 0, 2, 1); 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Low-pass filters",
-		{"gyroscope",	"accelerometer",	"d-term",	"acceleration"},
-		{"lpf gyro",	"lpf accel",		"lpf d",	"lpf vaccel"},
+		{"gyroscope",	"accelerometer",	"magnetometer",	"d-term",	"acceleration"},
+		{"lpf gyro",	"lpf accel",		"lpf mag",	"lpf d",	"lpf vaccel"},
 		cmdstree, true, this), 3, 1, 2, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Accelerometer offset",
-		{"X",		"Y",		"Z"},
-		{"adj acc x",	"adj acc y",	"adj acc z"},
+		{"X",		"Y",		"Z",		"Z thermal scaling"},
+		{"adj acc x",	"adj acc y",	"adj acc z",	"adj acc ztscale"},
 		cmdstree, true, this), 0, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Gyroscope offset",
