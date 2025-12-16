@@ -85,6 +85,17 @@ struct settings {
 	* @}
 	*/
 
+	/**
+	* @defgroup MAGTHROFFSET
+	* @brief magnetormeter thrust offset scale
+		determinted by calibration procedure
+	* @{
+	*/
+	float mxthsc /*! x */, mythsc /*! y */, mzthsc /*! z */;
+	/**
+	* @}
+	*/
+
 	float magdecl;		/*!< magnetic declination */
 
 	/**

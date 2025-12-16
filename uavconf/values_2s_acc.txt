@@ -94,9 +94,9 @@ pid stilt p 0.42
 pid throttle d 0
 pid throttle i 5
 pid throttle p 5
-pid syaw d 0.0
+pid syaw d 0
 pid syaw i 0
-pid syaw p -2.5
+pid syaw p 2.5
 pid yaw d 0
 pid yaw i 0
 pid yaw p -1.5

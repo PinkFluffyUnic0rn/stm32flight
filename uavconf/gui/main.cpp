@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 #if defined(ANDROID)
     QtAndroidPrivate::requestPermission(QString("android.permission.WRITE_EXTERNAL_STORAGE"));
 #else
-	w.resize(1200, 700);
+	w.resize(1200, 800);
 #endif
 
 	w.show();

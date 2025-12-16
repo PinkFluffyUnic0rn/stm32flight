@@ -990,12 +990,18 @@ main_widget::main_widget(QWidget *parent)
 		"Magnetometer offsets",
 		{"X",		"Y",		"Z",		"declination"},
 		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl"},
-		cmdstree, true, this), 1, 0, 2, 1);
+		cmdstree, true, this), 1, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Magnetometer scale",
 		{"X",			"Y",			"Z"},
 		{"adj mag xscale", 	"adj mag yscale",	"adj mag zscale"},
 		cmdstree, true, this), 1, 1);
+
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"Magnetometer thrust scale",
+		{"X",			"Y",			"Z"},
+		{"adj mag xthscale", 	"adj mag ythscale",	"adj mag zthscale"},
+		cmdstree, true, this), 1, 2);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Altitude hold",
@@ -1007,7 +1013,7 @@ main_widget::main_widget(QWidget *parent)
 		"Motor scale",
 		{"roll",		"pitch"},
 		{"adj rollthrust", 	"adj pitchthrust"},
-		cmdstree, true, this), 1, 2);
+		cmdstree, true, this), 2, 0);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Current meter adjustments",

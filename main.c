@@ -235,6 +235,8 @@ struct bdevice flashdev;
 struct dsp_lpf batlpf;	/*!< battery voltage low-pass filter */
 struct dsp_lpf currlpf;	/*!< battery voltage low-pass filter */
 
+struct dsp_lpf avgthrustlpf; /*!< average motors thrust filter */
+
 struct dsp_lpf valpf;	/*!< vertical acceleration unity filter */
 struct dsp_lpf tlpf;	/*!< trust acceleration low-pass filter */
 struct dsp_lpf vtlpf;	/*!< vertical acceleration low-pass filter */
@@ -274,8 +276,7 @@ struct dsp_pidblval tpv;	/*!< vertical acceleration PID context */
 struct dsp_pidblval cpv;	/*!< climb rate PID context */
 struct dsp_pidblval apv;	/*!< altitude PID context */
 
-struct dsp_lpf yawlpf;
-float avgthrust = 0.0;
+//float avgthrust = 0.0;
 
 /**
 * @}
@@ -580,6 +581,7 @@ int dshotcmd(int n, uint16_t cmd)
 int setthrust(float ltd, float rtd, float lbd, float rbd)
 {
 	static uint16_t dsbuf[4][18];
+	float avgthrust;
 
 	/*
 	      ltd    rtd
@@ -599,6 +601,8 @@ int setthrust(float ltd, float rtd, float lbd, float rbd)
 
 	avgthrust = (ltd + rtd + rbd + lbd) / 4.0;
 	avgthrust = avgthrust < 0.0 ? 0.0 : avgthrust;
+
+	dsp_updatelpf(&avgthrustlpf, avgthrust);
 
 	// put motors thrust values into log
 	log_write(LOG_LT, ltd);
@@ -889,6 +893,9 @@ int setstabilize(int init)
 	dsp_setlpf1f(&batlpf, BAT_CUTOFF, POWER_FREQ, init);
 	dsp_setlpf1f(&currlpf, CUR_CUTOFF, POWER_FREQ, init);
 
+	// init average thrust low-pass filter
+	dsp_setunity(&avgthrustlpf, init);
+
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_setunity(&templpf, init);
 	dsp_setunity(&valpf, init);
@@ -914,8 +921,6 @@ int setstabilize(int init)
 	dsp_setlpf1t(&magxpt1, st.magpt1freq, QMC_FREQ, init);
 	dsp_setlpf1t(&magypt1, st.magpt1freq, QMC_FREQ, init);
 	dsp_setlpf1t(&magzpt1, st.magpt1freq, QMC_FREQ, init);
-
-	dsp_setunity(&yawlpf, init);
 
 	return 0;
 }
@@ -1028,9 +1033,6 @@ int sprintqmc(char *s)
 		(double) (st.mxsc * (qmcdata.fx + st.mx0)),
 		(double) (st.mysc * (qmcdata.fy + st.my0)),
 		(double) (st.mzsc * (qmcdata.fz + st.mz0)));
-
-//	snprintf(s + strlen(s), INFOLEN - strlen(s),
-//		"heading: %f\r\n", (double) dsp_getlpf(&yawlpf));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"heading: %f\r\n", (double) dsp_getcompl(&yawcompl));
@@ -1415,12 +1417,6 @@ int stabilize(int ms)
 		qmc_heading(roll, -pitch,
 			qmcdata.fx, qmcdata.fy, qmcdata.fz)) - st.yaw0);
 
-/*
-	yaw = dsp_updatelpf(&yawlpf, qmc_heading(roll, -pitch,
-			dsp_getlpf(&magxpt1),
-			dsp_getlpf(&magypt1),
-			dsp_getlpf(&magzpt1))) - st.yaw0;
-*/
 	// calculate gravity direction vector in IMU coordination system
 	// using pitch and roll values;
 	vx = cos(-pitch) * sin(-roll);
@@ -1595,13 +1591,13 @@ int stabilize(int ms)
 	// for pitch and two diagonals (spinning in oposite directions)
 	// for yaw.
 	setthrust(en * ltm * (thrustcor + 0.5 * rollcor
-			+ 0.5 * pitchcor + 0.5 * yawcor),
+			+ 0.5 * pitchcor - 0.5 * yawcor),
 		en * rtm * (thrustcor - 0.5 * rollcor
-			+ 0.5 * pitchcor - 0.5 * yawcor),	
+			+ 0.5 * pitchcor + 0.5 * yawcor),	
 		en * lbm * (thrustcor + 0.5 * rollcor
-			- 0.5 * pitchcor - 0.5 * yawcor),
+			- 0.5 * pitchcor + 0.5 * yawcor),
 		en * rbm * (thrustcor - 0.5 * rollcor
-			- 0.5 * pitchcor + 0.5 * yawcor));
+			- 0.5 * pitchcor - 0.5 * yawcor));
 
 	// update loops counter
 	++loops;
@@ -1707,7 +1703,8 @@ int qmcupdate(int ms)
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
 
-	qmcdata.fx += 1559 * avgthrust;
+	// qmcdata.fx += 1559 * avgthrust;
+	qmcdata.fx += st.mxthsc * dsp_getlpf(&avgthrustlpf);
 
 	// write magnetometer values into log
 	log_write(LOG_MAG_X, qmcdata.fx);
@@ -1771,8 +1768,6 @@ int telesend(int ms)
 	tele.roll = dsp_getcompl(&rollcompl) - st.roll0;
 	tele.pitch = dsp_getcompl(&pitchcompl) - st.pitch0;
 	tele.yaw = circf(dsp_getcompl(&yawcompl) - st.yaw0);
-//	tele.yaw = dsp_getlpf(&yawlpf);
-
 
 	// fill flight mode string with arm state and
 	// combination of stabilization modes codes
@@ -2177,6 +2172,12 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 			st.mysc = atof(toks[3]);
 		else if (strcmp(toks[2], "zscale") == 0)
 			st.mzsc = atof(toks[3]);
+		else if (strcmp(toks[2], "xthscale") == 0)
+			st.mxthsc = atof(toks[3]);
+		else if (strcmp(toks[2], "ythscale") == 0)
+			st.mythsc = atof(toks[3]);
+		else if (strcmp(toks[2], "zthscale") == 0)
+			st.mzthsc = atof(toks[3]);
 		else if (strcmp(toks[2], "decl") == 0)
 			st.magdecl = atof(toks[3]);
 		else
@@ -2620,6 +2621,12 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				v = st.mysc;
 			else if (strcmp(toks[3], "zscale") == 0)
 				v = st.mzsc;
+			else if (strcmp(toks[3], "xthscale") == 0)
+				v = st.mxthsc;
+			else if (strcmp(toks[3], "ythscale") == 0)
+				v = st.mythsc;
+			else if (strcmp(toks[3], "zthscale") == 0)
+				v = st.mzthsc;
 			else if (strcmp(toks[3], "decl") == 0)
 				v = st.magdecl;
 			else
