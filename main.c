@@ -1703,7 +1703,6 @@ int qmcupdate(int ms)
 	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
 		sizeof(struct qmc_data));
 
-	// qmcdata.fx += 1559 * avgthrust;
 	qmcdata.fx += st.mxthsc * dsp_getlpf(&avgthrustlpf);
 
 	// write magnetometer values into log
