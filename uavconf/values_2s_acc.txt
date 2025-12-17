@@ -11,13 +11,16 @@ adj curr scale 412.5
 adj gyro x -0.297
 adj gyro y -0.21
 adj gyro z -0.13
-adj mag x0 576
-adj mag y0 156
-adj mag z0 5
+adj mag x0 581.995
+adj mag y0 122.715
+adj mag z0 7.115
 adj mag decl 0.3264
-adj mag xscale 1
-adj mag yscale 1
-adj mag zscale 1
+adj mag xscale 0.95478
+adj mag yscale 0.97549
+adj mag zscale 0.99650
+adj mag xthscale 1559
+adj mag ythscale 0
+adj mag zthscale 0
 adj pitchthrust 0
 adj rollthrust 0
 ctrl accel 0.5
@@ -96,7 +99,7 @@ pid throttle i 5
 pid throttle p 5
 pid syaw d 0
 pid syaw i 0
-pid syaw p 2.5
+pid syaw p 5
 pid yaw d 0
 pid yaw i 0
 pid yaw p -1.5
