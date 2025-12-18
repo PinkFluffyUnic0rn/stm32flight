@@ -653,10 +653,22 @@ int stabilize(int ms)
 		}
 	}
 
-	// disable I-term for all PID-controller,
-	// if disarmeed of no throttle
-	if (en < 0.5
-		|| (altmode == ALTMODE_ACCEL && thrust < 0
+	// reset bilinear PID-controllers when disarmed
+	if (en < 0.5) {
+		dsp_resetpidbl(&pitchpv);
+		dsp_resetpidbl(&rollpv);
+		dsp_resetpidbl(&pitchspv);
+		dsp_resetpidbl(&rollspv);
+		dsp_resetpids(&yawpv);
+		dsp_resetpidbl(&yawspv);
+		dsp_resetpidbl(&tpv);
+		dsp_resetpidbl(&cpv);
+		dsp_resetpidbl(&apv);
+	}
+
+	// disable I-term for all
+	// PID-controller, if no throttle
+	if ((altmode == ALTMODE_ACCEL && thrust < 0
 			&& !hovermode)
 		|| (altmode == ALTMODE_SPEED
 			&& thrust < -0.95 * st.climbratemax)

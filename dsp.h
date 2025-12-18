@@ -51,8 +51,7 @@
 * @brief Reset bilinear PID controller
 * @param pid bilinear PID controller's context
 */
-#define dsp_resetpidbl(pid) ((pid)->e[0] = (pid)->e[1] \
-	= (pid)->v[0] = (pid)->v[1] = 0.0)
+#define dsp_resetpidbl(pid) ((pid)->step = 0)
 
 /**
 * @brief Crop PID controller's I-term by value
