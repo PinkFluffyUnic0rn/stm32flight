@@ -3,7 +3,9 @@
 #include <string.h>
 #include <stdio.h>
 
+
 #include "crc.h"
+#include "util.h"
 
 #include "crsf.h"
 
@@ -108,6 +110,34 @@ int crsf_interrupt(void *dev, const void *h)
 
 		Packstate = 0;
 	}
+
+	return 0;
+}
+
+int crsf_error(void *dev, const void *h)
+{
+	struct crsf_device *d;
+	const UART_HandleTypeDef *huart;
+
+	d = dev;
+	huart = h;
+
+	if (huart->Instance != d->huart->Instance)
+		return 0;
+
+	if ((huart->ErrorCode
+		& (HAL_UART_ERROR_FE | HAL_UART_ERROR_NE)) == 0) {
+		return 0;
+	}
+
+	__HAL_UART_CLEAR_FLAG(huart, UART_FLAG_FE);
+	__HAL_UART_CLEAR_FLAG(huart, UART_FLAG_NE);
+
+	HAL_UART_Receive_DMA(d->huart, &Rxbuf, 1);
+
+	Packstate = 0;
+	Packrest = 0;
+	Packw = Packr = 0;
 
 	return 0;
 }
@@ -263,6 +293,7 @@ int crsf_initdevice(void *is, struct cdevice *dev)
 	dev->read = crsf_read;
 	dev->write = crsf_write;
 	dev->interrupt = crsf_interrupt;
+	dev->error = crsf_error;
 
 	r = crsf_init(crsf_devs + crsf_devcount++);
 

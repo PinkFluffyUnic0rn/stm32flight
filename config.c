@@ -83,6 +83,17 @@ static int sprintpos(char *s, struct icm_data *id)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"g offset: %f\r\n", (double) goffset);
 
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"forward acceleration: %f\r\n",
+		(double) dsp_getlpf(&flpf));
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"forward speed: %f\r\n", (double) forwardspeed);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"forward path: %f\r\n", (double) forwardpath);
+
+
 	return 0;
 }
 

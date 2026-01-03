@@ -89,8 +89,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-	if (DEVITENABLED(dev[ESP_DEV].status))
-		dev[ESP_DEV].error(dev[ESP_DEV].priv, huart);
+	if (DEVITENABLED(dev[CRSF_DEV].status))
+		dev[CRSF_DEV].error(dev[CRSF_DEV].priv, huart);
 }
 
 /**
@@ -374,6 +374,7 @@ int setstabilize(int init)
 	dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, init);
 	dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, init);
 	dsp_setlpf1t(&volpf, VA_AVG_TCOEF, PID_FREQ, init);
+	dsp_setunity(&flpf, init);
 	dsp_setunity(&altlpf, init);
 
 	// init low-pass fitlers for IMU temperature sensor
@@ -393,6 +394,42 @@ int setstabilize(int init)
 	dsp_setlpf1t(&magxpt1, st.magpt1freq, QMC_FREQ, init);
 	dsp_setlpf1t(&magypt1, st.magpt1freq, QMC_FREQ, init);
 	dsp_setlpf1t(&magzpt1, st.magpt1freq, QMC_FREQ, init);
+
+	return 0;
+}
+
+int initautopilot()
+{
+	points[0].x = 0.0;
+	points[0].y = 0.0;
+	points[0].z = 0.0;
+	points[0].mode = AUTOPILOT_START;
+
+	points[1].x = 0.0;
+	points[1].y = 0.0;
+	points[1].z = 1.5;
+	points[1].mode = AUTOPILOT_TAKEOFF;
+	points[1].t = 3.0;
+
+	points[2].x = 0.0;
+	points[2].y = 0.0;
+	points[2].z = 1.5;
+	points[2].mode = AUTOPILOT_HOVER;
+	points[2].t = 1.0;
+
+	points[3].x = 0.0;
+	points[3].y = 0.0;
+	points[3].z = 0.0;
+	points[3].mode = AUTOPILOT_LANDING;
+	points[3].t = 3.0;
+
+	points[4].x = 0.0;
+	points[4].y = 0.0;
+	points[4].z = 0.0;
+	points[4].mode = AUTOPILOT_STOP;
+	points[4].t = 0.0;
+
+	pointscount = 5;
 
 	return 0;
 }
@@ -529,8 +566,18 @@ int stabilize(int ms)
 	dsp_updatelpf(&valpf, va);
 	dsp_updatelpf(&vtlpf, va);
 	dsp_updatelpf(&volpf, va);
-
+	
 	log_write(LOG_CUSTOM0, dsp_getlpf(&valpf));
+
+	vx = sin(-roll) * sin(-pitch);
+	vy = cos(-pitch);
+	vz = cos(-roll) * sin(-pitch);
+
+	dsp_updatelpf(&flpf, (vx * ax + vy * ay + vz * az)
+		/ sqrtf(vx * vx + vy * vy + vz * vz));
+
+	forwardspeed += (dsp_getlpf(&flpf) - faoffset) * 9.80665 * dt;
+	forwardpath += forwardspeed * dt;
 
 	ht = st.hoverthrottle / (cosf(-pitch) * cosf(-roll));
 
@@ -918,6 +965,99 @@ int powercheck(int ms)
 	return 0;
 }
 
+void autopilotstep()
+{
+	forwardpath = 0.0;
+	autopilottimer = 0;
+	++curpoint;
+}
+
+int autopilotupdate(int ms)
+{
+	float dx, dy;
+	struct appoint *nextpoint;
+	float dt;
+
+	dt = ms / (float) TICKSPERSEC;
+	
+	if (curpoint < 0 || curpoint >= pointscount)
+		return 0;
+
+	nextpoint = points + curpoint + 1;
+	if (nextpoint->mode == AUTOPILOT_START)
+		autopilottimer = 0.0;
+	else if (nextpoint->mode == AUTOPILOT_TAKEOFF) {
+		thrust = autopilottimer
+			* (nextpoint->z - points[curpoint].z)
+			/ nextpoint->t;
+		
+	//	pitchtarget = 0.0;
+	//	yawtarget = 0.0;
+		
+		autopilottimer += dt;
+
+		if (autopilottimer > nextpoint->t)
+			autopilotstep();
+	}
+	else if (nextpoint->mode == AUTOPILOT_HOVER) {
+		thrust = nextpoint->z;
+		
+	//	pitchtarget = 0.0;
+	//	yawtarget = 0.0;
+		
+		autopilottimer += dt;
+
+		if (autopilottimer > nextpoint->t)
+			autopilotstep();
+	}
+	else if (nextpoint->mode == AUTOPILOT_LANDING) {
+		if (dsp_getcompl(&altcompl) - alt0 > 5.0)
+			thrust -= dt;
+		else if (dsp_getcompl(&altcompl) - alt0 > 5.0)
+			thrust -= dt * 0.5;
+		else if (dsp_getcompl(&altcompl) - alt0 > 2.0)
+			thrust -= dt * 0.25;
+		else
+			thrust -= dt * 0.125;
+		
+	//	pitchtarget = 0.0;
+	//	yawtarget = 0.0;
+		
+		if (dsp_getcompl(&altcompl) - alt0 <= nextpoint->z + 0.1)
+			autopilotstep();
+	}
+	else if (nextpoint->mode == AUTOPILOT_STOP) {
+		thrust = -1.0;
+
+	//	pitchtarget = 0.0;
+	//	yawtarget = 0.0;
+		
+	}
+	else if (nextpoint->mode == AUTOPILOT_BRAKE) {
+		if (forwardspeed > 0.0)
+			pitchtarget = -M_PI / 12.0;
+		else	
+			pitchtarget = M_PI / 12.0;
+		
+	//	yawtarget = 0.0;
+
+		if (forwardspeed > -0.1 && forwardspeed < 0.1)
+			autopilotstep();
+	}
+	else if (nextpoint->mode == AUTOPILOT_FORWARD) {
+		pitchtarget = M_PI / 12.0;
+//		yawtarget = 0.0;
+
+		dx = nextpoint->x - points[curpoint].x;
+		dy = nextpoint->y - points[curpoint].y;
+
+		if (forwardpath > sqrtf(dx * dx + dy * dy))
+			autopilotstep();
+	}
+
+	return 0;
+}
+
 /**
 * @brief Set control values using CRSF packet.
 * @param cd -- CRSF packet
@@ -983,8 +1123,27 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	} else
 		slottimeout = ELRS_PUSHTIMEOUT;
 
+	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.0) {
+		if (autopilot == 0) {
+			curpoint = 0;
+			forwardspeed = 0.0;
+			forwardpath = 0.0;
+		}
+
+		autopilot = 1;
+	}
+	else
+		autopilot = 0;
+
 	// set magnetometer stabilization mode, if channel 4 has value
 	// more than 0, set gyroscope only stabilization mode otherwise
+/*
+	if (autopilot) {
+		yawtarget = 0.0;
+		yawspeedpid = 0;
+	}
+	else 
+*/		
 	if (cd->chf[ERLS_CH_YAWMODE] > 0.0) {
 		yawspeedpid = 0;
 
@@ -1003,7 +1162,15 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// set climbrate stabilization mode if channel 7 has value
 	// between -25 and 25, set vertical acceleration mode if channel
 	// 7 value is less than -25
-	if (cd->chf[ERLS_CH_THRMODE] < -0.25) {
+	if (autopilot) {
+		altmode = ALTMODE_POS;
+	}
+	else if (cd->chf[ERLS_CH_THRMODE] > 0.25) {
+		altmode = ALTMODE_POS;
+		thrust = (cd->chf[ERLS_CH_THRUST] + 1.0)
+			/ 2.0 * st.altmax;
+	}
+	else if (cd->chf[ERLS_CH_THRMODE] < -0.25) {
 		altmode = ALTMODE_ACCEL;
 
 		if (cd->chf[ERLS_CH_HOVER] < 0.0) {
@@ -1019,11 +1186,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		}
 
 	}
-	else if (cd->chf[ERLS_CH_THRMODE] > 0.25) {
-		altmode = ALTMODE_POS;
-		thrust = (cd->chf[ERLS_CH_THRUST] + 1.0)
-			/ 2.0 * st.altmax;
-	}
 	else {
 		altmode = ALTMODE_SPEED;
 		thrust = cd->chf[ERLS_CH_THRUST] * st.climbratemax;
@@ -1034,17 +1196,26 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0) {
 		alt0 = dsp_getcompl(&altcompl);
 		goffset = 1.0 - dsp_getlpf(&volpf);
+		forwardspeed = 0.0;
+		forwardpath = 0.0;
+		faoffset = dsp_getlpf(&flpf);
 	}
 
 	// set acceleromter stabilization mode, if channel 6 has value
 	// more than 25, set gyroscope only stabilization mode, if
 	// channel 6 has value between -25 and 25, disarm if channel 6
 	// value is less than -25
-	if (cd->chf[ERLS_CH_ATTMODE] < -0.25) {
-		en = 0;
+/*
+	if (autopilot) {
+		en = 1;
 		speedpid = 0;
+
+		rolltarget = cd->chf[ERLS_CH_ROLL]
+			* (M_PI * st.rollmax);
 	}
-	else if (cd->chf[ERLS_CH_ATTMODE] > 0.25) {
+	else 
+	*/	
+	if (cd->chf[ERLS_CH_ATTMODE] > 0.25) {
 		en = 1;
 		speedpid = 0;
 
@@ -1054,6 +1225,10 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 			* (M_PI * st.rollmax);
 		pitchtarget = -cd->chf[ERLS_CH_PITCH]
 			* (M_PI * st.pitchmax);
+	}
+	else if (cd->chf[ERLS_CH_ATTMODE] < -0.25) {
+		en = 0;
+		speedpid = 0;
 	}
 	else {
 		en = 1;
@@ -1168,6 +1343,8 @@ int main(void)
 	// set device that is used to logging
 	log_setdev(&flashdev);
 
+	initautopilot();
+
 	// initilize periodic events
 	inittimev(evs + TEV_PID, 0, PID_FREQ, stabilize);
 	inittimev(evs + TEV_CHECK, 0, CHECK_FREQ, checkconnection);
@@ -1178,6 +1355,8 @@ int main(void)
 		TELE_FREQ, telesend);
 	inittimev(evs + TEV_POWER, 4 * POWER_FREQ / 5,
 		POWER_FREQ, powercheck);
+	inittimev(evs + TEV_AUTOPILOT, 0, AUTOPILOT_FREQ,
+		autopilotupdate);
 
 	// initilize debug commands
 	addcommand("r", rcmd);

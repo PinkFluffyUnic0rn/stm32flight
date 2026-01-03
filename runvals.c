@@ -13,6 +13,7 @@ struct dsp_lpf valpf;
 struct dsp_lpf tlpf;
 struct dsp_lpf vtlpf;
 struct dsp_lpf volpf;
+struct dsp_lpf flpf;
 
 struct dsp_lpf altlpf;
 struct dsp_lpf templpf;
@@ -66,9 +67,18 @@ int speedpid = 0;
 int yawspeedpid = 0;
 int hovermode = 0;
 int elrs = 0;
+int autopilot = 0;
 
 float alt0 = 0.0;
 float goffset = 0.0;
+float forwardspeed = 0.0;
+float forwardpath = 0.0;
+float faoffset = 0.0;
+
+struct appoint points[MAX_POINT_COUNT];
+int pointscount;
+int curpoint = 0;
+float autopilottimer = 0.0;
 
 int curslot = 0;
 

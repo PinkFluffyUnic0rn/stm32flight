@@ -50,23 +50,27 @@
 #define TEV_LOG		4	/*!< log update event ID */
 #define TEV_TELE	5	/*!< telemetry send event ID */
 #define TEV_POWER	6	/*!< battery power update event ID */
+#define TEV_AUTOPILOT	7	/*!< autopilot event ID */
 /**
 * @}
 */
 
-#define TEV_COUNT	7	/*!< Timer events count */
+#define TEV_COUNT	8	/*!< Timer events count */
+
+#define MAX_POINT_COUNT 16
 
 /**
 * @defgroup EVENTFREQUENCIES
 * @brief Periodic events frequencies
 * @{
 */
-#define PID_FREQ 4000	/*!< PID event frequency */
-#define CHECK_FREQ 1	/*!< connection check event frequency */
-#define DPS_FREQ 128	/*!< barometer update event frequency */
-#define QMC_FREQ 100	/*!< magnetometer update event frequency */
-#define TELE_FREQ 10	/*!< telemetry send event frequency */
-#define POWER_FREQ 500	/*!< battery power update event frequency */
+#define PID_FREQ 4000		/*!< PID event frequency */
+#define CHECK_FREQ 1		/*!< connection check event frequency */
+#define DPS_FREQ 128		/*!< barometer update event frequency */
+#define QMC_FREQ 100		/*!< magnetometer update event frequency */
+#define TELE_FREQ 10		/*!< telemetry send event frequency */
+#define POWER_FREQ 500		/*!< battery power update event frequency */
+#define AUTOPILOT_FREQ 32	/*!< autopilot update event frequency */
 /**
 * @}
 */
@@ -99,6 +103,7 @@
 #define ERLS_CH_ONOFF		7	/*!< on/off channel */
 #define ERLS_CH_ALTCALIB	8	/*!< recalibration channel */
 #define ERLS_CH_HOVER		10	/*!< hover mode channel */
+#define ERLS_CH_AUTOPILOT	11	/*!< autopilot mode channel */
 #define ERLS_CH_SETSLOT		15	/*!< settings slot channel */
 /**
 * @}
@@ -190,6 +195,24 @@ struct gnss_data {
 	uint8_t satellites;		/*!< satellites count */
 };
 
+enum AUTOPILOT_MODE {
+	AUTOPILOT_START = 0,
+	AUTOPILOT_TAKEOFF = 1,
+	AUTOPILOT_HOVER = 2,
+	AUTOPILOT_FORWARD = 3,
+	AUTOPILOT_BRAKE = 4,
+	AUTOPILOT_LANDING = 5,
+	AUTOPILOT_STOP = 6
+};
+
+struct appoint {
+	float x;
+	float y;
+	float z;
+	enum AUTOPILOT_MODE mode;
+	float t;
+};
+
 /**
 * @brief Flight controller board's character devices drivers
 */
@@ -214,6 +237,7 @@ extern struct dsp_lpf valpf;	/*!< vertical acceleration unity filter */
 extern struct dsp_lpf tlpf;	/*!< trust acceleration low-pass filter */
 extern struct dsp_lpf vtlpf;	/*!< vertical acceleration low-pass filter */
 extern struct dsp_lpf volpf;	/*!< vertical acceleration filter for g offset */
+extern struct dsp_lpf flpf;	/*!< forward acceleration low-pass filter */
 
 extern struct dsp_lpf altlpf;	/*!< altitude low-pass filter */
 extern struct dsp_lpf templpf;	/*!< temperature low-pass filter */
@@ -295,8 +319,19 @@ extern int elrs; /*!< 1 when ELRS control is active (ELRS remote's
 * @}
 */
 
+extern int autopilot;
+
 extern float alt0;	/*!< reference altitude */
 extern float goffset;	/*!< free fall acceleration (g) value offset */
+
+extern float forwardspeed;
+extern float forwardpath;
+extern float faoffset;
+
+extern struct appoint points[MAX_POINT_COUNT];
+extern int pointscount;
+extern int curpoint;
+extern float autopilottimer;
 
 extern int curslot; /*!< current settings slot */
 
