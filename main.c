@@ -412,7 +412,7 @@ int initautopilot()
 	points[1].t = 3.0;
 
 	points[2].x = 0.0;
-	points[2].y = 0.0;
+	points[2].y = 1.0;
 	points[2].z = 1.5;
 	points[2].mode = AUTOPILOT_HOVER;
 	points[2].t = 1.0;
@@ -1003,7 +1003,7 @@ int autopilotupdate(int ms)
 		thrust = nextpoint->z;
 		
 	//	pitchtarget = 0.0;
-	//	yawtarget = 0.0;
+		yawtarget = atan2f(nextpoint->x, nextpoint->y);
 		
 		autopilottimer += dt;
 
@@ -1039,14 +1039,15 @@ int autopilotupdate(int ms)
 		else	
 			pitchtarget = M_PI / 12.0;
 		
-	//	yawtarget = 0.0;
-
+		yawtarget = atan2f(nextpoint->x, nextpoint->y);
+		
 		if (forwardspeed > -0.1 && forwardspeed < 0.1)
 			autopilotstep();
 	}
 	else if (nextpoint->mode == AUTOPILOT_FORWARD) {
 		pitchtarget = M_PI / 12.0;
-//		yawtarget = 0.0;
+		
+		yawtarget = atan2f(nextpoint->x, nextpoint->y);
 
 		dx = nextpoint->x - points[curpoint].x;
 		dy = nextpoint->y - points[curpoint].y;
@@ -1137,13 +1138,11 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 	// set magnetometer stabilization mode, if channel 4 has value
 	// more than 0, set gyroscope only stabilization mode otherwise
-/*
 	if (autopilot) {
-		yawtarget = 0.0;
+	//	yawtarget = 0.0;
 		yawspeedpid = 0;
 	}
 	else 
-*/		
 	if (cd->chf[ERLS_CH_YAWMODE] > 0.0) {
 		yawspeedpid = 0;
 
