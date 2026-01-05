@@ -859,10 +859,10 @@ int autopilotcmd(const struct cdevice *d, const char **toks, char *out)
 		if (idx < 0 || idx >= pointscount)
 			return (-1);
 		
-		if (strcmp(toks[3], "takeoff") == 0)
-			points[idx].takeoff.alt = atof(toks[4]);
-		else if (strcmp(toks[3], "hover") == 0)
-			points[idx].hover.alt = atof(toks[4]);
+		if (points[idx].type == AUTOPILOT_TAKEOFF)
+			points[idx].takeoff.alt = atof(toks[3]);
+		else if (points[idx].type == AUTOPILOT_HOVER)
+			points[idx].hover.alt = atof(toks[3]);
 		else
 			return (-1);
 	}
@@ -872,10 +872,10 @@ int autopilotcmd(const struct cdevice *d, const char **toks, char *out)
 		if (idx < 0 || idx >= pointscount)
 			return (-1);
 		
-		if (strcmp(toks[3], "takeoff") == 0)
-			points[idx].takeoff.t = atof(toks[4]);
-		else if (strcmp(toks[3], "hover") == 0)
-			points[idx].hover.t = atof(toks[4]);
+		if (points[idx].type == AUTOPILOT_TAKEOFF)
+			points[idx].takeoff.t = atof(toks[3]);
+		else if (points[idx].type == AUTOPILOT_HOVER)
+			points[idx].hover.t = atof(toks[3]);
 		else
 			return (-1);
 	}
@@ -885,10 +885,10 @@ int autopilotcmd(const struct cdevice *d, const char **toks, char *out)
 		if (idx < 0 || idx >= pointscount)
 			return (-1);
 		
-		if (strcmp(toks[3], "hover") == 0)
-			points[idx].hover.x = atof(toks[4]);
-		else if (strcmp(toks[3], "forward") == 0)
-			points[idx].forward.x = atof(toks[4]);
+		if (points[idx].type == AUTOPILOT_HOVER)
+			points[idx].hover.x = atof(toks[3]);
+		else if (points[idx].type == AUTOPILOT_FORWARD)
+			points[idx].forward.x = atof(toks[3]);
 		else
 			return (-1);
 	}
@@ -898,10 +898,10 @@ int autopilotcmd(const struct cdevice *d, const char **toks, char *out)
 		if (idx < 0 || idx >= pointscount)
 			return (-1);
 		
-		if (strcmp(toks[3], "hover") == 0)
-			points[idx].hover.y = atof(toks[4]);
-		else if (strcmp(toks[3], "forward") == 0)
-			points[idx].forward.y = atof(toks[4]);
+		if (points[idx].type == AUTOPILOT_HOVER)
+			points[idx].hover.y = atof(toks[3]);
+		else if (points[idx].type == AUTOPILOT_FORWARD)
+			points[idx].forward.y = atof(toks[3]);
 		else
 			return (-1);
 	}
@@ -1302,6 +1302,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				vf = points[idx].hover.alt;
 			else
 				return (-1);
+			
+			valtype = CONFVALTYPE_FLOAT;
 		}
 		else if (strcmp(toks[2], "t") == 0) {
 			idx = atoi(toks[3]);
@@ -1310,11 +1312,13 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				return (-1);
 			
 			if (points[idx].type == AUTOPILOT_TAKEOFF)
-				vf = points[idx].takeoff.alt;
+				vf = points[idx].takeoff.t;
 			else if (points[idx].type == AUTOPILOT_HOVER)
-				vf = points[idx].hover.alt;
+				vf = points[idx].hover.t;
 			else
 				return (-1);
+			
+			valtype = CONFVALTYPE_FLOAT;
 		}
 		else if (strcmp(toks[2], "x") == 0) {
 			idx = atoi(toks[3]);
@@ -1328,6 +1332,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				vf = points[idx].forward.x;
 			else
 				return (-1);
+			
+			valtype = CONFVALTYPE_FLOAT;
 		}
 		else if (strcmp(toks[2], "y") == 0) {
 			idx = atoi(toks[3]);
@@ -1341,6 +1347,8 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				vf = points[idx].forward.y;
 			else
 				return (-1);
+			
+			valtype = CONFVALTYPE_FLOAT;
 		}
 		else
 			return (-1);
