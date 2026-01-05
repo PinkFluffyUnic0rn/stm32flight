@@ -100,6 +100,15 @@ int logcmd(const struct cdevice *d, const char **toks, char *out);
 int ctrlcmd(const struct cdevice *d, const char **toks, char *out);
 
 /**
+* @brief "autopilot" command handler. Configure autopilot.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
+int autopilotcmd(const struct cdevice *d, const char **toks, char *out);
+
+/**
 * @brief "system" command handler. Run system commands.
 * @param d character device device that got this command
 * @param toks list of parsed command tokens

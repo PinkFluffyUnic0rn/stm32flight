@@ -160,6 +160,18 @@ enum CONFVALTYPE {
 };
 
 /**
+* @brief Autopilot track point type
+*/
+enum AUTOPILOT_TYPE {
+	AUTOPILOT_START = 0,	/*!< starting point */
+	AUTOPILOT_TAKEOFF = 1,	/*!< perform takeoff */
+	AUTOPILOT_HOVER = 2,	/*!< hover */
+	AUTOPILOT_FORWARD = 3,	/*!< move to pointed location */
+	AUTOPILOT_LANDING = 4,	/*!< perform landing */
+	AUTOPILOT_STOP = 5	/*!< stop point */
+};
+
+/**
 * @brief Values got from GNSS module using NMEA protocol
 */
 struct gnss_data {
@@ -195,22 +207,26 @@ struct gnss_data {
 	uint8_t satellites;		/*!< satellites count */
 };
 
-enum AUTOPILOT_MODE {
-	AUTOPILOT_START = 0,
-	AUTOPILOT_TAKEOFF = 1,
-	AUTOPILOT_HOVER = 2,
-	AUTOPILOT_FORWARD = 3,
-	AUTOPILOT_BRAKE = 4,
-	AUTOPILOT_LANDING = 5,
-	AUTOPILOT_STOP = 6
-};
+/**
+* @brief Autopilot track point
+*/
+struct trackpoint {
+	union {
+		struct {
+			float alt;	/*!< target altitude */
+			float t;	/*!< time to take off */
+		} takeoff;		/*!< take off point description */
+		struct {
+			float x, y;	/*!< coordinates to look at */
+			float alt;	/*!< target altitude */
+			float t;	/*!< hovering time */
+		} hover;		/*!< hover point description */
+		struct {
+			float x, y;	/*!< coordinates to move to */
+		} forward;		/*!< move point description */
+	};
 
-struct appoint {
-	float x;
-	float y;
-	float z;
-	enum AUTOPILOT_MODE mode;
-	float t;
+	enum AUTOPILOT_TYPE type; /*!< point type */
 };
 
 /**
@@ -313,13 +329,13 @@ extern int yawspeedpid;	/*!< 1 if only gyroscope if used for yaw
 			stabilization, 0 if magnetometer is used */
 extern int hovermode; 	/*!< hover mode, when throttle is
 			controlled relative to hover throttle */
+extern int autopilot;	/*!< autopilot mode, 1 when autopilot
+			is enabled, 0 otherwise */
 extern int elrs; /*!< 1 when ELRS control is active (ELRS remote's
 			channel 8 is > 50) */
 /**
 * @}
 */
-
-extern int autopilot;
 
 extern float alt0;	/*!< reference altitude */
 extern float goffset;	/*!< free fall acceleration (g) value offset */
@@ -328,10 +344,13 @@ extern float forwardspeed;
 extern float forwardpath;
 extern float faoffset;
 
-extern struct appoint points[MAX_POINT_COUNT];
-extern int pointscount;
-extern int curpoint;
-extern float autopilottimer;
+/**
+* @brief autopilot track points
+*/
+extern struct trackpoint points[MAX_POINT_COUNT];
+extern int pointscount;		/*!< autopilot track points count */
+extern int curpoint;		/*!< current autopilot track point */
+extern float autopilottimer;	/*!< autopilot timer */
 
 extern int curslot; /*!< current settings slot */
 

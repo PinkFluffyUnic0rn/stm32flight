@@ -75,7 +75,7 @@ float forwardspeed = 0.0;
 float forwardpath = 0.0;
 float faoffset = 0.0;
 
-struct appoint points[MAX_POINT_COUNT];
+struct trackpoint points[MAX_POINT_COUNT];
 int pointscount;
 int curpoint = 0;
 float autopilottimer = 0.0;

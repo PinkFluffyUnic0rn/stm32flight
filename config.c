@@ -824,6 +824,92 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 	return 1;
 }
 
+int autopilotcmd(const struct cdevice *d, const char **toks, char *out)
+{
+	int idx;
+
+	if (strcmp(toks[1], "count") == 0) {
+		pointscount = atoi(toks[2]);
+		return 0;
+	}
+	else if (strcmp(toks[1], "type") == 0) {
+		idx = atoi(toks[2]);
+
+		if (idx < 0 || idx >= pointscount)
+			return (-1);
+
+		if (strcmp(toks[3], "start") == 0)
+			points[idx].type = AUTOPILOT_START;
+		else if (strcmp(toks[3], "takeoff") == 0)
+			points[idx].type = AUTOPILOT_TAKEOFF;
+		else if (strcmp(toks[3], "hover") == 0)
+			points[idx].type = AUTOPILOT_HOVER;
+		else if (strcmp(toks[3], "forward") == 0)
+			points[idx].type = AUTOPILOT_FORWARD;
+		else if (strcmp(toks[3], "landing") == 0)
+			points[idx].type = AUTOPILOT_LANDING;
+		else if (strcmp(toks[3], "stop") == 0)
+			points[idx].type = AUTOPILOT_STOP;
+		else
+			return (-1);
+	}
+	else if (strcmp(toks[1], "alt") == 0) {
+		idx = atoi(toks[2]);
+
+		if (idx < 0 || idx >= pointscount)
+			return (-1);
+		
+		if (strcmp(toks[3], "takeoff") == 0)
+			points[idx].takeoff.alt = atof(toks[4]);
+		else if (strcmp(toks[3], "hover") == 0)
+			points[idx].hover.alt = atof(toks[4]);
+		else
+			return (-1);
+	}
+	else if (strcmp(toks[1], "t") == 0) {
+		idx = atoi(toks[2]);
+
+		if (idx < 0 || idx >= pointscount)
+			return (-1);
+		
+		if (strcmp(toks[3], "takeoff") == 0)
+			points[idx].takeoff.t = atof(toks[4]);
+		else if (strcmp(toks[3], "hover") == 0)
+			points[idx].hover.t = atof(toks[4]);
+		else
+			return (-1);
+	}
+	else if (strcmp(toks[1], "x") == 0) {
+		idx = atoi(toks[2]);
+
+		if (idx < 0 || idx >= pointscount)
+			return (-1);
+		
+		if (strcmp(toks[3], "hover") == 0)
+			points[idx].hover.x = atof(toks[4]);
+		else if (strcmp(toks[3], "forward") == 0)
+			points[idx].forward.x = atof(toks[4]);
+		else
+			return (-1);
+	}
+	else if (strcmp(toks[1], "y") == 0) {
+		idx = atoi(toks[2]);
+
+		if (idx < 0 || idx >= pointscount)
+			return (-1);
+		
+		if (strcmp(toks[3], "hover") == 0)
+			points[idx].hover.y = atof(toks[4]);
+		else if (strcmp(toks[3], "forward") == 0)
+			points[idx].forward.y = atof(toks[4]);
+		else
+			return (-1);
+	}
+	else
+		return (-1);
+
+	return 0;
+}
 
 int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 {
@@ -960,80 +1046,80 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	const char **p;
 	char *data;
 	enum CONFVALTYPE valtype;
-	float v;
+	float vf;
 	int vi;
-	const char *si;
+	const char *vs;
 
 	valtype = CONFVALTYPE_FLOAT;
 
 	if (strcmp(toks[1], "pid") == 0) {
 		if (strcmp(toks[2], "tilt") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				v = st.p;
+				vf = st.p;
 			else if (strcmp(toks[3], "i") == 0)
-				v = st.i;
+				vf = st.i;
 			else if (strcmp(toks[3], "d") == 0)
-				v = st.d;
+				vf = st.d;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "stilt") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				v = st.sp;
+				vf = st.sp;
 			else if (strcmp(toks[3], "i") == 0)
-				v = st.si;
+				vf = st.si;
 			else if (strcmp(toks[3], "d") == 0)
-				v = st.sd;
+				vf = st.sd;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "yaw") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				v = st.yp;
+				vf = st.yp;
 			else if (strcmp(toks[3], "i") == 0)
-				v = st.yi;
+				vf = st.yi;
 			else if (strcmp(toks[3], "d") == 0)
-				v = st.yd;
+				vf = st.yd;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "syaw") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				v = st.ysp;
+				vf = st.ysp;
 			else if (strcmp(toks[3], "i") == 0)
-				v = st.ysi;
+				vf = st.ysi;
 			else if (strcmp(toks[3], "d") == 0)
-				v = st.ysd;
+				vf = st.ysd;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "throttle") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				v = st.zsp;
+				vf = st.zsp;
 			else if (strcmp(toks[3], "i") == 0)
-				v = st.zsi;
+				vf = st.zsi;
 			else if (strcmp(toks[3], "d") == 0)
-				v = st.zsd;
+				vf = st.zsd;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "climbrate") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				v = st.cp;
+				vf = st.cp;
 			else if (strcmp(toks[3], "i") == 0)
-				v = st.ci;
+				vf = st.ci;
 			else if (strcmp(toks[3], "d") == 0)
-				v = st.cd;
+				vf = st.cd;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "altitude") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				v = st.ap;
+				vf = st.ap;
 			else if (strcmp(toks[3], "i") == 0)
-				v = st.ai;
+				vf = st.ai;
 			else if (strcmp(toks[3], "d") == 0)
-				v = st.ad;
+				vf = st.ad;
 			else
 				return (-1);
 		}
@@ -1044,13 +1130,13 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "compl") == 0) {
 		if (strcmp(toks[2], "attitude") == 0)
-			v = st.atctcoef;
+			vf = st.atctcoef;
 		else if (strcmp(toks[2], "yaw") == 0)
-			v = st.yctcoef;
+			vf = st.yctcoef;
 		else if (strcmp(toks[2], "climbrate") == 0)
-			v = st.cctcoef;
+			vf = st.cctcoef;
 		else if (strcmp(toks[2], "altitude") == 0)
-			v = st.actcoef;
+			vf = st.actcoef;
 		else
 			return (-1);
 
@@ -1058,15 +1144,15 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "lpf") == 0) {
 		if (strcmp(toks[2], "gyro") == 0)
-			v = st.gyropt1freq;
+			vf = st.gyropt1freq;
 		else if (strcmp(toks[2], "accel") == 0)
-			v = st.accpt1freq;
+			vf = st.accpt1freq;
 		else if (strcmp(toks[2], "mag") == 0)
-			v = st.magpt1freq;
+			vf = st.magpt1freq;
 		else if (strcmp(toks[2], "d") == 0)
-			v = st.dpt1freq;
+			vf = st.dpt1freq;
 		else if (strcmp(toks[2], "vaccel") == 0)
-			v = st.ttcoef;
+			vf = st.ttcoef;
 		else
 			return (-1);
 
@@ -1074,72 +1160,72 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "adj") == 0) {
 		if (strcmp(toks[2], "rollthrust") == 0)
-			v = st.rsc;
+			vf = st.rsc;
 		else if (strcmp(toks[2], "pitchthrust") == 0)
-			v = st.psc;
+			vf = st.psc;
 		else if (strcmp(toks[2], "roll") == 0)
-			v = st.roll0;
+			vf = st.roll0;
 		else if (strcmp(toks[2], "pitch") == 0)
-			v = st.pitch0;
+			vf = st.pitch0;
 		else if (strcmp(toks[2], "yaw") == 0)
-			v = st.yaw0;
+			vf = st.yaw0;
 		else if (strcmp(toks[2], "acc") == 0) {
 			if (strcmp(toks[3], "x") == 0)
-				v = st.ax0;
+				vf = st.ax0;
 			else if (strcmp(toks[3], "y") == 0)
-				v = st.ay0;
+				vf = st.ay0;
 			else if (strcmp(toks[3], "z") == 0)
-				v = st.az0;
+				vf = st.az0;
 			else if (strcmp(toks[3], "ztscale") == 0)
-				v = st.aztscale;
+				vf = st.aztscale;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "gyro") == 0) {
 			if (strcmp(toks[3], "x") == 0)
-				v = st.gx0;
+				vf = st.gx0;
 			else if (strcmp(toks[3], "y") == 0)
-				v = st.gy0;
+				vf = st.gy0;
 			else if (strcmp(toks[3], "z") == 0)
-				v = st.gz0;
+				vf = st.gz0;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "mag") == 0) {
 			if (strcmp(toks[3], "x0") == 0)
-				v = st.mx0;
+				vf = st.mx0;
 			else if (strcmp(toks[3], "y0") == 0)
-				v = st.my0;
+				vf = st.my0;
 			else if (strcmp(toks[3], "z0") == 0)
-				v = st.mz0;
+				vf = st.mz0;
 			else if (strcmp(toks[3], "xscale") == 0)
-				v = st.mxsc;
+				vf = st.mxsc;
 			else if (strcmp(toks[3], "yscale") == 0)
-				v = st.mysc;
+				vf = st.mysc;
 			else if (strcmp(toks[3], "zscale") == 0)
-				v = st.mzsc;
+				vf = st.mzsc;
 			else if (strcmp(toks[3], "xthscale") == 0)
-				v = st.mxthsc;
+				vf = st.mxthsc;
 			else if (strcmp(toks[3], "ythscale") == 0)
-				v = st.mythsc;
+				vf = st.mythsc;
 			else if (strcmp(toks[3], "zthscale") == 0)
-				v = st.mzthsc;
+				vf = st.mzthsc;
 			else if (strcmp(toks[3], "decl") == 0)
-				v = st.magdecl;
+				vf = st.magdecl;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "curr") == 0) {
 			if (strcmp(toks[3], "offset") == 0)
-				v = st.curroffset;
+				vf = st.curroffset;
 			else if (strcmp(toks[3], "scale") == 0)
-				v = st.currscale;
+				vf = st.currscale;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "althold") == 0) {
 			if (strcmp(toks[3], "hover") == 0)
-				v = st.hoverthrottle;
+				vf = st.hoverthrottle;
 			else
 				return (-1);
 		}
@@ -1150,29 +1236,114 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "ctrl") == 0) {
 		if (strcmp(toks[2], "thrust") == 0)
-			v = st.thrustmax;
+			vf = st.thrustmax;
 		else if (strcmp(toks[2], "roll") == 0)
-			v = st.rollmax;
+			vf = st.rollmax;
 		else if (strcmp(toks[2], "pitch") == 0)
-			v = st.pitchmax;
+			vf = st.pitchmax;
 		else if (strcmp(toks[2], "yaw") == 0)
-			v = st.yawtargetspeed;
+			vf = st.yawtargetspeed;
 		else if (strcmp(toks[2], "sroll") == 0)
-			v = st.rollspeed;
+			vf = st.rollspeed;
 		else if (strcmp(toks[2], "spitch") == 0)
-			v = st.pitchspeed;
+			vf = st.pitchspeed;
 		else if (strcmp(toks[2], "syaw") == 0)
-			v = st.yawspeed;
+			vf = st.yawspeed;
 		else if (strcmp(toks[2], "accel") == 0)
-			v = st.accelmax;
+			vf = st.accelmax;
 		else if (strcmp(toks[2], "climbrate") == 0)
-			v = st.climbratemax;
+			vf = st.climbratemax;
 		else if (strcmp(toks[2], "altmax") == 0)
-			v = st.altmax;
+			vf = st.altmax;
 		else
 			return (-1);
 
 		valtype = CONFVALTYPE_FLOAT;
+	}
+	else if (strcmp(toks[1], "autopilot") == 0) {
+		int idx;
+
+		if (strcmp(toks[2], "count") == 0) {
+			vi = pointscount;
+			valtype = CONFVALTYPE_INT;
+		}
+		else if (strcmp(toks[2], "type") == 0) {
+			idx = atoi(toks[3]);
+		
+			if (idx < 0 || idx >= pointscount)
+				return (-1);
+		
+			if (points[idx].type == AUTOPILOT_START)
+				vs = "start";
+			else if (points[idx].type == AUTOPILOT_TAKEOFF)
+				vs = "takeoff";
+			else if (points[idx].type == AUTOPILOT_HOVER)
+				vs = "hover";
+			else if (points[idx].type == AUTOPILOT_FORWARD)
+				vs = "forward";
+			else if (points[idx].type == AUTOPILOT_LANDING)
+				vs = "landing";
+			else if (points[idx].type == AUTOPILOT_STOP)
+				vs = "stop";
+			else
+				return (-1);
+
+			valtype = CONFVALTYPE_STRING;
+		}
+		else if (strcmp(toks[2], "alt") == 0) {
+			idx = atoi(toks[3]);
+			
+			if (idx < 0 || idx >= pointscount)
+				return (-1);
+			
+			if (points[idx].type == AUTOPILOT_TAKEOFF)
+				vf = points[idx].takeoff.alt;
+			else if (points[idx].type == AUTOPILOT_HOVER)
+				vf = points[idx].hover.alt;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "t") == 0) {
+			idx = atoi(toks[3]);
+			
+			if (idx < 0 || idx >= pointscount)
+				return (-1);
+			
+			if (points[idx].type == AUTOPILOT_TAKEOFF)
+				vf = points[idx].takeoff.alt;
+			else if (points[idx].type == AUTOPILOT_HOVER)
+				vf = points[idx].hover.alt;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "x") == 0) {
+			idx = atoi(toks[3]);
+				
+			if (idx < 0 || idx >= pointscount)
+				return (-1);
+		
+			if (points[idx].type == AUTOPILOT_HOVER)
+				vf = points[idx].hover.x;
+			else if (points[idx].type == AUTOPILOT_FORWARD)
+				vf = points[idx].forward.x;
+			else
+				return (-1);
+		}
+		else if (strcmp(toks[2], "y") == 0) {
+			idx = atoi(toks[3]);
+			
+			if (idx < 0 || idx >= pointscount)
+				return (-1);
+			
+			if (points[idx].type == AUTOPILOT_HOVER)
+				vf = points[idx].hover.y;
+			else if (points[idx].type == AUTOPILOT_FORWARD)
+				vf = points[idx].forward.y;
+			else
+				return (-1);
+		}
+		else
+			return (-1);
 	}
 	else if (strcmp(toks[1], "irc") == 0) {
 		if (strcmp(toks[2], "frequency") == 0)
@@ -1209,9 +1380,9 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				}
 
 				if (i >= LOG_FIELDSTRSIZE)
-					si = "none";
+					vs = "none";
 				else
-					si = logfieldstr[i];
+					vs = logfieldstr[i];
 
 				valtype = CONFVALTYPE_STRING;
 			}
@@ -1242,7 +1413,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 
 	switch (valtype) {
 	case CONFVALTYPE_FLOAT:
-		sprintf(data + strlen(data), "%f\r\n", (double) v);
+		sprintf(data + strlen(data), "%f\r\n", (double) vf);
 		break;
 
 	case CONFVALTYPE_INT:
@@ -1250,7 +1421,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		break;
 
 	case CONFVALTYPE_STRING:
-		sprintf(data + strlen(data), "%s\r\n", si);
+		sprintf(data + strlen(data), "%s\r\n", vs);
 		break;
 	}
 

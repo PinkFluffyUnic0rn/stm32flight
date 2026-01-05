@@ -400,36 +400,25 @@ int setstabilize(int init)
 
 int initautopilot()
 {
-	points[0].x = 0.0;
-	points[0].y = 0.0;
-	points[0].z = 0.0;
-	points[0].mode = AUTOPILOT_START;
+/*
+	points[0].type = AUTOPILOT_POINT_START;
 
-	points[1].x = 0.0;
-	points[1].y = 0.0;
-	points[1].z = 1.5;
-	points[1].mode = AUTOPILOT_TAKEOFF;
-	points[1].t = 3.0;
+	points[1].takeoff.alt = 1.5;
+	points[1].takeoff.t = 3.0;
+	points[1].type = AUTOPILOT_POINT_TAKEOFF;
 
-	points[2].x = 0.0;
-	points[2].y = 1.0;
-	points[2].z = 1.5;
-	points[2].mode = AUTOPILOT_HOVER;
-	points[2].t = 1.0;
+	points[2].hover.x = 0.0;
+	points[2].hover.y = 1.0;
+	points[2].hover.alt = 1.5;
+	points[2].hover.t = 1.0;
+	points[2].type = AUTOPILOT_POINT_HOVER;
 
-	points[3].x = 0.0;
-	points[3].y = 0.0;
-	points[3].z = 0.0;
-	points[3].mode = AUTOPILOT_LANDING;
-	points[3].t = 3.0;
-
-	points[4].x = 0.0;
-	points[4].y = 0.0;
-	points[4].z = 0.0;
-	points[4].mode = AUTOPILOT_STOP;
-	points[4].t = 0.0;
+	points[3].type = AUTOPILOT_POINT_LANDING;
+	points[4].type = AUTOPILOT_POINT_STOP;
 
 	pointscount = 5;
+*/
+	pointscount = 0;
 
 	return 0;
 }
@@ -577,6 +566,7 @@ int stabilize(int ms)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
 	forwardspeed += (dsp_getlpf(&flpf) - faoffset) * 9.80665 * dt;
+//	forwardspeed *= 0.99995;
 	forwardpath += forwardspeed * dt;
 
 	ht = st.hoverthrottle / (cosf(-pitch) * cosf(-roll));
@@ -965,17 +955,28 @@ int powercheck(int ms)
 	return 0;
 }
 
-void autopilotstep()
+/**
+* @brief Move to next point in autopilot track.
+* @return always 0
+*/
+int autopilotstep()
 {
 	forwardpath = 0.0;
 	autopilottimer = 0;
 	++curpoint;
+
+	return 0;
 }
 
+/**
+* @brief Update control values when moving in autopilot mode.
+* @param ms microsecond passed from last callback invocation
+* @return always 0
+*/
 int autopilotupdate(int ms)
 {
 	float dx, dy;
-	struct appoint *nextpoint;
+	struct trackpoint *nextpoint;
 	float dt;
 
 	dt = ms / (float) TICKSPERSEC;
@@ -984,33 +985,32 @@ int autopilotupdate(int ms)
 		return 0;
 
 	nextpoint = points + curpoint + 1;
-	if (nextpoint->mode == AUTOPILOT_START)
+	if (nextpoint->type == AUTOPILOT_START)
 		autopilottimer = 0.0;
-	else if (nextpoint->mode == AUTOPILOT_TAKEOFF) {
-		thrust = autopilottimer
-			* (nextpoint->z - points[curpoint].z)
-			/ nextpoint->t;
+	else if (nextpoint->type == AUTOPILOT_TAKEOFF) {
+		thrust = autopilottimer * nextpoint->takeoff.alt
+			/ nextpoint->takeoff.t;
 		
 	//	pitchtarget = 0.0;
-	//	yawtarget = 0.0;
 		
 		autopilottimer += dt;
 
-		if (autopilottimer > nextpoint->t)
+		if (autopilottimer > nextpoint->takeoff.t)
 			autopilotstep();
 	}
-	else if (nextpoint->mode == AUTOPILOT_HOVER) {
-		thrust = nextpoint->z;
+	else if (nextpoint->type == AUTOPILOT_HOVER) {
+		thrust = nextpoint->hover.alt;
 		
 	//	pitchtarget = 0.0;
-		yawtarget = atan2f(nextpoint->x, nextpoint->y);
+		yawtarget = atan2f(nextpoint->hover.x,
+			nextpoint->hover.y);
 		
 		autopilottimer += dt;
 
-		if (autopilottimer > nextpoint->t)
+		if (autopilottimer > nextpoint->hover.t)
 			autopilotstep();
 	}
-	else if (nextpoint->mode == AUTOPILOT_LANDING) {
+	else if (nextpoint->type == AUTOPILOT_LANDING) {
 		if (dsp_getcompl(&altcompl) - alt0 > 5.0)
 			thrust -= dt;
 		else if (dsp_getcompl(&altcompl) - alt0 > 5.0)
@@ -1021,36 +1021,21 @@ int autopilotupdate(int ms)
 			thrust -= dt * 0.125;
 		
 	//	pitchtarget = 0.0;
-	//	yawtarget = 0.0;
 		
-		if (dsp_getcompl(&altcompl) - alt0 <= nextpoint->z + 0.1)
+		if (dsp_getcompl(&altcompl) - alt0 <= 0.1)
 			autopilotstep();
 	}
-	else if (nextpoint->mode == AUTOPILOT_STOP) {
+	else if (nextpoint->type == AUTOPILOT_STOP) {
 		thrust = -1.0;
-
-	//	pitchtarget = 0.0;
-	//	yawtarget = 0.0;
-		
 	}
-	else if (nextpoint->mode == AUTOPILOT_BRAKE) {
-		if (forwardspeed > 0.0)
-			pitchtarget = -M_PI / 12.0;
-		else	
-			pitchtarget = M_PI / 12.0;
-		
-		yawtarget = atan2f(nextpoint->x, nextpoint->y);
-		
-		if (forwardspeed > -0.1 && forwardspeed < 0.1)
-			autopilotstep();
-	}
-	else if (nextpoint->mode == AUTOPILOT_FORWARD) {
+	else if (nextpoint->type == AUTOPILOT_FORWARD) {
 		pitchtarget = M_PI / 12.0;
 		
-		yawtarget = atan2f(nextpoint->x, nextpoint->y);
+		yawtarget = atan2f(nextpoint->forward.x,
+			nextpoint->forward.y);
 
-		dx = nextpoint->x - points[curpoint].x;
-		dy = nextpoint->y - points[curpoint].y;
+		dx = nextpoint->forward.x - points[curpoint].forward.x;
+		dy = nextpoint->forward.y - points[curpoint].forward.y;
 
 		if (forwardpath > sqrtf(dx * dx + dy * dy))
 			autopilotstep();
@@ -1368,6 +1353,7 @@ int main(void)
 	addcommand("adj", adjcmd);
 	addcommand("log", logcmd);
 	addcommand("ctrl", ctrlcmd);
+	addcommand("autopilot", autopilotcmd);
 	addcommand("system", systemcmd);
 	addcommand("irc", irccmd);
 	addcommand("motor", motorcmd);
