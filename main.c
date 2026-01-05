@@ -981,8 +981,10 @@ int autopilotupdate(int ms)
 
 	dt = ms / (float) TICKSPERSEC;
 	
-	if (!autopilot || curpoint < 0 || curpoint >= pointscount)
+	if (!autopilot || pointscount == 0 || curpoint < 0
+			|| curpoint >= pointscount) {
 		return 0;
+	}
 
 	nextpoint = points + curpoint + 1;
 	if (nextpoint->type == AUTOPILOT_START)
