@@ -566,8 +566,12 @@ int stabilize(int ms)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
 	forwardspeed += (dsp_getlpf(&flpf) - faoffset) * 9.80665 * dt;
-//	forwardspeed *= 0.99995;
+	forwardspeed *= 0.9997501;
 	forwardpath += forwardspeed * dt;
+
+	log_write(LOG_CUSTOM1, (dsp_getlpf(&flpf) - faoffset) * 9.80665);
+	log_write(LOG_CUSTOM2, forwardspeed);
+	log_write(LOG_CUSTOM3, forwardpath);
 
 	ht = st.hoverthrottle / (cosf(-pitch) * cosf(-roll));
 
@@ -640,15 +644,11 @@ int stabilize(int ms)
 		thrustcor = dsp_pidbl(&cpv, thrustcor,
 			dsp_getcompl(&climbratecompl));
 		
-		log_write(LOG_CUSTOM2, thrustcor);
-
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pidbl(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&vtlpf)) + ht;
-		
-		log_write(LOG_CUSTOM3, thrustcor);
+			dsp_getlpf(&vtlpf)) + ht;	
 	}
 	else if (altmode == ALTMODE_SPEED) {
 		// if consttant climb rate mode, first use climb rate
@@ -658,17 +658,13 @@ int stabilize(int ms)
 		// climb rate PID controller and get it's next
 		// correction value
 		thrustcor = dsp_pidbl(&cpv, thrust,
-			dsp_getcompl(&climbratecompl));
-		
-		log_write(LOG_CUSTOM2, thrustcor);
+			dsp_getcompl(&climbratecompl));	
 
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pidbl(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&vtlpf)) + ht;
-		
-		log_write(LOG_CUSTOM3, thrustcor);
+			dsp_getlpf(&vtlpf)) + ht;	
 	}
 	else {
 		if (hovermode) {
@@ -818,8 +814,6 @@ int dpsupdate(int ms)
 		9.80665 * (dsp_getlpf(&valpf) + goffset - 1.0) * dt,
 			(dsp_getcompl(&altcompl) - prevalt) / dt);
 	
-	log_write(LOG_CUSTOM1, (dsp_getcompl(&altcompl) - prevalt) / dt);
-
 	// calculate presice altitiude from climb rate and
 	// barometric altitude using complimentary filter
 	dsp_updatecompl(&altcompl, dsp_getcompl(&climbratecompl) * dt,
