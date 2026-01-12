@@ -30,69 +30,67 @@
 */
 static int sprintpos(char *s, struct icm_data *id)
 {
+	float ax, ay, az;
+
 	s[0] = '\0';
+
+	ax = dsp_getlpf(lpf + LPF_ACCX);
+	ay = dsp_getlpf(lpf + LPF_ACCY);
+	az = dsp_getlpf(lpf + LPF_ACCZ);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n", "accel: ",
-		(double) dsp_getlpf(&accxpt1),
-		(double) dsp_getlpf(&accypt1),
-		(double) dsp_getlpf(&acczpt1));	
+		(double) ax, (double) ay, (double) az);	
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n", "gyro: ",
-		(double) dsp_getlpf(&gyroxpt1),
-		(double) dsp_getlpf(&gyroypt1),
-		(double) dsp_getlpf(&gyrozpt1));
+		(double) dsp_getlpf(lpf + LPF_GYROX),
+		(double) dsp_getlpf(lpf + LPF_GYROY),
+		(double) dsp_getlpf(lpf + LPF_GYROZ));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		"accel corrected: ",
-		(double) (dsp_getlpf(&accxpt1) - st.ax0),
-		(double) (dsp_getlpf(&accypt1) - st.ay0),
-		(double) (dsp_getlpf(&acczpt1) - st.az0));
+		(double) (ax - st.ax0),
+		(double) (ay - st.ay0),
+		(double) (az - st.az0));
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		"gyro corrected: ",
-		(double) (dsp_getlpf(&gyroxpt1) - st.gx0),
-		(double) (dsp_getlpf(&gyroypt1) - st.gy0),
-		(double) (dsp_getlpf(&gyrozpt1) - st.gz0));
+		(double) (dsp_getlpf(lpf + LPF_GYROX) - st.gx0),
+		(double) (dsp_getlpf(lpf + LPF_GYROY) - st.gy0),
+		(double) (dsp_getlpf(lpf + LPF_GYROZ) - st.gz0));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"temp: %0.3f\r\n", (double) (dsp_getlpf(&atemppt1)));
+		"temp: %0.3f\r\n",
+		(double) (dsp_getlpf(lpf + LPF_IMUTEMP)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\r\n",
-		(double) (dsp_getcompl(&rollcompl) - st.roll0),
-		(double) (dsp_getcompl(&pitchcompl) - st.pitch0),
-		(double) circf(dsp_getcompl(&yawcompl) - st.yaw0));
+		(double) (dsp_getcompl(cmpl + CMPL_ROLL) - st.roll0),
+		(double) (dsp_getcompl(cmpl + CMPL_PITCH) - st.pitch0),
+		(double) circf(dsp_getcompl(cmpl + CMPL_YAW) - st.yaw0));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"z acceleration: %f\r\n",
-		(double) dsp_getlpf(&tlpf));
+		(double) dsp_getlpf(lpf + LPF_THR));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"vertical acceleration: %f\r\n",
-		(double) dsp_getlpf(&valpf));
+		(double) dsp_getlpf(lpf + LPF_VAU));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel: %f\r\n", (double) sqrt(
-			pow(dsp_getlpf(&accxpt1) - st.ax0, 2.0) 
-			+ pow(dsp_getlpf(&accypt1) - st.ay0, 2.0)
-			+ pow(dsp_getlpf(&acczpt1) - st.az0, 2.0)));
+			pow(ax - st.ax0, 2.0) 
+			+ pow(ay - st.ay0, 2.0)
+			+ pow(az - st.az0, 2.0)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"g offset: %f\r\n", (double) goffset);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"forward acceleration: %f\r\n",
-		(double) dsp_getlpf(&flpf));
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"forward speed: %f\r\n", (double) forwardspeed);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"forward path: %f\r\n", (double) forwardpath);
-
+		(double) dsp_getlpf(lpf + LPF_FA));
 
 	return 0;
 }
@@ -119,7 +117,7 @@ static int sprintqmc(char *s)
 		(double) (st.mzsc * (qmcdata.fz + st.mz0)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"heading: %f\r\n", (double) dsp_getcompl(&yawcompl));
+		"heading: %f\r\n", (double) dsp_getcompl(cmpl + CMPL_YAW));
 
 
 	return 0;
@@ -209,18 +207,17 @@ static int sprintvalues(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"battery: %0.3f\r\n",
-		(double) (dsp_getlpf(&batlpf)));
+		(double) (dsp_getlpf(lpf + LPF_BAT)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"esc current: %0.3f\r\n",
-		(double) (dsp_getlpf(&currlpf)));
+		(double) (dsp_getlpf(lpf + LPF_CUR)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"motors state: %.3f\r\n", (double) en);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"loops count: %d\r\n", loopscount);
-
 	return 0;
 }
 
@@ -425,7 +422,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	if (strcmp(toks[1], "mpu") == 0) {
 		struct icm_data id;
 
-		dev[ICM_DEV].read(dev[ICM_DEV].priv, &id,
+		dev[DEV_ICM].read(dev[DEV_ICM].priv, &id,
 			sizeof(struct icm_data));
 
 		sprintpos(out, &id);
@@ -435,7 +432,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	else if (strcmp(toks[1], "hp") == 0) {
 		struct dps_data dd;
 
-		dev[DPS_DEV].read(dev[DPS_DEV].priv, &dd,
+		dev[DEV_DPS].read(dev[DEV_DPS].priv, &dd,
 			sizeof(struct dps_data));
 
 		snprintf(out, INFOLEN,
@@ -444,13 +441,13 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 
 		snprintf(out + strlen(out), INFOLEN - strlen(out),
 			"filtered temp: %f; filtered alt: %f\r\n",
-			(double) dsp_getlpf(&templpf),
-			(double) dsp_getlpf(&altlpf));
+			(double) dsp_getlpf(lpf + LPF_BARTEMP),
+			(double) dsp_getlpf(lpf + LPF_ALT));
 
 		snprintf(out + strlen(out), INFOLEN - strlen(out),
 			"climb rate: %f\r\nalt: %f\r\nref alt: %f\r\n",
-			(double) dsp_getcompl(&climbratecompl),
-			(double) dsp_getcompl(&altcompl),
+			(double) dsp_getcompl(cmpl + CMPL_CLIMBRATE),
+			(double) dsp_getcompl(cmpl + CMPL_ALT),
 			(double) alt0);
 	}
 	else if (strcmp(toks[1], "dev") == 0)
@@ -468,7 +465,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	else if (strcmp(toks[1], "irc") == 0) {
 		struct irc_data data;
 
-		dev[IRC_DEV].read(dev[IRC_DEV].priv, &data,
+		dev[DEV_IRC].read(dev[DEV_IRC].priv, &data,
 			sizeof(struct irc_data));
 
 		snprintf(out, INFOLEN, "frequency: %d; power: %d\r\n",
@@ -482,6 +479,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 
 int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 {
+
 	float v;
 
 	v = atof(toks[3]);
@@ -500,9 +498,9 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.d = v;
 		else					return (-1);
 
-		dsp_setpidbl(&pitchpv, st.p, st.i, st.d,
+		dsp_setpidbl(pid + PID_PITCHP, st.p, st.i, st.d,
 			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(&rollpv, st.p, st.i, st.d,
+		dsp_setpidbl(pid + PID_ROLLP, st.p, st.i, st.d,
 			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "stilt") == 0) {
@@ -511,9 +509,9 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.sd = v;
 		else					return (-1);
 
-		dsp_setpidbl(&pitchspv, st.sp, st.si, st.sd,
+		dsp_setpidbl(pid + PID_PITCHS, st.sp, st.si, st.sd,
 			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(&rollspv, st.sp, st.si, st.sd,
+		dsp_setpidbl(pid + PID_ROLLS, st.sp, st.si, st.sd,
 			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
@@ -540,7 +538,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.ysd = v;
 		else					return (-1);
 
-		dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
+		dsp_setpidbl(pid + PID_YAWS, st.ysp, st.ysi, st.ysd,
 			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "throttle") == 0) {
@@ -549,7 +547,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.zsd = v;
 		else					return (-1);
 
-		dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd,
+		dsp_setpidbl(pid + PID_VA, st.zsp, st.zsi, st.zsd,
 			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
@@ -558,7 +556,7 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.cd = v;
 		else					return (-1);
 
-		dsp_setpidbl(&cpv, st.cp, st.ci, st.cd,
+		dsp_setpidbl(pid + PID_CLIMBRATE, st.cp, st.ci, st.cd,
 			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
@@ -567,12 +565,12 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 		else if (strcmp(toks[2], "d") == 0)	st.ad = v;
 		else					return (-1);
 
-		dsp_setpidbl(&apv, st.ap, st.ai, st.ad,
+		dsp_setpidbl(pid + PID_ALT, st.ap, st.ai, st.ad,
 			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else
 		return (-1);
-
+	
 	return 0;
 }
 
@@ -592,20 +590,21 @@ int complcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "attitude") == 0) {
 		st.atctcoef = atof(toks[2]);
-		dsp_setcompl(&rollcompl, st.atctcoef, PID_FREQ, 0);
-		dsp_setcompl(&pitchcompl, st.atctcoef, PID_FREQ, 0);
+		dsp_setcompl(cmpl + CMPL_ROLL, st.atctcoef, PID_FREQ, 0);
+		dsp_setcompl(cmpl + CMPL_PITCH, st.atctcoef, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
 		st.yctcoef = atof(toks[2]);
-		dsp_setcompl(&yawcompl, st.yctcoef, PID_FREQ, 0);
+		dsp_setcompl(cmpl + CMPL_YAW, st.yctcoef, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
 		st.cctcoef = atof(toks[2]);
-		dsp_setcompl(&climbratecompl, st.cctcoef, DPS_FREQ, 0);
+		dsp_setcompl(cmpl + CMPL_CLIMBRATE, st.cctcoef,
+			DPS_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
 		st.actcoef = atof(toks[2]);
-		dsp_setcompl(&altcompl, st.actcoef, DPS_FREQ, 0);
+		dsp_setcompl(cmpl + CMPL_ALT, st.actcoef, DPS_FREQ, 0);
 	}
 
 	return 0;
@@ -616,49 +615,51 @@ int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 	if (strcmp(toks[1], "gyro") == 0) {
 		st.gyropt1freq = atof(toks[2]);
 
-		dsp_setlpf1f(&gyroxpt1, st.gyropt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_GYROX, st.gyropt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_GYROY, st.gyropt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_GYROZ, st.gyropt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "accel") == 0) {
 		st.accpt1freq = atof(toks[2]);
 
-		dsp_setlpf1f(&accxpt1, st.accpt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(&accypt1, st.accpt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(&accypt1, st.accpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_ACCX, st.accpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_ACCY, st.accpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_ACCZ, st.accpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "mag") == 0) {
 		st.magpt1freq = atof(toks[2]);
 
-		dsp_setlpf1f(&magxpt1, st.magpt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(&magypt1, st.magpt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(&magypt1, st.magpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_MAGX, st.magpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_MAGY, st.magpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_MAGZ, st.magpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "d") == 0) {
 		st.dpt1freq = atof(toks[2]);
 
-		dsp_setpidbl(&pitchpv, st.p, st.i, st.d,
+		dsp_setpidbl(pid + PID_PITCHP, st.p, st.i, st.d,
 			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(&rollpv, st.p, st.i, st.d,
+		dsp_setpidbl(pid + PID_ROLLP, st.p, st.i, st.d,
 			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(&pitchspv, st.sp, st.si, st.sd,
+		dsp_setpidbl(pid + PID_PITCHS, st.sp, st.si, st.sd,
 			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(&rollspv, st.sp, st.si, st.sd,
+		dsp_setpidbl(pid + PID_ROLLS, st.sp, st.si, st.sd,
 			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
+		dsp_setpidbl(pid + PID_YAWS, st.ysp, st.ysi, st.ysd,
 			0.5, st.dpt1freq, PID_FREQ, 0);
 		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
 			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd,
+		dsp_setpidbl(pid + PID_VA, st.zsp, st.zsi, st.zsd,
 			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(&cpv, st.cp, st.ci, st.cd,
+		dsp_setpidbl(pid + PID_CLIMBRATE, st.cp, st.ci, st.cd,
+			0.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_ALT, st.ap, st.ai, st.ad,
 			0.5, st.dpt1freq, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "vaccel") == 0) {
 		st.ttcoef = atof(toks[2]);
 
-		dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, 0);
-		dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, 0);
+		dsp_setlpf1t(lpf + LPF_THR, st.ttcoef, PID_FREQ, 0);
+		dsp_setlpf1t(lpf + LPF_VAPT1, st.ttcoef, PID_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -947,9 +948,9 @@ int systemcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "esp") == 0) {
 		if (strcmp(toks[2], "flash") == 0)
-			dev[ESP_DEV].configure(dev[ESP_DEV].priv, "flash");
+			dev[DEV_ESP].configure(dev[DEV_ESP].priv, "flash");
 		else if (strcmp(toks[2], "run") == 0)
-			dev[ESP_DEV].configure(dev[ESP_DEV].priv, "run");
+			dev[DEV_ESP].configure(dev[DEV_ESP].priv, "run");
 		else
 			return (-1);
 	}
@@ -964,19 +965,19 @@ int irccmd(const struct cdevice *d, const char **toks, char *out)
 	if (strcmp(toks[1], "frequency") == 0) {
 		st.ircfreq = atoi(toks[2]);
 
-		if (dev[IRC_DEV].status != DEVSTATUS_INIT)
+		if (dev[DEV_IRC].status != DEVSTATUS_INIT)
 			return 0;
 
-		dev[IRC_DEV].configure(dev[IRC_DEV].priv, "set",
+		dev[DEV_IRC].configure(dev[DEV_IRC].priv, "set",
 			"frequency", atoi(toks[2]));
 	}
 	else if (strcmp(toks[1], "power") == 0) {
 		st.ircpower = atoi(toks[2]);
 
-		if (dev[IRC_DEV].status != DEVSTATUS_INIT)
+		if (dev[DEV_IRC].status != DEVSTATUS_INIT)
 			return 0;
 
-		dev[IRC_DEV].configure(dev[IRC_DEV].priv, "set",
+		dev[DEV_IRC].configure(dev[DEV_IRC].priv, "set",
 			"power", atoi(toks[2]));
 	}
 	else

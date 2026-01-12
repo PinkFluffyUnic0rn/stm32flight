@@ -38,19 +38,6 @@
 #include "thrust.h"
 
 /**
-* @defgroup MODESTR
-* @brief Stabilization modes short codes that is
-	sent to eLRS remote inside telemetry packets
-* @{
-*/
-const char *attmodestr[] = {"ac", "st", "sp", "ps"}; /*!< attitude mode */
-const char *yawmodestr[] = {"sp", "cs"};	/*!< yaw mode */
-const char *altmodestr[] = {"tr", "cl", "al"};	/*!< altitude mode */
-/**
-* @}
-*/
-
-/**
 * @brief External interrupt callback. It calls interrupt handlers
 	from drivers for devices that use external interrupts.
 * @param pin number of pin triggered the callback
@@ -58,8 +45,8 @@ const char *altmodestr[] = {"tr", "cl", "al"};	/*!< altitude mode */
 */
 void HAL_GPIO_EXTI_Callback(uint16_t pin)
 {
-	if (DEVITENABLED(dev[ESP_DEV].status)) {
-		dev[ESP_DEV].interrupt(dev[ESP_DEV].priv, &pin);
+	if (DEVITENABLED(dev[DEV_ESP].status)) {
+		dev[DEV_ESP].interrupt(dev[DEV_ESP].priv, &pin);
 	}
 }
 
@@ -71,14 +58,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
 */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if (DEVITENABLED(dev[M10_DEV].status))
-		dev[M10_DEV].interrupt(dev[M10_DEV].priv, huart);
+	if (DEVITENABLED(dev[DEV_M10].status))
+		dev[DEV_M10].interrupt(dev[DEV_M10].priv, huart);
 
-	if (DEVITENABLED(dev[CRSF_DEV].status))
-		dev[CRSF_DEV].interrupt(dev[CRSF_DEV].priv, huart);
+	if (DEVITENABLED(dev[DEV_CRSF].status))
+		dev[DEV_CRSF].interrupt(dev[DEV_CRSF].priv, huart);
 
-	if (DEVITENABLED(dev[UART_DEV].status))
-		dev[UART_DEV].interrupt(dev[UART_DEV].priv, huart);
+	if (DEVITENABLED(dev[DEV_UART].status))
+		dev[DEV_UART].interrupt(dev[DEV_UART].priv, huart);
 }
 
 /**
@@ -89,8 +76,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-	if (DEVITENABLED(dev[CRSF_DEV].status))
-		dev[CRSF_DEV].error(dev[CRSF_DEV].priv, huart);
+	if (DEVITENABLED(dev[DEV_CRSF].status))
+		dev[DEV_CRSF].error(dev[DEV_CRSF].priv, huart);
 }
 
 /**
@@ -150,7 +137,7 @@ static void dps_init()
 	d.rate = DPS_RATE_32;
 	d.osr = DPS_OSR_16;
 
-	if (dps_initdevice(&d, dev + DPS_DEV) >= 0)
+	if (dps_initdevice(&d, dev + DEV_DPS) >= 0)
 		uartprintf("DPS368 initilized\r\n");
 	else
 		uartprintf("failed to initilize DPS368\r\n");
@@ -168,7 +155,7 @@ static void irc_init()
 	d.power = st.ircpower;
 	d.frequency = st.ircfreq;
 
-	if (irc_initdevice(&d, dev + IRC_DEV) >= 0)
+	if (irc_initdevice(&d, dev + DEV_IRC) >= 0)
 		uartprintf("IRC device initilized\r\n");
 	else
 		uartprintf("failed to initilize IRC device\r\n");
@@ -195,7 +182,7 @@ static void icm_init()
 	d.accellpf = ICM_ACCELLPFLL;
 	d.accelorder = ICM_ACCELORDER3;
 
-	if (icm_initdevice(&d, dev + ICM_DEV) >= 0)
+	if (icm_initdevice(&d, dev + DEV_ICM) >= 0)
 		uartprintf("ICM-42688 initilized\r\n");
 	else
 		uartprintf("failed to initilize ICM-42688\r\n");
@@ -214,7 +201,7 @@ static void qmc_init()
 	d.rate = QMC_RATE_100;
 	d.osr = QMC_OSR_512;
 
-	if (qmc_initdevice(&d, dev + QMC_DEV) >= 0)
+	if (qmc_initdevice(&d, dev + DEV_QMC) >= 0)
 		uartprintf("QMC5883L initilized\r\n");
 	else
 		uartprintf("failed to initilize QMC5883L\r\n");
@@ -239,7 +226,7 @@ static void espdev_init()
 	d.busypin = GPIO_PIN_15;
 	d.intpin = GPIO_PIN_1;
 
-	if (esp_initdevice(&d, dev + ESP_DEV) < 0) {
+	if (esp_initdevice(&d, dev + DEV_ESP) < 0) {
 		uartprintf("failed to initilize ESP8266\r\n");
 		return;
 	}
@@ -257,7 +244,7 @@ static void crsfdev_init()
 
 	d.huart = &huart2;
 
-	crsf_initdevice(&d, dev + CRSF_DEV);
+	crsf_initdevice(&d, dev + DEV_CRSF);
 }
 
 /**
@@ -290,7 +277,7 @@ static void m10dev_init()
 
 	d.huart = &huart3;
 
-	if (m10_initdevice(&d, dev + M10_DEV) < 0) {
+	if (m10_initdevice(&d, dev + DEV_M10) < 0) {
 		uartprintf("failed to initilize GPS device\r\n");
 		return;
 	}
@@ -308,7 +295,7 @@ static void uartdev_init()
 
 	d.huart = &huart4;
 
-	if (uart_initdevice(&d, dev + UART_DEV) < 0) {
+	if (uart_initdevice(&d, dev + DEV_UART) < 0) {
 		uartprintf("failed to initilize UART device\r\n");
 		return;
 	}
@@ -324,25 +311,25 @@ static void uartdev_init()
 int setstabilize(int init)
 {
 	// init complementary filters contexts
-	dsp_setcompl(&pitchcompl, st.atctcoef, PID_FREQ, init);
-	dsp_setcompl(&rollcompl, st.atctcoef, PID_FREQ, init);
-	dsp_setcompl(&yawcompl, st.yctcoef, PID_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_PITCH, st.atctcoef, PID_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_ROLL, st.atctcoef, PID_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_YAW, st.yctcoef, PID_FREQ, init);
 
-	dsp_setcompl(&climbratecompl, st.cctcoef, DPS_FREQ, init);
-	dsp_setcompl(&altcompl, st.actcoef, DPS_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_CLIMBRATE, st.cctcoef, DPS_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_ALT, st.actcoef, DPS_FREQ, init);
 
 	// init roll and pitch position PID controller contexts
-	dsp_setpidbl(&pitchpv, st.p, st.i, st.d, PID_MAX_I, st.dpt1freq,
-		PID_FREQ, init);
-	dsp_setpidbl(&rollpv, st.p, st.i, st.d, PID_MAX_I, st.dpt1freq,
-		PID_FREQ, init);
+	dsp_setpidbl(pid + PID_PITCHP, st.p, st.i, st.d, PID_MAX_I,
+		st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_ROLLP, st.p, st.i, st.d, PID_MAX_I,
+		st.dpt1freq, PID_FREQ, init);
 
 	// init roll, pitch and yaw speed PID controller contexts
-	dsp_setpidbl(&pitchspv, st.sp, st.si, st.sd,
+	dsp_setpidbl(pid + PID_PITCHS, st.sp, st.si, st.sd,
 		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
-	dsp_setpidbl(&rollspv, st.sp, st.si, st.sd,
+	dsp_setpidbl(pid + PID_ROLLS, st.sp, st.si, st.sd,
 		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
-	dsp_setpidbl(&yawspv, st.ysp, st.ysi, st.ysd,
+	dsp_setpidbl(pid + PID_YAWS, st.ysp, st.ysi, st.ysd,
 		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
 
 	// init yaw position PID controller's context
@@ -350,74 +337,57 @@ int setstabilize(int init)
 		PID_FREQ, init);
 
 	// init vertical acceleration PID controller's context
-	dsp_setpidbl(&tpv, st.zsp, st.zsi, st.zsd, PID_MAX_I,
+	dsp_setpidbl(pid + PID_VA, st.zsp, st.zsi, st.zsd, PID_MAX_I,
 		st.dpt1freq, PID_FREQ, init);
 
 	// init climbrate PID controller's context
-	dsp_setpidbl(&cpv, st.cp, st.ci, st.cd, PID_MAX_I,
-		st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_CLIMBRATE, st.cp, st.ci, st.cd,
+		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
 
 	// init altitude PID controller's context
-	dsp_setpidbl(&apv, st.ap, st.ai, st.ad, PID_MAX_I,
+	dsp_setpidbl(pid + PID_ALT, st.ap, st.ai, st.ad, PID_MAX_I,
 		st.dpt1freq, PID_FREQ, init);
 
 	// init battery voltage low-pass filter
-	dsp_setlpf1f(&batlpf, BAT_CUTOFF, POWER_FREQ, init);
-	dsp_setlpf1f(&currlpf, CUR_CUTOFF, POWER_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_BAT, BAT_CUTOFF, POWER_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_CUR, CUR_CUTOFF, POWER_FREQ, init);
 
 	// init average thrust low-pass filter
-	dsp_setunity(&avgthrustlpf, init);
+	dsp_setunity(lpf + LPF_AVGTHR, init);
 
 	// init low-pass fitlers for altitude and vertical acceleration
-	dsp_setunity(&templpf, init);
-	dsp_setunity(&valpf, init);
-	dsp_setlpf1t(&tlpf, st.ttcoef, PID_FREQ, init);
-	dsp_setlpf1t(&vtlpf, st.ttcoef, PID_FREQ, init);
-	dsp_setlpf1t(&volpf, VA_AVG_TCOEF, PID_FREQ, init);
-	dsp_setunity(&flpf, init);
-	dsp_setunity(&altlpf, init);
+	dsp_setunity(lpf + LPF_BARTEMP, init);
+	dsp_setlpf1t(lpf + LPF_THR, st.ttcoef, PID_FREQ, init);
+	dsp_setunity(lpf + LPF_VAU, init);
+	dsp_setlpf1t(lpf + LPF_VAPT1, st.ttcoef, PID_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_VAAVG, VA_AVG_TCOEF, PID_FREQ, init);
+	dsp_setunity(lpf + LPF_FA, init);
+	dsp_setunity(lpf + LPF_ALT, init);
 
 	// init low-pass fitlers for IMU temperature sensor
-	dsp_setlpf1t(&atemppt1, TEMP_TCOEF, PID_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_IMUTEMP, TEMP_TCOEF, PID_FREQ, init);
 
 	// init low-pass fitlers for accelerometer x, y and z axes
-	dsp_setlpf1f(&accxpt1, st.accpt1freq, PID_FREQ, init);
-	dsp_setlpf1f(&accypt1, st.accpt1freq, PID_FREQ, init);
-	dsp_setlpf1f(&acczpt1, st.accpt1freq, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_ACCX, st.accpt1freq, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_ACCY, st.accpt1freq, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_ACCZ, st.accpt1freq, PID_FREQ, init);
 
 	// init low-pass fitlers for gyroscope x, y and z axes
-	dsp_setlpf1f(&gyroxpt1, st.gyropt1freq, PID_FREQ, init);
-	dsp_setlpf1f(&gyroypt1, st.gyropt1freq, PID_FREQ, init);
-	dsp_setlpf1f(&gyrozpt1, st.gyropt1freq, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_GYROX, st.gyropt1freq, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_GYROY, st.gyropt1freq, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_GYROZ, st.gyropt1freq, PID_FREQ, init);
 
 	// init low-pass fitlers for magnetometer x, y and z axes
-	dsp_setlpf1t(&magxpt1, st.magpt1freq, QMC_FREQ, init);
-	dsp_setlpf1t(&magypt1, st.magpt1freq, QMC_FREQ, init);
-	dsp_setlpf1t(&magzpt1, st.magpt1freq, QMC_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_MAGX, st.magpt1freq, QMC_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_MAGY, st.magpt1freq, QMC_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_MAGZ, st.magpt1freq, QMC_FREQ, init);
 
 	return 0;
 }
 
 int initautopilot()
 {
-/*
-	points[0].type = AUTOPILOT_POINT_START;
 
-	points[1].takeoff.alt = 1.5;
-	points[1].takeoff.t = 3.0;
-	points[1].type = AUTOPILOT_POINT_TAKEOFF;
-
-	points[2].hover.x = 0.0;
-	points[2].hover.y = 1.0;
-	points[2].hover.alt = 1.5;
-	points[2].hover.t = 1.0;
-	points[2].type = AUTOPILOT_POINT_HOVER;
-
-	points[3].type = AUTOPILOT_POINT_LANDING;
-	points[4].type = AUTOPILOT_POINT_STOP;
-
-	pointscount = 5;
-*/
 	pointscount = 0;
 
 	return 0;
@@ -482,14 +452,14 @@ int stabilize(int ms)
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 	// update battery voltage
-	log_write(LOG_BAT, dsp_getlpf(&batlpf));
+	log_write(LOG_BAT, dsp_getlpf(lpf + LPF_BAT));
 
 	// toggle arming indication led
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,
 		(en > 0.5) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
 	// get accelerometer and gyroscope readings
-	dev[ICM_DEV].read(dev[ICM_DEV].priv, &id,
+	dev[DEV_ICM].read(dev[DEV_ICM].priv, &id,
 		sizeof(struct icm_data));
 
 	id.afz += (id.ft - 25.0) * st.aztscale;
@@ -503,21 +473,21 @@ int stabilize(int ms)
 	log_write(LOG_GYRO_Z, id.gfz);
 
 	// update accelerometer temperature
-	dsp_updatelpf(&atemppt1, id.ft);
+	dsp_updatelpf(lpf + LPF_IMUTEMP, id.ft);
 
 	// apply accelerometer offsets
-	ax = dsp_updatelpf(&accxpt1, id.afx) - st.ax0;
-	ay = dsp_updatelpf(&accypt1, id.afy) - st.ay0;
-	az = dsp_updatelpf(&acczpt1, id.afz) - st.az0;
+	ax = dsp_updatelpf(lpf + LPF_ACCX, id.afx) - st.ax0;
+	ay = dsp_updatelpf(lpf + LPF_ACCY, id.afy) - st.ay0;
+	az = dsp_updatelpf(lpf + LPF_ACCZ, id.afz) - st.az0;
 
 	// update vertical acceleration low-pass filter
-	dsp_updatelpf(&tlpf, id.afz);
+	dsp_updatelpf(lpf + LPF_THR, id.afz);
 
 	// offset gyroscope readings by values, calculater
 	// at power on and convert result into radians
-	gx = deg2rad(dsp_updatelpf(&gyroxpt1, id.gfx) - st.gx0);
-	gy = deg2rad(dsp_updatelpf(&gyroypt1, id.gfy) - st.gy0);
-	gz = deg2rad(dsp_updatelpf(&gyrozpt1, id.gfz) - st.gz0);
+	gx = deg2rad(dsp_updatelpf(lpf + LPF_GYROX, id.gfx) - st.gx0);
+	gy = deg2rad(dsp_updatelpf(lpf + LPF_GYROY, id.gfy) - st.gy0);
+	gz = deg2rad(dsp_updatelpf(lpf + LPF_GYROZ, id.gfz) - st.gz0);
 
 	// update complimenraty filter for roll axis and get next roll
 	// value. First signal (value) is signal to be integrated: it's
@@ -525,11 +495,11 @@ int stabilize(int ms)
 	// signal to be low-pass filtered: it's the tilt value that is
 	// calculated from acceleromer readings through some
 	// trigonometry.
-	roll = dsp_updatecompl(&rollcompl, gy * dt,
+	roll = dsp_updatecompl(cmpl + CMPL_ROLL, gy * dt,
 		atan2f(-ax, sqrt(ay * ay + az * az))) - st.roll0;
 
 	// same as for roll but for different axes
-	pitch = dsp_updatecompl(&pitchcompl, gx * dt,
+	pitch = dsp_updatecompl(cmpl + CMPL_PITCH, gx * dt,
 		atan2f(ay, sqrt(ax * ax + az * az))) - st.pitch0;
 
 	// update complimenraty filter for yaw axis and get next yaw
@@ -537,7 +507,7 @@ int stabilize(int ms)
 	// axis. Second signal is the heading value that is
 	// calculated from magnetometer readings.
 	
-	yaw = circf(dsp_updatecirccompl(&yawcompl, -gz * dt,
+	yaw = circf(dsp_updatecirccompl(cmpl + CMPL_YAW, -gz * dt,
 		qmc_heading(roll, -pitch,
 			qmcdata.fx, qmcdata.fy, qmcdata.fz)) - st.yaw0);
 
@@ -552,32 +522,24 @@ int stabilize(int ms)
 	va = (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz);
 
-	dsp_updatelpf(&valpf, va);
-	dsp_updatelpf(&vtlpf, va);
-	dsp_updatelpf(&volpf, va);
+	dsp_updatelpf(lpf + LPF_VAU, va);
+	dsp_updatelpf(lpf + LPF_VAPT1, va);
+	dsp_updatelpf(lpf + LPF_VAAVG, va);
 	
-	log_write(LOG_CUSTOM0, dsp_getlpf(&valpf));
+	log_write(LOG_CUSTOM0, dsp_getlpf(lpf + LPF_VAU));
 
 	vx = sin(-roll) * sin(-pitch);
 	vy = cos(-pitch);
 	vz = cos(-roll) * sin(-pitch);
 
-	dsp_updatelpf(&flpf, (vx * ax + vy * ay + vz * az)
+	dsp_updatelpf(lpf + LPF_FA, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
-
-	forwardspeed += (dsp_getlpf(&flpf) - faoffset) * 9.80665 * dt;
-	forwardspeed *= 0.9997501;
-	forwardpath += forwardspeed * dt;
-
-	log_write(LOG_CUSTOM1, (dsp_getlpf(&flpf) - faoffset) * 9.80665);
-	log_write(LOG_CUSTOM2, forwardspeed);
-	log_write(LOG_CUSTOM3, forwardpath);
 
 	ht = st.hoverthrottle / (cosf(-pitch) * cosf(-roll));
 
 	// if vertical acceleration is negative, most likely
 	// quadcopter is upside down, perform emergency disarm
-	if (dsp_getlpf(&tlpf) < -0.5) {
+	if (dsp_getlpf(lpf + LPF_THR) < -0.5) {
 		emergencydisarm = 1;
 		setthrust(0.0, 0.0, 0.0, 0.0);
 		en = 0.0;
@@ -593,28 +555,28 @@ int stabilize(int ms)
 		// (called accro mode), use only rotation speed values
 		// from the gyroscope. Update speed PID controllers for
 		// roll and pitch and get next correction values.
-		rollcor = dsp_pidbl(&rollspv, rolltarget, gy);
-		pitchcor = dsp_pidbl(&pitchspv, pitchtarget, gx);
+		rollcor = dsp_pidbl(pid + PID_ROLLS, rolltarget, gy);
+		pitchcor = dsp_pidbl(pid + PID_PITCHS, pitchtarget, gx);
 	}
 	else {
 		// if in double loop mode for tilt (most commonly used
 		// mode), first update roll and pitch POSITION PID
 		// controllers using currect roll and values and targets
 		// got from ERLS and get next correction values.
-		rollcor = dsp_pidbl(&rollpv, rolltarget, roll);
-		pitchcor = dsp_pidbl(&pitchpv, pitchtarget, pitch);
+		rollcor = dsp_pidbl(pid + PID_ROLLP, rolltarget, roll);
+		pitchcor = dsp_pidbl(pid + PID_PITCHP, pitchtarget, pitch);
 
 		// then use this values to update roll and pitch speed
 		// PID controllers and get next SPEED correction values.
-		rollcor = dsp_pidbl(&rollspv, rollcor, gy);
-		pitchcor = dsp_pidbl(&pitchspv, pitchcor, gx);
+		rollcor = dsp_pidbl(pid + PID_ROLLS, rollcor, gy);
+		pitchcor = dsp_pidbl(pid + PID_PITCHS, pitchcor, gx);
 	}
 
 	if (yawspeedpid) {
 		// if single PID loop mode for yaw is used just use
 		// rotation speed values around axis Z to upadte yaw PID
 		// controller and get next yaw correciton value
-		yawcor = dsp_pidbl(&yawspv, yawtarget, gz);
+		yawcor = dsp_pidbl(pid + PID_YAWS, yawtarget, gz);
 	}
 	else {
 		// if in double loop mode for yaw, first use yaw value
@@ -625,7 +587,7 @@ int stabilize(int ms)
 
 		// then use this value to update yaw speed PID
 		// controller and get next yaw SPEED correction value
-		yawcor = dsp_pidbl(&yawspv, yawcor, gz);
+		yawcor = dsp_pidbl(pid + PID_YAWS, yawcor, gz);
 	}
 
 	if (altmode == ALTMODE_POS) {
@@ -633,22 +595,22 @@ int stabilize(int ms)
 		// got from barometer readings and target altitude from
 		// ELRS remote to update altitude PID controller and
 		// get it's next correction value
-		thrustcor = dsp_pidbl(&apv, thrust,
-			dsp_getcompl(&altcompl) - alt0);
+		thrustcor = dsp_pidbl(pid + PID_ALT, thrust,
+			dsp_getcompl(cmpl + CMPL_ALT) - alt0);
 
 		// then use altitude correction value and climb rate
 		// calculated by complimentary filter (barometer
 		// differentiating and accelerometer Z-axis integration)
 		// to update climb rate PID controller and get it's next
 		// correction value
-		thrustcor = dsp_pidbl(&cpv, thrustcor,
-			dsp_getcompl(&climbratecompl));
+		thrustcor = dsp_pidbl(pid + PID_CLIMBRATE, thrustcor,
+			dsp_getcompl(cmpl + CMPL_CLIMBRATE));
 		
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
-		thrustcor = dsp_pidbl(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&vtlpf)) + ht;	
+		thrustcor = dsp_pidbl(pid + PID_VA, thrustcor + 1.0,
+			dsp_getlpf(lpf + LPF_VAPT1)) + ht;	
 	}
 	else if (altmode == ALTMODE_SPEED) {
 		// if consttant climb rate mode, first use climb rate
@@ -657,14 +619,14 @@ int stabilize(int ms)
 		// and target climb rate from ELRS remote to update
 		// climb rate PID controller and get it's next
 		// correction value
-		thrustcor = dsp_pidbl(&cpv, thrust,
-			dsp_getcompl(&climbratecompl));	
+		thrustcor = dsp_pidbl(pid + PID_CLIMBRATE, thrust,
+			dsp_getcompl(cmpl + CMPL_CLIMBRATE));	
 
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
-		thrustcor = dsp_pidbl(&tpv, thrustcor + 1.0,
-			dsp_getlpf(&vtlpf)) + ht;	
+		thrustcor = dsp_pidbl(pid + PID_VA, thrustcor + 1.0,
+			dsp_getlpf(lpf + LPF_VAPT1)) + ht;	
 	}
 	else {
 		if (hovermode) {
@@ -673,30 +635,32 @@ int stabilize(int ms)
 			// controller using next low-pass filtered
 			// value of vertical acceleration and target
 			// got from ERLS remote
-			thrustcor = dsp_pidbl(&tpv, thrust + 1.0,
-				dsp_getlpf(&vtlpf)) + ht;
+			thrustcor = dsp_pidbl(pid + PID_VA,
+				thrust + 1.0,
+				dsp_getlpf(lpf + LPF_VAPT1)) + ht;
 		}
 		else {
 			// if no altitude hold and hover throttle mode
 			// is disabled, update thrust PID controller
 			// using next low-pass filtered value of thrust
 			// and target got from ERLS remote
-			thrustcor = dsp_pidbl(&tpv, thrust + 1.0,
-				dsp_getlpf(&tlpf));
+			thrustcor = dsp_pidbl(pid + PID_VA,
+				thrust + 1.0,
+				dsp_getlpf(lpf + LPF_THR));
 		}
 	}
 
 	// reset bilinear PID-controllers when disarmed
 	if (en < 0.5) {
-		dsp_resetpidbl(&pitchpv);
-		dsp_resetpidbl(&rollpv);
-		dsp_resetpidbl(&pitchspv);
-		dsp_resetpidbl(&rollspv);
+		dsp_resetpidbl(pid + PID_PITCHP);
+		dsp_resetpidbl(pid + PID_ROLLP);
+		dsp_resetpidbl(pid + PID_PITCHS);
+		dsp_resetpidbl(pid + PID_ROLLS);
 		dsp_resetpids(&yawpv);
-		dsp_resetpidbl(&yawspv);
-		dsp_resetpidbl(&tpv);
-		dsp_resetpidbl(&cpv);
-		dsp_resetpidbl(&apv);
+		dsp_resetpidbl(pid + PID_YAWS);
+		dsp_resetpidbl(pid + PID_VA);
+		dsp_resetpidbl(pid + PID_CLIMBRATE);
+		dsp_resetpidbl(pid + PID_ALT);
 	}
 
 	// disable I-term for all
@@ -706,15 +670,15 @@ int stabilize(int ms)
 		|| (altmode == ALTMODE_SPEED
 			&& thrust < -0.95 * st.climbratemax)
 		|| (altmode == ALTMODE_POS && thrust < 0.01)) {
-		dsp_resetpidbls(&pitchpv);
-		dsp_resetpidbls(&rollpv);
-		dsp_resetpidbls(&pitchspv);
-		dsp_resetpidbls(&rollspv);
+		dsp_resetpidbls(pid + PID_PITCHP);
+		dsp_resetpidbls(pid + PID_ROLLP);
+		dsp_resetpidbls(pid + PID_PITCHS);
+		dsp_resetpidbls(pid + PID_ROLLS);
 		dsp_resetpids(&yawpv);
-		dsp_resetpidbls(&yawspv);
-		dsp_resetpidbls(&tpv);
-		dsp_resetpidbls(&cpv);
-		dsp_resetpidbls(&apv);
+		dsp_resetpidbls(pid + PID_YAWS);
+		dsp_resetpidbls(pid + PID_VA);
+		dsp_resetpidbls(pid + PID_CLIMBRATE);
+		dsp_resetpidbls(pid + PID_ALT);
 	}
 
 	// calculate weights for motors
@@ -793,11 +757,11 @@ int dpsupdate(int ms)
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 	// if barometer isn't initilized, return
-	if (dev[DPS_DEV].status != DEVSTATUS_INIT)
+	if (dev[DEV_DPS].status != DEVSTATUS_INIT)
 		return 0;
 
 	// read barometer values
-	dev[DPS_DEV].read(dev[DPS_DEV].priv, &hd,
+	dev[DEV_DPS].read(dev[DEV_DPS].priv, &hd,
 		sizeof(struct dps_data));
 
 	// write barometer temperature and altitude values into log
@@ -805,25 +769,26 @@ int dpsupdate(int ms)
 	log_write(LOG_BAR_ALT, hd.altf);
 
 	// update altitude low-pass filter and temperature reading
-	alt = dsp_updatelpf(&altlpf, hd.altf);
-	dsp_updatelpf(&templpf, hd.tempf);
+	alt = dsp_updatelpf(lpf + LPF_ALT, hd.altf);
+	dsp_updatelpf(lpf + LPF_BARTEMP, hd.tempf);
 
 	// calculate climb rate from vertical acceleration and
 	// barometric altitude defference using complimentary filter
-	dsp_updatecompl(&climbratecompl,
-		9.80665 * (dsp_getlpf(&valpf) + goffset - 1.0) * dt,
-			(dsp_getcompl(&altcompl) - prevalt) / dt);
+	dsp_updatecompl(cmpl + CMPL_CLIMBRATE,
+		9.80665 * (dsp_getlpf(lpf + LPF_VAU) + goffset - 1.0) * dt,
+			(dsp_getcompl(cmpl + CMPL_ALT) - prevalt) / dt);
 	
 	// calculate presice altitiude from climb rate and
 	// barometric altitude using complimentary filter
-	dsp_updatecompl(&altcompl, dsp_getcompl(&climbratecompl) * dt,
+	dsp_updatecompl(cmpl + CMPL_ALT,
+		dsp_getcompl(cmpl + CMPL_CLIMBRATE) * dt,
 		alt);
 	
-	prevalt = dsp_getcompl(&altcompl);
+	prevalt = dsp_getcompl(cmpl + CMPL_ALT);
 
 	// write climbrate and altitude values into log
-	log_write(LOG_CLIMBRATE, dsp_getcompl(&climbratecompl));
-	log_write(LOG_ALT, dsp_getcompl(&altcompl));
+	log_write(LOG_CLIMBRATE, dsp_getcompl(cmpl + CMPL_CLIMBRATE));
+	log_write(LOG_ALT, dsp_getcompl(cmpl + CMPL_ALT));
 
 	return 0;
 }
@@ -837,23 +802,23 @@ int dpsupdate(int ms)
 int qmcupdate(int ms)
 {
 	// if magnetometer isn't initilized, return
-	if (dev[QMC_DEV].status != DEVSTATUS_INIT)
+	if (dev[DEV_QMC].status != DEVSTATUS_INIT)
 		return 0;
 
 	// read magnetometer values
-	dev[QMC_DEV].read(dev[QMC_DEV].priv, &qmcdata,
+	dev[DEV_QMC].read(dev[DEV_QMC].priv, &qmcdata,
 		sizeof(struct qmc_data));
 
-	qmcdata.fx += st.mxthsc * dsp_getlpf(&avgthrustlpf);
+	qmcdata.fx += st.mxthsc * dsp_getlpf(lpf + LPF_AVGTHR);
 
 	// write magnetometer values into log
 	log_write(LOG_MAG_X, qmcdata.fx);
 	log_write(LOG_MAG_Y, qmcdata.fy);
 	log_write(LOG_MAG_Z, qmcdata.fz);
 
-	dsp_updatelpf(&magxpt1, qmcdata.fx);
-	dsp_updatelpf(&magypt1, qmcdata.fy);
-	dsp_updatelpf(&magzpt1, qmcdata.fz);
+	dsp_updatelpf(lpf + LPF_MAGX, qmcdata.fx);
+	dsp_updatelpf(lpf + LPF_MAGY, qmcdata.fy);
+	dsp_updatelpf(lpf + LPF_MAGZ, qmcdata.fz);
 
 	return 0;
 }
@@ -879,10 +844,13 @@ int logupdate(int ms)
 */
 int telesend(int ms)
 {
+	const char *attmodestr[] = {"ac", "st", "sp", "ps"};
+	const char *yawmodestr[] = {"sp", "cs"};
+	const char *altmodestr[] = {"tr", "cl", "al"};
 	const char *am;
 
-	tele.bat = dsp_getlpf(&batlpf);
-	tele.curr = dsp_getlpf(&currlpf);
+	tele.bat = dsp_getlpf(lpf + LPF_BAT);
+	tele.curr = dsp_getlpf(lpf + LPF_CUR);
 
 	if (tele.bat < 6.0)
 		tele.batrem = (tele.bat - 3.5) / 0.7;
@@ -903,11 +871,11 @@ int telesend(int ms)
 	tele.course = gnss.course;
 	tele.alt = gnss.altitude;
 	tele.sats = gnss.satellites;
-	tele.balt = dsp_getcompl(&altcompl) - alt0;
-	tele.vspeed = dsp_getcompl(&climbratecompl);
-	tele.roll = dsp_getcompl(&rollcompl) - st.roll0;
-	tele.pitch = dsp_getcompl(&pitchcompl) - st.pitch0;
-	tele.yaw = circf(dsp_getcompl(&yawcompl) - st.yaw0);
+	tele.balt = dsp_getcompl(cmpl + CMPL_ALT) - alt0;
+	tele.vspeed = dsp_getcompl(cmpl + CMPL_CLIMBRATE);
+	tele.roll = dsp_getcompl(cmpl + CMPL_ROLL) - st.roll0;
+	tele.pitch = dsp_getcompl(cmpl + CMPL_PITCH) - st.pitch0;
+	tele.yaw = circf(dsp_getcompl(cmpl + CMPL_YAW) - st.yaw0);
 
 	// fill flight mode string with arm state and
 	// combination of stabilization modes codes
@@ -930,7 +898,7 @@ int telesend(int ms)
 	if (emergencydisarm)
 		strcpy((char *) tele.mode, "stopped");
 
-	dev[CRSF_DEV].write(dev[CRSF_DEV].priv, &tele,
+	dev[DEV_CRSF].write(dev[DEV_CRSF].priv, &tele,
 		sizeof(struct crsf_tele));
 
 	return 0;
@@ -943,8 +911,8 @@ int telesend(int ms)
 */
 int powercheck(int ms)
 {
-	dsp_updatelpf(&batlpf, batteryvoltage());
-	dsp_updatelpf(&currlpf, esccurrent());
+	dsp_updatelpf(lpf + LPF_BAT, batteryvoltage());
+	dsp_updatelpf(lpf + LPF_CUR, esccurrent());
 
 	return 0;
 }
@@ -955,7 +923,6 @@ int powercheck(int ms)
 */
 int autopilotstep()
 {
-	forwardpath = 0.0;
 	autopilottimer = 0;
 	++curpoint;
 
@@ -969,7 +936,6 @@ int autopilotstep()
 */
 int autopilotupdate(int ms)
 {
-	float dx, dy;
 	struct trackpoint *nextpoint;
 	float dt;
 
@@ -1007,24 +973,27 @@ int autopilotupdate(int ms)
 			autopilotstep();
 	}
 	else if (nextpoint->type == AUTOPILOT_LANDING) {
-		if (dsp_getcompl(&altcompl) - alt0 > 5.0)
+		if (dsp_getcompl(cmpl + CMPL_ALT) - alt0 > 5.0)
 			thrust -= dt;
-		else if (dsp_getcompl(&altcompl) - alt0 > 5.0)
+		else if (dsp_getcompl(cmpl + CMPL_ALT) - alt0 > 5.0)
 			thrust -= dt * 0.5;
-		else if (dsp_getcompl(&altcompl) - alt0 > 2.0)
+		else if (dsp_getcompl(cmpl + CMPL_ALT) - alt0 > 2.0)
 			thrust -= dt * 0.25;
 		else
 			thrust -= dt * 0.125;
 		
 	//	pitchtarget = 0.0;
 		
-		if (dsp_getcompl(&altcompl) - alt0 <= 0.1)
+		if (dsp_getcompl(cmpl + CMPL_ALT) - alt0 <= 0.1)
 			autopilotstep();
 	}
 	else if (nextpoint->type == AUTOPILOT_STOP) {
 		thrust = -1.0;
 	}
 	else if (nextpoint->type == AUTOPILOT_FORWARD) {
+/*
+		float dx, dy;
+	
 		pitchtarget = M_PI / 12.0;
 		
 		yawtarget = atan2f(nextpoint->forward.x,
@@ -1034,7 +1003,8 @@ int autopilotupdate(int ms)
 		dy = nextpoint->forward.y - points[curpoint].forward.y;
 
 		if (forwardpath > sqrtf(dx * dx + dy * dy))
-			autopilotstep();
+*/
+		autopilotstep();
 	}
 
 	return 0;
@@ -1106,11 +1076,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		slottimeout = ELRS_PUSHTIMEOUT;
 
 	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.0) {
-		if (autopilot == 0) {
+		if (autopilot == 0)
 			curpoint = 0;
-			forwardspeed = 0.0;
-			forwardpath = 0.0;
-		}
 
 		autopilot = 1;
 	}
@@ -1174,11 +1141,9 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// if channel 9 is active (it's no-fix button on remote used
 	// for testing), set reference altitude from current altitude
 	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0) {
-		alt0 = dsp_getcompl(&altcompl);
-		goffset = 1.0 - dsp_getlpf(&volpf);
-		forwardspeed = 0.0;
-		forwardpath = 0.0;
-		faoffset = dsp_getlpf(&flpf);
+		alt0 = dsp_getcompl(cmpl + CMPL_ALT);
+		goffset = 1.0 - dsp_getlpf(lpf + LPF_VAAVG);
+		faoffset = dsp_getlpf(lpf + LPF_FA);
 	}
 
 	// set acceleromter stabilization mode, if channel 6 has value
@@ -1372,27 +1337,27 @@ int main(void)
 
 		// poll for configuration and telemetry commands
 		// from debug wifi connection
-		if (dev[ESP_DEV].read(dev[ESP_DEV].priv, &cmd,
+		if (dev[DEV_ESP].read(dev[DEV_ESP].priv, &cmd,
 			CMDSIZE) >= 0) {
-			runcommand(dev + ESP_DEV, cmd);
+			runcommand(dev + DEV_ESP, cmd);
 		}
 
 		// poll for configuration and telemtry commands
 		// from debug uart connection
-		if (dev[UART_DEV].read(dev[UART_DEV].priv, &cmd,
+		if (dev[DEV_UART].read(dev[DEV_UART].priv, &cmd,
 			UART_CMDSIZE) >= 0) {
-			runcommand(dev + UART_DEV, cmd);
+			runcommand(dev + DEV_UART, cmd);
 		}
 
 		// read the ELRS remote's packet
-		if (dev[CRSF_DEV].read(dev[CRSF_DEV].priv, &cd,
+		if (dev[DEV_CRSF].read(dev[DEV_CRSF].priv, &cd,
 			sizeof(struct crsf_data)) >= 0) {
 			crsfcmd(&cd, elrsus);
 			elrsus = 0;
 		}
 
 		// check the M10 messages
-		if (dev[M10_DEV].read(dev[M10_DEV].priv, &nd,
+		if (dev[DEV_M10].read(dev[DEV_M10].priv, &nd,
 			sizeof(struct m10_data)) >= 0) {
 			m10msg(&nd);
 		}

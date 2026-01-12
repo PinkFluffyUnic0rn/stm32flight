@@ -168,7 +168,7 @@ int setthrust(float ltd, float rtd, float lbd, float rbd)
 	avgthrust = (ltd + rtd + rbd + lbd) / 4.0;
 	avgthrust = avgthrust < 0.0 ? 0.0 : avgthrust;
 
-	dsp_updatelpf(&avgthrustlpf, avgthrust);
+	dsp_updatelpf(lpf + LPF_AVGTHR, avgthrust);
 
 	// put motors thrust values into log
 	log_write(LOG_LT, ltd);

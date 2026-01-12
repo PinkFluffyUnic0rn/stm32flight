@@ -20,44 +20,114 @@
 #include "crsf.h"
 
 /**
-* @defgroup DEVNUMBERS
-* @brief Character devices numbers
+* @defgroup DEVIDS
+* @brief Character devices IDs
 * @{
 */
-#define ICM_DEV		0	/*!< IMU device number */
-#define DPS_DEV		1	/*!< barometer device number */
-#define QMC_DEV		2	/*!< magnetometer device number */
-#define CRSF_DEV	3	/*!< eLRS device number */
-#define M10_DEV		4	/*!< GNSS device number */
-#define ESP_DEV		5	/*!< ESP device number */
-#define UART_DEV	6	/*!< UART debug device number */
-#define IRC_DEV		7	/*!< video TX device number */
+enum DEV_ID {
+	DEV_ICM		= 0,	/*!< IMU device number */
+	DEV_DPS		= 1,	/*!< barometer device number */
+	DEV_QMC		= 2,	/*!< magnetometer device number */
+	DEV_CRSF	= 3,	/*!< eLRS device number */
+	DEV_M10		= 4,	/*!< GNSS device number */
+	DEV_ESP		= 5,	/*!< ESP device number */
+	DEV_UART	= 6,	/*!< UART debug device number */
+	DEV_IRC		= 7,	/*!< video TX device number */
+	DEV_COUNT	= 8	/*!< character devices count */
+};
 /**
 * @}
 */
-
-#define DEV_COUNT	8	/*!< character devices count */
 
 /**
 * @defgroup TIMEREVENTIDS
 * @brief Timer events IDs
 * @{
 */
-#define TEV_PID 	0	/*!< PID event ID */
-#define TEV_CHECK 	1	/*!< connection check event ID */
-#define TEV_DPS		2	/*!< barometer update event ID */
-#define TEV_QMC		3	/*!< magnetometer update event ID */
-#define TEV_LOG		4	/*!< log update event ID */
-#define TEV_TELE	5	/*!< telemetry send event ID */
-#define TEV_POWER	6	/*!< battery power update event ID */
-#define TEV_AUTOPILOT	7	/*!< autopilot event ID */
+enum TEV_ID { 
+	TEV_PID		= 0,	/*!< PID event ID */
+	TEV_CHECK	= 1,	/*!< connection check event ID */
+	TEV_DPS		= 2,	/*!< barometer update event ID */
+	TEV_QMC		= 3,	/*!< magnetometer update event ID */
+	TEV_LOG		= 4,	/*!< log update event ID */
+	TEV_TELE	= 5,	/*!< telemetry send event ID */
+	TEV_POWER	= 6,	/*!< battery power update event ID */
+	TEV_AUTOPILOT	= 7,	/*!< autopilot event ID */
+	TEV_COUNT	= 8	/*!< timer events count */
+};
 /**
 * @}
 */
 
-#define TEV_COUNT	8	/*!< Timer events count */
+/**
+* @defgroup LPFIDS
+* @brief low-pass filters IDs
+* @{
+*/
+enum LPF_ID {
+	LPF_BAT		= 0,	/*!< battery voltage low-pass filter */
+	LPF_CUR		= 1,	/*!< battery voltage low-pass filter */
+	LPF_AVGTHR	= 2,	/*!< average motors thrust filter */
+	LPF_VAU		= 3,	/*!< vertical acceleration unity filter */
+	LPF_THR		= 4,	/*!< trust acceleration low-pass filter */
+	LPF_VAPT1	= 5,	/*!< vertical acceleration low-pass filter */
+	LPF_VAAVG	= 6,	/*!< vertical acceleration averaging filter */
+	LPF_FA		= 7,	/*!< forward acceleration low-pass filter */
+	LPF_ALT		= 8,	/*!< altitude low-pass filter */
+	LPF_BARTEMP	= 9,	/*!< temperature low-pass filter */
+	LPF_IMUTEMP	= 10,	/*!< IMU temperature unity filter */
+	LPF_ACCX	= 11,	/*!< accelerometer x low-pass filter */
+	LPF_ACCY	= 12,	/*!< accelerometer y low-pass filter */
+	LPF_ACCZ	= 13,	/*!< accelerometer z low-pass filter */
+	LPF_GYROX	= 14,	/*!< gyroscope x low-pass filter */
+	LPF_GYROY	= 15,	/*!< gyroscope y low-pass filter */
+	LPF_GYROZ	= 16,	/*!< gyroscope z low-pass filter */
+	LPF_MAGX	= 17,	/*!< gyroscope x low-pass filter */
+	LPF_MAGY	= 18,	/*!< gyroscope y low-pass filter */
+	LPF_MAGZ	= 19,	/*!< gyroscope z low-pass filter */
+	LPF_COUNT	= 20	/*!< low-pass filters count */
+};
+/**
+* @}
+*/
 
-#define MAX_POINT_COUNT 16
+/**
+* @defgroup CMPLIDS
+* @brief complimentary filters IDs
+* @{
+*/
+enum CMPL_ID {
+	CMPL_PITCH 	= 0,	/*!< pitch low-pass filter */
+	CMPL_ROLL 	= 1,	/*!< roll low-pass filter */
+	CMPL_YAW	= 2,	/*!< yaw low-pass filter */
+	CMPL_CLIMBRATE	= 3,	/*!< climb rate complimentary filter */
+	CMPL_ALT 	= 4,	/*!< altitude complimentary filter */
+	CMPL_COUNT 	= 5	/*!< complimentary filters count */
+};
+/**
+* @}
+*/
+
+/**
+* @defgroup PIDIDS
+* @brief PID controllers IDs
+* @{
+*/
+enum PID_ID {
+	PID_PITCHP	= 0,	/*!< pitch PID context */
+	PID_ROLLP	= 1,	/*!< roll PID context */
+	PID_YAWP	= 2,	/*!< pitch speed PID context */
+	PID_PITCHS	= 3,	/*!< roll speed PID context */
+	PID_ROLLS	= 4,	/*!< yaw PID context */
+	PID_YAWS	= 5,	/*!< yaw speed PID context */
+	PID_VA		= 6,	/*!< vertical acceleration PID context */
+	PID_CLIMBRATE	= 7,	/*!< climb rate PID context */
+	PID_ALT		= 8,	/*!< altitude PID context */
+	PID_COUNT	= 9	/*!< pid controllers count */
+};
+/**
+* @}
+*/
 
 /**
 * @defgroup EVENTFREQUENCIES
@@ -109,6 +179,8 @@
 * @}
 */
 
+#define MAX_POINT_COUNT 16
+
 /**
 * @brief Altitude control mode.
 */
@@ -122,32 +194,32 @@ enum ALTMODE {
 * @brief GNSS data status.
 */
 enum GNSSSTATUS {
-	GNSSSTATUS_VALID = 0,	/*!< data is valid */
-	GNSSSTATUS_INVALID = 1	/*!< data is invalid */
+	GNSSSTATUS_VALID	= 0,	/*!< data is valid */
+	GNSSSTATUS_INVALID	= 1	/*!< data is invalid */
 };
 
 /**
 * @brief Latitude direction.
 */
 enum LATDIR {
-	LATDIR_N = 0,	/*!< north */
-	LATDIR_S = 1,	/*!< south */
+	LATDIR_N	= 0,	/*!< north */
+	LATDIR_S	= 1,	/*!< south */
 };
 
 /**
 * @brief Longitude direction.
 */
 enum LONDIR {
-	LONDIR_E = 0,	/*!< east */
-	LONDIR_W = 1	/*!< west */
+	LONDIR_E	= 0,	/*!< east */
+	LONDIR_W	= 1	/*!< west */
 };
 
 /**
 * @brief Magnetic declination direction.
 */
 enum MAGVARDIR {
-	MAGVARDIR_E = 0,	/*!< east */
-	MAGVARDIR_W = 1		/*!< west */
+	MAGVARDIR_E	= 0,	/*!< east */
+	MAGVARDIR_W	= 1	/*!< west */
 };
 
 /**
@@ -163,12 +235,12 @@ enum CONFVALTYPE {
 * @brief Autopilot track point type
 */
 enum AUTOPILOT_TYPE {
-	AUTOPILOT_START = 0,	/*!< starting point */
-	AUTOPILOT_TAKEOFF = 1,	/*!< perform takeoff */
-	AUTOPILOT_HOVER = 2,	/*!< hover */
-	AUTOPILOT_FORWARD = 3,	/*!< move to pointed location */
-	AUTOPILOT_LANDING = 4,	/*!< perform landing */
-	AUTOPILOT_STOP = 5	/*!< stop point */
+	AUTOPILOT_START 	= 0,	/*!< starting point */
+	AUTOPILOT_TAKEOFF	= 1,	/*!< perform takeoff */
+	AUTOPILOT_HOVER		= 2,	/*!< hover */
+	AUTOPILOT_FORWARD	= 3,	/*!< move to pointed location */
+	AUTOPILOT_LANDING	= 4,	/*!< perform landing */
+	AUTOPILOT_STOP		= 5	/*!< stop point */
 };
 
 /**
@@ -240,58 +312,21 @@ extern struct cdevice dev[DEV_COUNT];
 extern struct bdevice flashdev;
 
 /**
-* @defgroup DSPCONTEXTS
-* @brief DSP contexts
-* @{
+* @brief Low-pass filters
 */
-extern struct dsp_lpf batlpf;	/*!< battery voltage low-pass filter */
-extern struct dsp_lpf currlpf;	/*!< battery voltage low-pass filter */
-
-extern struct dsp_lpf avgthrustlpf; /*!< average motors thrust filter */
-
-extern struct dsp_lpf valpf;	/*!< vertical acceleration unity filter */
-extern struct dsp_lpf tlpf;	/*!< trust acceleration low-pass filter */
-extern struct dsp_lpf vtlpf;	/*!< vertical acceleration low-pass filter */
-extern struct dsp_lpf volpf;	/*!< vertical acceleration filter for g offset */
-extern struct dsp_lpf flpf;	/*!< forward acceleration low-pass filter */
-
-extern struct dsp_lpf altlpf;	/*!< altitude low-pass filter */
-extern struct dsp_lpf templpf;	/*!< temperature low-pass filter */
-
-extern struct dsp_lpf atemppt1;	/*!< IMU temperature unity filter */
-
-extern struct dsp_lpf accxpt1;	/*!< accelerometer x low-pass filter */
-extern struct dsp_lpf accypt1;	/*!< accelerometer y low-pass filter */
-extern struct dsp_lpf acczpt1;	/*!< accelerometer z low-pass filter */
-
-extern struct dsp_lpf gyroxpt1;	/*!< gyroscope x low-pass filter */
-extern struct dsp_lpf gyroypt1;	/*!< gyroscope y low-pass filter */
-extern struct dsp_lpf gyrozpt1;	/*!< gyroscope z low-pass filter */
-
-extern struct dsp_lpf magxpt1;	/*!< gyroscope x low-pass filter */
-extern struct dsp_lpf magypt1;	/*!< gyroscope y low-pass filter */
-extern struct dsp_lpf magzpt1;	/*!< gyroscope z low-pass filter */
-
-extern struct dsp_compl pitchcompl;	/*!< pitch low-pass filter */
-extern struct dsp_compl rollcompl;	/*!< roll low-pass filter */
-extern struct dsp_compl yawcompl;	/*!< yaw low-pass filter */
-
-extern struct dsp_compl climbratecompl; /*!< climb rate complimentary filter */
-extern struct dsp_compl altcompl; 	/*!< altitude complimentary filter */
-
-extern struct dsp_pidblval pitchpv;	/*!< pitch PID context */
-extern struct dsp_pidblval rollpv;	/*!< roll PID context */
-extern struct dsp_pidblval pitchspv;	/*!< pitch speed PID context */
-extern struct dsp_pidblval rollspv;	/*!< roll speed PID context */
-extern struct dsp_pidval yawpv;		/*!< yaw PID context */
-extern struct dsp_pidblval yawspv;	/*!< yaw speed PID context */
-extern struct dsp_pidblval tpv;		/*!< vertical acceleration PID context */
-extern struct dsp_pidblval cpv;		/*!< climb rate PID context */
-extern struct dsp_pidblval apv;		/*!< altitude PID context */
+extern struct dsp_lpf lpf[LPF_COUNT];
 
 /**
-* @}
+* @brief Complimentary filters
 */
+extern struct dsp_compl cmpl[CMPL_COUNT];
+
+/**
+* @brief PID controllers
+*/
+extern struct dsp_pidblval pid[PID_COUNT];
+
+extern struct dsp_pidval yawpv;		/*!< yaw PID controller */
 
 /**
 * @defgroup GLOBALSTORAGE
@@ -339,10 +374,7 @@ extern int elrs; /*!< 1 when ELRS control is active (ELRS remote's
 
 extern float alt0;	/*!< reference altitude */
 extern float goffset;	/*!< free fall acceleration (g) value offset */
-
-extern float forwardspeed;
-extern float forwardpath;
-extern float faoffset;
+extern float faoffset;	/*!< forward acceleration value offset */
 
 /**
 * @brief autopilot track points
