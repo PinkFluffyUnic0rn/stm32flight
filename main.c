@@ -431,7 +431,6 @@ float qmc_heading(float r, float p, float x, float y, float z)
 */
 int stabilize(int ms)
 {
-	struct icm_data id;
 	float ltm, lbm, rbm, rtm;
 	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
@@ -466,38 +465,45 @@ int stabilize(int ms)
 		(En > 0.5) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
 	// get accelerometer and gyroscope readings
-	Dev[DEV_ICM].read(Dev[DEV_ICM].priv, &id,
+	Dev[DEV_ICM].read(Dev[DEV_ICM].priv, &Imudata,
 		sizeof(struct icm_data));
 
-	id.afz += (id.ft - 25.0) * St.adj.acctsc.z;
+	// apply accelerometer offsets
+	Imudata.afx += (Imudata.ft - 25.0) * St.adj.acctsc.x;
+	Imudata.afy += (Imudata.ft - 25.0) * St.adj.acctsc.y;
+	Imudata.afz += (Imudata.ft - 25.0) * St.adj.acctsc.z;
+	Imudata.afx -= St.adj.acc0.x;
+	Imudata.afy -= St.adj.acc0.y;
+	Imudata.afz -= St.adj.acc0.z;
+
+	// apply gyroscope offsets
+	Imudata.gfx -= St.adj.gyro0.x;
+	Imudata.gfy -= St.adj.gyro0.y;
+	Imudata.gfz -= St.adj.gyro0.z;
 
 	// write accelerometer and gyroscope values into log
-	log_write(LOG_ACC_X, id.afx);
-	log_write(LOG_ACC_Y, id.afy);
-	log_write(LOG_ACC_Z, id.afz);
-	log_write(LOG_GYRO_X, id.gfx);
-	log_write(LOG_GYRO_Y, id.gfy);
-	log_write(LOG_GYRO_Z, id.gfz);
+	log_write(LOG_ACC_X, Imudata.afx);
+	log_write(LOG_ACC_Y, Imudata.afy);
+	log_write(LOG_ACC_Z, Imudata.afz);
+	log_write(LOG_GYRO_X, Imudata.gfx);
+	log_write(LOG_GYRO_Y, Imudata.gfy);
+	log_write(LOG_GYRO_Z, Imudata.gfz);
 
 	// update accelerometer temperature
-	dsp_updatelpf(Lpf + LPF_IMUTEMP, id.ft);
+	dsp_updatelpf(Lpf + LPF_IMUTEMP, Imudata.ft);
 
 	// apply accelerometer offsets
-	ax = dsp_updatelpf(Lpf + LPF_ACCX, id.afx) - St.adj.acc0.x;
-	ay = dsp_updatelpf(Lpf + LPF_ACCY, id.afy) - St.adj.acc0.y;
-	az = dsp_updatelpf(Lpf + LPF_ACCZ, id.afz) - St.adj.acc0.z;
+	ax = dsp_updatelpf(Lpf + LPF_ACCX, Imudata.afx);
+	ay = dsp_updatelpf(Lpf + LPF_ACCY, Imudata.afy);
+	az = dsp_updatelpf(Lpf + LPF_ACCZ, Imudata.afz);
 
 	// update vertical acceleration low-pass filter
-	dsp_updatelpf(Lpf + LPF_THR, id.afz);
+	dsp_updatelpf(Lpf + LPF_THR, Imudata.afz);
 
-	// offset gyroscope readings by values, calculater
-	// at power on and convert result into radians
-	gx = deg2rad(dsp_updatelpf(Lpf + LPF_GYROX, id.gfx) 
-		- St.adj.gyro0.x);
-	gy = deg2rad(dsp_updatelpf(Lpf + LPF_GYROY, id.gfy) 
-		- St.adj.gyro0.y);
-	gz = deg2rad(dsp_updatelpf(Lpf + LPF_GYROZ, id.gfz)
-		- St.adj.gyro0.z);
+	// convert gyroscope values into radians
+	gx = deg2rad(dsp_updatelpf(Lpf + LPF_GYROX, Imudata.gfx));
+	gy = deg2rad(dsp_updatelpf(Lpf + LPF_GYROY, Imudata.gfy));
+	gz = deg2rad(dsp_updatelpf(Lpf + LPF_GYROZ, Imudata.gfz));
 
 	// update complimenraty filter for roll axis and get next roll
 	// value. First signal (value) is signal to be integrated: it's
@@ -518,7 +524,6 @@ int stabilize(int ms)
 	// value. First signal is the speed of the rotation around Z
 	// axis. Second signal is the heading value that is
 	// calculated from magnetometer readings.
-	
 	yaw = circf(dsp_updatecirccompl(Cmpl + CMPL_YAW, -gz * dt,
 		qmc_heading(roll, -pitch,
 			Qmcdata.fx, Qmcdata.fy, Qmcdata.fz)) 
@@ -1115,7 +1120,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		// value is stabilized, so target should be integrated
 		Yawtarget = circf(Yawtarget
 			+ cd->chf[ERLS_CH_YAW] * dt * M_PI
-				* St.ctrl.yawposrate);
+				* St.ctrl.yawrate);
 	}
 	else {
 		Yawspeedpid = 1;

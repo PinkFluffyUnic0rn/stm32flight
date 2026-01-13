@@ -89,7 +89,6 @@ struct settings
 		float rollrate;
 		float pitchrate;
 		float yawrate;
-		float yawposrate;
 		float climbrate;
 	} ctrl;
 

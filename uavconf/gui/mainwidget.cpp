@@ -973,19 +973,27 @@ main_widget::main_widget(QWidget *parent)
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Accelerometer offset",
-		{"X",		"Y",		"Z",		"Z thermal scaling"},
-		{"adj acc x",	"adj acc y",	"adj acc z",	"adj acc ztscale"},
+		{"X",		"Y",		"Z",},
+		{"adj acc x",	"adj acc y",	"adj acc z"},
 		cmdstree, true, this), 0, 0);
+
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"Accelerometer thermal scaling",
+		{"X", "Y", "Z"},
+		{"adj acc xtscale", "adj acc ytscale", "adj acc ztscale"},
+		cmdstree, true, this), 0, 1);
+
+
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Gyroscope offset",
 		{"X",		"Y",		"Z"},
 		{"adj gyro x",	"adj gyro y",	"adj gyro z"},
-		cmdstree, true, this), 0, 1);
+		cmdstree, true, this), 0, 2);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Attitude offset",
 		{"roll",	"pitch",	"yaw"},
 		{"adj roll",	"adj pitch",	"adj yaw"},
-		cmdstree, true, this), 0, 2);
+		cmdstree, true, this), 0, 3);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Magnetometer offsets",
 		{"X",		"Y",		"Z",		"declination"},
@@ -1030,8 +1038,8 @@ main_widget::main_widget(QWidget *parent)
 	
 	tabs["control"]->add_group(new float_settings_group(nullptr,
 		"Control rates",
-		{"roll",	"pitch",	"yaw position",	"yaw",		"climb"},
-		{"ctrl sroll",	"ctrl spitch",	"ctrl yaw",	"ctrl syaw",	"ctrl climbrate"},
+		{"roll",	"pitch",	"yaw",		"climb"},
+		{"ctrl sroll",	"ctrl spitch",	"ctrl syaw",	"ctrl climbrate"},
 		cmdstree, true, this), 3, 3, 2, 1);
 
 	settings_group *flash = new settings_group(nullptr, "Write");

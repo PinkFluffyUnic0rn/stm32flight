@@ -39,27 +39,26 @@ static int sprintpos(char *s, struct icm_data *id)
 	az = dsp_getlpf(Lpf + LPF_ACCZ);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n", "accel: ",
-		(double) ax, (double) ay, (double) az);	
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n", "gyro: ",
-		(double) dsp_getlpf(Lpf + LPF_GYROX),
-		(double) dsp_getlpf(Lpf + LPF_GYROY),
-		(double) dsp_getlpf(Lpf + LPF_GYROZ));
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		"accel corrected: ",
-		(double) (ax - St.adj.acc0.x),
-		(double) (ay - St.adj.acc0.y),
-		(double) (az - St.adj.acc0.z));
+		(double) Imudata.afx, (double) Imudata.afy,
+		(double) Imudata.afz);
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		"gyro corrected: ",
-		(double) (dsp_getlpf(Lpf + LPF_GYROX) - St.adj.gyro0.x),
-		(double) (dsp_getlpf(Lpf + LPF_GYROY) - St.adj.gyro0.y),
-		(double) (dsp_getlpf(Lpf + LPF_GYROZ) - St.adj.gyro0.z));
+		(double) Imudata.gfx, (double) Imudata.gfy,
+		(double) Imudata.gfz);
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
+		"accel filtered: ",
+		(double) ax, (double) ay, (double) az);
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
+		"gyro filtered: ",
+		(double) (dsp_getlpf(Lpf + LPF_GYROX)),
+		(double) (dsp_getlpf(Lpf + LPF_GYROY)),
+		(double) (dsp_getlpf(Lpf + LPF_GYROZ)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"temp: %0.3f\r\n",
@@ -83,10 +82,8 @@ static int sprintpos(char *s, struct icm_data *id)
 		(double) dsp_getlpf(Lpf + LPF_VAU));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"accel: %f\r\n", (double) sqrt(
-			pow(ax - St.adj.acc0.x, 2.0) 
-			+ pow(ay - St.adj.acc0.y, 2.0)
-			+ pow(az - St.adj.acc0.z, 2.0)));
+		"accel: %f\r\n",
+			(double) sqrt(ax * ax + ay * ay + az * az));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"g offset: %f\r\n", (double) Goffset);
@@ -346,10 +343,6 @@ static int sprintfctrl(char *s)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"yaw speed: %.5f\r\n",
 		(double) St.ctrl.yawrate);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw target change speed: %.5f\r\n",
-		(double) St.ctrl.yawposrate);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"maximum acceleration: %.5f\r\n",
@@ -738,6 +731,10 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 			St.adj.acc0.y = atof(toks[3]);
 		else if (strcmp(toks[2], "z") == 0)
 			St.adj.acc0.z = atof(toks[3]);
+		else if (strcmp(toks[2], "xtscale") == 0)
+			St.adj.acctsc.x = atof(toks[3]);
+		else if (strcmp(toks[2], "ytscale") == 0)
+			St.adj.acctsc.y = atof(toks[3]);
 		else if (strcmp(toks[2], "ztscale") == 0)
 			St.adj.acctsc.z = atof(toks[3]);
 		else
@@ -977,8 +974,6 @@ int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 		St.ctrl.rollmax = v;
 	else if (strcmp(toks[1], "pitch") == 0)
 		St.ctrl.pitchmax = v;
-	else if (strcmp(toks[1], "yaw") == 0)
-		St.ctrl.yawposrate = v;
 	else if (strcmp(toks[1], "sroll") == 0)
 		St.ctrl.rollrate = v;
 	else if (strcmp(toks[1], "spitch") == 0)
@@ -1230,6 +1225,10 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 				vf = St.adj.acc0.y;
 			else if (strcmp(toks[3], "z") == 0)
 				vf = St.adj.acc0.z;
+			else if (strcmp(toks[3], "xtscale") == 0)
+				vf = St.adj.acctsc.x;
+			else if (strcmp(toks[3], "ytscale") == 0)
+				vf = St.adj.acctsc.y;
 			else if (strcmp(toks[3], "ztscale") == 0)
 				vf = St.adj.acctsc.z;
 			else
@@ -1259,11 +1258,11 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 			else if (strcmp(toks[3], "zscale") == 0)
 				vf = St.adj.magsc.z;
 			else if (strcmp(toks[3], "xthscale") == 0)
-				vf = St.adj.magsc.x;
+				vf = St.adj.magthrsc.x;
 			else if (strcmp(toks[3], "ythscale") == 0)
-				vf = St.adj.magsc.y;
+				vf = St.adj.magthrsc.y;
 			else if (strcmp(toks[3], "zthscale") == 0)
-				vf = St.adj.magsc.z;
+				vf = St.adj.magthrsc.z;
 			else if (strcmp(toks[3], "decl") == 0)
 				vf = St.adj.magdecl;
 			else
@@ -1295,8 +1294,6 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 			vf = St.ctrl.rollmax;
 		else if (strcmp(toks[2], "pitch") == 0)
 			vf = St.ctrl.pitchmax;
-		else if (strcmp(toks[2], "yaw") == 0)
-			vf = St.ctrl.yawposrate;
 		else if (strcmp(toks[2], "sroll") == 0)
 			vf = St.ctrl.rollrate;
 		else if (strcmp(toks[2], "spitch") == 0)

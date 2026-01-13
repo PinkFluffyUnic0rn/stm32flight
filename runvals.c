@@ -10,6 +10,7 @@ struct dsp_pidblval Pid[PID_COUNT];
 struct dsp_pidval Yawpv;
 
 struct qmc_data Qmcdata;
+struct icm_data Imudata;
 struct gnss_data Gnss;
 struct crsf_tele Tele;
 
