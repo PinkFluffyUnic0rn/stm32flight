@@ -82,7 +82,7 @@
 /**
 * @brief log records per buffer
 */
-#define LOG_RECSPERBUF (LOG_BUFSIZE / (sizeof(float) * st.logrecsize))
+#define LOG_RECSPERBUF (LOG_BUFSIZE / (sizeof(float) * st.log.recsize))
 
 /**
 * @brief log values names

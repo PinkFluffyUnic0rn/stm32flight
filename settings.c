@@ -44,28 +44,28 @@ int validatesettings()
 {
 	int i;
 
-	if (!irc_ispowervalid(st.ircpower))
-		st.ircpower = IRCDEFPOWER;
-	if (!irc_isfreqvalid(st.ircpower))
-		st.ircfreq = IRCDEFFREQ;
+	if (!irc_ispowervalid(st.irc.power))
+		st.irc.power = IRCDEFPOWER;
+	if (!irc_isfreqvalid(st.irc.power))
+		st.irc.freq = IRCDEFFREQ;
 
-	if (st.lt < 0 || st.lt > 3)	st.lt = LTDEFNUM;
-	if (st.lb < 0 || st.lb > 3)	st.lb = LBDEFNUM;
-	if (st.rb < 0 || st.rb > 3)	st.rb = RBDEFNUM;
-	if (st.rt < 0 || st.rt > 3)	st.rt = RTDEFNUM;
+	if (st.mtr.lt < 0 || st.mtr.lt > 3)	st.mtr.lt = LTDEFNUM;
+	if (st.mtr.lb < 0 || st.mtr.lb > 3)	st.mtr.lb = LBDEFNUM;
+	if (st.mtr.rb < 0 || st.mtr.rb > 3)	st.mtr.rb = RBDEFNUM;
+	if (st.mtr.rt < 0 || st.mtr.rt > 3)	st.mtr.rt = RTDEFNUM;
 
-	if (st.logfreq <= 0 || st.logfreq > LOG_MAXFREQ)
-		st.logfreq = LOGDEFFREQ;
+	if (st.log.freq <= 0 || st.log.freq > LOG_MAXFREQ)
+		st.log.freq = LOGDEFFREQ;
 
-	if (st.logrecsize < 0
-			|| st.logrecsize > LOG_MAXRECSIZE
-			|| !ispow2(st.logrecsize)) {
-		st.logrecsize = LOGDEFRECSIZE;
+	if (st.log.recsize < 0
+			|| st.log.recsize > LOG_MAXRECSIZE
+			|| !ispow2(st.log.recsize)) {
+		st.log.recsize = LOGDEFRECSIZE;
 	}
 
 	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-		if (st.fieldid[i] < 0)
-			st.fieldid[i] = LOGFIELDDEFPOS;
+		if (st.log.fieldid[i] < 0)
+			st.log.fieldid[i] = LOGFIELDDEFPOS;
 	}
 
 	return 0;

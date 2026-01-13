@@ -113,7 +113,7 @@ float esccurrent()
 
 	HAL_ADC_Stop(&hadc2);
 
-	return (v / (float) 0xfff * st.currscale + st.curroffset);
+	return (v / (float) 0xfff * st.adj.cursc + st.adj.curroff);
 }
 
 /**
@@ -152,8 +152,8 @@ static void irc_init()
 	struct irc_device d;
 
 	d.huart = &huart5;
-	d.power = st.ircpower;
-	d.frequency = st.ircfreq;
+	d.power = st.irc.power;
+	d.frequency = st.irc.freq;
 
 	if (irc_initdevice(&d, dev + DEV_IRC) >= 0)
 		uartprintf("IRC device initilized\r\n");
@@ -311,42 +311,53 @@ static void uartdev_init()
 int setstabilize(int init)
 {
 	// init complementary filters contexts
-	dsp_setcompl(cmpl + CMPL_PITCH, st.atctcoef, PID_FREQ, init);
-	dsp_setcompl(cmpl + CMPL_ROLL, st.atctcoef, PID_FREQ, init);
-	dsp_setcompl(cmpl + CMPL_YAW, st.yctcoef, PID_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_PITCH, st.cmpl.att, PID_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_ROLL, st.cmpl.att, PID_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_YAW, st.cmpl.yaw, PID_FREQ, init);
 
-	dsp_setcompl(cmpl + CMPL_CLIMBRATE, st.cctcoef, DPS_FREQ, init);
-	dsp_setcompl(cmpl + CMPL_ALT, st.actcoef, DPS_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_CLIMBRATE, st.cmpl.climbrate,
+		DPS_FREQ, init);
+	dsp_setcompl(cmpl + CMPL_ALT, st.cmpl.alt, DPS_FREQ, init);
 
 	// init roll and pitch position PID controller contexts
-	dsp_setpidbl(pid + PID_PITCHP, st.p, st.i, st.d, PID_MAX_I,
-		st.dpt1freq, PID_FREQ, init);
-	dsp_setpidbl(pid + PID_ROLLP, st.p, st.i, st.d, PID_MAX_I,
-		st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_PITCHP,
+		st.pid.attpos.p, st.pid.attpos.i, st.pid.attpos.d,
+		PID_MAX_I, st.lpf.d, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_ROLLP,
+		st.pid.attpos.p, st.pid.attpos.i, st.pid.attpos.d,
+		PID_MAX_I, st.lpf.d, PID_FREQ, init);
 
 	// init roll, pitch and yaw speed PID controller contexts
-	dsp_setpidbl(pid + PID_PITCHS, st.sp, st.si, st.sd,
-		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
-	dsp_setpidbl(pid + PID_ROLLS, st.sp, st.si, st.sd,
-		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
-	dsp_setpidbl(pid + PID_YAWS, st.ysp, st.ysi, st.ysd,
-		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_PITCHS,
+		st.pid.attrate.p, st.pid.attrate.i, st.pid.attrate.d,
+		PID_MAX_I, st.lpf.d, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_ROLLS, 
+		st.pid.attrate.p, st.pid.attrate.i, st.pid.attrate.d,
+		PID_MAX_I, st.lpf.d, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_YAWS,
+		st.pid.yawrate.p, st.pid.yawrate.i, st.pid.yawrate.d,
+		PID_MAX_I, st.lpf.d, PID_FREQ, init);
 
 	// init yaw position PID controller's context
-	dsp_setpid(&yawpv, st.yp, st.yi, st.yd, st.dpt1freq,
-		PID_FREQ, init);
+	dsp_setpid(&yawpv,
+		st.pid.yawpos.p, st.pid.yawpos.i, st.pid.yawpos.d,
+		st.lpf.d, PID_FREQ, init);
 
 	// init vertical acceleration PID controller's context
-	dsp_setpidbl(pid + PID_VA, st.zsp, st.zsi, st.zsd, PID_MAX_I,
-		st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_VA,
+		st.pid.throttle.p, st.pid.throttle.i, st.pid.throttle.d,
+		PID_MAX_I, st.lpf.d, PID_FREQ, init);
 
 	// init climbrate PID controller's context
-	dsp_setpidbl(pid + PID_CLIMBRATE, st.cp, st.ci, st.cd,
-		PID_MAX_I, st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_CLIMBRATE,
+		st.pid.climbrate.p, st.pid.climbrate.i,
+		st.pid.climbrate.d, PID_MAX_I, st.lpf.d, PID_FREQ,
+		init);
 
 	// init altitude PID controller's context
-	dsp_setpidbl(pid + PID_ALT, st.ap, st.ai, st.ad, PID_MAX_I,
-		st.dpt1freq, PID_FREQ, init);
+	dsp_setpidbl(pid + PID_ALT,
+		st.pid.alt.p, st.pid.alt.i, st.pid.alt.d,
+		PID_MAX_I, st.lpf.d, PID_FREQ, init);
 
 	// init battery voltage low-pass filter
 	dsp_setlpf1f(lpf + LPF_BAT, BAT_CUTOFF, POWER_FREQ, init);
@@ -357,9 +368,9 @@ int setstabilize(int init)
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_setunity(lpf + LPF_BARTEMP, init);
-	dsp_setlpf1t(lpf + LPF_THR, st.ttcoef, PID_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_THR, st.lpf.va, PID_FREQ, init);
 	dsp_setunity(lpf + LPF_VAU, init);
-	dsp_setlpf1t(lpf + LPF_VAPT1, st.ttcoef, PID_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_VAPT1, st.lpf.va, PID_FREQ, init);
 	dsp_setlpf1t(lpf + LPF_VAAVG, VA_AVG_TCOEF, PID_FREQ, init);
 	dsp_setunity(lpf + LPF_FA, init);
 	dsp_setunity(lpf + LPF_ALT, init);
@@ -368,19 +379,19 @@ int setstabilize(int init)
 	dsp_setlpf1t(lpf + LPF_IMUTEMP, TEMP_TCOEF, PID_FREQ, init);
 
 	// init low-pass fitlers for accelerometer x, y and z axes
-	dsp_setlpf1f(lpf + LPF_ACCX, st.accpt1freq, PID_FREQ, init);
-	dsp_setlpf1f(lpf + LPF_ACCY, st.accpt1freq, PID_FREQ, init);
-	dsp_setlpf1f(lpf + LPF_ACCZ, st.accpt1freq, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_ACCX, st.lpf.acc, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_ACCY, st.lpf.acc, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_ACCZ, st.lpf.acc, PID_FREQ, init);
 
 	// init low-pass fitlers for gyroscope x, y and z axes
-	dsp_setlpf1f(lpf + LPF_GYROX, st.gyropt1freq, PID_FREQ, init);
-	dsp_setlpf1f(lpf + LPF_GYROY, st.gyropt1freq, PID_FREQ, init);
-	dsp_setlpf1f(lpf + LPF_GYROZ, st.gyropt1freq, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_GYROX, st.lpf.gyro, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_GYROY, st.lpf.gyro, PID_FREQ, init);
+	dsp_setlpf1f(lpf + LPF_GYROZ, st.lpf.gyro, PID_FREQ, init);
 
 	// init low-pass fitlers for magnetometer x, y and z axes
-	dsp_setlpf1t(lpf + LPF_MAGX, st.magpt1freq, QMC_FREQ, init);
-	dsp_setlpf1t(lpf + LPF_MAGY, st.magpt1freq, QMC_FREQ, init);
-	dsp_setlpf1t(lpf + LPF_MAGZ, st.magpt1freq, QMC_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_MAGX, st.lpf.mag, QMC_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_MAGY, st.lpf.mag, QMC_FREQ, init);
+	dsp_setlpf1t(lpf + LPF_MAGZ, st.lpf.mag, QMC_FREQ, init);
 
 	return 0;
 }
@@ -405,15 +416,15 @@ int initautopilot()
 */
 float qmc_heading(float r, float p, float x, float y, float z)
 {
-	x = st.mxsc * (x + st.mx0);
-	y = st.mysc * (y + st.my0);
-	z = st.mzsc * (z + st.mz0);
+	x = st.adj.magsc.x * (x + st.adj.mag0.x);
+	y = st.adj.magsc.y * (y + st.adj.mag0.y);
+	z = st.adj.magsc.z * (z + st.adj.mag0.z);
 
 	x = x * cosf(p) + y * sinf(r) * sinf(p)
 		- z * cosf(r) * sinf(p);
 	y = y * cosf(r) + z * sinf(r);
 
-	return circf(atan2f(y, x) + st.magdecl);
+	return circf(atan2f(y, x) + st.adj.magdecl);
 }
 
 /**
@@ -462,7 +473,7 @@ int stabilize(int ms)
 	dev[DEV_ICM].read(dev[DEV_ICM].priv, &id,
 		sizeof(struct icm_data));
 
-	id.afz += (id.ft - 25.0) * st.aztscale;
+	id.afz += (id.ft - 25.0) * st.adj.acctsc.z;
 
 	// write accelerometer and gyroscope values into log
 	log_write(LOG_ACC_X, id.afx);
@@ -476,18 +487,21 @@ int stabilize(int ms)
 	dsp_updatelpf(lpf + LPF_IMUTEMP, id.ft);
 
 	// apply accelerometer offsets
-	ax = dsp_updatelpf(lpf + LPF_ACCX, id.afx) - st.ax0;
-	ay = dsp_updatelpf(lpf + LPF_ACCY, id.afy) - st.ay0;
-	az = dsp_updatelpf(lpf + LPF_ACCZ, id.afz) - st.az0;
+	ax = dsp_updatelpf(lpf + LPF_ACCX, id.afx) - st.adj.acc0.x;
+	ay = dsp_updatelpf(lpf + LPF_ACCY, id.afy) - st.adj.acc0.y;
+	az = dsp_updatelpf(lpf + LPF_ACCZ, id.afz) - st.adj.acc0.z;
 
 	// update vertical acceleration low-pass filter
 	dsp_updatelpf(lpf + LPF_THR, id.afz);
 
 	// offset gyroscope readings by values, calculater
 	// at power on and convert result into radians
-	gx = deg2rad(dsp_updatelpf(lpf + LPF_GYROX, id.gfx) - st.gx0);
-	gy = deg2rad(dsp_updatelpf(lpf + LPF_GYROY, id.gfy) - st.gy0);
-	gz = deg2rad(dsp_updatelpf(lpf + LPF_GYROZ, id.gfz) - st.gz0);
+	gx = deg2rad(dsp_updatelpf(lpf + LPF_GYROX, id.gfx) 
+		- st.adj.gyro0.x);
+	gy = deg2rad(dsp_updatelpf(lpf + LPF_GYROY, id.gfy) 
+		- st.adj.gyro0.y);
+	gz = deg2rad(dsp_updatelpf(lpf + LPF_GYROZ, id.gfz)
+		- st.adj.gyro0.z);
 
 	// update complimenraty filter for roll axis and get next roll
 	// value. First signal (value) is signal to be integrated: it's
@@ -496,11 +510,13 @@ int stabilize(int ms)
 	// calculated from acceleromer readings through some
 	// trigonometry.
 	roll = dsp_updatecompl(cmpl + CMPL_ROLL, gy * dt,
-		atan2f(-ax, sqrt(ay * ay + az * az))) - st.roll0;
+		atan2f(-ax, sqrt(ay * ay + az * az)))
+			- st.adj.att0.roll;
 
 	// same as for roll but for different axes
 	pitch = dsp_updatecompl(cmpl + CMPL_PITCH, gx * dt,
-		atan2f(ay, sqrt(ax * ax + az * az))) - st.pitch0;
+		atan2f(ay, sqrt(ax * ax + az * az))) 
+			- st.adj.att0.pitch;
 
 	// update complimenraty filter for yaw axis and get next yaw
 	// value. First signal is the speed of the rotation around Z
@@ -509,7 +525,8 @@ int stabilize(int ms)
 	
 	yaw = circf(dsp_updatecirccompl(cmpl + CMPL_YAW, -gz * dt,
 		qmc_heading(roll, -pitch,
-			qmcdata.fx, qmcdata.fy, qmcdata.fz)) - st.yaw0);
+			qmcdata.fx, qmcdata.fy, qmcdata.fz)) 
+			- st.adj.att0.yaw);
 
 	// calculate gravity direction vector in IMU coordination system
 	// using pitch and roll values;
@@ -535,7 +552,7 @@ int stabilize(int ms)
 	dsp_updatelpf(lpf + LPF_FA, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
-	ht = st.hoverthrottle / (cosf(-pitch) * cosf(-roll));
+	ht = st.adj.hoverthrottle / (cosf(-pitch) * cosf(-roll));
 
 	// if vertical acceleration is negative, most likely
 	// quadcopter is upside down, perform emergency disarm
@@ -668,7 +685,7 @@ int stabilize(int ms)
 	if ((altmode == ALTMODE_ACCEL && thrust < 0
 			&& !hovermode)
 		|| (altmode == ALTMODE_SPEED
-			&& thrust < -0.95 * st.climbratemax)
+			&& thrust < -0.95 * st.ctrl.climbratemax)
 		|| (altmode == ALTMODE_POS && thrust < 0.01)) {
 		dsp_resetpidbls(pid + PID_PITCHP);
 		dsp_resetpidbls(pid + PID_ROLLP);
@@ -683,14 +700,15 @@ int stabilize(int ms)
 
 	// calculate weights for motors
 	// thrust calibration values
-	ltm = (1.0 + st.rsc / 2) * (1.0 + st.psc / 2);
-	rtm = (1.0 - st.rsc / 2) * (1.0 + st.psc / 2);
-	lbm = (1.0 + st.rsc / 2) * (1.0 - st.psc / 2);
-	rbm = (1.0 - st.rsc / 2) * (1.0 - st.psc / 2);
+	ltm = (1.0 + st.adj.mtrsc.r / 2) * (1.0 + st.adj.mtrsc.p / 2);
+	rtm = (1.0 - st.adj.mtrsc.r / 2) * (1.0 + st.adj.mtrsc.p / 2);
+	lbm = (1.0 + st.adj.mtrsc.r / 2) * (1.0 - st.adj.mtrsc.p / 2);
+	rbm = (1.0 - st.adj.mtrsc.r / 2) * (1.0 - st.adj.mtrsc.p / 2);
 
 	// if final thrust is greater than
 	// limit set it to the limit
-	thrustcor = thrustcor > st.thrustmax ? st.thrustmax : thrustcor;
+	thrustcor = thrustcor > st.ctrl.thrustmax
+		? st.ctrl.thrustmax : thrustcor;
 
 	// update motors thrust based on calculated values. For
 	// quadcopter it's enought to split correction in half for
@@ -809,7 +827,7 @@ int qmcupdate(int ms)
 	dev[DEV_QMC].read(dev[DEV_QMC].priv, &qmcdata,
 		sizeof(struct qmc_data));
 
-	qmcdata.fx += st.mxthsc * dsp_getlpf(lpf + LPF_AVGTHR);
+	qmcdata.fx += st.adj.magthrsc.x * dsp_getlpf(lpf + LPF_AVGTHR);
 
 	// write magnetometer values into log
 	log_write(LOG_MAG_X, qmcdata.fx);
@@ -873,9 +891,11 @@ int telesend(int ms)
 	tele.sats = gnss.satellites;
 	tele.balt = dsp_getcompl(cmpl + CMPL_ALT) - alt0;
 	tele.vspeed = dsp_getcompl(cmpl + CMPL_CLIMBRATE);
-	tele.roll = dsp_getcompl(cmpl + CMPL_ROLL) - st.roll0;
-	tele.pitch = dsp_getcompl(cmpl + CMPL_PITCH) - st.pitch0;
-	tele.yaw = circf(dsp_getcompl(cmpl + CMPL_YAW) - st.yaw0);
+	tele.roll = dsp_getcompl(cmpl + CMPL_ROLL) - st.adj.att0.roll;
+	tele.pitch = dsp_getcompl(cmpl + CMPL_PITCH)
+		- st.adj.att0.pitch;
+	tele.yaw = circf(dsp_getcompl(cmpl + CMPL_YAW)
+		- st.adj.att0.yaw);
 
 	// fill flight mode string with arm state and
 	// combination of stabilization modes codes
@@ -1098,11 +1118,12 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		// value is stabilized, so target should be integrated
 		yawtarget = circf(yawtarget
 			+ cd->chf[ERLS_CH_YAW] * dt * M_PI
-				* st.yawtargetspeed);
+				* st.ctrl.yawposrate);
 	}
 	else {
 		yawspeedpid = 1;
-		yawtarget = -cd->chf[ERLS_CH_YAW] * M_PI * st.yawspeed;
+		yawtarget = -cd->chf[ERLS_CH_YAW]
+			* M_PI * st.ctrl.yawrate;
 	}
 
 	// set altitude hold mode, if channel 7 has value more than 25,
@@ -1115,7 +1136,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	else if (cd->chf[ERLS_CH_THRMODE] > 0.25) {
 		altmode = ALTMODE_POS;
 		thrust = (cd->chf[ERLS_CH_THRUST] + 1.0)
-			/ 2.0 * st.altmax;
+			/ 2.0 * st.ctrl.altmax;
 	}
 	else if (cd->chf[ERLS_CH_THRMODE] < -0.25) {
 		altmode = ALTMODE_ACCEL;
@@ -1123,19 +1144,19 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		if (cd->chf[ERLS_CH_HOVER] < 0.0) {
 			hovermode = 0;
 			thrust = (cd->chf[ERLS_CH_THRUST] + 0.5)
-				/ 1.5 * st.accelmax;
+				/ 1.5 * st.ctrl.accelmax;
 		}
 		else {
 			hovermode = 1;
 
 			thrust = (cd->chf[ERLS_CH_THRUST])
-				/ 2.0 * st.accelmax;
+				/ 2.0 * st.ctrl.accelmax;
 		}
 
 	}
 	else {
 		altmode = ALTMODE_SPEED;
-		thrust = cd->chf[ERLS_CH_THRUST] * st.climbratemax;
+		thrust = cd->chf[ERLS_CH_THRUST] * st.ctrl.climbratemax;
 	}
 
 	// if channel 9 is active (it's no-fix button on remote used
@@ -1167,9 +1188,9 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		// set pitch/roll targets based on
 		// channels 1-2 values (it's a joystick on most remotes)
 		rolltarget = cd->chf[ERLS_CH_ROLL]
-			* (M_PI * st.rollmax);
+			* (M_PI * st.ctrl.rollmax);
 		pitchtarget = -cd->chf[ERLS_CH_PITCH]
-			* (M_PI * st.pitchmax);
+			* (M_PI * st.ctrl.pitchmax);
 	}
 	else if (cd->chf[ERLS_CH_ATTMODE] < -0.25) {
 		en = 0;
@@ -1182,9 +1203,9 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		// set pitch/roll targets based on
 		// channels 1-2 values (it's a joystick on most remotes)
 		rolltarget = cd->chf[ERLS_CH_ROLL]
-			* (M_PI * st.rollspeed);
+			* (M_PI * st.ctrl.rollrate);
 		pitchtarget = -cd->chf[ERLS_CH_PITCH]
-			* (M_PI * st.pitchspeed);
+			* (M_PI * st.ctrl.pitchrate);
 	}
 
 	// disable thrust when motors should be
@@ -1295,7 +1316,7 @@ int main(void)
 	inittimev(evs + TEV_CHECK, 0, CHECK_FREQ, checkconnection);
 	inittimev(evs + TEV_DPS, 1 * DPS_FREQ / 5, DPS_FREQ, dpsupdate);
 	inittimev(evs + TEV_QMC, 2 * QMC_FREQ / 5, QMC_FREQ, qmcupdate);
-	inittimev(evs + TEV_LOG, 0, st.logfreq, logupdate);
+	inittimev(evs + TEV_LOG, 0, st.log.freq, logupdate);
 	inittimev(evs + TEV_TELE, 3 * TELE_FREQ / 5, 
 		TELE_FREQ, telesend);
 	inittimev(evs + TEV_POWER, 4 * POWER_FREQ / 5,

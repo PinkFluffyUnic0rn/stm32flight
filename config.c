@@ -51,15 +51,15 @@ static int sprintpos(char *s, struct icm_data *id)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		"accel corrected: ",
-		(double) (ax - st.ax0),
-		(double) (ay - st.ay0),
-		(double) (az - st.az0));
+		(double) (ax - st.adj.acc0.x),
+		(double) (ay - st.adj.acc0.y),
+		(double) (az - st.adj.acc0.z));
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		"gyro corrected: ",
-		(double) (dsp_getlpf(lpf + LPF_GYROX) - st.gx0),
-		(double) (dsp_getlpf(lpf + LPF_GYROY) - st.gy0),
-		(double) (dsp_getlpf(lpf + LPF_GYROZ) - st.gz0));
+		(double) (dsp_getlpf(lpf + LPF_GYROX) - st.adj.gyro0.x),
+		(double) (dsp_getlpf(lpf + LPF_GYROY) - st.adj.gyro0.y),
+		(double) (dsp_getlpf(lpf + LPF_GYROZ) - st.adj.gyro0.z));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"temp: %0.3f\r\n",
@@ -67,9 +67,12 @@ static int sprintpos(char *s, struct icm_data *id)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"roll: %0.3f; pitch: %0.3f; yaw: %0.3f\r\n",
-		(double) (dsp_getcompl(cmpl + CMPL_ROLL) - st.roll0),
-		(double) (dsp_getcompl(cmpl + CMPL_PITCH) - st.pitch0),
-		(double) circf(dsp_getcompl(cmpl + CMPL_YAW) - st.yaw0));
+		(double) (dsp_getcompl(cmpl + CMPL_ROLL)
+			- st.adj.att0.roll),
+		(double) (dsp_getcompl(cmpl + CMPL_PITCH)
+			- st.adj.att0.pitch),
+		(double) circf(dsp_getcompl(cmpl + CMPL_YAW)
+			- st.adj.att0.yaw));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"z acceleration: %f\r\n",
@@ -81,9 +84,9 @@ static int sprintpos(char *s, struct icm_data *id)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel: %f\r\n", (double) sqrt(
-			pow(ax - st.ax0, 2.0) 
-			+ pow(ay - st.ay0, 2.0)
-			+ pow(az - st.az0, 2.0)));
+			pow(ax - st.adj.acc0.x, 2.0) 
+			+ pow(ay - st.adj.acc0.y, 2.0)
+			+ pow(az - st.adj.acc0.z, 2.0)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"g offset: %f\r\n", (double) goffset);
@@ -112,9 +115,9 @@ static int sprintqmc(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"corrected: x = %0.3f; y = %0.3f; z = %0.3f\r\n",
-		(double) (st.mxsc * (qmcdata.fx + st.mx0)),
-		(double) (st.mysc * (qmcdata.fy + st.my0)),
-		(double) (st.mzsc * (qmcdata.fz + st.mz0)));
+		(double) (st.adj.magsc.x * (qmcdata.fx + st.adj.mag0.x)),
+		(double) (st.adj.magsc.y * (qmcdata.fy + st.adj.mag0.y)),
+		(double) (st.adj.magsc.z * (qmcdata.fz + st.adj.mag0.z)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"heading: %f\r\n", (double) dsp_getcompl(cmpl + CMPL_YAW));
@@ -178,32 +181,36 @@ static int sprintvalues(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"roll thrust: %.3f; pitch thrust %.3f\r\n",
-		(double) st.rsc, (double) st.psc);
+		(double) st.adj.mtrsc.r, (double) st.adj.mtrsc.p);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"mag off: %.3f; %.3f; %.3f\r\n",
-		(double) st.mx0, (double) st.my0, (double) st.mz0);
+		(double) st.adj.mag0.x, (double) st.adj.mag0.y,
+		(double) st.adj.mag0.z);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"mag scale: %.3f; %.3f; %.3f\r\n",
-		(double) st.mxsc, (double) st.mysc, (double) st.mzsc);
+		(double) st.adj.magsc.x, (double) st.adj.magsc.y,
+		(double) st.adj.magsc.z);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"mag decl: %.5f\r\n",
-		(double) st.magdecl);
+		(double) st.adj.magdecl);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"accel cor: %.3f; %.3f; %.3f\r\n",
-		(double) st.ax0, (double) st.ay0, (double) st.az0);
+		(double) st.adj.acc0.x, (double) st.adj.acc0.y,
+		(double) st.adj.acc0.z);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"gyro cor: %.3f; %.3f; %.3f\r\n",
-		(double) st.gx0, (double) st.gy0, (double) st.gz0);
+		(double) st.adj.gyro0.x, (double) st.adj.gyro0.y,
+		(double) st.adj.gyro0.z);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"roll cor: %.3f; pitch cor: %.3f; yaw cor: %.3f\r\n",
-		(double) st.roll0, (double) st.pitch0,
-		(double) st.yaw0);
+		(double) st.adj.att0.roll, (double) st.adj.att0.pitch,
+		(double) st.adj.att0.yaw);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"battery: %0.3f\r\n",
@@ -232,31 +239,39 @@ static int sprintpid(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"pos PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.p, (double) st.i, (double) st.d);
+		(double) st.pid.attpos.p, (double) st.pid.attpos.i,
+		(double) st.pid.attpos.d);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"speed PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.sp, (double) st.si, (double) st.sd);
+		(double) st.pid.attrate.p, (double) st.pid.attrate.i,
+		(double) st.pid.attrate.d);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"yaw PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.yp, (double) st.yi, (double) st.yd);
+		(double) st.pid.yawpos.p, (double) st.pid.yawpos.i,
+		(double) st.pid.yawpos.d);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"yaw speed PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.ysp, (double) st.ysi, (double) st.ysd);
+		(double) st.pid.yawrate.p, (double) st.pid.yawrate.i,
+		(double) st.pid.yawrate.d);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"thrust PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.zsp, (double) st.zsi, (double) st.zsd);
+		"throttle PID: %.5f,%.5f,%.5f\r\n",
+		(double) st.pid.throttle.p, (double) st.pid.throttle.i,
+		(double) st.pid.throttle.d);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"climb rate PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.cp, (double) st.ci, (double) st.cd);
+		(double) st.pid.climbrate.p,
+		(double) st.pid.climbrate.i,
+		(double) st.pid.climbrate.d);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"altitude PID: %.5f,%.5f,%.5f\r\n",
-		(double) st.ap, (double) st.ai, (double) st.ad);
+		(double) st.pid.alt.p, (double) st.pid.alt.i,
+		(double) st.pid.alt.d);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%s mode\r\n", speedpid ? "single" : "dual");
@@ -319,41 +334,41 @@ static int sprintfctrl(char *s)
 	s[0] = '\0';
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"maximum thrust: %.5f\r\n", (double) st.thrustmax);
+		"maximum thrust: %.5f\r\n", (double) st.ctrl.thrustmax);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"maximum roll: %.5f\r\n", (double) st.rollmax);
+		"maximum roll: %.5f\r\n", (double) st.ctrl.rollmax);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"maximum pitch: %.5f\r\n", (double) st.pitchmax);
+		"maximum pitch: %.5f\r\n", (double) st.ctrl.pitchmax);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"roll speed: %.5f\r\n",
-		(double) st.rollspeed);
+		(double) st.ctrl.rollrate);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"pitch speed: %.5f\r\n",
-		(double) st.pitchspeed);
+		(double) st.ctrl.pitchrate);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"yaw speed: %.5f\r\n",
-		(double) st.yawspeed);
+		(double) st.ctrl.yawrate);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"yaw target change speed: %.5f\r\n",
-		(double) st.yawtargetspeed);
+		(double) st.ctrl.yawposrate);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"maximum acceleration: %.5f\r\n",
-		(double) st.accelmax);
+		(double) st.ctrl.accelmax);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"maximum climbrate: %.5f\r\n",
-		(double) st.climbratemax);
+		(double) st.ctrl.climbratemax);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"maximum altitude: %.5f\r\n",
-		(double) st.altmax);
+		(double) st.ctrl.altmax);
 
 	return 0;
 }
@@ -368,37 +383,32 @@ static int sprintffilters(char *s)
 	s[0] = '\0';
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"attitude compl tc: %.6f\r\n", (double) st.atctcoef);
+		"attitude compl tc: %.6f\r\n", (double) st.cmpl.att);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"yaw compl tc: %.6f\r\n", (double) st.yctcoef);
+		"yaw compl tc: %.6f\r\n", (double) st.cmpl.yaw);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"gyro lpf cut-off: %.6f\r\n", (double) st.gyropt1freq);
+		"climb rate compl tc: %.6f\r\n",
+		(double) st.cmpl.climbrate);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"accel lpf cut-off: %.6f\r\n", (double) st.accpt1freq);
+		"altitude compl tc: %.6f\r\n", (double) st.cmpl.alt);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"mag lpf cut-off: %.6f\r\n", (double) st.magpt1freq);
+		"gyro lpf cut-off: %.6f\r\n", (double) st.lpf.gyro);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"d lpf cut-off: %.6f\r\n", (double) st.dpt1freq);
+		"accel lpf cut-off: %.6f\r\n", (double) st.lpf.acc);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"thrust lpf tc: %.6f\r\n", (double) st.ttcoef);
+		"mag lpf cut-off: %.6f\r\n", (double) st.lpf.mag);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"vertical accel lpf tc: %.6f\r\n", (double) st.vatcoef);
+		"d lpf cut-off: %.6f\r\n", (double) st.lpf.d);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"climb rate compl tc: %.6f\r\n", (double) st.cctcoef);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"altitude lpf cut-off: %.6f\r\n", (double) st.apt1freq);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"altitude compl tc: %.6f\r\n", (double) st.actcoef);
+		"thrust lpf tc: %.6f\r\n", (double) st.lpf.va);
 
 	return 0;
 }
@@ -485,88 +495,116 @@ int pidcmd(const struct cdevice *dev, const char **toks, char *out)
 	v = atof(toks[3]);
 
 	if (strcmp(toks[1], "tilt") == 0) {
-		if (strcmp(toks[2], "mode") == 0) {
-			if (strcmp(toks[3], "double") == 0)
-				speedpid = 0;
-			else if (strcmp(toks[3], "single") == 0)
-				speedpid = 1;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "p") == 0)	st.p = v;
-		else if (strcmp(toks[2], "i") == 0)	st.i = v;
-		else if (strcmp(toks[2], "d") == 0)	st.d = v;
-		else					return (-1);
+		if (strcmp(toks[2], "p") == 0)
+			st.pid.attpos.p = v;
+		else if (strcmp(toks[2], "i") == 0)
+			st.pid.attpos.i = v;
+		else if (strcmp(toks[2], "d") == 0)
+			st.pid.attpos.d = v;
+		else
+			return (-1);
 
-		dsp_setpidbl(pid + PID_PITCHP, st.p, st.i, st.d,
-			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(pid + PID_ROLLP, st.p, st.i, st.d,
-			0.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_PITCHP,
+			st.pid.attpos.p, st.pid.attpos.i,
+			st.pid.attpos.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_ROLLP,
+			st.pid.attpos.p, st.pid.attpos.i,
+			st.pid.attpos.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "stilt") == 0) {
-		if (strcmp(toks[2], "p") == 0)		st.sp = v;
-		else if (strcmp(toks[2], "i") == 0)	st.si = v;
-		else if (strcmp(toks[2], "d") == 0)	st.sd = v;
-		else					return (-1);
+		if (strcmp(toks[2], "p") == 0)
+			st.pid.attrate.p = v;
+		else if (strcmp(toks[2], "i") == 0)
+			st.pid.attrate.i = v;
+		else if (strcmp(toks[2], "d") == 0)
+			st.pid.attrate.d = v;
+		else
+			return (-1);
 
-		dsp_setpidbl(pid + PID_PITCHS, st.sp, st.si, st.sd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(pid + PID_ROLLS, st.sp, st.si, st.sd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_PITCHS,
+			st.pid.attrate.p, st.pid.attrate.i,
+			st.pid.attrate.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_ROLLS,
+			st.pid.attrate.p, st.pid.attrate.i,
+			st.pid.attrate.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
-		if (strcmp(toks[2], "mode") == 0) {
-			if (strcmp(toks[3], "double") == 0)
-				st.yawspeedpid = 0;
-			else if (strcmp(toks[3], "single") == 0)
-				st.yawspeedpid = 1;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "p") == 0)	st.yp = v;
-		else if (strcmp(toks[2], "i") == 0)	st.yi = v;
-		else if (strcmp(toks[2], "d") == 0)	st.yd = v;
-		else					return (-1);
+		if (strcmp(toks[2], "p") == 0)
+			st.pid.yawpos.p = v;
+		else if (strcmp(toks[2], "i") == 0)
+			st.pid.yawpos.i = v;
+		else if (strcmp(toks[2], "d") == 0)
+			st.pid.yawpos.d = v;
+		else
+			return (-1);
 
-		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
-			st.dpt1freq, PID_FREQ, 0);
-
+		dsp_setpid(&yawpv,
+			st.pid.yawpos.p, st.pid.yawpos.i,
+			st.pid.yawpos.d,
+			st.lpf.d, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "syaw") == 0) {
-		if (strcmp(toks[2], "p") == 0)		st.ysp = v;
-		else if (strcmp(toks[2], "i") == 0)	st.ysi = v;
-		else if (strcmp(toks[2], "d") == 0)	st.ysd = v;
-		else					return (-1);
+		if (strcmp(toks[2], "p") == 0)
+			st.pid.yawrate.p = v;
+		else if (strcmp(toks[2], "i") == 0)
+			st.pid.yawrate.i = v;
+		else if (strcmp(toks[2], "d") == 0)
+			st.pid.yawrate.d = v;
+		else
+			return (-1);
 
-		dsp_setpidbl(pid + PID_YAWS, st.ysp, st.ysi, st.ysd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_YAWS,
+			st.pid.yawrate.p, st.pid.yawrate.i,
+			st.pid.yawrate.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "throttle") == 0) {
-		if (strcmp(toks[2], "p") == 0)		st.zsp = v;
-		else if (strcmp(toks[2], "i") == 0)	st.zsi = v;
-		else if (strcmp(toks[2], "d") == 0)	st.zsd = v;
-		else					return (-1);
+		if (strcmp(toks[2], "p") == 0)
+			st.pid.throttle.p = v;
+		else if (strcmp(toks[2], "i") == 0)
+			st.pid.throttle.i = v;
+		else if (strcmp(toks[2], "d") == 0)
+			st.pid.throttle.d = v;
+		else
+			return (-1);
 
-		dsp_setpidbl(pid + PID_VA, st.zsp, st.zsi, st.zsd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_VA,
+			st.pid.throttle.p, st.pid.throttle.i,
+			st.pid.throttle.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
-		if (strcmp(toks[2], "p") == 0)		st.cp = v;
-		else if (strcmp(toks[2], "i") == 0)	st.ci = v;
-		else if (strcmp(toks[2], "d") == 0)	st.cd = v;
-		else					return (-1);
+		if (strcmp(toks[2], "p") == 0)
+			st.pid.climbrate.p = v;
+		else if (strcmp(toks[2], "i") == 0)
+			st.pid.climbrate.i = v;
+		else if (strcmp(toks[2], "d") == 0)
+			st.pid.climbrate.d = v;
+		else
+			return (-1);
 
-		dsp_setpidbl(pid + PID_CLIMBRATE, st.cp, st.ci, st.cd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_CLIMBRATE,
+			st.pid.climbrate.p, st.pid.climbrate.i,
+			st.pid.climbrate.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
-		if (strcmp(toks[2], "p") == 0)		st.ap = v;
-		else if (strcmp(toks[2], "i") == 0)	st.ai = v;
-		else if (strcmp(toks[2], "d") == 0)	st.ad = v;
-		else					return (-1);
+		if (strcmp(toks[2], "p") == 0)
+			st.pid.alt.p = v;
+		else if (strcmp(toks[2], "i") == 0)
+			st.pid.alt.i = v;
+		else if (strcmp(toks[2], "d") == 0)
+			st.pid.alt.d = v;
+		else
+			return (-1);
 
-		dsp_setpidbl(pid + PID_ALT, st.ap, st.ai, st.ad,
-			0.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_ALT,
+			st.pid.alt.p, st.pid.alt.i, st.pid.alt.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -589,22 +627,22 @@ int flashcmd(const struct cdevice *dev, const char **toks, char *out)
 int complcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "attitude") == 0) {
-		st.atctcoef = atof(toks[2]);
-		dsp_setcompl(cmpl + CMPL_ROLL, st.atctcoef, PID_FREQ, 0);
-		dsp_setcompl(cmpl + CMPL_PITCH, st.atctcoef, PID_FREQ, 0);
+		st.cmpl.att = atof(toks[2]);
+		dsp_setcompl(cmpl + CMPL_ROLL, st.cmpl.att, PID_FREQ, 0);
+		dsp_setcompl(cmpl + CMPL_PITCH, st.cmpl.att, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "yaw") == 0) {
-		st.yctcoef = atof(toks[2]);
-		dsp_setcompl(cmpl + CMPL_YAW, st.yctcoef, PID_FREQ, 0);
+		st.cmpl.yaw = atof(toks[2]);
+		dsp_setcompl(cmpl + CMPL_YAW, st.cmpl.yaw, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "climbrate") == 0) {
-		st.cctcoef = atof(toks[2]);
-		dsp_setcompl(cmpl + CMPL_CLIMBRATE, st.cctcoef,
+		st.cmpl.climbrate = atof(toks[2]);
+		dsp_setcompl(cmpl + CMPL_CLIMBRATE, st.cmpl.climbrate,
 			DPS_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "altitude") == 0) {
-		st.actcoef = atof(toks[2]);
-		dsp_setcompl(cmpl + CMPL_ALT, st.actcoef, DPS_FREQ, 0);
+		st.cmpl.alt = atof(toks[2]);
+		dsp_setcompl(cmpl + CMPL_ALT, st.cmpl.alt, DPS_FREQ, 0);
 	}
 
 	return 0;
@@ -613,53 +651,70 @@ int complcmd(const struct cdevice *dev, const char **toks, char *out)
 int lpfcmd(const struct cdevice *dev, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "gyro") == 0) {
-		st.gyropt1freq = atof(toks[2]);
+		st.lpf.gyro = atof(toks[2]);
 
-		dsp_setlpf1f(lpf + LPF_GYROX, st.gyropt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(lpf + LPF_GYROY, st.gyropt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(lpf + LPF_GYROZ, st.gyropt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_GYROX, st.lpf.gyro, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_GYROY, st.lpf.gyro, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_GYROZ, st.lpf.gyro, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "accel") == 0) {
-		st.accpt1freq = atof(toks[2]);
+		st.lpf.acc = atof(toks[2]);
 
-		dsp_setlpf1f(lpf + LPF_ACCX, st.accpt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(lpf + LPF_ACCY, st.accpt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(lpf + LPF_ACCZ, st.accpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_ACCX, st.lpf.acc, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_ACCY, st.lpf.acc, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_ACCZ, st.lpf.acc, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "mag") == 0) {
-		st.magpt1freq = atof(toks[2]);
+		st.lpf.mag = atof(toks[2]);
 
-		dsp_setlpf1f(lpf + LPF_MAGX, st.magpt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(lpf + LPF_MAGY, st.magpt1freq, PID_FREQ, 0);
-		dsp_setlpf1f(lpf + LPF_MAGZ, st.magpt1freq, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_MAGX, st.lpf.mag, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_MAGY, st.lpf.mag, PID_FREQ, 0);
+		dsp_setlpf1f(lpf + LPF_MAGZ, st.lpf.mag, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "d") == 0) {
-		st.dpt1freq = atof(toks[2]);
+		st.lpf.d = atof(toks[2]);
 
-		dsp_setpidbl(pid + PID_PITCHP, st.p, st.i, st.d,
-			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(pid + PID_ROLLP, st.p, st.i, st.d,
-			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(pid + PID_PITCHS, st.sp, st.si, st.sd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(pid + PID_ROLLS, st.sp, st.si, st.sd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(pid + PID_YAWS, st.ysp, st.ysi, st.ysd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpid(&yawpv, st.yp, st.yi, st.yd,
-			st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(pid + PID_VA, st.zsp, st.zsi, st.zsd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(pid + PID_CLIMBRATE, st.cp, st.ci, st.cd,
-			0.5, st.dpt1freq, PID_FREQ, 0);
-		dsp_setpidbl(pid + PID_ALT, st.ap, st.ai, st.ad,
-			0.5, st.dpt1freq, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_PITCHP,
+			st.pid.attpos.p, st.pid.attpos.i,
+			st.pid.attpos.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_ROLLP,
+			st.pid.attpos.p, st.pid.attpos.i,
+			st.pid.attpos.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_PITCHS,
+			st.pid.attrate.p, st.pid.attrate.i,
+			st.pid.attrate.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_ROLLS,
+			st.pid.attrate.p, st.pid.attrate.i,
+			st.pid.attrate.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_YAWS,
+			st.pid.yawrate.p, st.pid.yawrate.i,
+			st.pid.yawrate.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
+		dsp_setpid(&yawpv,
+			st.pid.yawpos.p, st.pid.yawpos.i,
+			st.pid.yawpos.d,
+			st.lpf.d, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_VA,
+			st.pid.throttle.p, st.pid.throttle.i,
+			st.pid.throttle.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_CLIMBRATE,
+			st.pid.climbrate.p, st.pid.climbrate.i,
+			st.pid.climbrate.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
+		dsp_setpidbl(pid + PID_ALT,
+			st.pid.alt.p, st.pid.alt.i, st.pid.alt.d,
+			PID_MAX_I, st.lpf.d, PID_FREQ, 0);
 	}
 	else if (strcmp(toks[1], "vaccel") == 0) {
-		st.ttcoef = atof(toks[2]);
+		st.lpf.va = atof(toks[2]);
 
-		dsp_setlpf1t(lpf + LPF_THR, st.ttcoef, PID_FREQ, 0);
-		dsp_setlpf1t(lpf + LPF_VAPT1, st.ttcoef, PID_FREQ, 0);
+		dsp_setlpf1t(lpf + LPF_THR, st.lpf.va, PID_FREQ, 0);
+		dsp_setlpf1t(lpf + LPF_VAPT1, st.lpf.va, PID_FREQ, 0);
 	}
 	else
 		return (-1);
@@ -673,68 +728,73 @@ int adjcmd(const struct cdevice *dev, const char **toks, char *out)
 
 	v = atof(toks[2]);
 
-	if (strcmp(toks[1], "rollthrust") == 0)		st.rsc = v;
-	else if (strcmp(toks[1], "pitchthrust") == 0)	st.psc = v;
-	else if (strcmp(toks[1], "roll") == 0)		st.roll0 = v;
-	else if (strcmp(toks[1], "pitch") == 0)		st.pitch0 = v;
-	else if (strcmp(toks[1], "yaw") == 0)		st.yaw0 = v;
+	if (strcmp(toks[1], "rollthrust") == 0)
+		st.adj.mtrsc.r = v;
+	else if (strcmp(toks[1], "pitchthrust") == 0)
+		st.adj.mtrsc.p = v;
+	else if (strcmp(toks[1], "roll") == 0)
+		st.adj.att0.roll = v;
+	else if (strcmp(toks[1], "pitch") == 0)
+		st.adj.att0.pitch = v;
+	else if (strcmp(toks[1], "yaw") == 0)
+		st.adj.att0.yaw = v;
 	else if (strcmp(toks[1], "acc") == 0) {
 		if (strcmp(toks[2], "x") == 0)
-			st.ax0 = atof(toks[3]);
+			st.adj.acc0.x = atof(toks[3]);
 		else if (strcmp(toks[2], "y") == 0)
-			st.ay0 = atof(toks[3]);
+			st.adj.acc0.y = atof(toks[3]);
 		else if (strcmp(toks[2], "z") == 0)
-			st.az0 = atof(toks[3]);
+			st.adj.acc0.z = atof(toks[3]);
 		else if (strcmp(toks[2], "ztscale") == 0)
-			st.aztscale = atof(toks[3]);
+			st.adj.acctsc.z = atof(toks[3]);
 		else
 			return (-1);
 	}
 	else if (strcmp(toks[1], "gyro") == 0) {
 		if (strcmp(toks[2], "x") == 0)
-			st.gx0 = atof(toks[3]);
+			st.adj.gyro0.x = atof(toks[3]);
 		else if (strcmp(toks[2], "y") == 0)
-			st.gy0 = atof(toks[3]);
+			st.adj.gyro0.y = atof(toks[3]);
 		else if (strcmp(toks[2], "z") == 0)
-			st.gz0 = atof(toks[3]);
+			st.adj.gyro0.z = atof(toks[3]);
 		else
 			return (-1);
 	}
 	else if (strcmp(toks[1], "mag") == 0) {
 		if (strcmp(toks[2], "x0") == 0)
-			st.mx0 = atof(toks[3]);
+			st.adj.mag0.x = atof(toks[3]);
 		else if (strcmp(toks[2], "y0") == 0)
-			st.my0 = atof(toks[3]);
+			st.adj.mag0.y = atof(toks[3]);
 		else if (strcmp(toks[2], "z0") == 0)
-			st.mz0 = atof(toks[3]);
+			st.adj.mag0.z = atof(toks[3]);
 		else if (strcmp(toks[2], "xscale") == 0)
-			st.mxsc = atof(toks[3]);
+			st.adj.magsc.x = atof(toks[3]);
 		else if (strcmp(toks[2], "yscale") == 0)
-			st.mysc = atof(toks[3]);
+			st.adj.magsc.y = atof(toks[3]);
 		else if (strcmp(toks[2], "zscale") == 0)
-			st.mzsc = atof(toks[3]);
+			st.adj.magsc.z = atof(toks[3]);
 		else if (strcmp(toks[2], "xthscale") == 0)
-			st.mxthsc = atof(toks[3]);
+			st.adj.magthrsc.x = atof(toks[3]);
 		else if (strcmp(toks[2], "ythscale") == 0)
-			st.mythsc = atof(toks[3]);
+			st.adj.magthrsc.y = atof(toks[3]);
 		else if (strcmp(toks[2], "zthscale") == 0)
-			st.mzthsc = atof(toks[3]);
+			st.adj.magthrsc.z = atof(toks[3]);
 		else if (strcmp(toks[2], "decl") == 0)
-			st.magdecl = atof(toks[3]);
+			st.adj.magdecl = atof(toks[3]);
 		else
 			return (-1);
 	}
 	else if (strcmp(toks[1], "curr") == 0) {
 		if (strcmp(toks[2], "offset") == 0)
-			st.curroffset = atof(toks[3]);
+			st.adj.curroff = atof(toks[3]);
 		else if (strcmp(toks[2], "scale") == 0)
-			st.currscale = atof(toks[3]);
+			st.adj.cursc = atof(toks[3]);
 		else
 			return (-1);
 	}
 	else if (strcmp(toks[1], "althold") == 0) {
 		if (strcmp(toks[2], "hover") == 0)
-			st.hoverthrottle = atof(toks[3]);
+			st.adj.hoverthrottle = atof(toks[3]);
 		else
 			return (-1);
 	}
@@ -779,12 +839,12 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		d->write(d->priv, s, strlen(s));
 	}
 	else if (strcmp(toks[1], "freq") == 0) {
-		st.logfreq = atoi(toks[2]);
+		st.log.freq = atoi(toks[2]);
 
-		if (st.logfreq < 0 || st.logfreq > 4096)
-			st.logfreq = 128;
+		if (st.log.freq < 0 || st.log.freq > 4096)
+			st.log.freq = 128;
 
-		modifytimev(evs + TEV_LOG, st.logfreq);
+		modifytimev(evs + TEV_LOG, st.log.freq);
 
 		return 0;
 	}
@@ -797,7 +857,7 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 			if (p > LOG_MAXRECSIZE)
 				p = LOG_MAXRECSIZE;
 
-			st.logrecsize = p;
+			st.log.recsize = p;
 		}
 		else {
 			int strn;
@@ -810,11 +870,11 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 				return (-1);
 
 			for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-				if (st.fieldid[i] == atoi(toks[2]))
-					st.fieldid[i] = 99;
+				if (st.log.fieldid[i] == atoi(toks[2]))
+					st.log.fieldid[i] = 99;
 			}
 
-			st.fieldid[strn] = atoi(toks[2]);
+			st.log.fieldid[strn] = atoi(toks[2]);
 		}
 
 		return 0;
@@ -919,25 +979,25 @@ int ctrlcmd(const struct cdevice *d, const char **toks, char *out)
 	v = atof(toks[2]);
 
 	if (strcmp(toks[1], "thrust") == 0)
-		st.thrustmax = v;
+		st.ctrl.thrustmax = v;
 	else if (strcmp(toks[1], "roll") == 0)
-		st.rollmax = v;
+		st.ctrl.rollmax = v;
 	else if (strcmp(toks[1], "pitch") == 0)
-		st.pitchmax = v;
+		st.ctrl.pitchmax = v;
 	else if (strcmp(toks[1], "yaw") == 0)
-		st.yawtargetspeed = v;
+		st.ctrl.yawposrate = v;
 	else if (strcmp(toks[1], "sroll") == 0)
-		st.rollspeed = v;
+		st.ctrl.rollrate = v;
 	else if (strcmp(toks[1], "spitch") == 0)
-		st.pitchspeed = v;
+		st.ctrl.pitchrate = v;
 	else if (strcmp(toks[1], "syaw") == 0)
-		st.yawspeed = v;
+		st.ctrl.yawrate = v;
 	else if (strcmp(toks[1], "accel") == 0)
-		st.accelmax = v;
+		st.ctrl.accelmax = v;
 	else if (strcmp(toks[1], "climbrate") == 0)
-		st.climbratemax = v;
+		st.ctrl.climbratemax = v;
 	else if (strcmp(toks[1], "altmax") == 0)
-		st.altmax = v;
+		st.ctrl.altmax = v;
 	else
 		return (-1);
 
@@ -963,7 +1023,7 @@ int systemcmd(const struct cdevice *d, const char **toks, char *out)
 int irccmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "frequency") == 0) {
-		st.ircfreq = atoi(toks[2]);
+		st.irc.freq = atoi(toks[2]);
 
 		if (dev[DEV_IRC].status != DEVSTATUS_INIT)
 			return 0;
@@ -972,7 +1032,7 @@ int irccmd(const struct cdevice *d, const char **toks, char *out)
 			"frequency", atoi(toks[2]));
 	}
 	else if (strcmp(toks[1], "power") == 0) {
-		st.ircpower = atoi(toks[2]);
+		st.irc.power = atoi(toks[2]);
 
 		if (dev[DEV_IRC].status != DEVSTATUS_INIT)
 			return 0;
@@ -990,51 +1050,51 @@ int motorcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "lt") == 0) {
 		if (strcmp(toks[2], "r") == 0)
-			dshotcmd(st.lt, 21);
+			dshotcmd(st.mtr.lt, 21);
 		else if (strcmp(toks[2], "d") == 0)
-			dshotcmd(st.lt, 20);
+			dshotcmd(st.mtr.lt, 20);
 		else if (strcmp(toks[2], "s") == 0) {
-			dshotcmd(st.lt, 12);
+			dshotcmd(st.mtr.lt, 12);
 			mdelay(35);
 		}
 		else
-			st.lt = atoi(toks[2]);
+			st.mtr.lt = atoi(toks[2]);
 	}
 	else if (strcmp(toks[1], "lb") == 0) {
 		if (strcmp(toks[2], "r") == 0)
-			dshotcmd(st.lb, 21);
+			dshotcmd(st.mtr.lb, 21);
 		else if (strcmp(toks[2], "d") == 0)
-			dshotcmd(st.lb, 20);
+			dshotcmd(st.mtr.lb, 20);
 		else if (strcmp(toks[2], "s") == 0) {
-			dshotcmd(st.lb, 12);
+			dshotcmd(st.mtr.lb, 12);
 			mdelay(35);
 		}
 		else
-			st.lb = atoi(toks[2]);
+			st.mtr.lb = atoi(toks[2]);
 	}
 	else if (strcmp(toks[1], "rb") == 0) {
 		if (strcmp(toks[2], "r") == 0)
-			dshotcmd(st.rb, 21);
+			dshotcmd(st.mtr.rb, 21);
 		else if (strcmp(toks[2], "d") == 0)
-			dshotcmd(st.rb, 20);
+			dshotcmd(st.mtr.rb, 20);
 		else if (strcmp(toks[2], "s") == 0) {
-			dshotcmd(st.rb, 12);
+			dshotcmd(st.mtr.rb, 12);
 			mdelay(35);
 		}
 		else
-			st.rb = atoi(toks[2]);
+			st.mtr.rb = atoi(toks[2]);
 	}
 	else if (strcmp(toks[1], "rt") == 0) {
 		if (strcmp(toks[2], "r") == 0)
-			dshotcmd(st.rt, 21);
+			dshotcmd(st.mtr.rt, 21);
 		else if (strcmp(toks[2], "d") == 0)
-			dshotcmd(st.rt, 20);
+			dshotcmd(st.mtr.rt, 20);
 		else if (strcmp(toks[2], "s") == 0) {
-			dshotcmd(st.rt, 12);
+			dshotcmd(st.mtr.rt, 12);
 			mdelay(35);
 		}
 		else
-			st.rt = atoi(toks[2]);
+			st.mtr.rt = atoi(toks[2]);
 	}
 	else
 		return (-1);
@@ -1056,71 +1116,71 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	if (strcmp(toks[1], "pid") == 0) {
 		if (strcmp(toks[2], "tilt") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				vf = st.p;
+				vf = st.pid.attpos.p;
 			else if (strcmp(toks[3], "i") == 0)
-				vf = st.i;
+				vf = st.pid.attpos.i;
 			else if (strcmp(toks[3], "d") == 0)
-				vf = st.d;
+				vf = st.pid.attpos.d;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "stilt") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				vf = st.sp;
+				vf = st.pid.attrate.p;
 			else if (strcmp(toks[3], "i") == 0)
-				vf = st.si;
+				vf = st.pid.attrate.i;
 			else if (strcmp(toks[3], "d") == 0)
-				vf = st.sd;
+				vf = st.pid.attrate.d;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "yaw") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				vf = st.yp;
+				vf = st.pid.yawpos.p;
 			else if (strcmp(toks[3], "i") == 0)
-				vf = st.yi;
+				vf = st.pid.yawpos.i;
 			else if (strcmp(toks[3], "d") == 0)
-				vf = st.yd;
+				vf = st.pid.yawpos.d;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "syaw") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				vf = st.ysp;
+				vf = st.pid.yawrate.p;
 			else if (strcmp(toks[3], "i") == 0)
-				vf = st.ysi;
+				vf = st.pid.yawrate.i;
 			else if (strcmp(toks[3], "d") == 0)
-				vf = st.ysd;
+				vf = st.pid.yawrate.d;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "throttle") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				vf = st.zsp;
+				vf = st.pid.throttle.p;
 			else if (strcmp(toks[3], "i") == 0)
-				vf = st.zsi;
+				vf = st.pid.throttle.i;
 			else if (strcmp(toks[3], "d") == 0)
-				vf = st.zsd;
+				vf = st.pid.throttle.d;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "climbrate") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				vf = st.cp;
+				vf = st.pid.climbrate.p;
 			else if (strcmp(toks[3], "i") == 0)
-				vf = st.ci;
+				vf = st.pid.climbrate.i;
 			else if (strcmp(toks[3], "d") == 0)
-				vf = st.cd;
+				vf = st.pid.climbrate.d;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "altitude") == 0) {
 			if (strcmp(toks[3], "p") == 0)
-				vf = st.ap;
+				vf = st.pid.alt.p;
 			else if (strcmp(toks[3], "i") == 0)
-				vf = st.ai;
+				vf = st.pid.alt.i;
 			else if (strcmp(toks[3], "d") == 0)
-				vf = st.ad;
+				vf = st.pid.alt.d;
 			else
 				return (-1);
 		}
@@ -1131,13 +1191,13 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "compl") == 0) {
 		if (strcmp(toks[2], "attitude") == 0)
-			vf = st.atctcoef;
+			vf = st.cmpl.att;
 		else if (strcmp(toks[2], "yaw") == 0)
-			vf = st.yctcoef;
+			vf = st.cmpl.yaw;
 		else if (strcmp(toks[2], "climbrate") == 0)
-			vf = st.cctcoef;
+			vf = st.cmpl.climbrate;
 		else if (strcmp(toks[2], "altitude") == 0)
-			vf = st.actcoef;
+			vf = st.cmpl.alt;
 		else
 			return (-1);
 
@@ -1145,15 +1205,15 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "lpf") == 0) {
 		if (strcmp(toks[2], "gyro") == 0)
-			vf = st.gyropt1freq;
+			vf = st.lpf.gyro;
 		else if (strcmp(toks[2], "accel") == 0)
-			vf = st.accpt1freq;
+			vf = st.lpf.acc;
 		else if (strcmp(toks[2], "mag") == 0)
-			vf = st.magpt1freq;
+			vf = st.lpf.mag;
 		else if (strcmp(toks[2], "d") == 0)
-			vf = st.dpt1freq;
+			vf = st.lpf.d;
 		else if (strcmp(toks[2], "vaccel") == 0)
-			vf = st.ttcoef;
+			vf = st.lpf.va;
 		else
 			return (-1);
 
@@ -1161,72 +1221,72 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "adj") == 0) {
 		if (strcmp(toks[2], "rollthrust") == 0)
-			vf = st.rsc;
+			vf = st.adj.mtrsc.r;
 		else if (strcmp(toks[2], "pitchthrust") == 0)
-			vf = st.psc;
+			vf = st.adj.mtrsc.p;
 		else if (strcmp(toks[2], "roll") == 0)
-			vf = st.roll0;
+			vf = st.adj.att0.roll;
 		else if (strcmp(toks[2], "pitch") == 0)
-			vf = st.pitch0;
+			vf = st.adj.att0.pitch;
 		else if (strcmp(toks[2], "yaw") == 0)
-			vf = st.yaw0;
+			vf = st.adj.att0.yaw;
 		else if (strcmp(toks[2], "acc") == 0) {
 			if (strcmp(toks[3], "x") == 0)
-				vf = st.ax0;
+				vf = st.adj.acc0.x;
 			else if (strcmp(toks[3], "y") == 0)
-				vf = st.ay0;
+				vf = st.adj.acc0.y;
 			else if (strcmp(toks[3], "z") == 0)
-				vf = st.az0;
+				vf = st.adj.acc0.z;
 			else if (strcmp(toks[3], "ztscale") == 0)
-				vf = st.aztscale;
+				vf = st.adj.acctsc.z;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "gyro") == 0) {
 			if (strcmp(toks[3], "x") == 0)
-				vf = st.gx0;
+				vf = st.adj.gyro0.x;
 			else if (strcmp(toks[3], "y") == 0)
-				vf = st.gy0;
+				vf = st.adj.gyro0.y;
 			else if (strcmp(toks[3], "z") == 0)
-				vf = st.gz0;
+				vf = st.adj.gyro0.z;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "mag") == 0) {
 			if (strcmp(toks[3], "x0") == 0)
-				vf = st.mx0;
+				vf = st.adj.mag0.x;
 			else if (strcmp(toks[3], "y0") == 0)
-				vf = st.my0;
+				vf = st.adj.mag0.y;
 			else if (strcmp(toks[3], "z0") == 0)
-				vf = st.mz0;
+				vf = st.adj.mag0.z;
 			else if (strcmp(toks[3], "xscale") == 0)
-				vf = st.mxsc;
+				vf = st.adj.magsc.x;
 			else if (strcmp(toks[3], "yscale") == 0)
-				vf = st.mysc;
+				vf = st.adj.magsc.y;
 			else if (strcmp(toks[3], "zscale") == 0)
-				vf = st.mzsc;
+				vf = st.adj.magsc.z;
 			else if (strcmp(toks[3], "xthscale") == 0)
-				vf = st.mxthsc;
+				vf = st.adj.magsc.x;
 			else if (strcmp(toks[3], "ythscale") == 0)
-				vf = st.mythsc;
+				vf = st.adj.magsc.y;
 			else if (strcmp(toks[3], "zthscale") == 0)
-				vf = st.mzthsc;
+				vf = st.adj.magsc.z;
 			else if (strcmp(toks[3], "decl") == 0)
-				vf = st.magdecl;
+				vf = st.adj.magdecl;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "curr") == 0) {
 			if (strcmp(toks[3], "offset") == 0)
-				vf = st.curroffset;
+				vf = st.adj.curroff;
 			else if (strcmp(toks[3], "scale") == 0)
-				vf = st.currscale;
+				vf = st.adj.cursc;
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "althold") == 0) {
 			if (strcmp(toks[3], "hover") == 0)
-				vf = st.hoverthrottle;
+				vf = st.adj.hoverthrottle;
 			else
 				return (-1);
 		}
@@ -1237,25 +1297,25 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "ctrl") == 0) {
 		if (strcmp(toks[2], "thrust") == 0)
-			vf = st.thrustmax;
+			vf = st.ctrl.thrustmax;
 		else if (strcmp(toks[2], "roll") == 0)
-			vf = st.rollmax;
+			vf = st.ctrl.rollmax;
 		else if (strcmp(toks[2], "pitch") == 0)
-			vf = st.pitchmax;
+			vf = st.ctrl.pitchmax;
 		else if (strcmp(toks[2], "yaw") == 0)
-			vf = st.yawtargetspeed;
+			vf = st.ctrl.yawposrate;
 		else if (strcmp(toks[2], "sroll") == 0)
-			vf = st.rollspeed;
+			vf = st.ctrl.rollrate;
 		else if (strcmp(toks[2], "spitch") == 0)
-			vf = st.pitchspeed;
+			vf = st.ctrl.pitchrate;
 		else if (strcmp(toks[2], "syaw") == 0)
-			vf = st.yawspeed;
+			vf = st.ctrl.yawrate;
 		else if (strcmp(toks[2], "accel") == 0)
-			vf = st.accelmax;
+			vf = st.ctrl.accelmax;
 		else if (strcmp(toks[2], "climbrate") == 0)
-			vf = st.climbratemax;
+			vf = st.ctrl.climbratemax;
 		else if (strcmp(toks[2], "altmax") == 0)
-			vf = st.altmax;
+			vf = st.ctrl.altmax;
 		else
 			return (-1);
 
@@ -1356,9 +1416,9 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "irc") == 0) {
 		if (strcmp(toks[2], "frequency") == 0)
-			vi = st.ircfreq;
+			vi = st.irc.freq;
 		else if (strcmp(toks[2], "power") == 0)
-			vi = st.ircpower;
+			vi = st.irc.power;
 		else
 			return (-1);
 
@@ -1366,12 +1426,12 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "log") == 0) {
 		if (strcmp(toks[2], "freq") == 0) {
-			vi = st.logfreq;
+			vi = st.log.freq;
 			valtype = CONFVALTYPE_INT;
 		}
 		else if (strcmp(toks[2], "record") == 0) {
 			if (strcmp(toks[3], "size") == 0) {
-				vi = st.logrecsize;
+				vi = st.log.recsize;
 				valtype = CONFVALTYPE_INT;
 			}
 			else {
@@ -1384,7 +1444,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 					return (-1);
 
 				for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-					if (st.fieldid[i] == recn)
+					if (st.log.fieldid[i] == recn)
 						break;
 				}
 
@@ -1401,13 +1461,13 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	}	
 	else if (strcmp(toks[1], "motor") == 0) {
 		if (strcmp(toks[2], "lt") == 0)
-			vi = st.lt;
+			vi = st.mtr.lt;
 		else if (strcmp(toks[2], "lb") == 0)
-			vi = st.lb;
+			vi = st.mtr.lb;
 		else if (strcmp(toks[2], "rb") == 0)
-			vi = st.rb;
+			vi = st.mtr.rb;
 		else if (strcmp(toks[2], "rt") == 0)
-			vi = st.rt;
+			vi = st.mtr.rt;
 
 		valtype = 0;
 	}

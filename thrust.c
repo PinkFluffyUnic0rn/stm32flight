@@ -178,10 +178,10 @@ int setthrust(float ltd, float rtd, float lbd, float rbd)
 
 	// construst a PWM duty cycle
 	// buffers for dshot ESCs
-	dshotsetthrust(dsbuf[st.lt], ltd);
-	dshotsetthrust(dsbuf[st.lb], lbd);
-	dshotsetthrust(dsbuf[st.rt], rtd);
-	dshotsetthrust(dsbuf[st.rb], rbd);
+	dshotsetthrust(dsbuf[st.mtr.lt], ltd);
+	dshotsetthrust(dsbuf[st.mtr.lb], lbd);
+	dshotsetthrust(dsbuf[st.mtr.rt], rtd);
+	dshotsetthrust(dsbuf[st.mtr.rb], rbd);
 
 	// instruct DMA to use the buffers
 	// for streams corresponding to DSHOT ESCs

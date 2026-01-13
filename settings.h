@@ -58,251 +58,83 @@
 * @}
 */
 
-/**
-* @brief Quadcopter settings structure stored in MCU's flash
-*/
-struct settings {
+struct settings
+{
+	struct {
+		struct { float x, y, z; } acc0;
+		struct { float x, y, z; } acctsc;
+		struct { float x, y, z; } gyro0;
 
-	/**
-	* @defgroup MAGOFFSET
-	* @brief magnetometer offset values
-		determinted by calibration procedure
-	* @{
-	*/
-	float mx0 /*! x */, my0 /*! y */, mz0 /*! z */;  
-	/**
-	* @}
-	*/
+		struct { float roll, pitch, yaw; } att0;
+		struct { float r, p; } mtrsc;
 
-	/**
-	* @defgroup MAGSCALE
-	* @brief magnetormeter scaling values
-		determinted by calibration procedure
-	* @{
-	*/
-	float mxsc /*! x */, mysc /*! y */, mzsc /*! z */;
-	/**
-	* @}
-	*/
+		float hoverthrottle;
+		float curroff;
+		float cursc;
 
-	/**
-	* @defgroup MAGTHROFFSET
-	* @brief magnetormeter thrust offset scale
-		determinted by calibration procedure
-	* @{
-	*/
-	float mxthsc /*! x */, mythsc /*! y */, mzthsc /*! z */;
-	/**
-	* @}
-	*/
+		struct { float x, y, z; } mag0;
+		struct { float x, y, z; } magsc;
+		struct { float x, y, z; } magthrsc;
+		float magdecl;
+	} adj;
 
-	float magdecl;		/*!< magnetic declination */
+	struct {
+		float thrustmax;
+		float rollmax;
+		float pitchmax;
+		float accelmax;
+		float climbratemax;
+		float altmax;
 
-	/**
-	* @defgroup ACCOFFSET
-	* @brief accelometer offset values
-	* @{
-	*/
-	float ax0 /*! x */, ay0 /*! y */, az0 /*! z */;
-	/**
-	* @}
-	*/
-	
-	float aztscale /*!< accelerometer z axis thermal scaling */;
+		float rollrate;
+		float pitchrate;
+		float yawrate;
+		float yawposrate;
+		float climbrate;
+	} ctrl;
 
-	/**
-	* @defgroup GYROOFFSET
-	* @brief gyroscope offset values
-	* @{
-	*/
-	float gx0 /*! x */, gy0 /*! y */, gz0 /*! z */;
-	/**
-	* @}
-	*/
+	struct {
+		float att;
+		float yaw;
+		float climbrate;
+		float alt;
+	} cmpl;
 
-	/**
-	* @defgroup THRUSTSCALE
-	* @brief motor thrust scaling for roll and
-				pitch side motors, because not all
-				motors are abolutely equal
-	* @{
-	*/
-	float rsc /*! roll */, psc /*! pitch */; 
-	/**
-	* @}
-	*/
+	struct {
+		float gyro;
+		float acc;
+		float mag;
+		float va;
+		float d;
+	} lpf;
 
-	/**
-	* @defgroup ROTATEOFFSET
-	* @brief rotation offset values
-	* @{
-	*/
-	float roll0 /*! roll */, pitch0 /*! pitch */,  yaw0 /*! yaw */; 
-	/**
-	* @}
-	*/
+	struct {
+		struct { float p, i, d; } attpos;
+		struct { float p, i, d; } attrate;
+		struct { float p, i, d; } yawrate;
+		struct { float p, i, d; } yawpos;
+		struct { float p, i, d; } throttle;
+		struct { float p, i, d; } climbrate;
+		struct { float p, i, d; } alt;
+	} pid;
 
-	float thrustmax;		/*!< maximum thrust value */
+	struct {
+		int power;
+		int freq;
+	} irc;
 
-	/**
-	* @defgroup ROTATEMAX
-	* @brief maxiumum rotation values
-	* @{
-	*/
-	float rollmax /*! roll */, pitchmax /*! pitch */;
-	/**
-	* @}
-	*/
+	struct {
+		int lt;
+		int lb;
+		int rb;
+		int rt;
+	} mtr;
 
-	float rollspeed;	/*!< roll rotation speed in Pi for
-				single loop tilt mode */
-	float pitchspeed;	/*!< pitch rotation speed in Pi for
-				single loop tilt mode */
-	float yawspeed;		/*!< yaw rotation speed in Pi for
-				single loop yaw mode */
-	float yawtargetspeed;	/*!< yaw target change speed in Pi for
-				dual loop yaw mode */
-	float accelmax;		/*!< maximum acceleration in g for
-				single loop throttle mode */
-	float climbratemax;	/*!< maximum climbrate in m/s for
-				dual loop throttle mode */
-	float altmax;		/*!< maximum altitude in m for triple
-				loop mode (altitude hold mode) */
-
-	float atctcoef;		/*!< time coefficient for pitch/roll
-				complimentary filter */
-	float yctcoef;		/*!< time coefficient for yaw
-				complimentary filter */
-	float ttcoef;		/*!< time coefficient for vertical axis
-				acceleration pow-pass filter */
-	float vatcoef;		/*!< time coefficient for vertical
-				acceleration pow-pass filter */
-
-	float accpt1freq;	/*!< cut-off frequency for
-				accelerometer PT1 filter */
-
-	float gyropt1freq;	/*!< cut-off frequency for
-				gyroscope PT1 filter */
-	
-	float magpt1freq;	/*!< time coefficient for
-				magnetometer low-pass filter */
-	
-	float dpt1freq;		/*!< cut-off frequency for PID D term */
-
-	float apt1freq;		/*!< time coefficient for altitude
-				low-pass filter */
-	float cctcoef;		/*!< time coefficient for climb rate
-				complimentary filter */
-	float actcoef;		/*!< time coefficient for altitude
-				complimentary filter */
-
-	int speedpid;	/*!< 1 if single PID loop for roll/pitch
-			is used, 0 if double loop is used */
-
-	int yawspeedpid; /*!< 1 if single PID loop for yaw is used,
-			0 if double loop is used */
-
-	/**
-	* @defgroup PIDATTITUDE
-	* @brief P/I/D values for roll/pitch (used only in
-		double roll/pitch PID loop mode)
-	* @{
-	*/
-	float p /*! p */, i /*! i */, d /*! d */;
-	/**
-	* @}
-	*/
-
-	/**
-	* @defgroup PIDROTATION
-	* @brief P/I/D values for roll/pitch rotation speed
-	* @{
-	*/
-	float sp /*! p */, si /*! i */, sd /*! d */;
-	/**
-	* @}
-	*/
-
-	/**
-	* @defgroup PIDYAW
-	* @brief P/I/D values for yaw (used only in double
-		yaw PID loop mode)
-	* @{
-	*/
-	float yp /*! p */, yi /*! i */, yd /*! d */;
-	/**
-	* @}
-	*/
-
-	/**
-	* @defgroup PIDYAWROTATION
-	* @brief P/I/D values for yaw rotation speed
-	* @{
-	*/
-	float ysp /*! p */, ysi /*! p */, ysd /*! p */;
-	/**
-	* @}
-	*/
-
-	/**
-	* @defgroup PIDYAWROTATION
-	* @brief P/I/D values for vertical acceleration
-	* @{
-	*/
-	float zsp /*! p */, zsi /*! i */, zsd /*! d */;
-	/**
-	* @}
-	*/
-
-	/**
-	* @defgroup PIDYAWROTATION
-	* @brief P/I/D values for climb rate
-	* @{
-	*/
-	float cp /*! p */, ci /*! i */, cd /*! d */;
-	/**
-	* @}
-	*/
-
-	/**
-	* @defgroup PIDYAWROTATION
-	* @brief P/I/D values for altitude
-	* @{
-	*/
-	float ap /*! p */, ai /*! i */, ad /*! d */;
-	/**
-	* @}
-	*/
-
-	float curroffset;	/*!< ESC's current meter offset */
-	float currscale;	/*!< ESC's current meter scale */
-
-	float hoverthrottle;	/*!< hover throttle value */
-
-	/**
-	* @defgroup PIDYAWROTATION
-	* @brief IRC Tramp VTX power and frequency
-	* @{
-	*/
-	int ircpower /*! power */, ircfreq /*! frequency */;
-	/**
-	* @}
-	*/
-
-	/**
-	* @defgroup PIDYAWROTATION
-	* @brief motors ESC outputs numbers
-	* @{
-	*/
-	int lt /*! left-top */, lb /*! left-bottom */,
-	    rb /*! right-bottom */, rt /*! right-top */;
-	/**
-	* @}
-	*/
-
-	int logfreq;			/*!< log frequency */
-	int logrecsize;			/*!< log size */
-	int fieldid[LOG_FIELDSTRSIZE];	/*!< id for every log field */
+	struct {
+		int freq;
+		int recsize;
+		int fieldid[LOG_FIELDSTRSIZE];
+	} log;
 };
 
 /**

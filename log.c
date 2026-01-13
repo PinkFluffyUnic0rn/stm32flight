@@ -82,10 +82,12 @@ int log_fieldstrn(const char *s)
 
 void log_write(int pos, float val)
 {
-	if (st.fieldid[pos] < 0 || st.fieldid[pos] >= st.logrecsize)
+	if (st.log.fieldid[pos] < 0
+			|| st.log.fieldid[pos] >= st.log.recsize) {
 		return;
+	}
 
-	logbuf[logbufpos * st.logrecsize + st.fieldid[pos]] = val;
+	logbuf[logbufpos * st.log.recsize + st.log.fieldid[pos]] = val;
 }
 
 int log_print(const struct cdevice *d, char *buf,
@@ -105,7 +107,7 @@ int log_print(const struct cdevice *d, char *buf,
 
 		// read batch of log frames into log buffer
 		flashdev->read(flashdev->priv,
-			sizeof(float) * fp * st.logrecsize, logbuf,
+			sizeof(float) * fp * st.log.recsize, logbuf,
 			LOG_BUFSIZE);
 
 		// for every read frame
@@ -121,10 +123,10 @@ int log_print(const struct cdevice *d, char *buf,
 			// put all frame's values into a string
 			sprintf(data, "%d ", fp + bp);
 
-			for (i = 0; i < st.logrecsize; ++i) {
+			for (i = 0; i < st.log.recsize; ++i) {
 				int rec;
 
-				rec = bp * st.logrecsize;
+				rec = bp * st.log.recsize;
 				sprintf(data + strlen(data), "%0.5f ",
 					(double) logbuf[rec + i]);
 			}
@@ -150,9 +152,9 @@ int log_update()
 		return 0;
 
 	if (++logbufpos < LOG_RECSPERBUF) {
-		memcpy(logbuf + logbufpos * st.logrecsize,
-			logbuf + (logbufpos - 1) * st.logrecsize,
-			st.logrecsize * sizeof(float));
+		memcpy(logbuf + logbufpos * st.log.recsize,
+			logbuf + (logbufpos - 1) * st.log.recsize,
+			st.log.recsize * sizeof(float));
 
 		return 0;
 	}
@@ -160,8 +162,8 @@ int log_update()
 	flashdev->write(flashdev->priv, logflashpos,
 		logbuf, LOG_BUFSIZE);
 
-	memcpy(logbuf, logbuf + (LOG_RECSPERBUF - 1) * st.logrecsize,
-		st.logrecsize * sizeof(float));
+	memcpy(logbuf, logbuf + (LOG_RECSPERBUF - 1) * st.log.recsize,
+		st.log.recsize * sizeof(float));
 
 	logflashpos += LOG_BUFSIZE;
 	logbufpos = 0;
@@ -184,7 +186,7 @@ int log_set(int size, const struct cdevice *d, char *s)
 		d->write(d->priv, s, strlen(s));
 	}
 
-	logsize = size * sizeof(float) * st.logrecsize;
+	logsize = size * sizeof(float) * st.log.recsize;
 
 	// set log size (0 is valid and
 	// means to disable logging)
