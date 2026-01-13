@@ -140,7 +140,7 @@ struct settings
 /**
 * @brief settings
 */
-extern struct settings st;
+extern struct settings St;
 
 /**
 * @brief write quadcopter settings into internal MCU flash.

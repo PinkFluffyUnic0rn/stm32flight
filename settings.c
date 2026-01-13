@@ -6,7 +6,7 @@
 
 #include "settings.h"
 
-struct settings st;
+struct settings St;
 
 int writesettings(int slot)
 {
@@ -23,7 +23,7 @@ int writesettings(int slot)
 
 	FLASH_Erase_Sector(FLASH_SECTOR_11,  VOLTAGE_RANGE_3);
 
-	memcpy(s + slot, &st, sizeof(struct settings));
+	memcpy(s + slot, &St, sizeof(struct settings));
 
 	sz = sizeof(struct settings) * 6;
 	pt = (uint32_t *) s;
@@ -44,28 +44,28 @@ int validatesettings()
 {
 	int i;
 
-	if (!irc_ispowervalid(st.irc.power))
-		st.irc.power = IRCDEFPOWER;
-	if (!irc_isfreqvalid(st.irc.power))
-		st.irc.freq = IRCDEFFREQ;
+	if (!irc_ispowervalid(St.irc.power))
+		St.irc.power = IRCDEFPOWER;
+	if (!irc_isfreqvalid(St.irc.power))
+		St.irc.freq = IRCDEFFREQ;
 
-	if (st.mtr.lt < 0 || st.mtr.lt > 3)	st.mtr.lt = LTDEFNUM;
-	if (st.mtr.lb < 0 || st.mtr.lb > 3)	st.mtr.lb = LBDEFNUM;
-	if (st.mtr.rb < 0 || st.mtr.rb > 3)	st.mtr.rb = RBDEFNUM;
-	if (st.mtr.rt < 0 || st.mtr.rt > 3)	st.mtr.rt = RTDEFNUM;
+	if (St.mtr.lt < 0 || St.mtr.lt > 3)	St.mtr.lt = LTDEFNUM;
+	if (St.mtr.lb < 0 || St.mtr.lb > 3)	St.mtr.lb = LBDEFNUM;
+	if (St.mtr.rb < 0 || St.mtr.rb > 3)	St.mtr.rb = RBDEFNUM;
+	if (St.mtr.rt < 0 || St.mtr.rt > 3)	St.mtr.rt = RTDEFNUM;
 
-	if (st.log.freq <= 0 || st.log.freq > LOG_MAXFREQ)
-		st.log.freq = LOGDEFFREQ;
+	if (St.log.freq <= 0 || St.log.freq > LOG_MAXFREQ)
+		St.log.freq = LOGDEFFREQ;
 
-	if (st.log.recsize < 0
-			|| st.log.recsize > LOG_MAXRECSIZE
-			|| !ispow2(st.log.recsize)) {
-		st.log.recsize = LOGDEFRECSIZE;
+	if (St.log.recsize < 0
+			|| St.log.recsize > LOG_MAXRECSIZE
+			|| !ispow2(St.log.recsize)) {
+		St.log.recsize = LOGDEFRECSIZE;
 	}
 
 	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-		if (st.log.fieldid[i] < 0)
-			st.log.fieldid[i] = LOGFIELDDEFPOS;
+		if (St.log.fieldid[i] < 0)
+			St.log.fieldid[i] = LOGFIELDDEFPOS;
 	}
 
 	return 0;
@@ -73,7 +73,7 @@ int validatesettings()
 
 int readsettings(int slot)
 {
-	memcpy(&st, (void *) (USER_FLASH
+	memcpy(&St, (void *) (USER_FLASH
 			+ slot * sizeof(struct settings)),
 		sizeof(struct settings));
 

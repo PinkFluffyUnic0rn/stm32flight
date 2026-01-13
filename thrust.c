@@ -162,13 +162,13 @@ int setthrust(float ltd, float rtd, float lbd, float rbd)
 	*/
 
 	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
-		|| isnan(lbd) || !elrs)
+		|| isnan(lbd) || !Elrs)
 		ltd = rtd = rbd = lbd = 0.0;
 
 	avgthrust = (ltd + rtd + rbd + lbd) / 4.0;
 	avgthrust = avgthrust < 0.0 ? 0.0 : avgthrust;
 
-	dsp_updatelpf(lpf + LPF_AVGTHR, avgthrust);
+	dsp_updatelpf(Lpf + LPF_AVGTHR, avgthrust);
 
 	// put motors thrust values into log
 	log_write(LOG_LT, ltd);
@@ -178,10 +178,10 @@ int setthrust(float ltd, float rtd, float lbd, float rbd)
 
 	// construst a PWM duty cycle
 	// buffers for dshot ESCs
-	dshotsetthrust(dsbuf[st.mtr.lt], ltd);
-	dshotsetthrust(dsbuf[st.mtr.lb], lbd);
-	dshotsetthrust(dsbuf[st.mtr.rt], rtd);
-	dshotsetthrust(dsbuf[st.mtr.rb], rbd);
+	dshotsetthrust(dsbuf[St.mtr.lt], ltd);
+	dshotsetthrust(dsbuf[St.mtr.lb], lbd);
+	dshotsetthrust(dsbuf[St.mtr.rt], rtd);
+	dshotsetthrust(dsbuf[St.mtr.rb], rbd);
 
 	// instruct DMA to use the buffers
 	// for streams corresponding to DSHOT ESCs

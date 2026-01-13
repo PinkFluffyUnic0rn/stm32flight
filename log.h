@@ -82,7 +82,7 @@
 /**
 * @brief log records per buffer
 */
-#define LOG_RECSPERBUF (LOG_BUFSIZE / (sizeof(float) * st.log.recsize))
+#define LOG_RECSPERBUF (LOG_BUFSIZE / (sizeof(float) * St.log.recsize))
 
 /**
 * @brief log values names
@@ -134,12 +134,6 @@ int log_print(const struct cdevice *d, char *buf,
 * @return always 0
 */
 int log_update();
-
-/**
-* @brief Set w25q device that will beused for logging.
-* @param fd flash device context pointer
-*/
-int log_setdev(struct bdevice *fd);
 
 /**
 * Set log size and start or stop logging.

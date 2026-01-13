@@ -1,52 +1,44 @@
 #include "runvals.h"
 
-struct cdevice dev[DEV_COUNT];
-struct bdevice flashdev;
-struct dsp_lpf lpf[LPF_COUNT];
-struct dsp_compl cmpl[CMPL_COUNT];
-struct dsp_pidblval pid[PID_COUNT];
+struct timev Evs[TEV_COUNT];
+struct cdevice Dev[DEV_COUNT];
+struct bdevice Flashdev;
+struct dsp_lpf Lpf[LPF_COUNT];
+struct dsp_compl Cmpl[CMPL_COUNT];
+struct dsp_pidblval Pid[PID_COUNT];
 
-struct dsp_pidval yawpv;
+struct dsp_pidval Yawpv;
 
-struct qmc_data qmcdata;
-struct gnss_data gnss;
-struct crsf_tele tele;
+struct qmc_data Qmcdata;
+struct gnss_data Gnss;
+struct crsf_tele Tele;
 
-float thrust = 0.0;
-float rolltarget = 0.0;
-float pitchtarget = 0.0;
-float yawtarget = 0.0;
-float ltm = 1.0;
-float lbm = 1.0;
-float rtm = 1.0;
-float rbm = 1.0;
-float en = 0.0;
-enum ALTMODE altmode = 0;
-int speedpid = 0;
-int yawspeedpid = 0;
-int hovermode = 0;
-int elrs = 0;
-int autopilot = 0;
+float Thrust = 0.0;
+float Rolltarget = 0.0;
+float Pitchtarget = 0.0;
+float Yawtarget = 0.0;
+float En = 0.0;
+enum ALTMODE Altmode = 0;
+int Speedpid = 0;
+int Yawspeedpid = 0;
+int Hovermode = 0;
+int Elrs = 0;
+int Autopilot = 0;
 
-float alt0 = 0.0;
-float goffset = 0.0;
-float forwardspeed = 0.0;
-float forwardpath = 0.0;
-float faoffset = 0.0;
+float Alt0 = 0.0;
+float Goffset = 0.0;
 
-struct trackpoint points[MAX_POINT_COUNT];
-int pointscount;
-int curpoint = 0;
-float autopilottimer = 0.0;
+struct trackpoint Points[MAX_POINT_COUNT];
+int Pointscount;
+int Curpoint = 0;
+float Autopilottimer = 0.0;
 
-int curslot = 0;
+int Curslot = 0;
 
-struct timev evs[TEV_COUNT];
+int Loops = 0;
 
-int loops = 0;
+int Loopscount = 0;
 
-int loopscount = 0;
+int Elrstimeout = ELRS_TIMEOUT;
 
-int elrstimeout = ELRS_TIMEOUT;
-
-int emergencydisarm = 0;
+int Emergencydisarm = 0;

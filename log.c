@@ -1,12 +1,11 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "runvals.h"
 #include "settings.h"
 #include "crc.h"
 
 #include "log.h"
-
-static struct bdevice *flashdev;
 
 static int logbufpos = 0;
 static int logflashpos = 0;
@@ -35,7 +34,7 @@ static int log_eraseflash(const struct cdevice *d, size_t size)
 	// if erase size equals total flash size,
 	// use chip erase command
 	if (size == W25_TOTALSIZE) {
-		flashdev->eraseall(flashdev->priv);
+		Flashdev.eraseall(Flashdev.priv);
 		return 0;
 	}
 
@@ -45,7 +44,7 @@ static int log_eraseflash(const struct cdevice *d, size_t size)
 		// use block erase command,
 		// use sector erase command otherwise
 		if ((size - pos) >= W25_BLOCKSIZE) {
-			flashdev->eraseblock(flashdev->priv, pos);
+			Flashdev.eraseblock(Flashdev.priv, pos);
 
 			sprintf(s, "erased block at %u\r\n", pos);
 			d->write(d->priv, s, strlen(s));
@@ -53,7 +52,7 @@ static int log_eraseflash(const struct cdevice *d, size_t size)
 			pos += W25_BLOCKSIZE;
 		}
 		else {
-			flashdev->erasesector(flashdev->priv, pos);
+			Flashdev.erasesector(Flashdev.priv, pos);
 
 			sprintf(s, "erased sector at %u\r\n", pos);
 			d->write(d->priv, s, strlen(s));
@@ -82,12 +81,12 @@ int log_fieldstrn(const char *s)
 
 void log_write(int pos, float val)
 {
-	if (st.log.fieldid[pos] < 0
-			|| st.log.fieldid[pos] >= st.log.recsize) {
+	if (St.log.fieldid[pos] < 0
+			|| St.log.fieldid[pos] >= St.log.recsize) {
 		return;
 	}
 
-	logbuf[logbufpos * st.log.recsize + st.log.fieldid[pos]] = val;
+	logbuf[logbufpos * St.log.recsize + St.log.fieldid[pos]] = val;
 }
 
 int log_print(const struct cdevice *d, char *buf,
@@ -99,15 +98,15 @@ int log_print(const struct cdevice *d, char *buf,
 		return (-1);
 
 	// enable read/write mode if reading log
-	flashdev->ioctl(flashdev->priv, W25_IOCTL_READWRITE);
+	Flashdev.ioctl(Flashdev.priv, W25_IOCTL_READWRITE);
 
 	// run through all writable space in the flash
 	for (fp = from; fp < to; fp += LOG_RECSPERBUF) {
 		int bp;
 
 		// read batch of log frames into log buffer
-		flashdev->read(flashdev->priv,
-			sizeof(float) * fp * st.log.recsize, logbuf,
+		Flashdev.read(Flashdev.priv,
+			sizeof(float) * fp * St.log.recsize, logbuf,
 			LOG_BUFSIZE);
 
 		// for every read frame
@@ -123,10 +122,10 @@ int log_print(const struct cdevice *d, char *buf,
 			// put all frame's values into a string
 			sprintf(data, "%d ", fp + bp);
 
-			for (i = 0; i < st.log.recsize; ++i) {
+			for (i = 0; i < St.log.recsize; ++i) {
 				int rec;
 
-				rec = bp * st.log.recsize;
+				rec = bp * St.log.recsize;
 				sprintf(data + strlen(data), "%0.5f ",
 					(double) logbuf[rec + i]);
 			}
@@ -152,29 +151,22 @@ int log_update()
 		return 0;
 
 	if (++logbufpos < LOG_RECSPERBUF) {
-		memcpy(logbuf + logbufpos * st.log.recsize,
-			logbuf + (logbufpos - 1) * st.log.recsize,
-			st.log.recsize * sizeof(float));
+		memcpy(logbuf + logbufpos * St.log.recsize,
+			logbuf + (logbufpos - 1) * St.log.recsize,
+			St.log.recsize * sizeof(float));
 
 		return 0;
 	}
 
-	flashdev->write(flashdev->priv, logflashpos,
+	Flashdev.write(Flashdev.priv, logflashpos,
 		logbuf, LOG_BUFSIZE);
 
-	memcpy(logbuf, logbuf + (LOG_RECSPERBUF - 1) * st.log.recsize,
-		st.log.recsize * sizeof(float));
+	memcpy(logbuf, logbuf + (LOG_RECSPERBUF - 1) * St.log.recsize,
+		St.log.recsize * sizeof(float));
 
 	logflashpos += LOG_BUFSIZE;
 	logbufpos = 0;
 
-	return 0;
-}
-
-int log_setdev(struct bdevice *fd)
-{
-	flashdev = fd;
-	
 	return 0;
 }
 
@@ -186,7 +178,7 @@ int log_set(int size, const struct cdevice *d, char *s)
 		d->write(d->priv, s, strlen(s));
 	}
 
-	logsize = size * sizeof(float) * st.log.recsize;
+	logsize = size * sizeof(float) * St.log.recsize;
 
 	// set log size (0 is valid and
 	// means to disable logging)
@@ -198,7 +190,7 @@ int log_set(int size, const struct cdevice *d, char *s)
 	log_eraseflash(d, logsize);
 
 	// enable writeonly mode if log writing is enabled
-	flashdev->ioctl(flashdev->priv,
+	Flashdev.ioctl(Flashdev.priv,
 		(logsize == 0)
 		? W25_IOCTL_READWRITE : W25_IOCTL_WRITEONLY);
 

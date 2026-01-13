@@ -302,31 +302,36 @@ struct trackpoint {
 };
 
 /**
+* @brief Timer events
+*/
+extern struct timev Evs[TEV_COUNT];
+
+/**
 * @brief Flight controller board's character devices drivers
 */
-extern struct cdevice dev[DEV_COUNT];
+extern struct cdevice Dev[DEV_COUNT];
 
 /**
 * @brief Flight controller board's block device (memory chip)
 */
-extern struct bdevice flashdev;
+extern struct bdevice Flashdev;
 
 /**
 * @brief Low-pass filters
 */
-extern struct dsp_lpf lpf[LPF_COUNT];
+extern struct dsp_lpf Lpf[LPF_COUNT];
 
 /**
 * @brief Complimentary filters
 */
-extern struct dsp_compl cmpl[CMPL_COUNT];
+extern struct dsp_compl Cmpl[CMPL_COUNT];
 
 /**
 * @brief PID controllers
 */
-extern struct dsp_pidblval pid[PID_COUNT];
+extern struct dsp_pidblval Pid[PID_COUNT];
 
-extern struct dsp_pidval yawpv;		/*!< yaw PID controller */
+extern struct dsp_pidval Yawpv;		/*!< yaw PID controller */
 
 /**
 * @defgroup GLOBALSTORAGE
@@ -334,9 +339,9 @@ extern struct dsp_pidval yawpv;		/*!< yaw PID controller */
 	data that aquired in separate events
 * @{
 */
-extern struct qmc_data qmcdata;		/*!< magnetometer data */
-extern struct gnss_data gnss;		/*!< GNSS data */
-extern struct crsf_tele tele;		/*!< telemetry values */
+extern struct qmc_data Qmcdata;		/*!< magnetometer data */
+extern struct gnss_data Gnss;		/*!< GNSS data */
+extern struct crsf_tele Tele;		/*!< telemetry values */
 /**
 * @}
 */
@@ -346,51 +351,44 @@ extern struct crsf_tele tele;		/*!< telemetry values */
 * @brief Control values
 * @{
 */
-extern float thrust; /*!< motors basic thrust */
-extern float rolltarget; /*!< roll PID target */
-extern float pitchtarget; /*!< pitch PID target */
-extern float yawtarget; /*!< yaw PID target */
-extern float ltm; /*!< left-top motor thrust scaling */
-extern float lbm; /*!< left-bot motor thrust scaling */
-extern float rtm; /*!< right-top motor thrust scaling */
-extern float rbm; /*!< right-bot motor thrust scaling */
-extern float en; /*!< 1.0 when motors turned on, 0.0 otherwise */
-extern enum ALTMODE altmode; /*!< ALTMODE_POS if in altitude hold mode,
+extern float Thrust; /*!< motors basic thrust */
+extern float Rolltarget; /*!< roll PID target */
+extern float Pitchtarget; /*!< pitch PID target */
+extern float Yawtarget; /*!< yaw PID target */
+extern float En; /*!< 1.0 when motors turned on, 0.0 otherwise */
+extern enum ALTMODE Altmode; /*!< ALTMODE_POS if in altitude hold mode,
 				ALTMODE_SPEED if climbrate control mode,
 				ALTMODE_ACCEL if acceleration control mode */
-extern int speedpid;	/*!<  1 if only gyroscope if used for yaw
+extern int Speedpid;	/*!<  1 if only gyroscope if used for yaw
 			stabilization, 0 if accelerometer is used */
-extern int yawspeedpid;	/*!< 1 if only gyroscope if used for yaw
+extern int Yawspeedpid;	/*!< 1 if only gyroscope if used for yaw
 			stabilization, 0 if magnetometer is used */
-extern int hovermode; 	/*!< hover mode, when throttle is
+extern int Hovermode; 	/*!< hover mode, when throttle is
 			controlled relative to hover throttle */
-extern int autopilot;	/*!< autopilot mode, 1 when autopilot
+extern int Autopilot;	/*!< autopilot mode, 1 when autopilot
 			is enabled, 0 otherwise */
-extern int elrs; /*!< 1 when ELRS control is active (ELRS remote's
+extern int Elrs; /*!< 1 when ELRS control is active (ELRS remote's
 			channel 8 is > 50) */
 /**
 * @}
 */
 
-extern float alt0;	/*!< reference altitude */
-extern float goffset;	/*!< free fall acceleration (g) value offset */
-extern float faoffset;	/*!< forward acceleration value offset */
+extern float Alt0;	/*!< reference altitude */
+extern float Goffset;	/*!< free fall acceleration (g) value offset */
 
 /**
 * @brief autopilot track points
 */
-extern struct trackpoint points[MAX_POINT_COUNT];
-extern int pointscount;		/*!< autopilot track points count */
-extern int curpoint;		/*!< current autopilot track point */
-extern float autopilottimer;	/*!< autopilot timer */
+extern struct trackpoint Points[MAX_POINT_COUNT];
+extern int Pointscount;		/*!< autopilot track points count */
+extern int Curpoint;		/*!< current autopilot track point */
+extern float Autopilottimer;	/*!< autopilot timer */
 
-extern int curslot; /*!< current settings slot */
+extern int Curslot; /*!< current settings slot */
 
-extern struct timev evs[TEV_COUNT]; /*!< timer events */
+extern int Loops; /*!< stabilization loops counter */
 
-extern int loops; /*!< stabilization loops counter */
-
-extern int loopscount; /*!< stabilization loops performed in last second */
+extern int Loopscount; /*!< stabilization loops performed in last second */
 
 /**
 * @brief Timeout counter for the ELRS reciver. Set to
@@ -398,12 +396,12 @@ extern int loopscount; /*!< stabilization loops performed in last second */
 	and decreased by 1 every second. If it falls to 0,
 	quadcopter disarms.
 */
-extern int elrstimeout;
+extern int Elrstimeout;
 
 /**
 * @brief emergency disarm triggered, further
 	arming is possible only after reboot
 */
-extern int emergencydisarm;
+extern int Emergencydisarm;
 
 #endif
