@@ -86,7 +86,10 @@ enum LPF_ID {
 	LPF_MAGX	= 17,	/*!< gyroscope x low-pass filter */
 	LPF_MAGY	= 18,	/*!< gyroscope y low-pass filter */
 	LPF_MAGZ	= 19,	/*!< gyroscope z low-pass filter */
-	LPF_COUNT	= 20	/*!< low-pass filters count */
+	LPF_ROLL	= 20,	/*!< roll unity filter */
+	LPF_PITCH	= 21,	/*!< pitch unity filter */
+	LPF_YAW		= 22,	/*!< yaw unity filter */
+	LPF_COUNT	= 23	/*!< low-pass filters count */
 };
 /**
 * @}
@@ -331,8 +334,6 @@ extern struct dsp_compl Cmpl[CMPL_COUNT];
 * @brief PID controllers
 */
 extern struct dsp_pidblval Pid[PID_COUNT];
-
-extern struct dsp_pidval Yawpv;		/*!< yaw PID controller */
 
 /**
 * @defgroup GLOBALSTORAGE

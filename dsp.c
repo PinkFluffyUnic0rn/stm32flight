@@ -69,7 +69,8 @@ int dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 }
 
 int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
-	float kd, float imax, float dcutoff, int freq, int init)
+	float kd, float imax, float dcutoff, int circ,
+	int freq, int init)
 {
 	float ts, tf, tt, c;
 
@@ -77,6 +78,7 @@ int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
 	pv->depth = 2;
 
 	pv->imax = imax;
+	pv->circular = circ;
 
 	ts = 1.0 / (float) freq;
 	tf = 1.0 / (dcutoff * 2.0 * M_PI);
@@ -119,6 +121,9 @@ float dsp_pidbl(struct dsp_pidblval *pv, float target, float val)
 	float e, v, vs;
 
 	e = target - val;
+
+	if (pv->circular)
+		e = circf(e);
 
 	switch (pv->step) {
 	case 0:

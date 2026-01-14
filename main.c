@@ -322,42 +322,42 @@ int setstabilize(int init)
 	// init roll and pitch position PID controller contexts
 	dsp_setpidbl(Pid + PID_PITCHP,
 		St.pid.attpos.p, St.pid.attpos.i, St.pid.attpos.d,
-		PID_MAX_I, St.lpf.d, PID_FREQ, init);
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 	dsp_setpidbl(Pid + PID_ROLLP,
 		St.pid.attpos.p, St.pid.attpos.i, St.pid.attpos.d,
-		PID_MAX_I, St.lpf.d, PID_FREQ, init);
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 
 	// init roll, pitch and yaw speed PID controller contexts
 	dsp_setpidbl(Pid + PID_PITCHS,
 		St.pid.attrate.p, St.pid.attrate.i, St.pid.attrate.d,
-		PID_MAX_I, St.lpf.d, PID_FREQ, init);
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 	dsp_setpidbl(Pid + PID_ROLLS, 
 		St.pid.attrate.p, St.pid.attrate.i, St.pid.attrate.d,
-		PID_MAX_I, St.lpf.d, PID_FREQ, init);
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 	dsp_setpidbl(Pid + PID_YAWS,
 		St.pid.yawrate.p, St.pid.yawrate.i, St.pid.yawrate.d,
-		PID_MAX_I, St.lpf.d, PID_FREQ, init);
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 
 	// init yaw position PID controller's context
-	dsp_setpid(&Yawpv,
+	dsp_setpidbl(Pid + PID_YAWP,
 		St.pid.yawpos.p, St.pid.yawpos.i, St.pid.yawpos.d,
-		St.lpf.d, PID_FREQ, init);
+		PID_MAX_I, St.lpf.d, 1, PID_FREQ, init);
 
 	// init vertical acceleration PID controller's context
 	dsp_setpidbl(Pid + PID_VA,
 		St.pid.throttle.p, St.pid.throttle.i, St.pid.throttle.d,
-		PID_MAX_I, St.lpf.d, PID_FREQ, init);
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 
 	// init climbrate PID controller's context
 	dsp_setpidbl(Pid + PID_CLIMBRATE,
 		St.pid.climbrate.p, St.pid.climbrate.i,
-		St.pid.climbrate.d, PID_MAX_I, St.lpf.d, PID_FREQ,
+		St.pid.climbrate.d, PID_MAX_I, St.lpf.d, 0, PID_FREQ,
 		init);
 
 	// init altitude PID controller's context
 	dsp_setpidbl(Pid + PID_ALT,
 		St.pid.alt.p, St.pid.alt.i, St.pid.alt.d,
-		PID_MAX_I, St.lpf.d, PID_FREQ, init);
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 
 	// init battery voltage low-pass filter
 	dsp_setlpf1f(Lpf + LPF_BAT, BAT_CUTOFF, POWER_FREQ, init);
@@ -392,6 +392,11 @@ int setstabilize(int init)
 	dsp_setlpf1t(Lpf + LPF_MAGX, St.lpf.mag, QMC_FREQ, init);
 	dsp_setlpf1t(Lpf + LPF_MAGY, St.lpf.mag, QMC_FREQ, init);
 	dsp_setlpf1t(Lpf + LPF_MAGZ, St.lpf.mag, QMC_FREQ, init);
+
+	// init roll, pitch, yaw unity filters
+	dsp_setunity(Lpf + LPF_ROLL, init);
+	dsp_setunity(Lpf + LPF_PITCH, init);
+	dsp_setunity(Lpf + LPF_YAW, init);
 
 	return 0;
 }
@@ -511,23 +516,26 @@ int stabilize(int ms)
 	// signal to be low-pass filtered: it's the tilt value that is
 	// calculated from acceleromer readings through some
 	// trigonometry.
-	roll = dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
-		atan2f(-ax, sqrt(ay * ay + az * az)))
-			- St.adj.att0.roll;
+	roll = dsp_updatelpf(Lpf + LPF_ROLL,
+		dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
+			atan2f(-ax, sqrt(ay * ay + az * az)))
+				- St.adj.att0.roll);
 
 	// same as for roll but for different axes
-	pitch = dsp_updatecompl(Cmpl + CMPL_PITCH, gx * dt,
-		atan2f(ay, sqrt(ax * ax + az * az))) 
-			- St.adj.att0.pitch;
+	pitch = dsp_updatelpf(Lpf + LPF_PITCH,
+		dsp_updatecompl(Cmpl + CMPL_PITCH, gx * dt,
+			atan2f(ay, sqrt(ax * ax + az * az))) 
+				- St.adj.att0.pitch);
 
 	// update complimenraty filter for yaw axis and get next yaw
 	// value. First signal is the speed of the rotation around Z
 	// axis. Second signal is the heading value that is
 	// calculated from magnetometer readings.
-	yaw = circf(dsp_updatecirccompl(Cmpl + CMPL_YAW, -gz * dt,
+	yaw = dsp_updatelpf(Lpf + LPF_YAW,
+		circf(dsp_updatecirccompl(Cmpl + CMPL_YAW, -gz * dt,
 		qmc_heading(roll, -pitch,
 			Qmcdata.fx, Qmcdata.fy, Qmcdata.fz)) 
-			- St.adj.att0.yaw);
+			- St.adj.att0.yaw));
 
 	// calculate gravity direction vector in IMU coordination system
 	// using pitch and roll values;
@@ -601,7 +609,7 @@ int stabilize(int ms)
 		// calcualted using magnetometer and yaw target got from
 		// ELRS remote to update yaw POSITION PID controller and
 		// get it's next correciton value.
-		yawcor = dsp_circpid(&Yawpv, Yawtarget, yaw, dt);
+		yawcor = dsp_pidbl(Pid + PID_YAWP, Yawtarget, yaw);
 
 		// then use this value to update yaw speed PID
 		// controller and get next yaw SPEED correction value
@@ -674,7 +682,7 @@ int stabilize(int ms)
 		dsp_resetpidbl(Pid + PID_ROLLP);
 		dsp_resetpidbl(Pid + PID_PITCHS);
 		dsp_resetpidbl(Pid + PID_ROLLS);
-		dsp_resetpids(&Yawpv);
+		dsp_resetpidbl(Pid + PID_YAWP);
 		dsp_resetpidbl(Pid + PID_YAWS);
 		dsp_resetpidbl(Pid + PID_VA);
 		dsp_resetpidbl(Pid + PID_CLIMBRATE);
@@ -692,7 +700,7 @@ int stabilize(int ms)
 		dsp_resetpidbls(Pid + PID_ROLLP);
 		dsp_resetpidbls(Pid + PID_PITCHS);
 		dsp_resetpidbls(Pid + PID_ROLLS);
-		dsp_resetpids(&Yawpv);
+		dsp_resetpidbls(Pid + PID_YAWP);
 		dsp_resetpidbls(Pid + PID_YAWS);
 		dsp_resetpidbls(Pid + PID_VA);
 		dsp_resetpidbls(Pid + PID_CLIMBRATE);
@@ -898,11 +906,9 @@ int telesend(int ms)
 	Tele.sats = Gnss.satellites;
 	Tele.balt = dsp_getcompl(Cmpl + CMPL_ALT) - Alt0;
 	Tele.vspeed = dsp_getcompl(Cmpl + CMPL_CLIMBRATE);
-	Tele.roll = dsp_getcompl(Cmpl + CMPL_ROLL) - St.adj.att0.roll;
-	Tele.pitch = dsp_getcompl(Cmpl + CMPL_PITCH)
-		- St.adj.att0.pitch;
-	Tele.yaw = circf(dsp_getcompl(Cmpl + CMPL_YAW)
-		- St.adj.att0.yaw);
+	Tele.roll = dsp_getlpf(Lpf + LPF_ROLL);
+	Tele.pitch = dsp_getlpf(Lpf + LPF_PITCH);
+	Tele.yaw = dsp_getlpf(Lpf + LPF_YAW);
 
 	// fill flight mode string with arm state and
 	// combination of stabilization modes codes
