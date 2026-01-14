@@ -146,6 +146,8 @@ void send_click_handler(void *arg)
 		mw->send_uav_conf_cmd(line);
 		QCoreApplication::processEvents();
 	}
+		
+	mw->send_uav_conf_cmd("apply");
 	
 	mw->start_catch_uav_out();
 }
@@ -555,7 +557,9 @@ void partial_send_click_handler(void *arg)
 			+ s->second->get_value()
 			+ string("\n");
 	}
-		
+	
+	conf += "apply\n";
+
 	if (g->get_main_widget() == NULL)
 		return;
 

@@ -9,6 +9,13 @@
 #include "device.h"
 
 /**
+* @brief Init/set stabilization loop.
+* @param init 1, if called during initilization, 0 otherwise
+* @return always 0
+*/
+int setstabilize(int init);
+
+/**
 * @brief Disarm command handler.
 * @param toks list of parsed command tokens
 * @param out command's output
@@ -98,6 +105,15 @@ int logcmd(const struct cdevice *d, const char **toks, char *out);
 * @return -1 on error, 0 otherwise
 */
 int ctrlcmd(const struct cdevice *d, const char **toks, char *out);
+
+/**
+* @brief "apply" command handler. Configure control ranges scaling.
+* @param d character device device that got this command
+* @param toks list of parsed command tokens
+* @param out command's output
+* @return -1 on error, 0 otherwise
+*/
+int applycmd(const struct cdevice *d, const char **toks, char *out);
 
 /**
 * @brief "autopilot" command handler. Configure autopilot.

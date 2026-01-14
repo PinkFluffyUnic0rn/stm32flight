@@ -28,7 +28,7 @@ float Alt0 = 0.0;
 float Goffset = 0.0;
 
 struct trackpoint Points[MAX_POINT_COUNT];
-int Pointscount;
+int Pointscount = 0;
 int Curpoint = 0;
 float Autopilottimer = 0.0;
 

@@ -304,112 +304,6 @@ static void uartdev_init()
 }
 
 /**
-* @brief Init/set stabilization loop.
-* @param init 1, if called during initilization, 0 otherwise
-* @return always 0
-*/
-int setstabilize(int init)
-{
-	// init complementary filters contexts
-	dsp_setcompl(Cmpl + CMPL_PITCH, St.cmpl.att, PID_FREQ, init);
-	dsp_setcompl(Cmpl + CMPL_ROLL, St.cmpl.att, PID_FREQ, init);
-	dsp_setcompl(Cmpl + CMPL_YAW, St.cmpl.yaw, PID_FREQ, init);
-
-	dsp_setcompl(Cmpl + CMPL_CLIMBRATE, St.cmpl.climbrate,
-		DPS_FREQ, init);
-	dsp_setcompl(Cmpl + CMPL_ALT, St.cmpl.alt, DPS_FREQ, init);
-
-	// init roll and pitch position PID controller contexts
-	dsp_setpidbl(Pid + PID_PITCHP,
-		St.pid.attpos.p, St.pid.attpos.i, St.pid.attpos.d,
-		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
-	dsp_setpidbl(Pid + PID_ROLLP,
-		St.pid.attpos.p, St.pid.attpos.i, St.pid.attpos.d,
-		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
-
-	// init roll, pitch and yaw speed PID controller contexts
-	dsp_setpidbl(Pid + PID_PITCHS,
-		St.pid.attrate.p, St.pid.attrate.i, St.pid.attrate.d,
-		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
-	dsp_setpidbl(Pid + PID_ROLLS, 
-		St.pid.attrate.p, St.pid.attrate.i, St.pid.attrate.d,
-		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
-	dsp_setpidbl(Pid + PID_YAWS,
-		St.pid.yawrate.p, St.pid.yawrate.i, St.pid.yawrate.d,
-		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
-
-	// init yaw position PID controller's context
-	dsp_setpidbl(Pid + PID_YAWP,
-		St.pid.yawpos.p, St.pid.yawpos.i, St.pid.yawpos.d,
-		PID_MAX_I, St.lpf.d, 1, PID_FREQ, init);
-
-	// init vertical acceleration PID controller's context
-	dsp_setpidbl(Pid + PID_VA,
-		St.pid.throttle.p, St.pid.throttle.i, St.pid.throttle.d,
-		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
-
-	// init climbrate PID controller's context
-	dsp_setpidbl(Pid + PID_CLIMBRATE,
-		St.pid.climbrate.p, St.pid.climbrate.i,
-		St.pid.climbrate.d, PID_MAX_I, St.lpf.d, 0, PID_FREQ,
-		init);
-
-	// init altitude PID controller's context
-	dsp_setpidbl(Pid + PID_ALT,
-		St.pid.alt.p, St.pid.alt.i, St.pid.alt.d,
-		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
-
-	// init battery voltage low-pass filter
-	dsp_setlpf1f(Lpf + LPF_BAT, BAT_CUTOFF, POWER_FREQ, init);
-	dsp_setlpf1f(Lpf + LPF_CUR, CUR_CUTOFF, POWER_FREQ, init);
-
-	// init average thrust low-pass filter
-	dsp_setunity(Lpf + LPF_AVGTHR, init);
-
-	// init low-pass fitlers for altitude and vertical acceleration
-	dsp_setunity(Lpf + LPF_BARTEMP, init);
-	dsp_setlpf1t(Lpf + LPF_THR, St.lpf.va, PID_FREQ, init);
-	dsp_setunity(Lpf + LPF_VAU, init);
-	dsp_setlpf1t(Lpf + LPF_VAPT1, St.lpf.va, PID_FREQ, init);
-	dsp_setlpf1t(Lpf + LPF_VAAVG, VA_AVG_TCOEF, PID_FREQ, init);
-	dsp_setunity(Lpf + LPF_FA, init);
-	dsp_setunity(Lpf + LPF_ALT, init);
-
-	// init low-pass fitlers for IMU temperature sensor
-	dsp_setlpf1t(Lpf + LPF_IMUTEMP, TEMP_TCOEF, PID_FREQ, init);
-
-	// init low-pass fitlers for accelerometer x, y and z axes
-	dsp_setlpf1f(Lpf + LPF_ACCX, St.lpf.acc, PID_FREQ, init);
-	dsp_setlpf1f(Lpf + LPF_ACCY, St.lpf.acc, PID_FREQ, init);
-	dsp_setlpf1f(Lpf + LPF_ACCZ, St.lpf.acc, PID_FREQ, init);
-
-	// init low-pass fitlers for gyroscope x, y and z axes
-	dsp_setlpf1f(Lpf + LPF_GYROX, St.lpf.gyro, PID_FREQ, init);
-	dsp_setlpf1f(Lpf + LPF_GYROY, St.lpf.gyro, PID_FREQ, init);
-	dsp_setlpf1f(Lpf + LPF_GYROZ, St.lpf.gyro, PID_FREQ, init);
-
-	// init low-pass fitlers for magnetometer x, y and z axes
-	dsp_setlpf1t(Lpf + LPF_MAGX, St.lpf.mag, QMC_FREQ, init);
-	dsp_setlpf1t(Lpf + LPF_MAGY, St.lpf.mag, QMC_FREQ, init);
-	dsp_setlpf1t(Lpf + LPF_MAGZ, St.lpf.mag, QMC_FREQ, init);
-
-	// init roll, pitch, yaw unity filters
-	dsp_setunity(Lpf + LPF_ROLL, init);
-	dsp_setunity(Lpf + LPF_PITCH, init);
-	dsp_setunity(Lpf + LPF_YAW, init);
-
-	return 0;
-}
-
-int initautopilot()
-{
-
-	Pointscount = 0;
-
-	return 0;
-}
-
-/**
 * @brief Calculate tilt compensated heading direction
 	using magnetometer readings, roll value and pitch value.
 * @param r roll value
@@ -1311,10 +1205,7 @@ int main(void)
 	irc_init();
 
 	// initialize stabilization routine
-	setstabilize(0);
-
-	// initialize autopilot
-	initautopilot();
+	setstabilize(1);
 
 	// initilize periodic events
 	inittimev(Evs + TEV_PID, 0, PID_FREQ, stabilize);
@@ -1328,18 +1219,18 @@ int main(void)
 		POWER_FREQ, powercheck);
 	inittimev(Evs + TEV_AUTOPILOT, 0, AUTOPILOT_FREQ,
 		autopilotupdate);
-
+	
 	// initilize debug commands
 	addcommand("r", rcmd);
-	addcommand("c", ccmd);
 	addcommand("info", infocmd);
-	addcommand("pid", pidcmd);
 	addcommand("flash", flashcmd);
+	addcommand("pid", pidcmd);
 	addcommand("compl", complcmd);
 	addcommand("lpf", lpfcmd);
 	addcommand("adj", adjcmd);
 	addcommand("log", logcmd);
 	addcommand("ctrl", ctrlcmd);
+	addcommand("apply", applycmd);
 	addcommand("autopilot", autopilotcmd);
 	addcommand("system", systemcmd);
 	addcommand("irc", irccmd);
