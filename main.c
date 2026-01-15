@@ -1224,18 +1224,13 @@ int main(void)
 	addcommand("r", rcmd);
 	addcommand("info", infocmd);
 	addcommand("flash", flashcmd);
-	addcommand("pid", pidcmd);
-	addcommand("compl", complcmd);
-	addcommand("lpf", lpfcmd);
-	addcommand("adj", adjcmd);
-	addcommand("log", logcmd);
-	addcommand("ctrl", ctrlcmd);
-	addcommand("apply", applycmd);
-	addcommand("autopilot", autopilotcmd);
 	addcommand("system", systemcmd);
-	addcommand("irc", irccmd);
+	addcommand("log", logcmd);
 	addcommand("motor", motorcmd);
+	addcommand("autopilot", autopilotcmd);
+	addcommand("set", setcmd);
 	addcommand("get", getcmd);
+	addcommand("apply", applycmd);
 
 	// initilize ERLS timer. For now ERLS polling is not a periodic
 	// event and called as frequently as possible, so it needs this

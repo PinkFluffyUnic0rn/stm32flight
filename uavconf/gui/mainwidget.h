@@ -129,7 +129,7 @@ class settings_group : public QGroupBox
 
 public:
 	settings_group(QWidget *parent = 0, string n = string(""),
-		bool nsb = false,
+		string s = string(""), bool nsb = false,
 		main_widget *mw = nullptr);
 	~settings_group();
 
@@ -140,12 +140,15 @@ public:
 
 	string get_name() { return name; }
 	
+	string get_section() { return section; }
+	
 	map<string, setting *> &get_settings() { return settings; }
 	
 	setting *get_setting(const string &n) { return settings[n]; }
 
 private:
 	string name;
+	string section;
 	QGridLayout *layout;
 	main_widget *_main_widget;
 	bool has_send_button;
@@ -160,6 +163,7 @@ class float_settings_group : public settings_group
 public:
 	float_settings_group(QWidget *parent = 0,
 		string name = string(""),
+		string groupname = string(""),
 		vector<string> s = vector<string>(),
 		vector<string> c = vector<string>(),
 		commands_tree *cmdstree = nullptr,
@@ -172,6 +176,7 @@ class uint_settings_group : public settings_group
 public:
 	uint_settings_group(QWidget *parent = 0,
 		string name = string(""),
+		string groupname = string(""),
 		vector<string> s = vector<string>(),
 		vector<string> c = vector<string>(),
 		commands_tree *cmdstree = nullptr,
@@ -184,6 +189,7 @@ class mode_settings_group : public settings_group
 public:
 	mode_settings_group(QWidget *parent = 0,
 		string name = string(""),
+		string groupname = string(""),
 		vector<string> s = vector<string>(),
 		vector<string> c = vector<string>(),
 		commands_tree *cmdstree = nullptr,

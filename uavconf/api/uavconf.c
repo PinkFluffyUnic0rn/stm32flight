@@ -234,8 +234,6 @@ int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	if (outfunc != NULL)
 		outfunc(data, out + 6);
 
-
-
 	return 0;
 }
 

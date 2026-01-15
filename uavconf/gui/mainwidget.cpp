@@ -143,7 +143,7 @@ void send_click_handler(void *arg)
 	ss = stringstream(conf);
 
 	while (getline(ss, line, '\n')) {
-		mw->send_uav_conf_cmd(line);
+		mw->send_uav_conf_cmd("set " + line);
 		QCoreApplication::processEvents();
 	}
 		
@@ -242,7 +242,7 @@ void log_load_click_handler(void *arg)
 
 void info_imu_click_handler(void *arg)
 {
-	((main_widget *) arg)->send_uav_info_cmd("info mpu");
+	((main_widget *) arg)->send_uav_info_cmd("info imu");
 }
 
 void info_pid_click_handler(void *arg)
@@ -257,12 +257,12 @@ void info_values_click_handler(void *arg)
 
 void info_mag_click_handler(void *arg)
 {
-	((main_widget *) arg)->send_uav_info_cmd("info qmc");
+	((main_widget *) arg)->send_uav_info_cmd("info mag");
 }
 
 void info_bar_click_handler(void *arg)
 {
-	((main_widget *) arg)->send_uav_info_cmd("info hp");
+	((main_widget *) arg)->send_uav_info_cmd("info baro");
 }
 
 void info_gnss_click_handler(void *arg)
@@ -283,6 +283,11 @@ void info_control_click_handler(void *arg)
 void info_filter_click_handler(void *arg)
 {
 	((main_widget *) arg)->send_uav_info_cmd("info filter");
+}
+
+void info_autopilot_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("info autopilot");
 }
 
 void info_vtx_click_handler(void *arg)
@@ -550,15 +555,14 @@ void partial_send_click_handler(void *arg)
 	for (auto s = begin(sts); s != end(sts); ++s) {
 		if (s->second->get_command().empty())
 			continue;
-	
 
-		conf += s->second->get_command()
+		conf += "set " + s->second->get_command()
 			+ string(" ")
 			+ s->second->get_value()
 			+ string("\n");
 	}
 	
-	conf += "apply\n";
+	conf += "apply " + g->get_section() + "\n";
 
 	if (g->get_main_widget() == NULL)
 		return;
@@ -575,10 +579,10 @@ void partial_send_click_handler(void *arg)
 	g->get_main_widget()->start_catch_uav_out();
 }
 
-settings_group::settings_group(QWidget *parent, string n,
+settings_group::settings_group(QWidget *parent, string n, string s,
 	bool nsb, main_widget *mw)
 		: QGroupBox(QString::fromStdString(n), parent),
-			name(n), _main_widget(mw),
+			name(n), section(s), _main_widget(mw),
 			has_send_button(nsb), layout_last(0)
 {
 	layout = new QGridLayout();
@@ -648,10 +652,10 @@ void settings_group::add_setting_pair(setting *s1, setting *s2)
 }
 
 float_settings_group::float_settings_group(QWidget *parent,
-	string name, vector<string> s, vector<string> c,
-		commands_tree *cmdstree, bool nsb,
+	string name, string section, vector<string> s,
+		vector<string> c, commands_tree *cmdstree, bool nsb,
 		main_widget *mw)
-		: settings_group(parent, name, nsb, mw)
+		: settings_group(parent, name, section, nsb, mw)
 {
 	size_t i;
 
@@ -662,10 +666,10 @@ float_settings_group::float_settings_group(QWidget *parent,
 }
 
 uint_settings_group::uint_settings_group(QWidget *parent,
-	string name, vector<string> s, vector<string> c,
-		commands_tree *cmdstree, bool nsb,
+	string name, string section, vector<string> s,
+		vector<string> c, commands_tree *cmdstree, bool nsb,
 		main_widget *mw)
-		: settings_group(parent, name, nsb, mw)
+		: settings_group(parent, name, section, nsb, mw)
 {
 	size_t i;
 
@@ -676,10 +680,11 @@ uint_settings_group::uint_settings_group(QWidget *parent,
 }
 
 mode_settings_group::mode_settings_group(QWidget *parent,
-	string name, vector<string> s, vector<string> c,
-		commands_tree *cmdstree, vector<string> modes,
-		string init, bool nsb, main_widget *mw)
-		: settings_group(parent, name, nsb, mw)
+	string name, string section, vector<string> s,
+		vector<string> c, commands_tree *cmdstree,
+		vector<string> modes, string init, bool nsb,
+		main_widget *mw)
+		: settings_group(parent, name, section, nsb, mw)
 {
 	size_t i;
 
@@ -929,119 +934,119 @@ main_widget::main_widget(QWidget *parent)
 	tabs["motors"] = new settings_tab;
 	
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"Rate PID", 
+		"Rate PID", "dsp",
 		{"P",		"I", 		"D"},
 		{"pid stilt p",	"pid stilt i",	"pid stilt d"},
 		cmdstree, true, this), 0, 0);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"Angle PID",
+		"Angle PID", "dsp",
 		{"P",		"I",		"D"},
 		{"pid tilt p",	"pid tilt i",	"pid tilt d"},
 		cmdstree, true, this), 0, 1);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"Yaw PID",
+		"Yaw PID", "dsp",
 		{"P",		"I",		"D"},
 		{"pid syaw p",	"pid syaw i",	"pid syaw d"},
 		cmdstree, true, this), 0, 2);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"Yaw position PID",
+		"Yaw position PID", "dsp",
 		{"P",		"I",		"D"},
 		{"pid yaw p",	"pid yaw i",	"pid yaw d"},
 		cmdstree, true, this), 0, 3);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"Throttle PID",
+		"Throttle PID", "dsp",
 		{"P",			"I",			"D"},
 		{"pid throttle p", 	"pid throttle i",	"pid throttle d"},
 		cmdstree, true, this), 1, 0);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"Climb rate PID",
+		"Climb rate PID", "dsp",
 		{"P",			"I",			"D"},
 		{"pid climbrate p",	"pid climbrate i",	"pid climbrate d"},
 		cmdstree, true, this), 1, 1);
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
-		"Altitude PID",
+		"Altitude PID", "dsp",
 		{"P",			"I",			"D"},
 		{"pid altitude p",	"pid altitude i",	"pid altitude d"},
 		cmdstree, true, this), 1, 2);
 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
-		"Complimentary filters",
+		"Complimentary filters", "dsp",
 		{"attitude",		"yaw",		"climb rate", 		"altitude"},
 		{"compl attitude",	"compl yaw",	"compl climbrate",	"compl altitude"},
 		cmdstree, true, this), 3, 0, 2, 1); 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
-		"Low-pass filters",
+		"Low-pass filters", "dsp",
 		{"gyroscope",	"accelerometer",	"magnetometer",	"d-term",	"acceleration"},
 		{"lpf gyro",	"lpf accel",		"lpf mag",	"lpf d",	"lpf vaccel"},
 		cmdstree, true, this), 3, 1, 2, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Accelerometer offset",
+		"Accelerometer offset", "dsp",
 		{"X",		"Y",		"Z",},
 		{"adj acc x",	"adj acc y",	"adj acc z"},
 		cmdstree, true, this), 0, 0);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Accelerometer thermal scaling",
+		"Accelerometer thermal scaling", "dsp",
 		{"X", "Y", "Z"},
 		{"adj acc xtscale", "adj acc ytscale", "adj acc ztscale"},
 		cmdstree, true, this), 0, 1);
 
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Gyroscope offset",
+		"Gyroscope offset", "dsp",
 		{"X",		"Y",		"Z"},
 		{"adj gyro x",	"adj gyro y",	"adj gyro z"},
 		cmdstree, true, this), 0, 2);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Attitude offset",
+		"Attitude offset", "dsp",
 		{"roll",	"pitch",	"yaw"},
 		{"adj roll",	"adj pitch",	"adj yaw"},
 		cmdstree, true, this), 0, 3);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Magnetometer offsets",
+		"Magnetometer offsets", "dsp",
 		{"X",		"Y",		"Z",		"declination"},
 		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl"},
 		cmdstree, true, this), 1, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Magnetometer scale",
+		"Magnetometer scale", "dsp",
 		{"X",			"Y",			"Z"},
 		{"adj mag xscale", 	"adj mag yscale",	"adj mag zscale"},
 		cmdstree, true, this), 1, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Magnetometer thrust scale",
+		"Magnetometer thrust scale", "dsp",
 		{"X",			"Y",			"Z"},
 		{"adj mag xthscale", 	"adj mag ythscale",	"adj mag zthscale"},
 		cmdstree, true, this), 1, 2);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Altitude hold",
+		"Altitude hold", "dsp",
 		{"hover throttle"},
 		{"adj althold hover"},
 		cmdstree, true, this), 2, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Motor scale",
+		"Motor scale", "dsp",
 		{"roll",		"pitch"},
 		{"adj rollthrust", 	"adj pitchthrust"},
 		cmdstree, true, this), 2, 0);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Current meter adjustments",
+		"Current meter adjustments", "dsp",
 		{"offset",		"scale"},
 		{"adj curr offset", 	"adj curr scale"},
 		cmdstree, true, this), 2, 2);
 
 
 	tabs["control"]->add_group(new float_settings_group(nullptr,
-		"Control maximums",
+		"Control maximums", "dsp",
 		{"thrust",	"roll angle", 	"pitch angle",	"acceleration",	"altitude"},
 		{"ctrl thrust",	"ctrl roll",	"ctrl pitch",	"ctrl accel",	"ctrl altmax"},
 		cmdstree, true, this), 3, 2, 2, 1);
 	
 	tabs["control"]->add_group(new float_settings_group(nullptr,
-		"Control rates",
+		"Control rates", "dsp",
 		{"roll",	"pitch",	"yaw",		"climb"},
 		{"ctrl sroll",	"ctrl spitch",	"ctrl syaw",	"ctrl climbrate"},
 		cmdstree, true, this), 3, 3, 2, 1);
@@ -1075,12 +1080,17 @@ main_widget::main_widget(QWidget *parent)
 		new button_setting(nullptr, "Filters", info_filter_click_handler, this),
 		new button_setting(nullptr, "VTX", info_vtx_click_handler, this)
 	);
+
+	info->add_setting(
+		new button_setting(nullptr, "Autopilot", info_autopilot_click_handler, this),
+		false
+	);	
 	
 	tabs["info"]->add_group(info, 0, 0, 1, 1);
 
 	settings_group *log_write = new settings_group(nullptr, "Log write");
 	settings_group *log_read = new settings_group(nullptr, "Log read");
-	settings_group *log_config = new settings_group(nullptr, "Log config", true, this);
+	settings_group *log_config = new settings_group(nullptr, "Log config", "log", true, this);
 
 	log_write->add_setting(new uint_setting(nullptr,
 		"records count"));
@@ -1096,21 +1106,22 @@ main_widget::main_widget(QWidget *parent)
 		false);
 
 	log_config->add_setting(new mode_setting(nullptr, "Record size",
-		"log record size", cmdstree, {"1", "2", "4", "8", "16", "32"}, "8"));
+		"log record size", cmdstree,
+		{"1", "2", "4", "8", "16", "32"}, "8"));
 
 	connect(log_config->get_setting("Record size")->get_field(),
 		SIGNAL(currentIndexChanged(int)), this,
 		SLOT(record_size_item_changed(int)));
 
-	log_config->add_setting(new uint_setting(nullptr, "Log frequency",
-		"log freq", cmdstree));
+	log_config->add_setting(new uint_setting(nullptr,
+		"Log frequency", "log freq", cmdstree));
 
 	tabs["log"]->add_group(log_config, 0, 0, 1, 2);
 	tabs["log"]->add_group(log_write, 1, 0, 1, 2);
 	tabs["log"]->add_group(log_read, 2, 0, 1, 2);
 
 	tabs["log"]->add_group(new mode_settings_group(nullptr,
-		"Record fields 0-10",
+		"Record fields 0-10", "log",
 		{
 			"0", "1", "2", "3", "4", "5",
 			"6", "7", "8", "9", "10"
@@ -1133,7 +1144,7 @@ main_widget::main_widget(QWidget *parent)
 		}, "none", true, this), 0, 2, 3, 1);
 
 	tabs["log"]->add_group(new mode_settings_group(nullptr,
-		"Record fields 11-21",
+		"Record fields 11-21", "log",
 		{
 			"11", "12", "13", "14", "15", "16",
 			"17", "18", "19", "20", "21"
@@ -1156,7 +1167,7 @@ main_widget::main_widget(QWidget *parent)
 		}, "none", true, this), 0, 3, 3, 1);
 
 	tabs["log"]->add_group(new mode_settings_group(nullptr,
-		"Record fields 22-31",
+		"Record fields 22-31", "log",
 		{
 			"22", "23", "24", "25", "26", "27",
 			"28", "29", "30", "31"
@@ -1201,7 +1212,7 @@ main_widget::main_widget(QWidget *parent)
 
 
 
-	settings_group *irc = new settings_group(nullptr, "IRC",
+	settings_group *irc = new settings_group(nullptr, "IRC", "irc",
 		true, this);
 	irc->add_setting(new mode_setting(nullptr, "Power", "irc power",
 		cmdstree, {"25", "100", "200", "400", "600"}));
@@ -1479,7 +1490,7 @@ void main_widget::return_pressed()
 {
 	string cmd;
 
-	cmd = term->get_line()->text().toStdString();
+	cmd = term->get_line()->text().toStdString() + "\n";
 
 	sendcmd(lsfd, &rsi, cmd.c_str(), infofunc,
 		write_term, (void *) term);
