@@ -21,6 +21,570 @@
 #include "qmc5883l.h"
 #include "irc.h"
 
+enum NODETYPE {
+	NODETYPE_PARENT = 0,
+	NODETYPE_FLOAT = 1,
+	NODETYPE_INT = 2,
+	NODETYPE_MAP = 3
+};
+
+struct settingnode
+{
+	char *token;
+	int type;
+	union {
+		struct settingnode **child;
+		float *f;
+		int *i;
+		struct {
+			int *m;
+			const char **k;
+		} m;
+	};
+};
+
+static struct settingnode Sttree = {
+	.token = "",
+	.type = NODETYPE_PARENT,
+	.child = (struct settingnode *[]) {
+		&(struct settingnode) {
+			.token = "pid",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "tilt",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "p",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.attpos.p)
+						},
+						&(struct settingnode) {
+							.token = "i",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.attpos.i)
+						},
+						&(struct settingnode) {
+							.token = "d",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.attpos.d)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "stilt",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "p",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.attrate.p)
+						},
+						&(struct settingnode) {
+							.token = "i",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.attrate.i)
+						},
+						&(struct settingnode) {
+							.token = "d",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.attrate.d)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "yaw",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "p",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.yawpos.p)
+						},
+						&(struct settingnode) {
+							.token = "i",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.yawpos.i)
+						},
+						&(struct settingnode) {
+							.token = "d",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.yawpos.d)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "syaw",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "p",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.yawrate.p)
+						},
+						&(struct settingnode) {
+							.token = "i",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.yawrate.i)
+						},
+						&(struct settingnode) {
+							.token = "d",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.yawrate.d)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "throttle",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "p",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.throttle.p)
+						},
+						&(struct settingnode) {
+							.token = "i",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.throttle.i)
+						},
+						&(struct settingnode) {
+							.token = "d",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.throttle.d)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "climbrate",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "p",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.climbrate.p)
+						},
+						&(struct settingnode) {
+							.token = "i",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.climbrate.i)
+						},
+						&(struct settingnode) {
+							.token = "d",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.climbrate.d)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "altitude",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "p",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.alt.p)
+						},
+						&(struct settingnode) {
+							.token = "i",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.alt.i)
+						},
+						&(struct settingnode) {
+							.token = "d",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.alt.d)
+						},
+						NULL
+					}
+				},
+				NULL
+			}
+		},
+		&(struct settingnode) {
+			.token = "compl",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "attitude",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.cmpl.att)
+				},
+				&(struct settingnode) {
+					.token = "yaw",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.cmpl.yaw)
+				},
+				&(struct settingnode) {
+					.token = "climbrate",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.cmpl.climbrate)
+				},
+				&(struct settingnode) {
+					.token = "altitude",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.cmpl.alt)
+				},
+				NULL
+			}
+		},
+		&(struct settingnode) {
+			.token = "lpf",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "gyro",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.lpf.gyro)
+				},
+				&(struct settingnode) {
+					.token = "accel",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.lpf.acc)
+				},
+				&(struct settingnode) {
+					.token = "mag",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.lpf.mag)
+				},
+				&(struct settingnode) {
+					.token = "d",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.lpf.d)
+				},
+				&(struct settingnode) {
+					.token = "vaccel",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.lpf.va)
+				},
+				NULL
+			}
+		},
+		&(struct settingnode) {
+			.token = "adj",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "rollthrust",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.adj.mtrsc.r)
+				},
+				&(struct settingnode) {
+					.token = "pitchthrust",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.adj.mtrsc.p)
+				},
+				&(struct settingnode) {
+					.token = "roll",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.adj.att0.roll)
+				},
+				&(struct settingnode) {
+					.token = "pitch",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.adj.att0.pitch)
+				},
+				&(struct settingnode) {
+					.token = "yaw",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.adj.att0.yaw)
+				},
+				&(struct settingnode) {
+					.token = "acc",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "x",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.acc0.x)
+						},
+						&(struct settingnode) {
+							.token = "y",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.acc0.y)
+						},
+						&(struct settingnode) {
+							.token = "z",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.acc0.z)
+						},
+						&(struct settingnode) {
+							.token = "xtscale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.acctsc.x)
+						},
+						&(struct settingnode) {
+							.token = "ytscale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.acctsc.y)
+						},
+						&(struct settingnode) {
+							.token = "ztscale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.acctsc.z)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "gyro",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "x",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.gyro0.x)
+						},
+						&(struct settingnode) {
+							.token = "y",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.gyro0.y)
+						},
+						&(struct settingnode) {
+							.token = "z",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.gyro0.z)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "mag",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "x0",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.mag0.x)
+						},
+						&(struct settingnode) {
+							.token = "y0",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.mag0.y)
+						},
+						&(struct settingnode) {
+							.token = "z0",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.mag0.z)
+						},
+						&(struct settingnode) {
+							.token = "xscale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.magsc.x)
+						},
+						&(struct settingnode) {
+							.token = "yscale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.magsc.y)
+						},
+						&(struct settingnode) {
+							.token = "zscale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.magsc.z)
+						},
+
+						&(struct settingnode) {
+							.token = "xthscale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.magthrsc.x)
+						},
+						&(struct settingnode) {
+							.token = "ythscale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.magthrsc.y)
+						},
+						&(struct settingnode) {
+							.token = "zthscale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.magthrsc.z)
+						},
+						&(struct settingnode) {
+							.token = "decl",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.magdecl)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "curr",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "offset",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.curroff)
+						},
+						&(struct settingnode) {
+							.token = "scale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.cursc)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "althold",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "hover",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.hoverthrottle)
+						},
+						NULL
+					}
+				},
+				NULL
+			}
+		},
+		&(struct settingnode) {
+			.token = "ctrl",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "thrust",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.thrustmax)
+				},
+				&(struct settingnode) {
+					.token = "roll",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.rollmax)
+				},
+				&(struct settingnode) {
+					.token = "pitch",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.pitchmax)
+				},
+				&(struct settingnode) {
+					.token = "sroll",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.rollrate)
+				},
+				&(struct settingnode) {
+					.token = "spitch",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.pitchrate)
+				},
+				&(struct settingnode) {
+					.token = "syaw",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.yawrate)
+				},
+				&(struct settingnode) {
+					.token = "accel",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.accelmax)
+				},
+				&(struct settingnode) {
+					.token = "climbrate",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.climbratemax)
+				},
+				&(struct settingnode) {
+					.token = "altmax",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.altmax)
+				},
+				NULL
+			}
+		},
+		&(struct settingnode) {
+			.token = "irc",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "power",
+					.type = NODETYPE_INT,
+					.i = &(St.irc.power)
+				},
+				&(struct settingnode) {
+					.token = "frequency",
+					.type = NODETYPE_INT,
+					.i = &(St.irc.freq)
+				},
+				NULL
+			}
+		},
+		&(struct settingnode) {
+			.token = "motor",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "lt",
+					.type = NODETYPE_INT,
+					.i = &(St.mtr.lt)
+				},
+				&(struct settingnode) {
+					.token = "lb",
+					.type = NODETYPE_INT,
+					.i = &(St.mtr.lb)
+				},
+				&(struct settingnode) {
+					.token = "rb",
+					.type = NODETYPE_INT,
+					.i = &(St.mtr.rb)
+				},
+				&(struct settingnode) {
+					.token = "rt",
+					.type = NODETYPE_INT,
+					.i = &(St.mtr.rt)
+				},
+				NULL
+			}
+		},
+		&(struct settingnode) {
+			.token = "log",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "freq",
+					.type = NODETYPE_INT,
+					.i = &(St.log.freq)
+				},
+				&(struct settingnode) {
+					.token = "recsize",
+					.type = NODETYPE_INT,
+					.i = &(St.log.recsize)
+				},
+				&(struct settingnode) {
+					.token = "record",
+					.type = NODETYPE_MAP,
+					.m = {
+						.m = St.log.fieldid,
+						.k = logfieldmap
+					}
+				},
+				NULL
+			}
+		},
+		NULL
+	}
+};
+
+static int mapsearch(const char **map, const char *s)
+{
+	const char **p;
+	
+	for (p = map; *p != NULL; ++p) {
+		if (strcmp(s, *p) == 0)
+			break;
+	}
+	
+	if (*p == NULL)
+		return (-1);
+
+	return (p - map);
+}
+
 int setstabilize(int init)
 {
 	// init complementary filters contexts
@@ -860,264 +1424,55 @@ int autopilotcmd(const struct cdevice *d, const char **toks, char *out)
 
 int setcmd(const struct cdevice *d, const char **toks, char *out)
 {
-	if (strcmp(toks[1], "pid") == 0) {
-		float v;
+	const char **p;
+	struct settingnode *node;
 
-		v = atof(toks[4]);
+	node = &Sttree;
+			
+	for (p = toks + 1; *p != NULL; ++p) {
+		if (node->type == NODETYPE_FLOAT)
+			*(node->f) = atof(*(p));
+		else if (node->type == NODETYPE_INT)
+			*(node->i) = atoi(*(p));
+		else if (node->type == NODETYPE_MAP) {
+			int strn;
+			const char *key;
+			int v;
+			int i;
 
-		if (strcmp(toks[2], "tilt") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				St.pid.attpos.p = v;
-			else if (strcmp(toks[3], "i") == 0)
-				St.pid.attpos.i = v;
-			else if (strcmp(toks[3], "d") == 0)
-				St.pid.attpos.d = v;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "stilt") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				St.pid.attrate.p = v;
-			else if (strcmp(toks[3], "i") == 0)
-				St.pid.attrate.i = v;
-			else if (strcmp(toks[3], "d") == 0)
-				St.pid.attrate.d = v;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "yaw") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				St.pid.yawpos.p = v;
-			else if (strcmp(toks[3], "i") == 0)
-				St.pid.yawpos.i = v;
-			else if (strcmp(toks[3], "d") == 0)
-				St.pid.yawpos.d = v;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "syaw") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				St.pid.yawrate.p = v;
-			else if (strcmp(toks[3], "i") == 0)
-				St.pid.yawrate.i = v;
-			else if (strcmp(toks[3], "d") == 0)
-				St.pid.yawrate.d = v;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "throttle") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				St.pid.throttle.p = v;
-			else if (strcmp(toks[3], "i") == 0)
-				St.pid.throttle.i = v;
-			else if (strcmp(toks[3], "d") == 0)
-				St.pid.throttle.d = v;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "climbrate") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				St.pid.climbrate.p = v;
-			else if (strcmp(toks[3], "i") == 0)
-				St.pid.climbrate.i = v;
-			else if (strcmp(toks[3], "d") == 0)
-				St.pid.climbrate.d = v;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "altitude") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				St.pid.alt.p = v;
-			else if (strcmp(toks[3], "i") == 0)
-				St.pid.alt.i = v;
-			else if (strcmp(toks[3], "d") == 0)
-				St.pid.alt.d = v;
-			else
-				return (-1);
-		}
-		else
-			return (-1);
-	}
-	else if (strcmp(toks[1], "compl") == 0) {
-		if (strcmp(toks[2], "attitude") == 0)
-			St.cmpl.att = atof(toks[3]);
-		else if (strcmp(toks[2], "yaw") == 0)
-			St.cmpl.yaw = atof(toks[3]);
-		else if (strcmp(toks[2], "climbrate") == 0)
-			St.cmpl.climbrate = atof(toks[3]);
-		else if (strcmp(toks[2], "altitude") == 0)
-			St.cmpl.alt = atof(toks[3]);
-		else
-			return (-1);
-	}
-	else if (strcmp(toks[1], "lpf") == 0) {
-		if (strcmp(toks[2], "gyro") == 0)
-			St.lpf.gyro = atof(toks[3]);
-		else if (strcmp(toks[2], "accel") == 0)
-			St.lpf.acc = atof(toks[3]);
-		else if (strcmp(toks[2], "mag") == 0)
-			St.lpf.mag = atof(toks[3]);
-		else if (strcmp(toks[2], "d") == 0)
-			St.lpf.d = atof(toks[3]);
-		else if (strcmp(toks[2], "vaccel") == 0)
-			St.lpf.va = atof(toks[3]);
-		else
-			return (-1);
-	}
-	else if (strcmp(toks[1], "adj") == 0) {
-		float v;
+			key = *(p + 1);
+			v = atoi(*p);
+			++p;
 
-		v = atof(toks[3]);
-
-		if (strcmp(toks[2], "rollthrust") == 0)
-			St.adj.mtrsc.r = v;
-		else if (strcmp(toks[2], "pitchthrust") == 0)
-			St.adj.mtrsc.p = v;
-		else if (strcmp(toks[2], "roll") == 0)
-			St.adj.att0.roll = v;
-		else if (strcmp(toks[2], "pitch") == 0)
-			St.adj.att0.pitch = v;
-		else if (strcmp(toks[2], "yaw") == 0)
-			St.adj.att0.yaw = v;
-		else if (strcmp(toks[2], "acc") == 0) {
-			if (strcmp(toks[3], "x") == 0)
-				St.adj.acc0.x = atof(toks[4]);
-			else if (strcmp(toks[3], "y") == 0)
-				St.adj.acc0.y = atof(toks[4]);
-			else if (strcmp(toks[3], "z") == 0)
-				St.adj.acc0.z = atof(toks[4]);
-			else if (strcmp(toks[3], "xtscale") == 0)
-				St.adj.acctsc.x = atof(toks[4]);
-			else if (strcmp(toks[3], "ytscale") == 0)
-				St.adj.acctsc.y = atof(toks[4]);
-			else if (strcmp(toks[3], "ztscale") == 0)
-				St.adj.acctsc.z = atof(toks[4]);
-			else
+			if (key == NULL)
 				return (-1);
-		}
-		else if (strcmp(toks[2], "gyro") == 0) {
-			if (strcmp(toks[3], "x") == 0)
-				St.adj.gyro0.x = atof(toks[4]);
-			else if (strcmp(toks[3], "y") == 0)
-				St.adj.gyro0.y = atof(toks[4]);
-			else if (strcmp(toks[3], "z") == 0)
-				St.adj.gyro0.z = atof(toks[4]);
-			else
+
+			if (strcmp(key, "none") == 0)
+				return 0;
+	
+			if ((strn = mapsearch(node->m.k, key)) < 0)
 				return (-1);
-		}
-		else if (strcmp(toks[2], "mag") == 0) {
-			if (strcmp(toks[3], "x0") == 0)
-				St.adj.mag0.x = atof(toks[4]);
-			else if (strcmp(toks[3], "y0") == 0)
-				St.adj.mag0.y = atof(toks[4]);
-			else if (strcmp(toks[3], "z0") == 0)
-				St.adj.mag0.z = atof(toks[4]);
-			else if (strcmp(toks[3], "xscale") == 0)
-				St.adj.magsc.x = atof(toks[4]);
-			else if (strcmp(toks[3], "yscale") == 0)
-				St.adj.magsc.y = atof(toks[4]);
-			else if (strcmp(toks[3], "zscale") == 0)
-				St.adj.magsc.z = atof(toks[4]);
-			else if (strcmp(toks[3], "xthscale") == 0)
-				St.adj.magthrsc.x = atof(toks[4]);
-			else if (strcmp(toks[3], "ythscale") == 0)
-				St.adj.magthrsc.y = atof(toks[4]);
-			else if (strcmp(toks[3], "zthscale") == 0)
-				St.adj.magthrsc.z = atof(toks[4]);
-			else if (strcmp(toks[3], "decl") == 0)
-				St.adj.magdecl = atof(toks[4]);
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "curr") == 0) {
-			if (strcmp(toks[3], "offset") == 0)
-				St.adj.curroff = atof(toks[4]);
-			else if (strcmp(toks[3], "scale") == 0)
-				St.adj.cursc = atof(toks[4]);
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "althold") == 0) {
-			if (strcmp(toks[3], "hover") == 0)
-				St.adj.hoverthrottle = atof(toks[4]);
-			else
-				return (-1);
-		}
-		else
-			return (-1);
-	}
-	else if (strcmp(toks[1], "ctrl") == 0) {
-		float v;
-
-		v = atof(toks[3]);
-
-		if (strcmp(toks[2], "thrust") == 0)
-			St.ctrl.thrustmax = v;
-		else if (strcmp(toks[2], "roll") == 0)
-			St.ctrl.rollmax = v;
-		else if (strcmp(toks[2], "pitch") == 0)
-			St.ctrl.pitchmax = v;
-		else if (strcmp(toks[2], "sroll") == 0)
-			St.ctrl.rollrate = v;
-		else if (strcmp(toks[2], "spitch") == 0)
-			St.ctrl.pitchrate = v;
-		else if (strcmp(toks[2], "syaw") == 0)
-			St.ctrl.yawrate = v;
-		else if (strcmp(toks[2], "accel") == 0)
-			St.ctrl.accelmax = v;
-		else if (strcmp(toks[2], "climbrate") == 0)
-			St.ctrl.climbratemax = v;
-		else if (strcmp(toks[2], "altmax") == 0)
-			St.ctrl.altmax = v;
-		else
-			return (-1);
-	}
-	else if (strcmp(toks[1], "irc") == 0) {
-		if (strcmp(toks[2], "frequency") == 0)
-			St.irc.freq = atoi(toks[3]);
-		else if (strcmp(toks[2], "power") == 0)
-			St.irc.power = atoi(toks[3]);
-		else
-			return (-1);
-	}
-	else if (strcmp(toks[1], "log") == 0) {
-		if (strcmp(toks[2], "freq") == 0)
-			St.log.freq = atoi(toks[3]);
-		else if (strcmp(toks[2], "record") == 0) {
-			if (strcmp(toks[3], "size") == 0)
-				St.log.recsize = atoi(toks[4]);
-			else {
-				int strn;
-				int i;
-
-				if (strcmp(toks[4], "none") == 0)
-					return 0;
-
-				if ((strn = log_fieldstrn(toks[4])) < 0)
-					return (-1);
-
-				for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-					if (St.log.fieldid[i] == atoi(toks[3]))
-						St.log.fieldid[i] = 99;
-				}
-
-				St.log.fieldid[strn] = atoi(toks[3]);
+			
+			for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
+				if (*(node->m.m + i) == v)
+					*(node->m.m + i) = 99;
 			}
+
+			St.log.fieldid[strn] = v;
 		}
-		else
-			return (-1);
-	}
-	else if (strcmp(toks[1], "motor") == 0) {
-		if (strcmp(toks[2], "lt") == 0)
-			St.mtr.lt = atoi(toks[3]);
-		else if (strcmp(toks[2], "lb") == 0)
-			St.mtr.lb = atoi(toks[3]);
-		else if (strcmp(toks[2], "rb") == 0)
-			St.mtr.rb = atoi(toks[3]);
-		else if (strcmp(toks[2], "rt") == 0)
-			St.mtr.rt = atoi(toks[3]);
-		else
-			return (-1);
+		else {
+			struct settingnode **chd;
+		
+			for (chd = node->child; *chd != NULL; ++chd) {
+				if (strcmp((*chd)->token, *p) == 0) {
+					node = *chd;
+					break;
+				}
+			}
+
+			if (*chd == NULL)
+				return (-1);
+		}
 	}
 
 	return 0;
@@ -1126,379 +1481,62 @@ int setcmd(const struct cdevice *d, const char **toks, char *out)
 int getcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	const char **p;
+	struct settingnode *node;
 	char *data;
 	enum CONFVALTYPE valtype;
 	float vf;
 	int vi;
 	const char *vs;
 
+	vf = 0.0;
+	vi = 0;
+
+	node = &Sttree;
 	valtype = CONFVALTYPE_FLOAT;
 
-	if (strcmp(toks[1], "pid") == 0) {
-		if (strcmp(toks[2], "tilt") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				vf = St.pid.attpos.p;
-			else if (strcmp(toks[3], "i") == 0)
-				vf = St.pid.attpos.i;
-			else if (strcmp(toks[3], "d") == 0)
-				vf = St.pid.attpos.d;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "stilt") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				vf = St.pid.attrate.p;
-			else if (strcmp(toks[3], "i") == 0)
-				vf = St.pid.attrate.i;
-			else if (strcmp(toks[3], "d") == 0)
-				vf = St.pid.attrate.d;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "yaw") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				vf = St.pid.yawpos.p;
-			else if (strcmp(toks[3], "i") == 0)
-				vf = St.pid.yawpos.i;
-			else if (strcmp(toks[3], "d") == 0)
-				vf = St.pid.yawpos.d;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "syaw") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				vf = St.pid.yawrate.p;
-			else if (strcmp(toks[3], "i") == 0)
-				vf = St.pid.yawrate.i;
-			else if (strcmp(toks[3], "d") == 0)
-				vf = St.pid.yawrate.d;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "throttle") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				vf = St.pid.throttle.p;
-			else if (strcmp(toks[3], "i") == 0)
-				vf = St.pid.throttle.i;
-			else if (strcmp(toks[3], "d") == 0)
-				vf = St.pid.throttle.d;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "climbrate") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				vf = St.pid.climbrate.p;
-			else if (strcmp(toks[3], "i") == 0)
-				vf = St.pid.climbrate.i;
-			else if (strcmp(toks[3], "d") == 0)
-				vf = St.pid.climbrate.d;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "altitude") == 0) {
-			if (strcmp(toks[3], "p") == 0)
-				vf = St.pid.alt.p;
-			else if (strcmp(toks[3], "i") == 0)
-				vf = St.pid.alt.i;
-			else if (strcmp(toks[3], "d") == 0)
-				vf = St.pid.alt.d;
-			else
-				return (-1);
-		}
-		else
-			return (-1);
-
-		valtype = CONFVALTYPE_FLOAT;
-	}
-	else if (strcmp(toks[1], "compl") == 0) {
-		if (strcmp(toks[2], "attitude") == 0)
-			vf = St.cmpl.att;
-		else if (strcmp(toks[2], "yaw") == 0)
-			vf = St.cmpl.yaw;
-		else if (strcmp(toks[2], "climbrate") == 0)
-			vf = St.cmpl.climbrate;
-		else if (strcmp(toks[2], "altitude") == 0)
-			vf = St.cmpl.alt;
-		else
-			return (-1);
-
-		valtype = CONFVALTYPE_FLOAT;
-	}
-	else if (strcmp(toks[1], "lpf") == 0) {
-		if (strcmp(toks[2], "gyro") == 0)
-			vf = St.lpf.gyro;
-		else if (strcmp(toks[2], "accel") == 0)
-			vf = St.lpf.acc;
-		else if (strcmp(toks[2], "mag") == 0)
-			vf = St.lpf.mag;
-		else if (strcmp(toks[2], "d") == 0)
-			vf = St.lpf.d;
-		else if (strcmp(toks[2], "vaccel") == 0)
-			vf = St.lpf.va;
-		else
-			return (-1);
-
-		valtype = CONFVALTYPE_FLOAT;
-	}
-	else if (strcmp(toks[1], "adj") == 0) {
-		if (strcmp(toks[2], "rollthrust") == 0)
-			vf = St.adj.mtrsc.r;
-		else if (strcmp(toks[2], "pitchthrust") == 0)
-			vf = St.adj.mtrsc.p;
-		else if (strcmp(toks[2], "roll") == 0)
-			vf = St.adj.att0.roll;
-		else if (strcmp(toks[2], "pitch") == 0)
-			vf = St.adj.att0.pitch;
-		else if (strcmp(toks[2], "yaw") == 0)
-			vf = St.adj.att0.yaw;
-		else if (strcmp(toks[2], "acc") == 0) {
-			if (strcmp(toks[3], "x") == 0)
-				vf = St.adj.acc0.x;
-			else if (strcmp(toks[3], "y") == 0)
-				vf = St.adj.acc0.y;
-			else if (strcmp(toks[3], "z") == 0)
-				vf = St.adj.acc0.z;
-			else if (strcmp(toks[3], "xtscale") == 0)
-				vf = St.adj.acctsc.x;
-			else if (strcmp(toks[3], "ytscale") == 0)
-				vf = St.adj.acctsc.y;
-			else if (strcmp(toks[3], "ztscale") == 0)
-				vf = St.adj.acctsc.z;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "gyro") == 0) {
-			if (strcmp(toks[3], "x") == 0)
-				vf = St.adj.gyro0.x;
-			else if (strcmp(toks[3], "y") == 0)
-				vf = St.adj.gyro0.y;
-			else if (strcmp(toks[3], "z") == 0)
-				vf = St.adj.gyro0.z;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "mag") == 0) {
-			if (strcmp(toks[3], "x0") == 0)
-				vf = St.adj.mag0.x;
-			else if (strcmp(toks[3], "y0") == 0)
-				vf = St.adj.mag0.y;
-			else if (strcmp(toks[3], "z0") == 0)
-				vf = St.adj.mag0.z;
-			else if (strcmp(toks[3], "xscale") == 0)
-				vf = St.adj.magsc.x;
-			else if (strcmp(toks[3], "yscale") == 0)
-				vf = St.adj.magsc.y;
-			else if (strcmp(toks[3], "zscale") == 0)
-				vf = St.adj.magsc.z;
-			else if (strcmp(toks[3], "xthscale") == 0)
-				vf = St.adj.magthrsc.x;
-			else if (strcmp(toks[3], "ythscale") == 0)
-				vf = St.adj.magthrsc.y;
-			else if (strcmp(toks[3], "zthscale") == 0)
-				vf = St.adj.magthrsc.z;
-			else if (strcmp(toks[3], "decl") == 0)
-				vf = St.adj.magdecl;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "curr") == 0) {
-			if (strcmp(toks[3], "offset") == 0)
-				vf = St.adj.curroff;
-			else if (strcmp(toks[3], "scale") == 0)
-				vf = St.adj.cursc;
-			else
-				return (-1);
-		}
-		else if (strcmp(toks[2], "althold") == 0) {
-			if (strcmp(toks[3], "hover") == 0)
-				vf = St.adj.hoverthrottle;
-			else
-				return (-1);
-		}
-		else
-			return (-1);
-
-		valtype = CONFVALTYPE_FLOAT;
-	}
-	else if (strcmp(toks[1], "ctrl") == 0) {
-		if (strcmp(toks[2], "thrust") == 0)
-			vf = St.ctrl.thrustmax;
-		else if (strcmp(toks[2], "roll") == 0)
-			vf = St.ctrl.rollmax;
-		else if (strcmp(toks[2], "pitch") == 0)
-			vf = St.ctrl.pitchmax;
-		else if (strcmp(toks[2], "sroll") == 0)
-			vf = St.ctrl.rollrate;
-		else if (strcmp(toks[2], "spitch") == 0)
-			vf = St.ctrl.pitchrate;
-		else if (strcmp(toks[2], "syaw") == 0)
-			vf = St.ctrl.yawrate;
-		else if (strcmp(toks[2], "accel") == 0)
-			vf = St.ctrl.accelmax;
-		else if (strcmp(toks[2], "climbrate") == 0)
-			vf = St.ctrl.climbratemax;
-		else if (strcmp(toks[2], "altmax") == 0)
-			vf = St.ctrl.altmax;
-		else
-			return (-1);
-
-		valtype = CONFVALTYPE_FLOAT;
-	}
-	else if (strcmp(toks[1], "autopilot") == 0) {
-		int idx;
-
-		if (strcmp(toks[2], "count") == 0) {
-			vi = Pointscount;
-			valtype = CONFVALTYPE_INT;
-		}
-		else if (strcmp(toks[2], "type") == 0) {
-			idx = atoi(toks[3]);
+	for (p = toks + 1; *p != NULL; ++p) {
+		struct settingnode **chd;
 		
-			if (idx < 0 || idx >= Pointscount)
-				return (-1);
-		
-			if (Points[idx].type == AUTOPILOT_START)
-				vs = "start";
-			else if (Points[idx].type == AUTOPILOT_TAKEOFF)
-				vs = "takeoff";
-			else if (Points[idx].type == AUTOPILOT_HOVER)
-				vs = "hover";
-			else if (Points[idx].type == AUTOPILOT_FORWARD)
-				vs = "forward";
-			else if (Points[idx].type == AUTOPILOT_LANDING)
-				vs = "landing";
-			else if (Points[idx].type == AUTOPILOT_STOP)
-				vs = "stop";
-			else
-				return (-1);
+		if (node->type != NODETYPE_PARENT)
+			break;
+	
+		for (chd = node->child; *chd != NULL; ++chd) {
+			if (strcmp((*chd)->token, *p) == 0) {
+				node = *chd;
+				break;
+			}
+		}
 
-			valtype = CONFVALTYPE_STRING;
-		}
-		else if (strcmp(toks[2], "alt") == 0) {
-			idx = atoi(toks[3]);
-			
-			if (idx < 0 || idx >= Pointscount)
-				return (-1);
-			
-			if (Points[idx].type == AUTOPILOT_TAKEOFF)
-				vf = Points[idx].takeoff.alt;
-			else if (Points[idx].type == AUTOPILOT_HOVER)
-				vf = Points[idx].hover.alt;
-			else
-				return (-1);
-			
-			valtype = CONFVALTYPE_FLOAT;
-		}
-		else if (strcmp(toks[2], "t") == 0) {
-			idx = atoi(toks[3]);
-			
-			if (idx < 0 || idx >= Pointscount)
-				return (-1);
-			
-			if (Points[idx].type == AUTOPILOT_TAKEOFF)
-				vf = Points[idx].takeoff.t;
-			else if (Points[idx].type == AUTOPILOT_HOVER)
-				vf = Points[idx].hover.t;
-			else
-				return (-1);
-			
-			valtype = CONFVALTYPE_FLOAT;
-		}
-		else if (strcmp(toks[2], "x") == 0) {
-			idx = atoi(toks[3]);
-				
-			if (idx < 0 || idx >= Pointscount)
-				return (-1);
-		
-			if (Points[idx].type == AUTOPILOT_HOVER)
-				vf = Points[idx].hover.x;
-			else if (Points[idx].type == AUTOPILOT_FORWARD)
-				vf = Points[idx].forward.x;
-			else
-				return (-1);
-			
-			valtype = CONFVALTYPE_FLOAT;
-		}
-		else if (strcmp(toks[2], "y") == 0) {
-			idx = atoi(toks[3]);
-			
-			if (idx < 0 || idx >= Pointscount)
-				return (-1);
-			
-			if (Points[idx].type == AUTOPILOT_HOVER)
-				vf = Points[idx].hover.y;
-			else if (Points[idx].type == AUTOPILOT_FORWARD)
-				vf = Points[idx].forward.y;
-			else
-				return (-1);
-			
-			valtype = CONFVALTYPE_FLOAT;
-		}
-		else
+		if (*chd == NULL)
 			return (-1);
 	}
-	else if (strcmp(toks[1], "irc") == 0) {
-		if (strcmp(toks[2], "frequency") == 0)
-			vi = St.irc.freq;
-		else if (strcmp(toks[2], "power") == 0)
-			vi = St.irc.power;
-		else
-			return (-1);
 
+	if (node->type == NODETYPE_FLOAT) {
+		vf = *(node->f);
+		valtype = CONFVALTYPE_FLOAT;
+	}
+	else if (node->type == NODETYPE_INT) {
+		vi = *(node->i);
 		valtype = CONFVALTYPE_INT;
 	}
-	else if (strcmp(toks[1], "log") == 0) {
-		if (strcmp(toks[2], "freq") == 0) {
-			vi = St.log.freq;
-			valtype = CONFVALTYPE_INT;
+	else if (node->type == NODETYPE_MAP) {
+		int recn;
+		int i;
+
+		recn = atoi(*p);
+
+		for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
+			if (St.log.fieldid[i] == recn)
+				break;
 		}
-		else if (strcmp(toks[2], "record") == 0) {
-			if (strcmp(toks[3], "size") == 0) {
-				vi = St.log.recsize;
-				valtype = CONFVALTYPE_INT;
-			}
-			else {
-				int recn;
-				int i;
 
-				recn = atoi(toks[3]);
+		vs = (i >= LOG_FIELDSTRSIZE) ? "none" : node->m.k[i];
 
-				if (recn < 0 || recn > LOG_MAXRECSIZE)
-					return (-1);
-
-				for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-					if (St.log.fieldid[i] == recn)
-						break;
-				}
-
-				if (i >= LOG_FIELDSTRSIZE)
-					vs = "none";
-				else
-					vs = logfieldstr[i];
-
-				valtype = CONFVALTYPE_STRING;
-			}
-		}
-		else
-			return (-1);
-	}	
-	else if (strcmp(toks[1], "motor") == 0) {
-		if (strcmp(toks[2], "lt") == 0)
-			vi = St.mtr.lt;
-		else if (strcmp(toks[2], "lb") == 0)
-			vi = St.mtr.lb;
-		else if (strcmp(toks[2], "rb") == 0)
-			vi = St.mtr.rb;
-		else if (strcmp(toks[2], "rt") == 0)
-			vi = St.mtr.rt;
-
-		valtype = 0;
+		valtype = CONFVALTYPE_STRING;
 	}
-	else
-		return (-1);
 
 	data = out + 6;
-
+	
 	data[0] = '\0';
 	for (p = toks + 1; *p != NULL; ++p)
 		sprintf(data + strlen(data), "%s ", *p);

@@ -1106,7 +1106,7 @@ main_widget::main_widget(QWidget *parent)
 		false);
 
 	log_config->add_setting(new mode_setting(nullptr, "Record size",
-		"log record size", cmdstree,
+		"log recsize", cmdstree,
 		{"1", "2", "4", "8", "16", "32"}, "8"));
 
 	connect(log_config->get_setting("Record size")->get_field(),

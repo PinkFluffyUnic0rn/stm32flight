@@ -12,7 +12,7 @@ static int logflashpos = 0;
 static size_t logsize = 0;
 static float logbuf[LOG_BUFSIZE / sizeof(float)];
 
-const char *logfieldstr[LOG_FIELDSTRSIZE] = {
+const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {
 	"acc_x", "acc_y", "acc_z",
 	"gyro_x", "gyro_y", "gyro_z",
 	"mag_x", "mag_y", "mag_z",
@@ -23,7 +23,7 @@ const char *logfieldstr[LOG_FIELDSTRSIZE] = {
 	"bat", "cur",
 	"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7",
 	"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15",
-	"custom0", "custom1", "custom2", "custom3"
+	"custom0", "custom1", "custom2", "custom3", NULL
 };
 
 static int log_eraseflash(const struct cdevice *d, size_t size)
@@ -62,21 +62,6 @@ static int log_eraseflash(const struct cdevice *d, size_t size)
 	}
 
 	return 0;
-}
-
-int log_fieldstrn(const char *s)
-{
-	int i;
-
-	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-		if (strcmp(s, logfieldstr[i]) == 0)
-			break;
-	}
-	
-	if (i >= LOG_FIELDSTRSIZE)
-		return (-1);
-
-	return i;
 }
 
 void log_write(int pos, float val)

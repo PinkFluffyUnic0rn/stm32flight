@@ -33,48 +33,50 @@
 * @defgroup LOG log values id
 * @{
 */
-#define LOG_ACC_X	0	/*!< accelerometer x */
-#define LOG_ACC_Y	1	/*!< accelerometer y */
-#define LOG_ACC_Z	2	/*!< accelerometer z */
-#define LOG_GYRO_X	3	/*!< gyroscope x */
-#define LOG_GYRO_Y	4	/*!< gyroscope y */
-#define LOG_GYRO_Z	5	/*!< gyroscope z */
-#define LOG_MAG_X	6	/*!< magnetometer x */
-#define LOG_MAG_Y	7	/*!< magnetometer y */
-#define LOG_MAG_Z	8	/*!< magnetometer z */
-#define LOG_BAR_TEMP	9	/*!< barometer temperature */
-#define LOG_BAR_ALT	10	/*!< barometer altitude */
-#define LOG_ROLL	11	/*!< roll */
-#define LOG_PITCH	12	/*!< pitch */
-#define LOG_YAW		13	/*!< yaw */
-#define LOG_CLIMBRATE	14	/*!< climb rate */
-#define LOG_ALT		15	/*!< altitude */
-#define LOG_LT		16	/*!< left-top motor throttle */
-#define LOG_LB		17	/*!< left-bottom motor throttle */
-#define LOG_RB		18	/*!< right-top motor throttle */
-#define LOG_RT		19	/*!< right-bottom motor throttle */
-#define LOG_BAT		20	/*!< battery voltage */
-#define LOG_CUR		21	/*!< battery current */
-#define LOG_CRSFCH0	22	/*!< CRSF channel 0 */
-#define LOG_CRSFCH1	23	/*!< CRSF channel 1 */
-#define LOG_CRSFCH2	24	/*!< CRSF channel 2 */
-#define LOG_CRSFCH3	25	/*!< CRSF channel 3 */
-#define LOG_CRSFCH4	26	/*!< CRSF channel 4 */
-#define LOG_CRSFCH5	27	/*!< CRSF channel 5 */
-#define LOG_CRSFCH6	28	/*!< CRSF channel 6 */
-#define LOG_CRSFCH7	29	/*!< CRSF channel 7 */
-#define LOG_CRSFCH8	30	/*!< CRSF channel 8 */
-#define LOG_CRSFCH9	31	/*!< CRSF channel 9 */
-#define LOG_CRSFCH10	32	/*!< CRSF channel 10 */
-#define LOG_CRSFCH11	33	/*!< CRSF channel 11 */
-#define LOG_CRSFCH12	34	/*!< CRSF channel 12 */
-#define LOG_CRSFCH13	35	/*!< CRSF channel 13 */
-#define LOG_CRSFCH14	36	/*!< CRSF channel 14 */
-#define LOG_CRSFCH15	37	/*!< CRSF channel 15 */
-#define LOG_CUSTOM0	38	/*!< custom value 0 for debug */
-#define LOG_CUSTOM1	39	/*!< custom value 1 for debug */
-#define LOG_CUSTOM2	40	/*!< custom value 2 for debug */
-#define LOG_CUSTOM3	41	/*!< custom value 3 for debug */
+enum LOG_FIELD {
+	LOG_ACC_X	= 0,
+	LOG_ACC_Y	= 1,
+	LOG_ACC_Z	= 2,
+	LOG_GYRO_X	= 3,
+	LOG_GYRO_Y	= 4,
+	LOG_GYRO_Z	= 5,
+	LOG_MAG_X	= 6,
+	LOG_MAG_Y	= 7,
+	LOG_MAG_Z	= 8,
+	LOG_BAR_TEMP	= 9,
+	LOG_BAR_ALT	= 10,
+	LOG_ROLL	= 11,
+	LOG_PITCH	= 12,
+	LOG_YAW		= 13,
+	LOG_CLIMBRATE	= 14,
+	LOG_ALT		= 15,
+	LOG_LT		= 16,
+	LOG_LB		= 17,
+	LOG_RB		= 18,
+	LOG_RT		= 19,
+	LOG_BAT		= 20,
+	LOG_CUR		= 21,
+	LOG_CRSFCH0	= 22,
+	LOG_CRSFCH1	= 23,
+	LOG_CRSFCH2	= 24,
+	LOG_CRSFCH3	= 25,
+	LOG_CRSFCH4	= 26,
+	LOG_CRSFCH5	= 27,
+	LOG_CRSFCH6	= 28,
+	LOG_CRSFCH7	= 29,
+	LOG_CRSFCH8	= 30,
+	LOG_CRSFCH9	= 31,
+	LOG_CRSFCH10	= 32,
+	LOG_CRSFCH11	= 33,
+	LOG_CRSFCH12	= 34,
+	LOG_CRSFCH13	= 35,
+	LOG_CRSFCH14	= 36,
+	LOG_CRSFCH15	= 37,
+	LOG_CUSTOM0	= 38,
+	LOG_CUSTOM1	= 39,
+	LOG_CUSTOM2	= 40,
+	LOG_CUSTOM3	= 41
+};
 /**
 * @}
 */
@@ -87,15 +89,7 @@
 /**
 * @brief log values names
 */
-extern const char *logfieldstr[LOG_FIELDSTRSIZE];
-
-/**
-* @brief Get value's id by it's name.
-*
-* @param s value's name
-* @return value's id if fould, -1 otherwise
-*/
-int log_fieldstrn(const char *s);
+extern const char *logfieldmap[LOG_FIELDSTRSIZE + 1];
 
 /**
 * @brief Set value in current log frame.
