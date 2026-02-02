@@ -10,7 +10,6 @@
 #include "dsp.h"
 #include "log.h"
 #include "crc.h"
-#include "global.h"
 #include "runvals.h"
 #include "timev.h"
 #include "command.h"
@@ -19,6 +18,58 @@
 #include "icm42688.h"
 #include "qmc5883l.h"
 #include "crsf.h"
+
+/**
+* @defgroup EVENTFREQUENCIES
+* @brief Periodic events frequencies
+* @{
+*/
+#define PID_FREQ 4000		/*!< PID event frequency */
+#define CHECK_FREQ 1		/*!< connection check event frequency */
+#define DPS_FREQ 128		/*!< barometer update event frequency */
+#define QMC_FREQ 100		/*!< magnetometer update event frequency */
+#define TELE_FREQ 10		/*!< telemetry send event frequency */
+#define POWER_FREQ 500		/*!< battery power update event frequency */
+#define AUTOPILOT_FREQ 32	/*!< autopilot update event frequency */
+/**
+* @}
+*/
+
+/**
+* @brief timeout in seconds before quadcopter disarm
+	when got no data from ERLS receiver
+*/
+#define ELRS_TIMEOUT 2
+
+/**
+* @brief time required to register button push,
+	used for buttons and switches that controls
+	time consuming functions
+*/
+#define ELRS_PUSHTIMEOUT 0.1
+
+/**
+* @defgroup ERLSCHANNELS
+* @brief eRLS channels mapping
+* @{
+*/
+#define ERLS_CH_ROLL		0	/*!< roll channel */
+#define ERLS_CH_PITCH		1	/*!< pitch channel */
+#define ERLS_CH_THRUST		2	/*!< throttle channel */
+#define ERLS_CH_YAW		3	/*!< yaw channel */
+#define ERLS_CH_YAWMODE		4	/*!< yaw mode channel */
+#define ERLS_CH_ATTMODE		5	/*!< attitude mode channel */
+#define ERLS_CH_THRMODE		6	/*!< altitude mode channel */
+#define ERLS_CH_ONOFF		7	/*!< on/off channel */
+#define ERLS_CH_ALTCALIB	8	/*!< recalibration channel */
+#define ERLS_CH_HOVER		10	/*!< hover mode channel */
+#define ERLS_CH_AUTOPILOT	11	/*!< autopilot mode channel */
+#define ERLS_CH_SETSLOT		15	/*!< settings slot channel */
+/**
+* @}
+*/
+
+#define MAX_POINT_COUNT 16
 
 /**
 * @defgroup DEVIDS
@@ -34,7 +85,8 @@ enum DEV_ID {
 	DEV_ESP		= 5,	/*!< ESP device number */
 	DEV_UART	= 6,	/*!< UART debug device number */
 	DEV_IRC		= 7,	/*!< video TX device number */
-	DEV_COUNT	= 8	/*!< character devices count */
+	DEV_DSHOT	= 8,	/*!< DShot-300 device number */
+	DEV_COUNT	= 9	/*!< character devices count */
 };
 /**
 * @}
@@ -133,57 +185,6 @@ enum PID_ID {
 * @}
 */
 
-/**
-* @defgroup EVENTFREQUENCIES
-* @brief Periodic events frequencies
-* @{
-*/
-#define PID_FREQ 4000		/*!< PID event frequency */
-#define CHECK_FREQ 1		/*!< connection check event frequency */
-#define DPS_FREQ 128		/*!< barometer update event frequency */
-#define QMC_FREQ 100		/*!< magnetometer update event frequency */
-#define TELE_FREQ 10		/*!< telemetry send event frequency */
-#define POWER_FREQ 500		/*!< battery power update event frequency */
-#define AUTOPILOT_FREQ 32	/*!< autopilot update event frequency */
-/**
-* @}
-*/
-
-/**
-* @brief timeout in seconds before quadcopter disarm
-	when got no data from ERLS receiver
-*/
-#define ELRS_TIMEOUT 2
-
-/**
-* @brief time required to register button push,
-	used for buttons and switches that controls
-	time consuming functions
-*/
-#define ELRS_PUSHTIMEOUT 0.1
-
-/**
-* @defgroup ERLSCHANNELS
-* @brief eRLS channels mapping
-* @{
-*/
-#define ERLS_CH_ROLL		0	/*!< roll channel */
-#define ERLS_CH_PITCH		1	/*!< pitch channel */
-#define ERLS_CH_THRUST		2	/*!< throttle channel */
-#define ERLS_CH_YAW		3	/*!< yaw channel */
-#define ERLS_CH_YAWMODE		4	/*!< yaw mode channel */
-#define ERLS_CH_ATTMODE		5	/*!< attitude mode channel */
-#define ERLS_CH_THRMODE		6	/*!< altitude mode channel */
-#define ERLS_CH_ONOFF		7	/*!< on/off channel */
-#define ERLS_CH_ALTCALIB	8	/*!< recalibration channel */
-#define ERLS_CH_HOVER		10	/*!< hover mode channel */
-#define ERLS_CH_AUTOPILOT	11	/*!< autopilot mode channel */
-#define ERLS_CH_SETSLOT		15	/*!< settings slot channel */
-/**
-* @}
-*/
-
-#define MAX_POINT_COUNT 16
 
 /**
 * @brief Altitude control mode.
@@ -406,5 +407,17 @@ extern int Elrstimeout;
 	arming is possible only after reboot
 */
 extern int Emergencydisarm;
+
+/**
+* @brief Set motors thrust. All values should be between 0.0 and 1.0.
+* @param dev DShot output device
+* @param ltd left-top motor thrust
+* @param rtd right-top motor thrust
+* @param lbd left-bottom motor thrust
+* @param rbd right-bottom motor thrust
+* @return always 0
+*/
+int setthrust(struct cdevice *dev,
+	float ltd, float rtd, float lbd, float rbd);
 
 #endif

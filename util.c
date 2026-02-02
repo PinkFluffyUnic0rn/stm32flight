@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "global.h"
 #include "util.h"
 
 // delay timer handler

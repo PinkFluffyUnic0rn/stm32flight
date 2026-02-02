@@ -6,8 +6,27 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
-#include "global.h"
 #include "log.h"
+
+/**
+* @brief clock frequency
+*/
+#define OCSFREQ 128000000
+
+/**
+* @brief periodic event timer ticks per second
+*/
+#define TICKSPERSEC 1000000
+
+/**
+* @brief maximum length for info packet sent back to operator
+*/
+#define INFOLEN 512
+
+/**
+* @brief maximum length for control command
+*/
+#define CMDSIZE 64
 
 /**
 * @brief MCU flash address where quadcopter settings is stored

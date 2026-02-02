@@ -1,3 +1,6 @@
+#include <math.h>
+#include "dshot.h"
+
 #include "runvals.h"
 
 struct timev Evs[TEV_COUNT];
@@ -41,3 +44,40 @@ int Loopscount = 0;
 int Elrstimeout = ELRS_TIMEOUT;
 
 int Emergencydisarm = 0;
+
+int setthrust(struct cdevice *dev,
+	float ltd, float rtd, float lbd, float rbd)
+{
+	struct dshot_data dd;
+	float avgthrust;
+	
+	// incorrect thrust value protection and
+	// extra check for disabled ELRS transmitter	
+	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
+		|| isnan(lbd) || !Elrs)
+		ltd = rtd = rbd = lbd = 0.0;
+						
+	// set values for thrust channels using
+	// motor to PWM channel mapping values
+	dd.thrust[St.mtr.lt] = ltd;
+	dd.thrust[St.mtr.lb] = lbd;
+	dd.thrust[St.mtr.rt] = rtd;
+	dd.thrust[St.mtr.rb] = rbd;
+
+	// update average thrust LPF
+	avgthrust = (ltd + rtd + rbd + lbd) / 4.0;
+	avgthrust = avgthrust < 0.0 ? 0.0 : avgthrust;
+
+	dsp_updatelpf(Lpf + LPF_AVGTHR, avgthrust);
+
+	// write thrust values for each motor into log
+	log_write(LOG_LT, ltd);
+	log_write(LOG_LB, lbd);
+	log_write(LOG_RB, rbd);
+	log_write(LOG_RT, rtd);
+
+	// set thrust values using DShot output device
+	dev->write(dev->priv, &dd, sizeof(struct dshot_data));
+
+	return 0;
+}

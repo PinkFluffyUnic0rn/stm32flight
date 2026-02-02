@@ -6,8 +6,6 @@
 #ifndef TIMEV_H
 #define TIMEV_H
 
-#include "global.h"
-
 /**
 * @brief Check if enough time passed to call periodic event again.
 * @param ev periodic event's context.

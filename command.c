@@ -3,8 +3,8 @@
 #include <stdlib.h>
 
 #include "command.h"
+#include "settings.h"
 #include "device.h"
-#include "global.h"
 #include "crc.h"
 
 // debug command handler structure

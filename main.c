@@ -17,7 +17,6 @@
 #include "dsp.h"
 #include "log.h"
 #include "crc.h"
-#include "global.h"
 #include "runvals.h"
 #include "timev.h"
 #include "command.h"
@@ -34,8 +33,7 @@
 #include "m10.h"
 #include "uartconf.h"
 #include "irc.h"
-
-#include "thrust.h"
+#include "dshot.h"
 
 /**
 * @brief External interrupt callback. It calls interrupt handlers
@@ -114,15 +112,6 @@ float esccurrent()
 	HAL_ADC_Stop(&hadc2);
 
 	return (v / (float) 0xfff * St.adj.cursc + St.adj.curroff);
-}
-
-/**
-* @brief Init ESC's.
-* @return none
-*/
-static void esc_init()
-{
-	dshotinit();
 }
 
 /**
@@ -304,6 +293,30 @@ static void uartdev_init()
 }
 
 /**
+* @brief Init DShot-300 output.
+* @return none
+*/
+static void dshot_init()
+{
+	struct dshot_device d;
+
+	d.htim[0] = &htim1;
+	d.htim[1] = &htim1;
+	d.htim[2] = &htim1;
+	d.htim[3] = &htim1;
+
+	d.timch[0] = TIM_CHANNEL_1;
+	d.timch[1] = TIM_CHANNEL_2;
+	d.timch[2] = TIM_CHANNEL_3;
+	d.timch[3] = TIM_CHANNEL_4;
+
+	if (dshot_initdevice(&d, Dev + DEV_DSHOT) >= 0)
+		uartprintf("DShot300 initilized\r\n");
+	else
+		uartprintf("failed to initilize DShot300\r\n");
+}
+
+/**
 * @brief Calculate tilt compensated heading direction
 	using magnetometer readings, roll value and pitch value.
 * @param r roll value
@@ -346,7 +359,7 @@ int stabilize(int ms)
 
 	// emergency disarm happened
 	if (Emergencydisarm) {
-		setthrust(0.0, 0.0, 0.0, 0.0);
+		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 		En = 0.0;
 	}
 
@@ -448,6 +461,8 @@ int stabilize(int ms)
 	
 	log_write(LOG_CUSTOM0, dsp_getlpf(Lpf + LPF_VAU));
 
+	// update forward acceleration using acceleration
+	// vector to gravity vector projection
 	vx = sin(-roll) * sin(-pitch);
 	vy = cos(-pitch);
 	vz = cos(-roll) * sin(-pitch);
@@ -455,13 +470,14 @@ int stabilize(int ms)
 	dsp_updatelpf(Lpf + LPF_FA, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
+	// get pitch corrected value of the hover throttle
 	ht = St.adj.hoverthrottle / (cosf(-pitch) * cosf(-roll));
 
 	// if vertical acceleration is negative, most likely
 	// quadcopter is upside down, perform emergency disarm
 	if (dsp_getlpf(Lpf + LPF_THR) < -0.5) {
 		Emergencydisarm = 1;
-		setthrust(0.0, 0.0, 0.0, 0.0);
+		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 		En = 0.0;
 	}
 
@@ -618,7 +634,8 @@ int stabilize(int ms)
 	// 3 pairs of motors: left and right for roll, top and bottom
 	// for pitch and two diagonals (spinning in oposite directions)
 	// for yaw.
-	setthrust(En * ltm * (thrustcor + 0.5 * rollcor
+	setthrust(Dev + DEV_DSHOT,
+		En * ltm * (thrustcor + 0.5 * rollcor
 			+ 0.5 * pitchcor - 0.5 * yawcor),
 		En * rtm * (thrustcor - 0.5 * rollcor
 			+ 0.5 * pitchcor + 0.5 * yawcor),	
@@ -649,7 +666,7 @@ int checkconnection(int ms)
 	// packet came, disarm immediately
 	if (Elrstimeout <= 0) {
 		Emergencydisarm = 1;
-		setthrust(0.0, 0.0, 0.0, 0.0);
+		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 		En = 0.0;
 	}
 
@@ -730,10 +747,12 @@ int qmcupdate(int ms)
 	Dev[DEV_QMC].read(Dev[DEV_QMC].priv, &Qmcdata,
 		sizeof(struct qmc_data));
 
+	// apply offsets to magnetometer values
 	Qmcdata.fx = St.adj.magsc.x * (Qmcdata.fx + St.adj.mag0.x);
 	Qmcdata.fy = St.adj.magsc.y * (Qmcdata.fy + St.adj.mag0.y);
 	Qmcdata.fz = St.adj.magsc.z * (Qmcdata.fz + St.adj.mag0.z);
 
+	// apply scaling to magnetometer values
 	Qmcdata.fx += St.adj.magthrsc.x * dsp_getlpf(Lpf + LPF_AVGTHR);
 	Qmcdata.fy += St.adj.magthrsc.y * dsp_getlpf(Lpf + LPF_AVGTHR);
 	Qmcdata.fz += St.adj.magthrsc.z * dsp_getlpf(Lpf + LPF_AVGTHR);
@@ -743,6 +762,7 @@ int qmcupdate(int ms)
 	log_write(LOG_MAG_Y, Qmcdata.fy);
 	log_write(LOG_MAG_Z, Qmcdata.fz);
 
+	// update magnetometer values lpf
 	dsp_updatelpf(Lpf + LPF_MAGX, Qmcdata.fx);
 	dsp_updatelpf(Lpf + LPF_MAGY, Qmcdata.fy);
 	dsp_updatelpf(Lpf + LPF_MAGZ, Qmcdata.fz);
@@ -779,6 +799,8 @@ int telesend(int ms)
 	Tele.bat = dsp_getlpf(Lpf + LPF_BAT);
 	Tele.curr = dsp_getlpf(Lpf + LPF_CUR);
 
+	// Determine battery series cells count using it voltage
+	// and calculate it's remaining charge in percents
 	if (Tele.bat < 6.0)
 		Tele.batrem = (Tele.bat - 3.5) / 0.7;
 	else if (Tele.bat < 9.0)
@@ -954,7 +976,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	log_write(LOG_CRSFCH6, cd->chf[ERLS_CH_THRMODE]);
 	log_write(LOG_CRSFCH7, cd->chf[ERLS_CH_ONOFF]);
 
-	// channel 8 on remote is used to turn on/off
+	// ONOFF channel on remote is used to turn on/off
 	// erls control. If this channel has low state, all remote
 	// commands will be ignored, but packet still continue to
 	// comming
@@ -965,7 +987,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 	if (!Elrs) {
 		En = 0.0;
-		setthrust(0.0, 0.0, 0.0, 0.0);
+		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 
 		return 0;
 	}
@@ -973,7 +995,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// get time passed from last ERLS packet
 	dt = ms / (float) TICKSPERSEC;
 
-	// channel 16 is used to select settings slot, it is
+	// SETSLOT channel is used to select settings slot, it is
 	// a 6 position switch on remote used for testing
 	if (cd->chf[ERLS_CH_SETSLOT] < -0.8)		slot = 0;
 	else if (cd->chf[ERLS_CH_SETSLOT] < -0.4)	slot = 1;
@@ -997,6 +1019,9 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	} else
 		slottimeout = ELRS_PUSHTIMEOUT;
 
+	// AUTOPILOT channel is used to turn on/off autopilot
+	// if it is greater than 0, autopilot is on, otherwise
+	// it is turned off
 	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.0) {
 		if (Autopilot == 0)
 			Curpoint = 0;
@@ -1006,8 +1031,9 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	else
 		Autopilot = 0;
 
-	// set magnetometer stabilization mode, if channel 4 has value
-	// more than 0, set gyroscope only stabilization mode otherwise
+	// set magnetometer stabilization mode, if YAWMODE channel has
+	// value more than 0, set gyroscope only stabilization mode 
+	// otherwise
 	if (Autopilot) {
 	//	Yawtarget = 0.0;
 		Yawspeedpid = 0;
@@ -1028,10 +1054,10 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 			* M_PI * St.ctrl.yawrate;
 	}
 
-	// set altitude hold mode, if channel 7 has value more than 25,
-	// set climbrate stabilization mode if channel 7 has value
-	// between -25 and 25, set vertical acceleration mode if channel
-	// 7 value is less than -25
+	// set altitude hold mode, if THRMODE channel has value more
+	// than 25, set climbrate stabilization mode if THRMODE channel
+	// has value between -25 and 25, set vertical acceleration mode
+	// if THRMODE channel value is less than -25
 	if (Autopilot) {
 		Altmode = ALTMODE_POS;
 	}
@@ -1043,6 +1069,11 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	else if (cd->chf[ERLS_CH_THRMODE] < -0.25) {
 		Altmode = ALTMODE_ACCEL;
 
+		// Set throttle mode usging HOVER channel,
+		// if it is less that 0.0, use throttle setpoint
+		// range starting slightly less than 0,
+		// otherwise use throttle setpoint range with
+		// 0 value in middle
 		if (cd->chf[ERLS_CH_HOVER] < 0.0) {
 			Hovermode = 0;
 			Thrust = (cd->chf[ERLS_CH_THRUST] + 0.5)
@@ -1050,7 +1081,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		}
 		else {
 			Hovermode = 1;
-
 			Thrust = (cd->chf[ERLS_CH_THRUST])
 				/ 2.0 * St.ctrl.accelmax;
 		}
@@ -1061,17 +1091,18 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		Thrust = cd->chf[ERLS_CH_THRUST] * St.ctrl.climbratemax;
 	}
 
-	// if channel 9 is active (it's no-fix button on remote used
-	// for testing), set reference altitude from current altitude
+	// if ALTCALIB channel is active (it's no-fix button on remote
+	// used for testing), set reference altitude from current
+	// altitude
 	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0) {
 		Alt0 = dsp_getcompl(Cmpl + CMPL_ALT);
 		Goffset = 1.0 - dsp_getlpf(Lpf + LPF_VAAVG);
 	}
 
-	// set acceleromter stabilization mode, if channel 6 has value
-	// more than 25, set gyroscope only stabilization mode, if
-	// channel 6 has value between -25 and 25, disarm if channel 6
-	// value is less than -25
+	// set acceleromter stabilization mode, if ATTMODE channel has
+	// value more than 25, set gyroscope only stabilization mode, if
+	// ATTMODE channel has value between -25 and 25, disarm if
+	// channel ATTMODE value is less than -25
 /*
 	if (autopilot) {
 		en = 1;
@@ -1112,7 +1143,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// disable thrust when motors should be
 	// disabled, for additional safety
 	if (En < 0.5)
-		setthrust(0.0, 0.0, 0.0, 0.0);
+		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 
 	return 0;
 }
@@ -1193,7 +1224,6 @@ int main(void)
 	readsettings(Curslot);
 
 	// init board's devices
-	esc_init();
 	icm_init();
 	qmc_init();
 	espdev_init();
@@ -1203,6 +1233,7 @@ int main(void)
 	uartdev_init();
 	dps_init();
 	irc_init();
+	dshot_init();
 
 	// initialize stabilization routine
 	setstabilize(1);

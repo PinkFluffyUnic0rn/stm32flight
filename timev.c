@@ -1,3 +1,5 @@
+#include "settings.h"
+
 #include "timev.h"
 
 int inittimev(struct timev *ev, int phase, int freq, int (*cb)(int))

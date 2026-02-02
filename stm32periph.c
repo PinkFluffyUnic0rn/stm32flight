@@ -1,6 +1,5 @@
 #include "stm32periph.h"
-
-#include "global.h"
+#include "settings.h"
 
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
@@ -273,9 +272,9 @@ static void tim8_init(void)
 	TIM_MasterConfigTypeDef sMasterConfig = {0};
 
 	htim8.Instance = TIM8;
-	htim8.Init.Prescaler = PRESCALER - 1;
+	htim8.Init.Prescaler = (OCSFREQ / TICKSPERSEC) - 1;
 	htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim8.Init.Period = TIMPERIOD - 1;
+	htim8.Init.Period = 0xfff - 1;
 	htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim8.Init.RepetitionCounter = 0;
 	htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -300,7 +299,7 @@ static void tim8_init(void)
 static void tim10_init(void)
 {
 	htim10.Instance = TIM10;
-	htim10.Init.Prescaler = DELAYPRESCALER - 1;
+	htim10.Init.Prescaler = (OCSFREQ / TICKSPERSEC) - 1;
 	htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim10.Init.Period = 0xffff;
 	htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;

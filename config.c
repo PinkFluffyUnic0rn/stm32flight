@@ -9,17 +9,16 @@
 #include "dsp.h"
 #include "log.h"
 #include "crc.h"
-#include "global.h"
 #include "runvals.h"
 #include "timev.h"
 #include "command.h"
 #include "util.h"
-#include "thrust.h"
 
 #include "icm42688.h"
 #include "dps368.h"
 #include "qmc5883l.h"
 #include "irc.h"
+#include "dshot.h"
 
 enum NODETYPE {
 	NODETYPE_PARENT = 0,
@@ -1260,7 +1259,7 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		// flash erasing process takes time and blocks
 		// other actions, so disarm for safety
 		En = 0.0;
-		setthrust(0.0, 0.0, 0.0, 0.0);
+		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 
 		log_set(atoi(toks[2]), d, s);
 	}
@@ -1300,48 +1299,69 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 int motorcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "lt") == 0) {
-		if (strcmp(toks[2], "r") == 0)
-			dshotcmd(St.mtr.lt, 21);
-		else if (strcmp(toks[2], "d") == 0)
-			dshotcmd(St.mtr.lt, 20);
+		if (strcmp(toks[2], "r") == 0) {
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"reverse", St.mtr.lt);
+		}
+		else if (strcmp(toks[2], "d") == 0) {
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"direct", St.mtr.lt);
+		}
 		else if (strcmp(toks[2], "s") == 0) {
-			dshotcmd(St.mtr.lt, 12);
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"save", St.mtr.lt);
 			mdelay(35);
 		}
 		else
 			return (-1);
 	}
+
 	else if (strcmp(toks[1], "lb") == 0) {
-		if (strcmp(toks[2], "r") == 0)
-			dshotcmd(St.mtr.lb, 21);
-		else if (strcmp(toks[2], "d") == 0)
-			dshotcmd(St.mtr.lb, 20);
+		if (strcmp(toks[2], "r") == 0) {
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"reverse", St.mtr.lb);
+		}
+		else if (strcmp(toks[2], "d") == 0) {
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"direct", St.mtr.lb);
+		}
 		else if (strcmp(toks[2], "s") == 0) {
-			dshotcmd(St.mtr.lb, 12);
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"save", St.mtr.lb);
 			mdelay(35);
 		}
 		else
 			return (-1);
 	}
 	else if (strcmp(toks[1], "rb") == 0) {
-		if (strcmp(toks[2], "r") == 0)
-			dshotcmd(St.mtr.rb, 21);
-		else if (strcmp(toks[2], "d") == 0)
-			dshotcmd(St.mtr.rb, 20);
+		if (strcmp(toks[2], "r") == 0) {
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"reverse", St.mtr.rb);
+		}
+		else if (strcmp(toks[2], "d") == 0) {
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"direct", St.mtr.rb);
+		}
 		else if (strcmp(toks[2], "s") == 0) {
-			dshotcmd(St.mtr.rb, 12);
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"save", St.mtr.rb);
 			mdelay(35);
 		}
 		else
 			return (-1);
 	}
 	else if (strcmp(toks[1], "rt") == 0) {
-		if (strcmp(toks[2], "r") == 0)
-			dshotcmd(St.mtr.rt, 21);
-		else if (strcmp(toks[2], "d") == 0)
-			dshotcmd(St.mtr.rt, 20);
+		if (strcmp(toks[2], "r") == 0) {
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"reverse", St.mtr.rt);
+		}
+		else if (strcmp(toks[2], "d") == 0) {
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"direct", St.mtr.rt);
+		}
 		else if (strcmp(toks[2], "s") == 0) {
-			dshotcmd(St.mtr.rt, 12);
+			Dev[DEV_DSHOT].configure(Dev[DEV_DSHOT].priv,
+				"save", St.mtr.rt);
 			mdelay(35);
 		}
 		else
@@ -1429,7 +1449,11 @@ int setcmd(const struct cdevice *d, const char **toks, char *out)
 
 	node = &Sttree;
 			
+	// for every token starting from 
+	// second to skip command name
 	for (p = toks + 1; *p != NULL; ++p) {
+		// if current node it terminal, 
+		// set corresponding setting value
 		if (node->type == NODETYPE_FLOAT)
 			*(node->f) = atof(*(p));
 		else if (node->type == NODETYPE_INT)
@@ -1440,30 +1464,41 @@ int setcmd(const struct cdevice *d, const char **toks, char *out)
 			int v;
 			int i;
 
+			// current token is value,
+			// next token is key
 			key = *(p + 1);
 			v = atoi(*p);
 			++p;
 
+			// if no next token, then it is a parsing error
 			if (key == NULL)
 				return (-1);
 
+			// if command is to unset specific
+			// value in map just return
 			if (strcmp(key, "none") == 0)
 				return 0;
-	
+
+			// search for index corresponding to key in map	
 			if ((strn = mapsearch(node->m.k, key)) < 0)
 				return (-1);
-			
+		
+			// unset this value if it was already set	
 			for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
 				if (*(node->m.m + i) == v)
 					*(node->m.m + i) = 99;
 			}
 
+			// set value using key's index
 			St.log.fieldid[strn] = v;
 		}
 		else {
 			struct settingnode **chd;
-		
+	
+			// for every child node	
 			for (chd = node->child; *chd != NULL; ++chd) {
+				// if child node's token same as
+				// current token go to this node
 				if (strcmp((*chd)->token, *p) == 0) {
 					node = *chd;
 					break;
@@ -1488,29 +1523,40 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	int vi;
 	const char *vs;
 
+	// set defaults for output values
 	vf = 0.0;
 	vi = 0;
 
-	node = &Sttree;
 	valtype = CONFVALTYPE_FLOAT;
 
+	node = &Sttree;
+
+	// for every token starting from 
+	// second to skip command name
 	for (p = toks + 1; *p != NULL; ++p) {
 		struct settingnode **chd;
-		
+	
+		// if current node is terminal, it is a parsing error	
 		if (node->type != NODETYPE_PARENT)
 			break;
 	
+		// for every child node	
 		for (chd = node->child; *chd != NULL; ++chd) {
+			// if child node's token same as
+			// current token go to this node
 			if (strcmp((*chd)->token, *p) == 0) {
 				node = *chd;
 				break;
 			}
 		}
 
+		// if no correspondint child node
+		// found, it is a parsing error
 		if (*chd == NULL)
 			return (-1);
 	}
-
+	// get corresponding setting value from found
+	// node and set it's output type for printf
 	if (node->type == NODETYPE_FLOAT) {
 		vf = *(node->f);
 		valtype = CONFVALTYPE_FLOAT;
@@ -1525,22 +1571,27 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 
 		recn = atoi(*p);
 
+		// search map for a specific value 
 		for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
 			if (St.log.fieldid[i] == recn)
 				break;
 		}
 
+		// get key of a found value
 		vs = (i >= LOG_FIELDSTRSIZE) ? "none" : node->m.k[i];
 
 		valtype = CONFVALTYPE_STRING;
 	}
 
+	// start printing output from 7th character of output buffer
 	data = out + 6;
-	
+
+	// reconstruct this config command from tokens
 	data[0] = '\0';
 	for (p = toks + 1; *p != NULL; ++p)
 		sprintf(data + strlen(data), "%s ", *p);
 
+	// print value got from config
 	switch (valtype) {
 	case CONFVALTYPE_FLOAT:
 		sprintf(data + strlen(data), "%f\r\n", (double) vf);
@@ -1555,6 +1606,9 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		break;
 	}
 
+	// add CRC-16 putting it into first 5 characters
+	// of output buffer, put separating space to 6th
+	// character of output buffer
 	sprintf(out, "%05u", crc16((uint8_t *) data, strlen(data)));
 	out[5] = ' ';
 
