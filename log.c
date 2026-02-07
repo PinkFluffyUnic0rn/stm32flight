@@ -26,7 +26,15 @@ const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {
 	"custom0", "custom1", "custom2", "custom3", NULL
 };
 
-static int log_eraseflash(const struct cdevice *d, size_t size)
+/**
+* @brief Erase log flash to prepare at for writing,
+* erasing starts from address 0.
+*
+* @param d character device to write status information
+* @param size bytes count to erase
+* @return always 0
+*/
+static int eraseflash(const struct cdevice *d, size_t size)
 {
 	size_t pos;
 	char s[255];
@@ -64,7 +72,7 @@ static int log_eraseflash(const struct cdevice *d, size_t size)
 	return 0;
 }
 
-void log_write(int pos, float val)
+void writelog(int pos, float val)
 {
 	if (St.log.fieldid[pos] < 0
 			|| St.log.fieldid[pos] >= St.log.recsize) {
@@ -74,7 +82,7 @@ void log_write(int pos, float val)
 	logbuf[logbufpos * St.log.recsize + St.log.fieldid[pos]] = val;
 }
 
-int log_print(const struct cdevice *d, char *buf,
+int printlog(const struct cdevice *d, char *buf,
 	size_t from, size_t to)
 {
 	int fp;
@@ -124,13 +132,12 @@ int log_print(const struct cdevice *d, char *buf,
 			// send this string into debug connection
 			d->write(d->priv, buf, strlen(buf));
 		}
-
 	}
 
 	return 1;
 }
 
-int log_update()
+int updatelog()
 {
 	if (logflashpos >= logsize)
 		return 0;
@@ -155,7 +162,7 @@ int log_update()
 	return 0;
 }
 
-int log_set(int size, const struct cdevice *d, char *s)
+int setlog(int size, const struct cdevice *d, char *s)
 {
 	// notify user when erasing is started
 	if (d != NULL) {
@@ -172,7 +179,7 @@ int log_set(int size, const struct cdevice *d, char *s)
 
 	// erase log flash no
 	// respond during this process
-	log_eraseflash(d, logsize);
+	eraseflash(d, logsize);
 
 	// enable writeonly mode if log writing is enabled
 	Flashdev.ioctl(Flashdev.priv,

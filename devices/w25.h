@@ -1,7 +1,7 @@
 #ifndef W25_H
 #define W25_H
 
-#include "stm32periph.h"
+#include "stm32f4xx_hal.h"
 
 #include "device.h"
 

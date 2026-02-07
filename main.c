@@ -12,7 +12,7 @@
 
 #include "stm32f4xx_hal.h"
 
-#include "stm32periph.h"
+#include "periphconf.h"
 #include "settings.h"
 #include "dsp.h"
 #include "log.h"
@@ -34,6 +34,11 @@
 #include "uartconf.h"
 #include "irc.h"
 #include "dshot.h"
+
+/**
+* @brief handle for timer used for event scheduling
+*/
+TIM_HandleTypeDef *schedtim;
 
 /**
 * @brief External interrupt callback. It calls interrupt handlers
@@ -78,20 +83,78 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		Dev[DEV_CRSF].error(Dev[DEV_CRSF].priv, huart);
 }
 
+void NMI_Handler(void)
+{
+	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+
+	while (1) {}
+}
+
+void HardFault_Handler(void)
+{
+	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+	
+	while (1) {}
+}
+
+void MemManage_Handler(void)
+{
+	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+	
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+
+	while (1) {}
+}
+
+void BusFault_Handler(void)
+{
+	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+	
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+	
+	while (1) {}
+}
+
+void UsageFault_Handler(void)
+{
+	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+	
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+
+	while (1) {}
+}
+
+void error_handler(void)
+{
+	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+
+	__disable_irq();
+	while (1) {}
+}
+
 /**
 * @brief Get battery voltage from ADC.
 * @return battery voltage
 */
 float batteryvoltage()
 {
+	ADC_HandleTypeDef *hadc;
 	uint32_t v;
 
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 1);
+	hadc = pconf_hadcs + pconf_adcidx(ADC1);
 
-	v = HAL_ADC_GetValue(&hadc1);
+	HAL_ADC_Start(hadc);
+	HAL_ADC_PollForConversion(hadc, 1);
 
-	HAL_ADC_Stop(&hadc1);
+	v = HAL_ADC_GetValue(hadc);
+
+	HAL_ADC_Stop(hadc);
 
 	return (v / (float) 0xfff * BAT_SCALE);
 }
@@ -102,14 +165,17 @@ float batteryvoltage()
 */
 float esccurrent()
 {
+	ADC_HandleTypeDef *hadc;
 	uint32_t v;
+	
+	hadc = pconf_hadcs + pconf_adcidx(ADC2);
 
-	HAL_ADC_Start(&hadc2);
-	HAL_ADC_PollForConversion(&hadc2, 1);
+	HAL_ADC_Start(hadc);
+	HAL_ADC_PollForConversion(hadc, 1);
 
-	v = HAL_ADC_GetValue(&hadc2);
+	v = HAL_ADC_GetValue(hadc);
 
-	HAL_ADC_Stop(&hadc2);
+	HAL_ADC_Stop(hadc);
 
 	return (v / (float) 0xfff * St.adj.cursc + St.adj.curroff);
 }
@@ -122,7 +188,7 @@ static void dps_init()
 {
 	struct dps_device d;
 
-	d.hi2c = &hi2c1;
+	d.hi2c = pconf_hi2cs + pconf_i2cidx(I2C1);
 	d.rate = DPS_RATE_32;
 	d.osr = DPS_OSR_16;
 
@@ -140,7 +206,7 @@ static void irc_init()
 {
 	struct irc_device d;
 
-	d.huart = &huart5;
+	d.huart = pconf_huarts + pconf_uartidx(UART5);
 	d.power = St.irc.power;
 	d.frequency = St.irc.freq;
 
@@ -158,7 +224,7 @@ static void icm_init()
 {
 	struct icm_device d;
 
-	d.hspi = &hspi1;
+	d.hspi = pconf_hspis + pconf_spiidx(SPI1);
 	d.gpio = GPIOC;
 	d.pin = GPIO_PIN_13;
 
@@ -184,8 +250,8 @@ static void icm_init()
 static void qmc_init()
 {
 	struct qmc_device d;
-
-	d.hi2c = &hi2c1;
+	
+	d.hi2c = pconf_hi2cs + pconf_i2cidx(I2C1);
 	d.scale = QMC_SCALE_8;
 	d.rate = QMC_RATE_100;
 	d.osr = QMC_OSR_512;
@@ -204,7 +270,7 @@ static void espdev_init()
 {
 	struct esp_device d;
 
-	d.hspi = &hspi2;
+	d.hspi = pconf_hspis + pconf_spiidx(SPI2);
 	d.csgpio = GPIOC;
 	d.cspin = GPIO_PIN_0;
 	d.rstgpio = GPIOC;
@@ -231,9 +297,12 @@ static void crsfdev_init()
 {
 	struct crsf_device d;
 
-	d.huart = &huart2;
+	d.huart = pconf_huarts + pconf_uartidx(USART2);
 
-	crsf_initdevice(&d, Dev + DEV_CRSF);
+	if (crsf_initdevice(&d, Dev + DEV_CRSF) >= 0)
+		uartprintf("CRSF device initialized\r\n");
+	else
+		uartprintf("failed to initialize CRSF device\r\n");
 }
 
 /**
@@ -244,7 +313,7 @@ static void w25dev_init()
 {
 	struct w25_device d;
 
-	d.hspi = &hspi1;
+	d.hspi = pconf_hspis + pconf_spiidx(SPI1);
 	d.gpio = GPIOB;
 	d.pin = GPIO_PIN_3;
 
@@ -264,7 +333,7 @@ static void m10dev_init()
 {
 	struct m10_device d;
 
-	d.huart = &huart3;
+	d.huart = pconf_huarts + pconf_uartidx(USART3);
 
 	if (m10_initdevice(&d, Dev + DEV_M10) < 0) {
 		uartprintf("failed to initilize GPS device\r\n");
@@ -282,7 +351,7 @@ static void uartdev_init()
 {
 	struct uart_device d;
 
-	d.huart = &huart4;
+	d.huart = pconf_huarts + pconf_uartidx(UART4);
 
 	if (uart_initdevice(&d, Dev + DEV_UART) < 0) {
 		uartprintf("failed to initilize UART device\r\n");
@@ -300,10 +369,12 @@ static void dshot_init()
 {
 	struct dshot_device d;
 
-	d.htim[0] = &htim1;
-	d.htim[1] = &htim1;
-	d.htim[2] = &htim1;
-	d.htim[3] = &htim1;
+
+
+	d.htim[0] = pconf_htims + pconf_timidx(TIM1);
+	d.htim[1] = pconf_htims + pconf_timidx(TIM1);
+	d.htim[2] = pconf_htims + pconf_timidx(TIM1);
+	d.htim[3] = pconf_htims + pconf_timidx(TIM1);
 
 	d.timch[0] = TIM_CHANNEL_1;
 	d.timch[1] = TIM_CHANNEL_2;
@@ -370,7 +441,7 @@ int stabilize(int ms)
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 	// update battery voltage
-	log_write(LOG_BAT, dsp_getlpf(Lpf + LPF_BAT));
+	writelog(LOG_BAT, dsp_getlpf(Lpf + LPF_BAT));
 
 	// toggle arming indication led
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,
@@ -394,12 +465,12 @@ int stabilize(int ms)
 	Imudata.gfz -= St.adj.gyro0.z;
 
 	// write accelerometer and gyroscope values into log
-	log_write(LOG_ACC_X, Imudata.afx);
-	log_write(LOG_ACC_Y, Imudata.afy);
-	log_write(LOG_ACC_Z, Imudata.afz);
-	log_write(LOG_GYRO_X, Imudata.gfx);
-	log_write(LOG_GYRO_Y, Imudata.gfy);
-	log_write(LOG_GYRO_Z, Imudata.gfz);
+	writelog(LOG_ACC_X, Imudata.afx);
+	writelog(LOG_ACC_Y, Imudata.afy);
+	writelog(LOG_ACC_Z, Imudata.afz);
+	writelog(LOG_GYRO_X, Imudata.gfx);
+	writelog(LOG_GYRO_Y, Imudata.gfy);
+	writelog(LOG_GYRO_Z, Imudata.gfz);
 
 	// update accelerometer temperature
 	dsp_updatelpf(Lpf + LPF_IMUTEMP, Imudata.ft);
@@ -459,7 +530,7 @@ int stabilize(int ms)
 	dsp_updatelpf(Lpf + LPF_VAPT1, va);
 	dsp_updatelpf(Lpf + LPF_VAAVG, va);
 	
-	log_write(LOG_CUSTOM0, dsp_getlpf(Lpf + LPF_VAU));
+	writelog(LOG_CUSTOM0, dsp_getlpf(Lpf + LPF_VAU));
 
 	// update forward acceleration using acceleration
 	// vector to gravity vector projection
@@ -482,9 +553,9 @@ int stabilize(int ms)
 	}
 
 	// write roll, pitch and yaw values into log
-	log_write(LOG_ROLL, roll);
-	log_write(LOG_PITCH, pitch);
-	log_write(LOG_YAW, yaw);
+	writelog(LOG_ROLL, roll);
+	writelog(LOG_PITCH, pitch);
+	writelog(LOG_YAW, yaw);
 
 	if (Speedpid) {
 		// if in single PID loop mode for tilt
@@ -703,8 +774,8 @@ int dpsupdate(int ms)
 		sizeof(struct dps_data));
 
 	// write barometer temperature and altitude values into log
-	log_write(LOG_BAR_TEMP, hd.tempf);
-	log_write(LOG_BAR_ALT, hd.altf);
+	writelog(LOG_BAR_TEMP, hd.tempf);
+	writelog(LOG_BAR_ALT, hd.altf);
 
 	// update altitude low-pass filter and temperature reading
 	alt = dsp_updatelpf(Lpf + LPF_ALT, hd.altf);
@@ -725,8 +796,8 @@ int dpsupdate(int ms)
 	prevalt = dsp_getcompl(Cmpl + CMPL_ALT);
 
 	// write climbrate and altitude values into log
-	log_write(LOG_CLIMBRATE, dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
-	log_write(LOG_ALT, dsp_getcompl(Cmpl + CMPL_ALT));
+	writelog(LOG_CLIMBRATE, dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
+	writelog(LOG_ALT, dsp_getcompl(Cmpl + CMPL_ALT));
 
 	return 0;
 }
@@ -758,9 +829,9 @@ int qmcupdate(int ms)
 	Qmcdata.fz += St.adj.magthrsc.z * dsp_getlpf(Lpf + LPF_AVGTHR);
 
 	// write magnetometer values into log
-	log_write(LOG_MAG_X, Qmcdata.fx);
-	log_write(LOG_MAG_Y, Qmcdata.fy);
-	log_write(LOG_MAG_Z, Qmcdata.fz);
+	writelog(LOG_MAG_X, Qmcdata.fx);
+	writelog(LOG_MAG_Y, Qmcdata.fy);
+	writelog(LOG_MAG_Z, Qmcdata.fz);
 
 	// update magnetometer values lpf
 	dsp_updatelpf(Lpf + LPF_MAGX, Qmcdata.fx);
@@ -779,7 +850,7 @@ int qmcupdate(int ms)
 */
 int logupdate(int ms)
 {
-	log_update();
+	updatelog();
 
 	return 0;
 }
@@ -967,14 +1038,14 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	int slot;
 
 	// write first 8 channels values into log	
-	log_write(LOG_CRSFCH0, cd->chf[ERLS_CH_ROLL]);
-	log_write(LOG_CRSFCH1, cd->chf[ERLS_CH_PITCH]);
-	log_write(LOG_CRSFCH2, cd->chf[ERLS_CH_THRUST]);
-	log_write(LOG_CRSFCH3, cd->chf[ERLS_CH_YAW]);
-	log_write(LOG_CRSFCH4, cd->chf[ERLS_CH_YAWMODE]);
-	log_write(LOG_CRSFCH5, cd->chf[ERLS_CH_ATTMODE]);
-	log_write(LOG_CRSFCH6, cd->chf[ERLS_CH_THRMODE]);
-	log_write(LOG_CRSFCH7, cd->chf[ERLS_CH_ONOFF]);
+	writelog(LOG_CRSFCH0, cd->chf[ERLS_CH_ROLL]);
+	writelog(LOG_CRSFCH1, cd->chf[ERLS_CH_PITCH]);
+	writelog(LOG_CRSFCH2, cd->chf[ERLS_CH_THRUST]);
+	writelog(LOG_CRSFCH3, cd->chf[ERLS_CH_YAW]);
+	writelog(LOG_CRSFCH4, cd->chf[ERLS_CH_YAWMODE]);
+	writelog(LOG_CRSFCH5, cd->chf[ERLS_CH_ATTMODE]);
+	writelog(LOG_CRSFCH6, cd->chf[ERLS_CH_THRMODE]);
+	writelog(LOG_CRSFCH7, cd->chf[ERLS_CH_ONOFF]);
 
 	// ONOFF channel on remote is used to turn on/off
 	// erls control. If this channel has low state, all remote
@@ -1201,23 +1272,22 @@ int main(void)
 	int elrsus;
 	int i;
 
-	// initilize HAL
-	HAL_Init();
-
-	// initilize stm32 clocks
-	systemclock_config();
+	// init stm32 periphery
+	pconf_init(error_handler);
 
 	// set initial status for all devices to prevent callback
 	// calls on corresponding events before inittialization
 	for (i = 0; i < DEV_COUNT; ++i)
 		Dev[i].status = DEVSTATUS_NOINIT;
 
-	// wait a little to let stm32 periphery and
-	// board's devices power on
-	HAL_Delay(1000);
+	// set microsecond delay timer
+	delayinit(pconf_htims + pconf_timidx(TIM10));
 
-	// init stm32 periphery
-	periph_init();
+	// set microsecond delay timer
+	uartprintfinit(pconf_huarts + pconf_uartidx(UART4));
+
+	// set scheduler timer
+	schedtim = pconf_htims + pconf_timidx(TIM8);
 
 	// reading settings from memory current
 	// memory slot, which is 0 at start
@@ -1228,6 +1298,7 @@ int main(void)
 	qmc_init();
 	espdev_init();
 	crsfdev_init();
+
 	w25dev_init();
 	m10dev_init();
 	uartdev_init();
@@ -1268,6 +1339,8 @@ int main(void)
 	// separate timer.
 	elrsus = 0;
 
+	uartprintf("HERHER!\r\n");
+
 	// main control loop
 	while (1) {
 		char cmd[CMDSIZE];
@@ -1276,7 +1349,7 @@ int main(void)
 		int c, i;
 
 		// reset iteration time counter
-		__HAL_TIM_SET_COUNTER(&htim8, 0);
+		__HAL_TIM_SET_COUNTER(schedtim, 0);
 
 		// poll for configuration and telemetry commands
 		// from debug wifi connection
@@ -1317,7 +1390,7 @@ int main(void)
 		// get microseconds passed in this iteration
 		// one iteration duration should take at least
 		// some time, 100us was choosen
-		while ((c = __HAL_TIM_GET_COUNTER(&htim8)) < 1);
+		while ((c = __HAL_TIM_GET_COUNTER(schedtim)) < 1);
 
 		// update periodic events timers
 		for (i = 0; i < TEV_COUNT; ++i)

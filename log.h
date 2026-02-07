@@ -97,17 +97,7 @@ extern const char *logfieldmap[LOG_FIELDSTRSIZE + 1];
 * @param val value itself
 * @return none
 */
-void log_write(int pos, float val);
-
-/**
-* @brief Erase log flash to prepare at for writing,
-* erasing starts from address 0.
-*
-* @param d character device to write status information
-* @param size bytes count to erase
-* @return always 0
-*/
-int eraseflash(const struct cdevice *d, size_t size);
+void writelog(int pos, float val);
 
 /**
 * @brief Print all log values into character device.
@@ -118,7 +108,7 @@ int eraseflash(const struct cdevice *d, size_t size);
 * @param to record to end at
 * @return -1 on error, 1 otherwise
 */
-int log_print(const struct cdevice *d, char *buf,
+int printlog(const struct cdevice *d, char *buf,
 	size_t from, size_t to);
 
 /**
@@ -127,7 +117,7 @@ int log_print(const struct cdevice *d, char *buf,
 * pointer to 0.
 * @return always 0
 */
-int log_update();
+int updatelog();
 
 /**
 * Set log size and start or stop logging.
@@ -138,6 +128,6 @@ int log_update();
 * 	writing to device d.
 * @return -1 on error, 0 otherwise
 */
-int log_set(int size, const struct cdevice *d, char *s);
+int setlog(int size, const struct cdevice *d, char *s);
 
 #endif

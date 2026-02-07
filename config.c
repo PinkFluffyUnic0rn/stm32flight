@@ -1261,11 +1261,11 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		En = 0.0;
 		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 
-		log_set(atoi(toks[2]), d, s);
+		setlog(atoi(toks[2]), d, s);
 	}
 	else if (strcmp(toks[1], "rget") == 0) {
 		// print records from specified range
-		if (log_print(d, s, atoi(toks[2]),
+		if (printlog(d, s, atoi(toks[2]),
 				atoi(toks[3])) < 0) {
 			return (-1);
 		}
@@ -1280,7 +1280,7 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		// print every record whose
 		// number is in arguments
 		for (p = toks + 2; strlen(*p) != 0; ++p) {
-			if (log_print(d, s, atoi(*p),
+			if (printlog(d, s, atoi(*p),
 					atoi(*p) + 1) < 0) {
 				return (-1);
 			}

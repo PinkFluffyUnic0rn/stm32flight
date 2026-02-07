@@ -20,6 +20,13 @@
 #define ispow2(v) ((v != 0) && ((v & (v - 1)) == 0))
 
 /**
+* @brief Set debug uart handler.
+* @param huart debug uart handler.
+* @return always 0
+*/
+int uartprintfinit(UART_HandleTypeDef *huart);
+
+/**
 * @brief Print data into debug UART interface.
 * @param format arguments same as for printf.
 * @return always 0
@@ -33,6 +40,14 @@ int uartprintf(const char *format, ...);
 * @return none
 */
 void memcpyv(volatile void *dest, const volatile void *src, size_t n);
+
+/**
+* @brief Set delay timer handler.
+*
+* @param htim delay timer handler.
+* @return always 0
+*/
+int delayinit(TIM_HandleTypeDef *htim);
 
 /**
 * @brief Microseconds delay.

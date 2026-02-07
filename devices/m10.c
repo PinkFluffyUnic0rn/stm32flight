@@ -598,5 +598,5 @@ int m10_initdevice(void *is, struct cdevice *dev)
 
 	dev->status = (r == 0) ? DEVSTATUS_INIT : DEVSTATUS_FAILED;
 
-	return 0;
+	return r;
 };

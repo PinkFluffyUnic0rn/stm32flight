@@ -1,13 +1,14 @@
 CC=arm-none-eabi-gcc
 
+BUILDDIR=build
 SOURCES=$(wildcard ./*.c) $(wildcard ./devices/*.c) \
 	$(wildcard ./Drivers/Src/*.c)
-OBJECTS=$(SOURCES:.c=.o)
+OBJECTS=$(SOURCES:%.c=$(BUILDDIR)/%.o)
 LDFLAGS=-mcpu=cortex-m4 -T./linker-script.ld --specs=nosys.specs \
 	-Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 \
 	-mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm \
 	-Wl,--end-group -fsingle-precision-constant -u _printf_float \
-	-Wl,-Map=memmap.map
+	-Wl,-Map=$(BUILDDIR)/memmap.map
 CFLAGS=-mcpu=cortex-m4 -std=gnu11 -DUSE_HAL_DRIVER -DSTM32F405xx -c \
        -I. -I./Drivers/Inc/Legacy -I./Drivers/Inc \
        -I./Drivers/CMSIS/Device/ST/STM32F4xx/Include \
@@ -23,18 +24,20 @@ SFLAGS=-mcpu=cortex-m4 -c -x assembler-with-cpp --specs=nano.specs \
 
 all: load
 
-load: prog.elf
+load: $(BUILDDIR)/prog.elf
 	openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
-		-c "program prog.elf verify reset exit"
+		-c "program $(BUILDDIR)/prog.elf verify reset exit"
 
-prog.elf: $(OBJECTS) ./startup.o
-	$(CC) $(LDFLAGS) $(OBJECTS) ./startup.o -o $@
+$(BUILDDIR)/prog.elf: $(OBJECTS) $(BUILDDIR)/startup.o
+	$(CC) $(LDFLAGS) $(OBJECTS) $(BUILDDIR)/startup.o -o $@
 
-.s.o:
+$(BUILDDIR)/%.o: %.s
+	@mkdir -p $(@D)
 	$(CC) $(SFLAGS) $< -o $@
 
-.c.o:
+$(BUILDDIR)/%.o: %.c
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $< -o $@
 
 clean:
-	rm $(OBJECTS) ./startup.o
+	rm -r build
