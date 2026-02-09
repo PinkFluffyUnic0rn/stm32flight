@@ -1,15 +1,11 @@
 #include "stm32f4xx_hal.h"
+
+#include <periphconf.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 
 #include "util.h"
-
-// delay timer handler
-static TIM_HandleTypeDef *htimdelay;
-
-// printf huart handler
-static UART_HandleTypeDef *huartprintf;
 
 void memcpyv(volatile void *dest, const volatile void *src, size_t n)
 {
@@ -17,13 +13,6 @@ void memcpyv(volatile void *dest, const volatile void *src, size_t n)
 
 	for (i = 0; i < n; ++i)
 		((uint8_t *) dest)[i] = ((uint8_t *) src)[i];
-}
-
-int uartprintfinit(UART_HandleTypeDef *huart)
-{
-	huartprintf = huart;
-
-	return 0;
 }
 
 int uartprintf(const char *format, ...)
@@ -35,15 +24,7 @@ int uartprintf(const char *format, ...)
 
 	vsprintf(buf, format, args);
 
-	HAL_UART_Transmit(huartprintf,
-		(uint8_t *) buf, strlen(buf), 100);
-
-	return 0;
-}
-
-int delayinit(TIM_HandleTypeDef *htim)
-{
-	htimdelay = htim;
+	Dev[DEV_UART].write(Dev[DEV_UART].priv, buf, strlen(buf));
 
 	return 0;
 }
@@ -52,9 +33,9 @@ int udelay(int us)
 {
 	int c;
 
-	__HAL_TIM_SET_COUNTER(htimdelay, 0);
+	__HAL_TIM_SET_COUNTER(pconf_delayhtim, 0);
 
-	while ((c = __HAL_TIM_GET_COUNTER(htimdelay)) < us);
+	while ((c = __HAL_TIM_GET_COUNTER(pconf_delayhtim)) < us);
 
 	return 0;
 }

@@ -20,13 +20,6 @@
 #define ispow2(v) ((v != 0) && ((v & (v - 1)) == 0))
 
 /**
-* @brief Set debug uart handler.
-* @param huart debug uart handler.
-* @return always 0
-*/
-int uartprintfinit(UART_HandleTypeDef *huart);
-
-/**
 * @brief Print data into debug UART interface.
 * @param format arguments same as for printf.
 * @return always 0

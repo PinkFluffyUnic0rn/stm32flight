@@ -5,6 +5,7 @@
 #include "settings.h"
 
 #include "periphconf.h"
+#include "util.h"
 
 enum PCONF_TIMUSAGE {
 	PCONF_TIMUSAGE_PWM,
@@ -119,6 +120,10 @@ struct pconf_iface {
 	};
 };
 
+struct pconf_debug {
+	struct pconf_iface iface;	
+};
+
 struct pconf_imu {
 	enum PCONF_IMUTYPE type;
 	struct pconf_iface iface;
@@ -158,6 +163,13 @@ struct pconf_vtx {
 	struct pconf_iface iface;	
 };
 
+struct pconf_pwm {
+	struct {
+		TIM_TypeDef *inst;
+		int chan;
+	} pwm[4];
+};
+
 struct pconf_battery {
 	ADC_TypeDef *adc;
 	struct pconf_pin pin;
@@ -178,6 +190,20 @@ I2C_HandleTypeDef pconf_hi2cs[3];
 SPI_HandleTypeDef pconf_hspis[3];
 TIM_HandleTypeDef pconf_htims[5];
 UART_HandleTypeDef pconf_huarts[5];
+
+GPIO_TypeDef *armgpio;
+int armpin;
+GPIO_TypeDef *debuggpio;
+int debugpin;
+
+TIM_HandleTypeDef *pconf_delayhtim;
+TIM_HandleTypeDef *pconf_schedhtim;
+
+struct cdevice Dev[DEV_COUNT];
+struct bdevice Flashdev;
+
+ADC_HandleTypeDef *pconf_batteryhadc;
+ADC_HandleTypeDef *pconf_currenthadc;
 
 static int pconf_dma_stream_irqn(const DMA_Stream_TypeDef *dma)
 {
@@ -772,7 +798,7 @@ const int *pconf_timpwm_dmaids(TIM_TypeDef *inst, int ch,
 	return dmaids;
 }
 
-int pconf_uartidx(USART_TypeDef* inst)
+static int pconf_uartidx(USART_TypeDef* inst)
 {
 	int i;
 
@@ -784,7 +810,7 @@ int pconf_uartidx(USART_TypeDef* inst)
 	return (-1);
 }
 
-int pconf_adcidx(ADC_TypeDef *inst)
+static int pconf_adcidx(ADC_TypeDef *inst)
 {
 	int i;
 
@@ -796,7 +822,7 @@ int pconf_adcidx(ADC_TypeDef *inst)
 	return (-1);
 }
 
-int pconf_i2cidx(I2C_TypeDef *inst)
+static int pconf_i2cidx(I2C_TypeDef *inst)
 {
 	int i;
 
@@ -808,7 +834,7 @@ int pconf_i2cidx(I2C_TypeDef *inst)
 	return (-1);
 }
 
-int pconf_spiidx(SPI_TypeDef *inst)
+static int pconf_spiidx(SPI_TypeDef *inst)
 {
 	int i;
 
@@ -820,7 +846,7 @@ int pconf_spiidx(SPI_TypeDef *inst)
 	return (-1);
 }
 
-int pconf_timidx(TIM_TypeDef *inst)
+static int pconf_timidx(TIM_TypeDef *inst)
 {
 	int i;
 
@@ -1679,8 +1705,168 @@ static void pconf_init_uart()
 	}
 }
 
+static void icm_init()
+{
+	struct icm_device d;
+
+	d.hspi = pconf_hspis + pconf_spiidx(imuconf.iface.hspi);
+	d.gpio = imuconf.iface.cs.inst;
+	d.pin = imuconf.iface.cs.idx;
+
+	d.gyroscale = ICM_1000DPS;
+	d.gyrorate = ICM_GYRO8K;
+	d.gyroorder = ICM_GYROORDER3;
+	d.gyrolpf = ICM_GYROLPFLL;
+	d.accelscale = ICM_4G;
+	d.accelrate = ICM_ACCEL8K;
+	d.accellpf = ICM_ACCELLPFLL;
+	d.accelorder = ICM_ACCELORDER3;
+
+	if (icm_initdevice(&d, Dev + DEV_ICM) >= 0)
+		uartprintf("ICM-42688 initialized\r\n");
+	else
+		uartprintf("failed to initialize ICM-42688\r\n");
+}
+
+static void dps_init()
+{
+	struct dps_device d;
+
+	d.hi2c = pconf_hi2cs + pconf_i2cidx(barconf.iface.hi2c);
+	d.rate = DPS_RATE_32;
+	d.osr = DPS_OSR_16;
+
+	if (dps_initdevice(&d, Dev + DEV_DPS) >= 0)
+		uartprintf("DPS368 initialized\r\n");
+	else
+		uartprintf("failed to initialize DPS368\r\n");
+}
+
+static void qmc_init()
+{
+	struct qmc_device d;
+
+	d.hi2c = pconf_hi2cs + pconf_i2cidx(magconf.iface.hi2c);
+	d.scale = QMC_SCALE_8;
+	d.rate = QMC_RATE_100;
+	d.osr = QMC_OSR_512;
+
+	if (qmc_initdevice(&d, Dev + DEV_QMC) >= 0)
+		uartprintf("QMC5883L initialized\r\n");
+	else
+		uartprintf("failed to initialize QMC5883L\r\n");
+}
+
+static void w25dev_init()
+{
+	struct w25_device d;
+
+	d.hspi = pconf_hspis + pconf_spiidx(flashconf.iface.hspi);
+	d.gpio = flashconf.iface.cs.inst;
+	d.pin = flashconf.iface.cs.idx;
+
+	if (w25_initdevice(&d, &Flashdev) >= 0)
+		uartprintf("W25Q initialized\r\n");
+	else
+		uartprintf("failed to initialize W25Q\r\n");
+}
+
+static void crsfdev_init()
+{
+	struct crsf_device d;
+
+	d.huart = pconf_huarts + pconf_uartidx(crsfconf.iface.huart);
+
+	if (crsf_initdevice(&d, Dev + DEV_CRSF) >= 0)
+		uartprintf("CRSF device initialized\r\n");
+	else
+		uartprintf("failed to initialize CRSF device\r\n");
+}
+
+static void m10dev_init()
+{
+	struct m10_device d;
+
+	d.huart = pconf_huarts + pconf_uartidx(gnssconf.iface.huart);
+
+	if (m10_initdevice(&d, Dev + DEV_M10) >= 0)
+		uartprintf("GPS device initialized\r\n");
+	else
+		uartprintf("failed to initialize GPS device\r\n");
+}
+
+static void espdev_init()
+{
+	struct esp_device d;
+
+	d.hspi = pconf_hspis + pconf_spiidx(rfconf.iface.hspi);
+	d.csgpio = rfconf.iface.cs.inst;
+	d.cspin = rfconf.iface.cs.idx;
+	d.rstgpio = rfconf.reset.inst;
+	d.rstpin = rfconf.reset.idx;
+	d.bootgpio = rfconf.boot.inst;
+	d.bootpin = rfconf.boot.idx;
+	d.busygpio = rfconf.busy.inst;
+	d.busypin = rfconf.busy.idx;
+	d.intpin = rfconf.interrupt.idx;
+
+	if (esp_initdevice(&d, Dev + DEV_ESP) >= 0)
+		uartprintf("ESP8266 initialized\r\n");
+	else
+		uartprintf("failed to initialize ESP8266\r\n");
+}
+
+static void irc_init()
+{
+	struct irc_device d;
+
+	d.huart = pconf_huarts + pconf_uartidx(vtxconf.iface.huart);
+	d.power = St.irc.power;
+	d.frequency = St.irc.freq;
+
+	if (irc_initdevice(&d, Dev + DEV_IRC) >= 0)
+		uartprintf("IRC device initilized\r\n");
+	else
+		uartprintf("failed to initilize IRC device\r\n");
+}
+
+static void uartdev_init()
+{
+	struct uart_device d;
+
+	d.huart = pconf_huarts + pconf_uartidx(debugconf.iface.huart);
+
+	if (uart_initdevice(&d, Dev + DEV_UART) >= 0)
+		uartprintf("UART device initilized\r\n");
+	else
+		uartprintf("failed to initilize UART device\r\n");
+
+}
+
+static void dshot_init()
+{
+	struct dshot_device d;
+
+	d.htim[0] = pconf_htims + pconf_timidx(pwmconf.pwm[0].inst);
+	d.htim[1] = pconf_htims + pconf_timidx(pwmconf.pwm[1].inst);
+	d.htim[2] = pconf_htims + pconf_timidx(pwmconf.pwm[2].inst);
+	d.htim[3] = pconf_htims + pconf_timidx(pwmconf.pwm[3].inst);
+
+	d.timch[0] = pconf_timpwm_chan(pwmconf.pwm[0].chan);
+	d.timch[1] = pconf_timpwm_chan(pwmconf.pwm[1].chan);
+	d.timch[2] = pconf_timpwm_chan(pwmconf.pwm[2].chan);
+	d.timch[3] = pconf_timpwm_chan(pwmconf.pwm[3].chan);
+
+	if (dshot_initdevice(&d, Dev + DEV_DSHOT) >= 0)
+		uartprintf("DShot300 initilized\r\n");
+	else
+		uartprintf("failed to initilize DShot300\r\n");
+}
+
 void pconf_init(void (*errhandler)(void))
 {
+	int i;
+	
 	HAL_Init();
 
 	error_handler = errhandler;
@@ -1690,13 +1876,38 @@ void pconf_init(void (*errhandler)(void))
 	HAL_Delay(1000);
 
 	pconf_init_gpio();
-
 	pconf_init_dma();
 	pconf_init_tim();
 	pconf_init_uart();
 	pconf_init_i2c();
 	pconf_init_spi();
 	pconf_init_adc();
+
+	for (i = 0; i < DEV_COUNT; ++i)
+		Dev[i].status = DEVSTATUS_NOINIT;
+
+	armgpio = armpinconf.inst;
+	armpin = armpinconf.idx;
+
+	debuggpio = debugpinconf.inst;
+	debugpin = debugpinconf.idx;
+
+	pconf_delayhtim = pconf_htims + pconf_timidx(delayconf);
+	pconf_schedhtim = pconf_htims + pconf_timidx(schedconf);
+		
+	pconf_batteryhadc = pconf_hadcs + pconf_adcidx(batconf.adc);
+	pconf_currenthadc = pconf_hadcs + pconf_adcidx(curconf.adc);
+
+	uartdev_init();
+	icm_init();
+	dps_init();
+	qmc_init();
+	w25dev_init();
+	crsfdev_init();
+	m10dev_init();
+	espdev_init();
+	irc_init();
+	dshot_init();
 }
 
 void assert_failed(uint8_t *file, uint32_t line)

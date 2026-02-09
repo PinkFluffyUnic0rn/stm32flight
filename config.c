@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "periphconf.h"
 #include "settings.h"
 #include "dsp.h"
 #include "log.h"

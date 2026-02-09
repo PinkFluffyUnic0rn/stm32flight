@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "periphconf.h"
 #include "runvals.h"
 #include "settings.h"
 #include "crc.h"

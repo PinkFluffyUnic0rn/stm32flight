@@ -36,11 +36,6 @@
 #include "dshot.h"
 
 /**
-* @brief handle for timer used for event scheduling
-*/
-TIM_HandleTypeDef *schedtim;
-
-/**
 * @brief External interrupt callback. It calls interrupt handlers
 	from drivers for devices that use external interrupts.
 * @param pin number of pin triggered the callback
@@ -87,7 +82,7 @@ void NMI_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
 
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ERROR_GPIO, ERROR_PIN, GPIO_PIN_SET);
 
 	while (1) {}
 }
@@ -96,7 +91,7 @@ void HardFault_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
 
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ERROR_GPIO, ERROR_PIN, GPIO_PIN_SET);
 	
 	while (1) {}
 }
@@ -105,7 +100,7 @@ void MemManage_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
 	
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ERROR_GPIO, ERROR_PIN, GPIO_PIN_SET);
 
 	while (1) {}
 }
@@ -114,7 +109,7 @@ void BusFault_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
 	
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ERROR_GPIO, ERROR_PIN, GPIO_PIN_SET);
 	
 	while (1) {}
 }
@@ -123,7 +118,7 @@ void UsageFault_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
 	
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ERROR_GPIO, ERROR_PIN, GPIO_PIN_SET);
 
 	while (1) {}
 }
@@ -132,7 +127,7 @@ void error_handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
 
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ERROR_GPIO, ERROR_PIN, GPIO_PIN_SET);
 
 	__disable_irq();
 	while (1) {}
@@ -147,7 +142,7 @@ float batteryvoltage()
 	ADC_HandleTypeDef *hadc;
 	uint32_t v;
 
-	hadc = pconf_hadcs + pconf_adcidx(ADC1);
+	hadc = pconf_batteryhadc;
 
 	HAL_ADC_Start(hadc);
 	HAL_ADC_PollForConversion(hadc, 1);
@@ -168,7 +163,7 @@ float esccurrent()
 	ADC_HandleTypeDef *hadc;
 	uint32_t v;
 	
-	hadc = pconf_hadcs + pconf_adcidx(ADC2);
+	hadc = pconf_currenthadc;
 
 	HAL_ADC_Start(hadc);
 	HAL_ADC_PollForConversion(hadc, 1);
@@ -178,213 +173,6 @@ float esccurrent()
 	HAL_ADC_Stop(hadc);
 
 	return (v / (float) 0xfff * St.adj.cursc + St.adj.curroff);
-}
-
-/**
-* @brief Init HP206c barometer.
-* @return none
-*/
-static void dps_init()
-{
-	struct dps_device d;
-
-	d.hi2c = pconf_hi2cs + pconf_i2cidx(I2C1);
-	d.rate = DPS_RATE_32;
-	d.osr = DPS_OSR_16;
-
-	if (dps_initdevice(&d, Dev + DEV_DPS) >= 0)
-		uartprintf("DPS368 initilized\r\n");
-	else
-		uartprintf("failed to initilize DPS368\r\n");
-}
-
-/**
-* @brief Init IRC tramp video transmitter.
-* @return none
-*/
-static void irc_init()
-{
-	struct irc_device d;
-
-	d.huart = pconf_huarts + pconf_uartidx(UART5);
-	d.power = St.irc.power;
-	d.frequency = St.irc.freq;
-
-	if (irc_initdevice(&d, Dev + DEV_IRC) >= 0)
-		uartprintf("IRC device initilized\r\n");
-	else
-		uartprintf("failed to initilize IRC device\r\n");
-}
-
-/**
-* @brief Init ICM-42688-P IMU.
-* @return none
-*/
-static void icm_init()
-{
-	struct icm_device d;
-
-	d.hspi = pconf_hspis + pconf_spiidx(SPI1);
-	d.gpio = GPIOC;
-	d.pin = GPIO_PIN_13;
-
-	d.gyroscale = ICM_1000DPS;
-	d.gyrorate = ICM_GYRO8K;
-	d.gyroorder = ICM_GYROORDER3;
-	d.gyrolpf = ICM_GYROLPFLL;
-	d.accelscale = ICM_4G;
-	d.accelrate = ICM_ACCEL8K;
-	d.accellpf = ICM_ACCELLPFLL;
-	d.accelorder = ICM_ACCELORDER3;
-
-	if (icm_initdevice(&d, Dev + DEV_ICM) >= 0)
-		uartprintf("ICM-42688 initilized\r\n");
-	else
-		uartprintf("failed to initilize ICM-42688\r\n");
-}
-
-/**
-* @brief Init QMC5883L magnetometer.
-* @return none
-*/
-static void qmc_init()
-{
-	struct qmc_device d;
-	
-	d.hi2c = pconf_hi2cs + pconf_i2cidx(I2C1);
-	d.scale = QMC_SCALE_8;
-	d.rate = QMC_RATE_100;
-	d.osr = QMC_OSR_512;
-
-	if (qmc_initdevice(&d, Dev + DEV_QMC) >= 0)
-		uartprintf("QMC5883L initilized\r\n");
-	else
-		uartprintf("failed to initilize QMC5883L\r\n");
-}
-
-/**
-* @brief Init ESP8285.
-* @return none
-*/
-static void espdev_init()
-{
-	struct esp_device d;
-
-	d.hspi = pconf_hspis + pconf_spiidx(SPI2);
-	d.csgpio = GPIOC;
-	d.cspin = GPIO_PIN_0;
-	d.rstgpio = GPIOC;
-	d.rstpin = GPIO_PIN_14;
-	d.bootgpio = GPIOC;
-	d.bootpin = GPIO_PIN_15;
-	d.busygpio = GPIOB;
-	d.busypin = GPIO_PIN_15;
-	d.intpin = GPIO_PIN_1;
-
-	if (esp_initdevice(&d, Dev + DEV_ESP) < 0) {
-		uartprintf("failed to initilize ESP8266\r\n");
-		return;
-	}
-
-	uartprintf("ESP8266 initilized\r\n");
-}
-
-/**
-* @brief Init ERLS receiver driver.
-* @return none
-*/
-static void crsfdev_init()
-{
-	struct crsf_device d;
-
-	d.huart = pconf_huarts + pconf_uartidx(USART2);
-
-	if (crsf_initdevice(&d, Dev + DEV_CRSF) >= 0)
-		uartprintf("CRSF device initialized\r\n");
-	else
-		uartprintf("failed to initialize CRSF device\r\n");
-}
-
-/**
-* @brief Init W25Q onboard flash memory.
-* @return none
-*/
-static void w25dev_init()
-{
-	struct w25_device d;
-
-	d.hspi = pconf_hspis + pconf_spiidx(SPI1);
-	d.gpio = GPIOB;
-	d.pin = GPIO_PIN_3;
-
-	if (w25_initdevice(&d, &Flashdev) < 0) {
-		uartprintf("failed to initilize W25Q\r\n");
-		return;
-	}
-
-	uartprintf("W25Q initilized\r\n");
-}
-
-/**
-* @brief Init GNSS module.
-* @return none
-*/
-static void m10dev_init()
-{
-	struct m10_device d;
-
-	d.huart = pconf_huarts + pconf_uartidx(USART3);
-
-	if (m10_initdevice(&d, Dev + DEV_M10) < 0) {
-		uartprintf("failed to initilize GPS device\r\n");
-		return;
-	}
-
-	uartprintf("GPS device initilized\r\n");
-}
-
-/**
-* @brief Init UART config connection.
-* @return none
-*/
-static void uartdev_init()
-{
-	struct uart_device d;
-
-	d.huart = pconf_huarts + pconf_uartidx(UART4);
-
-	if (uart_initdevice(&d, Dev + DEV_UART) < 0) {
-		uartprintf("failed to initilize UART device\r\n");
-		return;
-	}
-
-	uartprintf("UART device initilized\r\n");
-}
-
-/**
-* @brief Init DShot-300 output.
-* @return none
-*/
-static void dshot_init()
-{
-	struct dshot_device d;
-
-
-
-	d.htim[0] = pconf_htims + pconf_timidx(TIM1);
-	d.htim[1] = pconf_htims + pconf_timidx(TIM1);
-	d.htim[2] = pconf_htims + pconf_timidx(TIM1);
-	d.htim[3] = pconf_htims + pconf_timidx(TIM1);
-
-	d.timch[0] = TIM_CHANNEL_1;
-	d.timch[1] = TIM_CHANNEL_2;
-	d.timch[2] = TIM_CHANNEL_3;
-	d.timch[3] = TIM_CHANNEL_4;
-
-	if (dshot_initdevice(&d, Dev + DEV_DSHOT) >= 0)
-		uartprintf("DShot300 initilized\r\n");
-	else
-		uartprintf("failed to initilize DShot300\r\n");
 }
 
 /**
@@ -425,8 +213,8 @@ int stabilize(int ms)
 	float dt;
 
 	// debug pin switching
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4,
-		!(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4)));
+	HAL_GPIO_WritePin(debuggpio, debugpin,
+		!(HAL_GPIO_ReadPin(debuggpio, debugpin)));
 
 	// emergency disarm happened
 	if (Emergencydisarm) {
@@ -444,7 +232,7 @@ int stabilize(int ms)
 	writelog(LOG_BAT, dsp_getlpf(Lpf + LPF_BAT));
 
 	// toggle arming indication led
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,
+	HAL_GPIO_WritePin(armgpio, armpin,
 		(En > 0.5) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
 	// get accelerometer and gyroscope readings
@@ -1270,41 +1058,13 @@ int m10msg(struct m10_data *nd)
 int main(void)
 {
 	int elrsus;
-	int i;
 
-	// init stm32 periphery
+	// init periphery
 	pconf_init(error_handler);
-
-	// set initial status for all devices to prevent callback
-	// calls on corresponding events before inittialization
-	for (i = 0; i < DEV_COUNT; ++i)
-		Dev[i].status = DEVSTATUS_NOINIT;
-
-	// set microsecond delay timer
-	delayinit(pconf_htims + pconf_timidx(TIM10));
-
-	// set microsecond delay timer
-	uartprintfinit(pconf_huarts + pconf_uartidx(UART4));
-
-	// set scheduler timer
-	schedtim = pconf_htims + pconf_timidx(TIM8);
 
 	// reading settings from memory current
 	// memory slot, which is 0 at start
 	readsettings(Curslot);
-
-	// init board's devices
-	icm_init();
-	qmc_init();
-	espdev_init();
-	crsfdev_init();
-
-	w25dev_init();
-	m10dev_init();
-	uartdev_init();
-	dps_init();
-	irc_init();
-	dshot_init();
 
 	// initialize stabilization routine
 	setstabilize(1);
@@ -1339,8 +1099,6 @@ int main(void)
 	// separate timer.
 	elrsus = 0;
 
-	uartprintf("HERHER!\r\n");
-
 	// main control loop
 	while (1) {
 		char cmd[CMDSIZE];
@@ -1349,7 +1107,7 @@ int main(void)
 		int c, i;
 
 		// reset iteration time counter
-		__HAL_TIM_SET_COUNTER(schedtim, 0);
+		__HAL_TIM_SET_COUNTER(pconf_schedhtim, 0);
 
 		// poll for configuration and telemetry commands
 		// from debug wifi connection
@@ -1390,7 +1148,7 @@ int main(void)
 		// get microseconds passed in this iteration
 		// one iteration duration should take at least
 		// some time, 100us was choosen
-		while ((c = __HAL_TIM_GET_COUNTER(schedtim)) < 1);
+		while ((c = __HAL_TIM_GET_COUNTER(pconf_schedhtim)) < 1);
 
 		// update periodic events timers
 		for (i = 0; i < TEV_COUNT; ++i)

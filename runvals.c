@@ -4,8 +4,6 @@
 #include "runvals.h"
 
 struct timev Evs[TEV_COUNT];
-struct cdevice Dev[DEV_COUNT];
-struct bdevice Flashdev;
 struct dsp_lpf Lpf[LPF_COUNT];
 struct dsp_compl Cmpl[CMPL_COUNT];
 struct dsp_pidblval Pid[PID_COUNT];

@@ -72,27 +72,6 @@
 #define MAX_POINT_COUNT 16
 
 /**
-* @defgroup DEVIDS
-* @brief Character devices IDs
-* @{
-*/
-enum DEV_ID {
-	DEV_ICM		= 0,	/*!< IMU device number */
-	DEV_DPS		= 1,	/*!< barometer device number */
-	DEV_QMC		= 2,	/*!< magnetometer device number */
-	DEV_CRSF	= 3,	/*!< eLRS device number */
-	DEV_M10		= 4,	/*!< GNSS device number */
-	DEV_ESP		= 5,	/*!< ESP device number */
-	DEV_UART	= 6,	/*!< UART debug device number */
-	DEV_IRC		= 7,	/*!< video TX device number */
-	DEV_DSHOT	= 8,	/*!< DShot-300 device number */
-	DEV_COUNT	= 9	/*!< character devices count */
-};
-/**
-* @}
-*/
-
-/**
 * @defgroup TIMEREVENTIDS
 * @brief Timer events IDs
 * @{
@@ -310,16 +289,6 @@ struct trackpoint {
 * @brief Timer events
 */
 extern struct timev Evs[TEV_COUNT];
-
-/**
-* @brief Flight controller board's character devices drivers
-*/
-extern struct cdevice Dev[DEV_COUNT];
-
-/**
-* @brief Flight controller board's block device (memory chip)
-*/
-extern struct bdevice Flashdev;
 
 /**
 * @brief Low-pass filters
