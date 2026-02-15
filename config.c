@@ -1167,7 +1167,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	if (strcmp(toks[1], "imu") == 0) {
 		struct icm_data id;
 
-		Dev[DEV_ICM].read(Dev[DEV_ICM].priv, &id,
+		Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &id,
 			sizeof(struct icm_data));
 
 		sprintimu(out, &id);
@@ -1177,7 +1177,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	else if (strcmp(toks[1], "baro") == 0) {
 		struct dps_data dd;
 
-		Dev[DEV_DPS].read(Dev[DEV_DPS].priv, &dd,
+		Dev[DEV_BARO].read(Dev[DEV_BARO].priv, &dd,
 			sizeof(struct dps_data));
 
 		snprintf(out, INFOLEN,
@@ -1240,9 +1240,9 @@ int systemcmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "esp") == 0) {
 		if (strcmp(toks[2], "flash") == 0)
-			Dev[DEV_ESP].configure(Dev[DEV_ESP].priv, "flash");
+			Dev[DEV_RF].configure(Dev[DEV_RF].priv, "flash");
 		else if (strcmp(toks[2], "run") == 0)
-			Dev[DEV_ESP].configure(Dev[DEV_ESP].priv, "run");
+			Dev[DEV_RF].configure(Dev[DEV_RF].priv, "run");
 		else
 			return (-1);
 	}

@@ -26,12 +26,12 @@
 * @{
 */
 enum DEV_ID {
-	DEV_ICM		= 0,	/*!< IMU device number */
-	DEV_DPS		= 1,	/*!< barometer device number */
-	DEV_QMC		= 2,	/*!< magnetometer device number */
+	DEV_IMU		= 0,	/*!< IMU device number */
+	DEV_BARO	= 1,	/*!< barometer device number */
+	DEV_MAG		= 2,	/*!< magnetometer device number */
 	DEV_CRSF	= 3,	/*!< eLRS device number */
-	DEV_M10		= 4,	/*!< GNSS device number */
-	DEV_ESP		= 5,	/*!< ESP device number */
+	DEV_GNSS	= 4,	/*!< GNSS device number */
+	DEV_RF		= 5,	/*!< ESP device number */
 	DEV_UART	= 6,	/*!< UART debug device number */
 	DEV_IRC		= 7,	/*!< video TX device number */
 	DEV_DSHOT	= 8,	/*!< DShot-300 device number */

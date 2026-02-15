@@ -337,7 +337,8 @@ const struct pconf_mag magconf = {
 	}
 };
 
-const struct pconf_imu flashconf = {
+const struct pconf_flash flashconf = {
+	.type = PCONF_FLASHTYPE_W25Q,
 	.iface = {
 		.type = PCONF_IFACETYPE_SPI,
 		.cs = {

@@ -7,32 +7,6 @@
 #include "periphconf.h"
 #include "util.h"
 
-enum PCONF_TIMUSAGE {
-	PCONF_TIMUSAGE_PWM,
-	PCONF_TIMUSAGE_SCHED,
-	PCONF_TIMUSAGE_DELAY
-};
-
-enum PCONF_UARTUSAGE {
-	PCONF_UARTUSAGE_CRSF,
-	PCONF_UARTUSAGE_GNSS,
-	PCONF_UARTUSAGE_DEBUG,
-	PCONF_UARTUSAGE_IRC
-};
-
-enum PCONF_I2CUSAGE {
-	PCONF_I2CUSAGE_DEVS,
-};
-
-enum PCONF_SPIUSAGE {
-	PCONF_SPIUSAGE_DEVS,
-	PCONF_SPIUSAGE_WIFI
-};
-
-enum PCONF_ADCUSAGE {
-	PCONF_ADCUSAGE_MEASURE,
-};
-
 struct pconf_pin {
 	GPIO_TypeDef *inst;
 	uint16_t idx;
@@ -40,7 +14,11 @@ struct pconf_pin {
 
 struct pconf_i2c {
 	I2C_TypeDef *inst;
-	enum PCONF_I2CUSAGE usage;
+	
+	enum PCONF_I2CUSAGE {
+		PCONF_I2CUSAGE_DEVS,
+	} usage;
+
 	struct pconf_pin sda;
 	struct pconf_pin scl;
 	DMA_Stream_TypeDef *rxdma;
@@ -49,7 +27,12 @@ struct pconf_i2c {
 
 struct pconf_spi {
 	SPI_TypeDef *inst;
-	enum PCONF_SPIUSAGE usage;
+	
+	enum PCONF_SPIUSAGE {
+		PCONF_SPIUSAGE_DEVS,
+		PCONF_SPIUSAGE_WIFI
+	} usage;
+
 	struct pconf_pin miso;
 	struct pconf_pin mosi;
 	struct pconf_pin sck;
@@ -61,7 +44,13 @@ struct pconf_exti {
 
 struct pconf_tim {
 	TIM_TypeDef *inst;
-	enum PCONF_TIMUSAGE usage;
+	
+	enum PCONF_TIMUSAGE {
+		PCONF_TIMUSAGE_PWM,
+		PCONF_TIMUSAGE_SCHED,
+		PCONF_TIMUSAGE_DELAY
+	} usage;
+
 	struct {
 		int chan;
 		struct pconf_pin pin;
@@ -72,44 +61,38 @@ struct pconf_tim {
 
 struct pconf_adc {
 	ADC_TypeDef *inst;
-	enum PCONF_ADCUSAGE usage;
+
+	enum PCONF_ADCUSAGE {
+		PCONF_ADCUSAGE_MEASURE,
+	} usage;
+
 	struct pconf_pin pin;
 	DMA_Stream_TypeDef *dma;
 };
 
 struct pconf_uart {
 	USART_TypeDef *inst;
-	enum PCONF_UARTUSAGE usage;
+
+	enum PCONF_UARTUSAGE {
+		PCONF_UARTUSAGE_CRSF,
+		PCONF_UARTUSAGE_GNSS,
+		PCONF_UARTUSAGE_DEBUG,
+		PCONF_UARTUSAGE_IRC
+	} usage;
+	
 	struct pconf_pin rx;
 	struct pconf_pin tx;
 	DMA_Stream_TypeDef *rxdma;
 	DMA_Stream_TypeDef *txdma;
 };
 
-enum PCONF_IMUTYPE {
-	PCONF_IMUTYPE_ICM42688P,
-	PCONF_IMUTYPE_MPU6500
-};
-
-enum PCONF_MAGTYPE {
-	PCONF_MAGTYPE_QMC5883L,
-	PCONF_MAGTYPE_HMC5883L
-};
-
-enum PCONF_BARTYPE {
-	PCONF_BARTYPE_HP206C,
-	PCONF_BARTYPE_BMP280,
-	PCONF_BARTYPE_DPS368
-};
-
-enum PCONF_IFACETYPE {
-	PCONF_IFACETYPE_I2C,
-	PCONF_IFACETYPE_SPI,
-	PCONF_IFACETYPE_UART
-};
-
 struct pconf_iface {
-	enum PCONF_IFACETYPE type;
+	enum PCONF_IFACETYPE {
+		PCONF_IFACETYPE_I2C,
+		PCONF_IFACETYPE_SPI,
+		PCONF_IFACETYPE_UART
+	} type;
+
 	union {
 		USART_TypeDef *huart;
 		I2C_TypeDef *hi2c;
@@ -125,21 +108,38 @@ struct pconf_debug {
 };
 
 struct pconf_imu {
-	enum PCONF_IMUTYPE type;
+	enum PCONF_IMUTYPE {
+		PCONF_IMUTYPE_ICM42688P,
+		PCONF_IMUTYPE_MPU6500
+	} type;
+
 	struct pconf_iface iface;
 };
 
 struct pconf_bar {
-	enum PCONF_MAGTYPE type;
+	enum PCONF_BARTYPE {
+		PCONF_BARTYPE_HP206C,
+		PCONF_BARTYPE_BMP280,
+		PCONF_BARTYPE_DPS368
+	} type;
+
 	struct pconf_iface iface;	
 };
 
 struct pconf_mag {
-	enum PCONF_MAGTYPE type;
+	enum PCONF_MAGTYPE {
+		PCONF_MAGTYPE_QMC5883L,
+		PCONF_MAGTYPE_HMC5883L
+	} type;
+
 	struct pconf_iface iface;	
 };
 
 struct pconf_flash {
+	enum PCONF_FLASHTYPE {
+		PCONF_FLASHTYPE_W25Q
+	} type;
+
 	struct pconf_iface iface;	
 };
 
@@ -431,7 +431,7 @@ static int pconf_spi_pinalternate(SPI_TypeDef *inst)
 {
 	if (inst == SPI1)		return GPIO_AF5_SPI1;
 	else if (inst == SPI2)		return GPIO_AF5_SPI2;
-	else if (inst == SPI2)		return GPIO_AF6_SPI3;
+	else if (inst == SPI3)		return GPIO_AF6_SPI3;
 
 	return (-1);
 }
@@ -1705,9 +1705,32 @@ static void pconf_init_uart()
 	}
 }
 
-static void icm_init()
+static void uartdev_init()
+{
+	struct uart_device d;
+
+	if (debugconf.iface.type != PCONF_IFACETYPE_UART)
+		goto error;
+
+	d.huart = pconf_huarts + pconf_uartidx(debugconf.iface.huart);
+
+	if (uart_initdevice(&d, Dev + DEV_UART) < 0)
+		goto error;
+
+	uartprintf("%s initilized\r\n", Dev[DEV_UART].name);
+
+	return;
+
+error:
+	uartprintf("failed to initilize UART device\r\n");
+}
+
+static int icm_init()
 {
 	struct icm_device d;
+
+	if (imuconf.iface.type != PCONF_IFACETYPE_SPI)
+		return (-1);
 
 	d.hspi = pconf_hspis + pconf_spiidx(imuconf.iface.hspi);
 	d.gpio = imuconf.iface.cs.inst;
@@ -1722,82 +1745,158 @@ static void icm_init()
 	d.accellpf = ICM_ACCELLPFLL;
 	d.accelorder = ICM_ACCELORDER3;
 
-	if (icm_initdevice(&d, Dev + DEV_ICM) >= 0)
-		uartprintf("ICM-42688 initialized\r\n");
-	else
-		uartprintf("failed to initialize ICM-42688\r\n");
+	return icm_initdevice(&d, Dev + DEV_IMU);
 }
 
-static void dps_init()
+static void imu_init()
+{
+	if (imuconf.type == PCONF_IMUTYPE_ICM42688P) {
+		if (icm_init() < 0)
+			goto error;
+	}
+		
+	uartprintf("%s initialized\r\n", Dev[DEV_IMU].name);
+
+	return;
+
+error:
+	uartprintf("failed to initialize IMU\r\n");
+}
+
+static int dps_init()
 {
 	struct dps_device d;
+
+	if (barconf.iface.type != PCONF_IFACETYPE_I2C)
+		return (-1);
 
 	d.hi2c = pconf_hi2cs + pconf_i2cidx(barconf.iface.hi2c);
 	d.rate = DPS_RATE_32;
 	d.osr = DPS_OSR_16;
 
-	if (dps_initdevice(&d, Dev + DEV_DPS) >= 0)
-		uartprintf("DPS368 initialized\r\n");
-	else
-		uartprintf("failed to initialize DPS368\r\n");
+	return dps_initdevice(&d, Dev + DEV_BARO);
 }
 
-static void qmc_init()
+static void baro_init()
+{
+	if (barconf.type == PCONF_BARTYPE_DPS368) {
+		if (dps_init() < 0)
+			goto error;
+	}
+		
+	uartprintf("%s initialized\r\n", Dev[DEV_BARO].name);
+
+	return;
+
+error:
+	uartprintf("failed to initialize barometer\r\n");
+}
+
+static int qmc_init()
 {
 	struct qmc_device d;
+
+	if (magconf.iface.type != PCONF_IFACETYPE_I2C)
+		return (-1);
 
 	d.hi2c = pconf_hi2cs + pconf_i2cidx(magconf.iface.hi2c);
 	d.scale = QMC_SCALE_8;
 	d.rate = QMC_RATE_100;
 	d.osr = QMC_OSR_512;
 
-	if (qmc_initdevice(&d, Dev + DEV_QMC) >= 0)
-		uartprintf("QMC5883L initialized\r\n");
-	else
-		uartprintf("failed to initialize QMC5883L\r\n");
+	return qmc_initdevice(&d, Dev + DEV_MAG);
 }
 
-static void w25dev_init()
+static void mag_init()
+{
+	if (magconf.type == PCONF_MAGTYPE_QMC5883L) {
+		if (qmc_init() < 0)
+			goto error;
+	}
+		
+	uartprintf("%s initialized\r\n", Dev[DEV_MAG].name);
+
+	return;
+
+error:
+	uartprintf("failed to initialize magnetometer\r\n");
+}
+
+static int w25dev_init()
 {
 	struct w25_device d;
+
+	if (flashconf.iface.type != PCONF_IFACETYPE_SPI)
+		return (-1);
 
 	d.hspi = pconf_hspis + pconf_spiidx(flashconf.iface.hspi);
 	d.gpio = flashconf.iface.cs.inst;
 	d.pin = flashconf.iface.cs.idx;
 
-	if (w25_initdevice(&d, &Flashdev) >= 0)
-		uartprintf("W25Q initialized\r\n");
-	else
-		uartprintf("failed to initialize W25Q\r\n");
+	return w25_initdevice(&d, &Flashdev);
+}
+
+static void flash_init()
+{
+	if (flashconf.type == PCONF_FLASHTYPE_W25Q) {
+		if (w25dev_init() < 0)
+			goto error;
+	}
+		
+	uartprintf("%s initialized\r\n", Flashdev.name);
+
+	return;
+
+error:
+	uartprintf("failed to initialize flash device\r\n");
 }
 
 static void crsfdev_init()
 {
 	struct crsf_device d;
 
+	if (crsfconf.iface.type != PCONF_IFACETYPE_UART)
+		goto error;
+
 	d.huart = pconf_huarts + pconf_uartidx(crsfconf.iface.huart);
 
-	if (crsf_initdevice(&d, Dev + DEV_CRSF) >= 0)
-		uartprintf("CRSF device initialized\r\n");
-	else
-		uartprintf("failed to initialize CRSF device\r\n");
+	if (crsf_initdevice(&d, Dev + DEV_CRSF) < 0)
+		goto error;		
+		
+	uartprintf("%s initialized\r\n", Dev[DEV_CRSF].name);
+
+	return;
+
+error:
+	uartprintf("failed to initialize CRSF device\r\n");
 }
 
 static void m10dev_init()
 {
 	struct m10_device d;
 
+	if (gnssconf.iface.type != PCONF_IFACETYPE_UART)
+		goto error;
+
 	d.huart = pconf_huarts + pconf_uartidx(gnssconf.iface.huart);
 
-	if (m10_initdevice(&d, Dev + DEV_M10) >= 0)
-		uartprintf("GPS device initialized\r\n");
-	else
-		uartprintf("failed to initialize GPS device\r\n");
+	if (m10_initdevice(&d, Dev + DEV_GNSS) < 0)
+		goto error;
+
+	uartprintf("%s initialized\r\n", Dev[DEV_GNSS].name);
+
+	return;
+
+error:
+	uartprintf("failed to initialize GNSS device\r\n");
 }
 
 static void espdev_init()
 {
 	struct esp_device d;
+
+	if (rfconf.iface.type != PCONF_IFACETYPE_SPI)
+		goto error;
 
 	d.hspi = pconf_hspis + pconf_spiidx(rfconf.iface.hspi);
 	d.csgpio = rfconf.iface.cs.inst;
@@ -1810,37 +1909,37 @@ static void espdev_init()
 	d.busypin = rfconf.busy.idx;
 	d.intpin = rfconf.interrupt.idx;
 
-	if (esp_initdevice(&d, Dev + DEV_ESP) >= 0)
-		uartprintf("ESP8266 initialized\r\n");
-	else
-		uartprintf("failed to initialize ESP8266\r\n");
+	if (esp_initdevice(&d, Dev + DEV_RF) < 0)
+		goto error;
+
+	uartprintf("%s initialized\r\n", Dev[DEV_RF].name);
+
+	return;
+
+error:
+	uartprintf("failed to initialize ESP8266\r\n");
 }
 
 static void irc_init()
 {
 	struct irc_device d;
 
+	if (vtxconf.iface.type != PCONF_IFACETYPE_UART)
+		goto error;
+
 	d.huart = pconf_huarts + pconf_uartidx(vtxconf.iface.huart);
 	d.power = St.irc.power;
 	d.frequency = St.irc.freq;
 
-	if (irc_initdevice(&d, Dev + DEV_IRC) >= 0)
-		uartprintf("IRC device initilized\r\n");
-	else
-		uartprintf("failed to initilize IRC device\r\n");
-}
+	if (irc_initdevice(&d, Dev + DEV_IRC) < 0)
+		goto error;
 
-static void uartdev_init()
-{
-	struct uart_device d;
+	uartprintf("%s initilized\r\n", Dev[DEV_IRC].name);
+	
+	return;
 
-	d.huart = pconf_huarts + pconf_uartidx(debugconf.iface.huart);
-
-	if (uart_initdevice(&d, Dev + DEV_UART) >= 0)
-		uartprintf("UART device initilized\r\n");
-	else
-		uartprintf("failed to initilize UART device\r\n");
-
+error:
+	uartprintf("failed to initilize IRC device\r\n");
 }
 
 static void dshot_init()
@@ -1857,10 +1956,15 @@ static void dshot_init()
 	d.timch[2] = pconf_timpwm_chan(pwmconf.pwm[2].chan);
 	d.timch[3] = pconf_timpwm_chan(pwmconf.pwm[3].chan);
 
-	if (dshot_initdevice(&d, Dev + DEV_DSHOT) >= 0)
-		uartprintf("DShot300 initilized\r\n");
-	else
-		uartprintf("failed to initilize DShot300\r\n");
+	if (dshot_initdevice(&d, Dev + DEV_DSHOT) < 0)
+		goto error;
+
+	uartprintf("%s initilized\r\n", Dev[DEV_DSHOT].name);
+	
+	return;
+
+error:
+	uartprintf("failed to initilize DShot300\r\n");
 }
 
 void pconf_init(void (*errhandler)(void))
@@ -1899,10 +2003,10 @@ void pconf_init(void (*errhandler)(void))
 	pconf_currenthadc = pconf_hadcs + pconf_adcidx(curconf.adc);
 
 	uartdev_init();
-	icm_init();
-	dps_init();
-	qmc_init();
-	w25dev_init();
+	imu_init();
+	baro_init();
+	mag_init();
+	flash_init();
 	crsfdev_init();
 	m10dev_init();
 	espdev_init();

@@ -43,8 +43,8 @@
 */
 void HAL_GPIO_EXTI_Callback(uint16_t pin)
 {
-	if (DEVITENABLED(Dev[DEV_ESP].status)) {
-		Dev[DEV_ESP].interrupt(Dev[DEV_ESP].priv, &pin);
+	if (DEVITENABLED(Dev[DEV_RF].status)) {
+		Dev[DEV_RF].interrupt(Dev[DEV_RF].priv, &pin);
 	}
 }
 
@@ -56,8 +56,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
 */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if (DEVITENABLED(Dev[DEV_M10].status))
-		Dev[DEV_M10].interrupt(Dev[DEV_M10].priv, huart);
+	if (DEVITENABLED(Dev[DEV_GNSS].status))
+		Dev[DEV_GNSS].interrupt(Dev[DEV_GNSS].priv, huart);
 
 	if (DEVITENABLED(Dev[DEV_CRSF].status))
 		Dev[DEV_CRSF].interrupt(Dev[DEV_CRSF].priv, huart);
@@ -236,7 +236,7 @@ int stabilize(int ms)
 		(En > 0.5) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
 	// get accelerometer and gyroscope readings
-	Dev[DEV_ICM].read(Dev[DEV_ICM].priv, &Imudata,
+	Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &Imudata,
 		sizeof(struct icm_data));
 
 	// apply accelerometer offsets
@@ -554,11 +554,11 @@ int dpsupdate(int ms)
 	dt = (dt < 0.000001) ? 0.000001 : dt;
 
 	// if barometer isn't initilized, return
-	if (Dev[DEV_DPS].status != DEVSTATUS_INIT)
+	if (Dev[DEV_BARO].status != DEVSTATUS_INIT)
 		return 0;
 
 	// read barometer values
-	Dev[DEV_DPS].read(Dev[DEV_DPS].priv, &hd,
+	Dev[DEV_BARO].read(Dev[DEV_BARO].priv, &hd,
 		sizeof(struct dps_data));
 
 	// write barometer temperature and altitude values into log
@@ -599,11 +599,11 @@ int dpsupdate(int ms)
 int qmcupdate(int ms)
 {
 	// if magnetometer isn't initilized, return
-	if (Dev[DEV_QMC].status != DEVSTATUS_INIT)
+	if (Dev[DEV_MAG].status != DEVSTATUS_INIT)
 		return 0;
 
 	// read magnetometer values
-	Dev[DEV_QMC].read(Dev[DEV_QMC].priv, &Qmcdata,
+	Dev[DEV_MAG].read(Dev[DEV_MAG].priv, &Qmcdata,
 		sizeof(struct qmc_data));
 
 	// apply offsets to magnetometer values
@@ -1111,9 +1111,9 @@ int main(void)
 
 		// poll for configuration and telemetry commands
 		// from debug wifi connection
-		if (Dev[DEV_ESP].read(Dev[DEV_ESP].priv, &cmd,
+		if (Dev[DEV_RF].read(Dev[DEV_RF].priv, &cmd,
 			CMDSIZE) >= 0) {
-			runcommand(Dev + DEV_ESP, cmd);
+			runcommand(Dev + DEV_RF, cmd);
 		}
 
 		// poll for configuration and telemtry commands
@@ -1131,7 +1131,7 @@ int main(void)
 		}
 
 		// check the M10 messages
-		if (Dev[DEV_M10].read(Dev[DEV_M10].priv, &nd,
+		if (Dev[DEV_GNSS].read(Dev[DEV_GNSS].priv, &nd,
 			sizeof(struct m10_data)) >= 0) {
 			m10msg(&nd);
 		}
