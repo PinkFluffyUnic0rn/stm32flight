@@ -1,6 +1,8 @@
 #ifndef MPU6500_H
 #define MPU6500_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define MPU_MAXDEVS 1

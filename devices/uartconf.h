@@ -1,6 +1,8 @@
 #ifndef UARTCONF_H
 #define UARTCONF_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define UART_MAXDEVS 1

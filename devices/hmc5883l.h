@@ -1,6 +1,8 @@
 #ifndef HMC5883L_H
 #define HMC5883L
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define HMC_MAXDEVS 1

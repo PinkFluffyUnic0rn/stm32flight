@@ -1,6 +1,8 @@
 #ifndef M10_H
 #define M10_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define M10_MAXDEVS 1

@@ -6,6 +6,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include "mcudef.h"
+
 /**
 * @brief Get systick value as seconds in float value
 * @return systick value

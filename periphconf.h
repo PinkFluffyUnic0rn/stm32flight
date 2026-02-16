@@ -6,7 +6,7 @@
 #ifndef PERIPHCONF_H
 #define PERIPHCONF_H
 
-#include "stm32f4xx_hal.h"
+#include "mcudef.h"
 
 #include "device.h"
 #include "icm42688.h"

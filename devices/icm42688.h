@@ -1,6 +1,8 @@
 #ifndef ICM42688_H
 #define ICM42688_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define ICM_MAXDEVS 1

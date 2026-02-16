@@ -1,7 +1,7 @@
 #ifndef DSHOT_H
 #define DSHOT_H
 
-#include "stm32f4xx_hal.h"
+#include "mcudef.h"
 
 #include "device.h"
 

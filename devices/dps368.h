@@ -1,6 +1,8 @@
 #ifndef DSP368_H
 #define DSP368_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define DPS_MAXDEVS 1

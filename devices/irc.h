@@ -1,6 +1,8 @@
 #ifndef IRC_H
 #define IRC_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define IRC_MAXDEVS 1

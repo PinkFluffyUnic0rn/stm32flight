@@ -1,6 +1,8 @@
 #ifndef ESP_H
 #define ESP_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define ESP_MAXDEVS 1

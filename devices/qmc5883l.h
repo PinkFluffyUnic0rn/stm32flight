@@ -1,6 +1,8 @@
 #ifndef QMC5883L_H
 #define QMC5883L_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define QMC_MAXDEVS 1

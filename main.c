@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#include "stm32f4xx_hal.h"
+#include "mcudef.h"
 
 #include "periphconf.h"
 #include "settings.h"

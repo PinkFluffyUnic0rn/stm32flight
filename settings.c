@@ -1,4 +1,5 @@
-#include "stm32f4xx_hal.h"
+#include "mcudef.h"
+
 #include <string.h>
 
 #include "irc.h"
@@ -21,7 +22,11 @@ int writesettings(int slot)
 	__disable_irq();
 	HAL_FLASH_Unlock();
 
+#ifdef STM32F4xx
 	FLASH_Erase_Sector(FLASH_SECTOR_11,  VOLTAGE_RANGE_3);
+#elif STM32H7xx
+	FLASH_Erase_Sector(FLASH_SECTOR_7, FLASH_BANK_1, FLASH_VOLTAGE_RANGE_3);
+#endif
 
 	memcpy(s + slot, &St, sizeof(struct settings));
 
@@ -30,7 +35,12 @@ int writesettings(int slot)
 
 	addr = USER_FLASH;
 	for (j = 0; j < sz / 4; ++j) {
+#ifdef STM32F4xx
 		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr, pt[j]);
+#elif STM32H7xx
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD,
+			addr, pt[j]);
+#endif
 		addr += 4;
 	}
 

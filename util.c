@@ -1,4 +1,4 @@
-#include "stm32f4xx_hal.h"
+#include "mcudef.h"
 
 #include <periphconf.h>
 #include <string.h>

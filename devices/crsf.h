@@ -1,6 +1,8 @@
 #ifndef CRSF_H
 #define CRSF_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define CRSF_MAXDEVS 1

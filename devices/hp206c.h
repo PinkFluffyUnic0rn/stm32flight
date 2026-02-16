@@ -1,6 +1,8 @@
 #ifndef HP206C_H
 #define HP206C_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define HP_MAXDEVS 1

@@ -1,6 +1,8 @@
 #ifndef BMP280_H
 #define BMP280_H
 
+#include "mcudef.h"
+
 #include "device.h"
 
 #define BMP_MAXDEVS 1
