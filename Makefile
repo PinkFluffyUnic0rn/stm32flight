@@ -20,10 +20,11 @@ SOURCES=$(wildcard ./*.c) $(wildcard ./devices/*.c) \
 	$(wildcard ./$(DEVICE)/*.c)
 STARTUP=$(wildcard ./$(DEVICE)/*.s)
 OBJECTS=$(SOURCES:%.c=$(BUILDDIR)/%.o) $(STARTUP:%.s=$(BUILDDIR)/%.o)
-LDFLAGS=-mcpu=$(CPU) -T./linker-script.ld --specs=nosys.specs \
-	-Wl,--gc-sections -static --specs=nano.specs -mfpu=$(FPU) \
-	-mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm \
-	-Wl,--end-group -fsingle-precision-constant -u _printf_float \
+LDFLAGS=-mcpu=$(CPU) -T./$(DEVICE)/linker-script.ld \
+	--specs=nosys.specs -Wl,--gc-sections -static \
+	--specs=nano.specs -mfpu=$(FPU) -mfloat-abi=hard -mthumb \
+	-Wl,--start-group -lc -lm -Wl,--end-group \
+	-fsingle-precision-constant -u _printf_float \
 	-Wl,-Map=$(BUILDDIR)/memmap.map
 CFLAGS=-mcpu=$(CPU) -std=gnu11 -DUSE_HAL_DRIVER -D$(MCU) -c \
        -I. -I./Drivers/$(DEVICE)_HAL_Driver/Inc/Legacy \

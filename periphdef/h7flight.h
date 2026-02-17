@@ -1,11 +1,11 @@
 #ifndef HAL_MODULE_ENABLED
 #define HSE_VALUE 25000000
-#define ERROR_GPIO GPIOC
-#define ERROR_PIN GPIO_PIN_7
+#define ERROR_GPIO GPIOE
+#define ERROR_PIN GPIO_PIN_3
 #else
 
 #define PCONF_DMASCOUNT 	16
-#define PCONF_OUTPINSCOUNT	8
+#define PCONF_OUTPINSCOUNT	9
 #define PCONF_INPINSCOUNT	1
 #define PCONF_I2CSCOUNT		1
 #define PCONF_SPISCOUNT		2
@@ -30,7 +30,7 @@
 
 #define PCONF_UART2_IDX_IRQ 0
 
-#define PCONF_EXTI1_PIN_IRQ GPIO_PIN_1
+#define PCONF_EXTI9_5_PIN_IRQ GPIO_PIN_5
 
 DMA_Stream_TypeDef *const dmas[] = {
 	DMA1_Stream0,
@@ -57,8 +57,8 @@ const struct pconf_pin outpins[] = {
 		.idx = GPIO_PIN_4
 	},
 	{
-		.inst = GPIOB,
-		.idx = GPIO_PIN_3
+		.inst = GPIOD,
+		.idx = GPIO_PIN_6
 	},
 	{
 		.inst = GPIOC,
@@ -83,6 +83,10 @@ const struct pconf_pin outpins[] = {
 	{
 		.inst = GPIOC,
 		.idx = GPIO_PIN_15
+	},
+	{
+		.inst = GPIOE,
+		.idx = GPIO_PIN_3
 	}
 };
 
@@ -229,8 +233,8 @@ const struct pconf_uart uarts[] = {
 		.inst = USART2,
 		.usage = PCONF_UARTUSAGE_CRSF,
 		.rx = {
-			.inst = GPIOD,
-			.idx = GPIO_PIN_6
+			.inst = GPIOA,
+			.idx = GPIO_PIN_3
 		},
 		.tx = {
 			.inst = GPIOD,
@@ -342,8 +346,8 @@ const struct pconf_flash flashconf = {
 	.iface = {
 		.type = PCONF_IFACETYPE_SPI,
 		.cs = {
-			GPIOB,
-			GPIO_PIN_3
+			GPIOD,
+			GPIO_PIN_6
 		},
 		.hspi = SPI1
 	}

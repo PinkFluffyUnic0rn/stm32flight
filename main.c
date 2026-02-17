@@ -1061,7 +1061,7 @@ int main(void)
 
 	// init periphery
 	pconf_init(error_handler);
-
+	
 	// reading settings from memory current
 	// memory slot, which is 0 at start
 	readsettings(Curslot);

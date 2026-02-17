@@ -7,6 +7,8 @@
 #include "periphconf.h"
 #include "util.h"
 
+#define OCSFREQ 250000000
+
 struct pconf_pin {
 	GPIO_TypeDef *inst;
 	uint16_t idx;
@@ -1308,12 +1310,36 @@ void pconf_init_clock(void)
 	RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
 	RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
 	RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV4;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
 	RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
 	RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
 	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
 		error_handler();
+}
+
+static void pconf_init_mpu(void)
+{
+	MPU_Region_InitTypeDef MPU_InitStruct = {0};
+
+	HAL_MPU_Disable();
+/*
+	MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+	MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+	MPU_InitStruct.BaseAddress = 0x0;
+	MPU_InitStruct.Size = MPU_REGION_SIZE_4GB;
+	MPU_InitStruct.SubRegionDisable = 0x87;
+	MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+	MPU_InitStruct.AccessPermission = MPU_REGION_NO_ACCESS;
+	MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+	MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+	MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+	MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+
+	HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+	HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+*/
 }
 
 static void pconf_init_gpio(void)
@@ -1326,6 +1352,9 @@ static void pconf_init_gpio(void)
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_GPIOD_CLK_ENABLE();
+	__HAL_RCC_GPIOE_CLK_ENABLE();
+	__HAL_RCC_GPIOF_CLK_ENABLE();
 
 	for (i = 0; i < PCONF_OUTPINSCOUNT; ++i) {
 		HAL_GPIO_WritePin(outpins[i].inst, outpins[i].idx,
@@ -1366,6 +1395,7 @@ static void pconf_init_gpio(void)
 			1, 0);
 		HAL_NVIC_EnableIRQ(pconf_exti_irqn(extis[i].pin.idx));
 	}
+
 }
 
 static void pconf_init_dma(void)
@@ -1386,18 +1416,18 @@ static void pconf_init_dma(void)
 		
 		switch (irqn) {
 		case DMA1_Stream0_IRQn:		prep = 0;
-		case DMA1_Stream1_IRQn:		prep = 1;
-		case DMA1_Stream2_IRQn:		prep = 1;
-		case DMA1_Stream5_IRQn:		prep = 1;
+		case DMA1_Stream1_IRQn:		prep = 0;
+		case DMA1_Stream2_IRQn:		prep = 0;
+		case DMA1_Stream5_IRQn:		prep = 0;
 		case DMA1_Stream6_IRQn:		prep = 0;
 		case DMA1_Stream7_IRQn:		prep = 0;
-		case DMA2_Stream0_IRQn:		prep = 1;
-		case DMA2_Stream1_IRQn:		prep = 1;
-		case DMA2_Stream2_IRQn:		prep = 1;
+		case DMA2_Stream0_IRQn:		prep = 0;
+		case DMA2_Stream1_IRQn:		prep = 0;
+		case DMA2_Stream2_IRQn:		prep = 0;
 		case DMA2_Stream3_IRQn:		prep = 0;
-		case DMA2_Stream4_IRQn:		prep = 1;
-		case DMA2_Stream5_IRQn:		prep = 1;
-		case DMA2_Stream6_IRQn:		prep = 1;
+		case DMA2_Stream4_IRQn:		prep = 0;
+		case DMA2_Stream5_IRQn:		prep = 0;
+		case DMA2_Stream6_IRQn:		prep = 0;
 		}
 
 		HAL_NVIC_SetPriority(irqn, prep, 0);
@@ -1538,7 +1568,6 @@ static void pconf_init_tim_delay(int idx)
 	if (HAL_TIMEx_MasterConfigSynchronization(pconf_htims + idx,
 			&sMasterConfig) != HAL_OK)
 		error_handler();
-
 
 	HAL_TIM_Base_Start_IT(pconf_htims + idx);
 }
@@ -1747,6 +1776,15 @@ static void pconf_init_uart_debug(int i)
 
 	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
 		error_handler();
+
+	if (HAL_UARTEx_SetTxFifoThreshold(pconf_huarts + i, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_SetRxFifoThreshold(pconf_huarts + i, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_DisableFifoMode(pconf_huarts + i) != HAL_OK)
+		error_handler();
 }
 
 static void pconf_init_uart_irc(int i)
@@ -1921,7 +1959,7 @@ static void flash_init()
 		if (w25dev_init() < 0)
 			goto error;
 	}
-		
+
 	uartprintf("%s initialized\r\n", Flashdev.name);
 
 	return;
@@ -2049,7 +2087,9 @@ error:
 void pconf_init(void (*errhandler)(void))
 {
 	int i;
-	
+
+	pconf_init_mpu();
+
 	HAL_Init();
 
 	error_handler = errhandler;
@@ -2080,13 +2120,13 @@ void pconf_init(void (*errhandler)(void))
 		
 	pconf_batteryhadc = pconf_hadcs + pconf_adcidx(batconf.adc);
 	pconf_currenthadc = pconf_hadcs + pconf_adcidx(curconf.adc);
-
+	
 	uartdev_init();
 	imu_init();
 	baro_init();
 	mag_init();
 	flash_init();
-	crsfdev_init();
+ 	crsfdev_init();
 	m10dev_init();
 	espdev_init();
 	irc_init();
@@ -2309,5 +2349,12 @@ void DMA2_Stream7_IRQHandler(void)
 void EXTI1_IRQHandler(void)
 {
 	HAL_GPIO_EXTI_IRQHandler(PCONF_EXTI1_PIN_IRQ);
+}
+#endif
+
+#ifdef PCONF_EXTI9_5_PIN_IRQ
+void EXTI9_5_IRQHandler(void)
+{
+	HAL_GPIO_EXTI_IRQHandler(PCONF_EXTI9_5_PIN_IRQ);
 }
 #endif

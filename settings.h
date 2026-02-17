@@ -9,11 +9,6 @@
 #include "log.h"
 
 /**
-* @brief clock frequency
-*/
-#define OCSFREQ 128000000
-
-/**
 * @brief periodic event timer ticks per second
 */
 #define TICKSPERSEC 1000000

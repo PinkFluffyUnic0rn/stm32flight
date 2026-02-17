@@ -7,6 +7,8 @@
 #include "periphconf.h"
 #include "util.h"
 
+#define OCSFREQ 128000000
+
 struct pconf_pin {
 	GPIO_TypeDef *inst;
 	uint16_t idx;
