@@ -13,8 +13,7 @@ int writesettings(int slot)
 {
 	struct settings s[6];
 	uint32_t sz;
-	uint32_t *pt;
-	uint32_t addr;
+	char *pt;
 	int j;
 
 	memcpy(s, (void *) (USER_FLASH), sizeof(struct settings) * 6);
@@ -31,18 +30,19 @@ int writesettings(int slot)
 	memcpy(s + slot, &St, sizeof(struct settings));
 
 	sz = sizeof(struct settings) * 6;
-	pt = (uint32_t *) s;
+	pt = (char *) s;
 
-	addr = USER_FLASH;
-	for (j = 0; j < sz / 4; ++j) {
 #ifdef STM32F4xx
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr, pt[j]);
-#elif STM32H7xx
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD,
-			addr, pt[j]);
-#endif
-		addr += 4;
+	for (j = 0; j < sz; j += 4) {
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,
+			USER_FLASH + j, *((uint32_t *) (pt + j)));
 	}
+#elif STM32H7xx
+	for (j = 0; j < sz; j += 32) {
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD,
+			USER_FLASH + j, (uint32_t) (pt + j));
+	}
+#endif
 
 	HAL_FLASH_Lock();
 	__enable_irq();

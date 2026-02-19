@@ -269,6 +269,28 @@ static int pconf_uart_irqn(const USART_TypeDef *uart)
 	return (-1);
 }
 
+static int pconf_i2cev_irqn(const I2C_TypeDef *hi2c)
+{
+	if (hi2c == I2C1)		return I2C1_EV_IRQn;
+	else if (hi2c == I2C2)		return I2C2_EV_IRQn;
+	else if (hi2c == I2C3)		return I2C3_EV_IRQn;
+	else if (hi2c == I2C4)		return I2C4_EV_IRQn;
+	else if (hi2c == I2C5)		return I2C5_EV_IRQn;
+
+	return (-1);
+}
+
+static int pconf_i2cer_irqn(const I2C_TypeDef *hi2c)
+{
+	if (hi2c == I2C1)		return I2C1_ER_IRQn;
+	else if (hi2c == I2C2)		return I2C2_ER_IRQn;
+	else if (hi2c == I2C3)		return I2C3_ER_IRQn;
+	else if (hi2c == I2C4)		return I2C4_ER_IRQn;
+	else if (hi2c == I2C5)		return I2C5_ER_IRQn;
+
+	return (-1);
+}
+
 static int pconf_gpio_enable_clock(GPIO_TypeDef *inst)
 {
 	if (inst == GPIOA)		__HAL_RCC_GPIOA_CLK_ENABLE();
@@ -433,7 +455,7 @@ static int pconf_spi_enable_clock(SPI_TypeDef *inst)
 		PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI5;
 
 	if (inst == SPI1 || inst == SPI2 || inst == SPI3)
-		PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_PLL;
+		PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_CLKP;
 	else if (inst == SPI4 || inst == SPI5)
 		PeriphClkInitStruct.Spi45ClockSelection = RCC_SPI45CLKSOURCE_D2PCLK1;
 	else
@@ -887,7 +909,7 @@ void pconf_mspinit_uart(UART_HandleTypeDef* huart)
 		GPIO_InitStruct.Pin = uart->tx.idx;
 		GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
 		GPIO_InitStruct.Pull = GPIO_PULLUP;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 		GPIO_InitStruct.Alternate = pconf_uart_pinalternate(
 			&(uart->tx), uart->inst);
 		HAL_GPIO_Init(uart->tx.inst, &GPIO_InitStruct);
@@ -898,7 +920,7 @@ void pconf_mspinit_uart(UART_HandleTypeDef* huart)
 	GPIO_InitStruct.Pin = uart->rx.idx;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	GPIO_InitStruct.Alternate = pconf_uart_pinalternate(&(uart->rx),
 		uart->inst);
 	HAL_GPIO_Init(uart->rx.inst, &GPIO_InitStruct);
@@ -906,7 +928,7 @@ void pconf_mspinit_uart(UART_HandleTypeDef* huart)
 	GPIO_InitStruct.Pin = uart->tx.idx;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	GPIO_InitStruct.Alternate = pconf_uart_pinalternate(&(uart->tx),
 		uart->inst);
 	HAL_GPIO_Init(uart->tx.inst, &GPIO_InitStruct);
@@ -929,6 +951,9 @@ void pconf_mspinit_uart(UART_HandleTypeDef* huart)
 			error_handler();
 
 		__HAL_LINKDMA(huart, hdmarx, pconf_hdmas[idx]);
+
+		HAL_NVIC_SetPriority(pconf_uart_irqn(uart->inst), 0, 0);
+		HAL_NVIC_EnableIRQ(pconf_uart_irqn(uart->inst));
 	}
 	
 	if ((idx = pconf_dmaidx(uart->txdma)) >= 0) {
@@ -1054,7 +1079,7 @@ void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
 	GPIO_InitStruct.Pin = i2c->sda.idx;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	GPIO_InitStruct.Alternate = pconf_i2c_pinalternate(&(i2c->sda),
 		i2c->inst);
 	HAL_GPIO_Init(i2c->sda.inst, &GPIO_InitStruct);
@@ -1062,7 +1087,7 @@ void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
 	GPIO_InitStruct.Pin = i2c->scl.idx;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	GPIO_InitStruct.Alternate = pconf_i2c_pinalternate(&(i2c->scl),
 		i2c->inst);
 	HAL_GPIO_Init(i2c->scl.inst, &GPIO_InitStruct);
@@ -1107,6 +1132,14 @@ void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
 			error_handler();
 
 		__HAL_LINKDMA(hi2c, hdmatx, pconf_hdmas[idx]);
+	}
+	if ((idx = pconf_dmaidx(i2c->rxdma)) >= 0
+			|| (idx = pconf_dmaidx(i2c->txdma)) >= 0) {
+		HAL_NVIC_SetPriority(pconf_i2cev_irqn(i2c->inst), 0, 0);
+		HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
+
+		HAL_NVIC_SetPriority(pconf_i2cer_irqn(i2c->inst), 0, 0);
+		HAL_NVIC_EnableIRQ(I2C1_ER_IRQn);
 	}
 }
 
@@ -1155,21 +1188,21 @@ void pconf_mspinit_spi(SPI_HandleTypeDef* hspi)
 	GPIO_InitStruct.Pin = spi->miso.idx;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->miso), spi->inst);
 	HAL_GPIO_Init(spi->miso.inst, &GPIO_InitStruct);
 
 	GPIO_InitStruct.Pin = spi->mosi.idx;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->mosi), spi->inst);
 	HAL_GPIO_Init(spi->mosi.inst, &GPIO_InitStruct);
 
 	GPIO_InitStruct.Pin = spi->sck.idx;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->sck), spi->inst);
 	HAL_GPIO_Init(spi->sck.inst, &GPIO_InitStruct);
 }
@@ -1280,7 +1313,9 @@ void pconf_init_clock(void)
 {
 	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
 	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
+//	HAL_PWREx_ConfigSupply(PWR_EXTERNAL_SOURCE_SUPPLY);
 	HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
 
 	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
@@ -1316,6 +1351,19 @@ void pconf_init_clock(void)
 
 	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
 		error_handler();
+
+	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADC|RCC_PERIPHCLK_CKPER;
+	PeriphClkInitStruct.PLL2.PLL2M = 2;
+	PeriphClkInitStruct.PLL2.PLL2N = 19;
+	PeriphClkInitStruct.PLL2.PLL2P = 2;
+	PeriphClkInitStruct.PLL2.PLL2Q = 2;
+	PeriphClkInitStruct.PLL2.PLL2R = 2;
+	PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
+	PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+	PeriphClkInitStruct.PLL2.PLL2FRACN = 1639;
+	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+		error_handler();
 }
 
 static void pconf_init_mpu(void)
@@ -1323,7 +1371,7 @@ static void pconf_init_mpu(void)
 	MPU_Region_InitTypeDef MPU_InitStruct = {0};
 
 	HAL_MPU_Disable();
-/*
+
 	MPU_InitStruct.Enable = MPU_REGION_ENABLE;
 	MPU_InitStruct.Number = MPU_REGION_NUMBER0;
 	MPU_InitStruct.BaseAddress = 0x0;
@@ -1339,7 +1387,7 @@ static void pconf_init_mpu(void)
 	HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
 	HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
-*/
+
 }
 
 static void pconf_init_gpio(void)
@@ -1348,7 +1396,6 @@ static void pconf_init_gpio(void)
 
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-	__HAL_RCC_GPIOD_CLK_ENABLE();
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
@@ -1392,7 +1439,7 @@ static void pconf_init_gpio(void)
 		HAL_GPIO_Init(extis[i].pin.inst, &GPIO_InitStruct);
 
 		HAL_NVIC_SetPriority(pconf_exti_irqn(extis[i].pin.idx),
-			1, 0);
+			0, 0);
 		HAL_NVIC_EnableIRQ(pconf_exti_irqn(extis[i].pin.idx));
 	}
 
@@ -1592,7 +1639,7 @@ static void pconf_init_i2c()
 
 	for (i = 0; i < PCONF_I2CSCOUNT; ++i) {
 		pconf_hi2cs[i].Instance = i2cs[i].inst;
-		pconf_hi2cs[i].Init.Timing = 0x00602070;
+		pconf_hi2cs[i].Init.Timing = 0x00C042E4;
 		pconf_hi2cs[i].Init.OwnAddress1 = 0;
 		pconf_hi2cs[i].Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
 		pconf_hi2cs[i].Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -1652,7 +1699,7 @@ static void pconf_init_spi_wifi(int i)
 	pconf_hspis[i].Init.CLKPolarity = SPI_POLARITY_LOW;
 	pconf_hspis[i].Init.CLKPhase = SPI_PHASE_1EDGE;
 	pconf_hspis[i].Init.NSS = SPI_NSS_SOFT;
-	pconf_hspis[i].Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+	pconf_hspis[i].Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
 	pconf_hspis[i].Init.FirstBit = SPI_FIRSTBIT_MSB;
 	pconf_hspis[i].Init.TIMode = SPI_TIMODE_DISABLE;
 	pconf_hspis[i].Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1757,6 +1804,15 @@ static void pconf_init_uart_gnss(int i)
 	pconf_huarts[i].AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
 	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_SetTxFifoThreshold(pconf_huarts + i, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_SetRxFifoThreshold(pconf_huarts + i, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_DisableFifoMode(pconf_huarts + i) != HAL_OK)
 		error_handler();
 }
 
@@ -2233,6 +2289,32 @@ void USART2_IRQHandler(void)
 }
 #endif
 
+#ifdef PCONF_UART3_IDX_IRQ
+void USART3_IRQHandler(void)
+{
+	HAL_UART_IRQHandler(pconf_huarts + PCONF_UART3_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_UART4_IDX_IRQ
+void USART4_IRQHandler(void)
+{
+	HAL_UART_IRQHandler(pconf_huarts + PCONF_UART4_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_I2C1_IDX_IRQ
+void I2C1_EV_IRQHandler(void)
+{
+	HAL_I2C_EV_IRQHandler(pconf_hi2cs + PCONF_I2C1_IDX_IRQ);
+}
+
+void I2C1_ER_IRQHandler(void)
+{
+	HAL_I2C_ER_IRQHandler(pconf_hi2cs + PCONF_I2C1_IDX_IRQ);
+}
+#endif
+
 #ifdef PCONF_DMA1_STREAM0_IRQ
 void DMA1_Stream0_IRQHandler(void)
 {
@@ -2356,5 +2438,7 @@ void EXTI1_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
 	HAL_GPIO_EXTI_IRQHandler(PCONF_EXTI9_5_PIN_IRQ);
+
+	__HAL_GPIO_EXTI_CLEAR_IT(PCONF_EXTI9_5_PIN_IRQ);
 }
 #endif

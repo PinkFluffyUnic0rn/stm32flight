@@ -548,7 +548,7 @@ int dpsupdate(int ms)
 	float alt;
 	static float prevalt = 0.0;
 	float dt;
-
+	
 	dt = ms / (float) TICKSPERSEC;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;

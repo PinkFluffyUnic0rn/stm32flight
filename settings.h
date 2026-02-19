@@ -72,7 +72,7 @@
 * @}
 */
 
-struct settings
+struct __attribute__((aligned(32))) settings
 {
 	struct {
 		struct { float x, y, z; } acc0;

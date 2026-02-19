@@ -1,11 +1,11 @@
 #ifndef HAL_MODULE_ENABLED
-#define HSE_VALUE 25000000
-#define ERROR_GPIO GPIOE
-#define ERROR_PIN GPIO_PIN_3
+#define HSE_VALUE 20000000
+#define ERROR_GPIO GPIOB
+#define ERROR_PIN GPIO_PIN_13
 #else
 
 #define PCONF_DMASCOUNT 	16
-#define PCONF_OUTPINSCOUNT	9
+#define PCONF_OUTPINSCOUNT	10
 #define PCONF_INPINSCOUNT	1
 #define PCONF_I2CSCOUNT		1
 #define PCONF_SPISCOUNT		2
@@ -29,6 +29,9 @@
 #define PCONF_DMA2_STREAM6_IRQ
 
 #define PCONF_UART2_IDX_IRQ 0
+#define PCONF_UART3_IDX_IRQ 1
+#define PCONF_UART4_IDX_IRQ 2
+#define PCONF_I2C1_IDX_IRQ 0
 
 #define PCONF_EXTI9_5_PIN_IRQ GPIO_PIN_5
 
@@ -53,47 +56,51 @@ DMA_Stream_TypeDef *const dmas[] = {
 
 const struct pconf_pin outpins[] = {
 	{
-		.inst = GPIOA,
-		.idx = GPIO_PIN_4
+		.inst = GPIOE,
+		.idx = GPIO_PIN_1
 	},
 	{
-		.inst = GPIOD,
-		.idx = GPIO_PIN_6
-	},
-	{
-		.inst = GPIOC,
+		.inst = GPIOE,
 		.idx = GPIO_PIN_0
 	},
 	{
-		.inst = GPIOC,
+		.inst = GPIOB,
 		.idx = GPIO_PIN_6
 	},
 	{
 		.inst = GPIOC,
-		.idx = GPIO_PIN_7
+		.idx = GPIO_PIN_11
 	},
 	{
 		.inst = GPIOC,
+		.idx = GPIO_PIN_10
+	},
+	{
+		.inst = GPIOA,
+		.idx = GPIO_PIN_12
+	},
+	{
+		.inst = GPIOB,
 		.idx = GPIO_PIN_13
 	},
 	{
-		.inst = GPIOC,
-		.idx = GPIO_PIN_14
-	},
-	{
-		.inst = GPIOC,
-		.idx = GPIO_PIN_15
+		.inst = GPIOB,
+		.idx = GPIO_PIN_12
 	},
 	{
 		.inst = GPIOE,
 		.idx = GPIO_PIN_3
+	},
+	{
+		.inst = GPIOE,
+		.idx = GPIO_PIN_4
 	}
 };
 
 const struct pconf_pin inpins[] = {
 	{
 		.inst = GPIOB,
-		.idx = GPIO_PIN_15
+		.idx = GPIO_PIN_7
 	}
 };
 
@@ -233,8 +240,8 @@ const struct pconf_uart uarts[] = {
 		.inst = USART2,
 		.usage = PCONF_UARTUSAGE_CRSF,
 		.rx = {
-			.inst = GPIOA,
-			.idx = GPIO_PIN_3
+			.inst = GPIOD,
+			.idx = GPIO_PIN_6
 		},
 		.tx = {
 			.inst = GPIOD,
@@ -289,18 +296,18 @@ const struct pconf_uart uarts[] = {
 };
 
 const struct pconf_pin armpinconf = {
-	.inst = GPIOC,
-	.idx = GPIO_PIN_6
+	.inst = GPIOB,
+	.idx = GPIO_PIN_12
 };
 
 const struct pconf_pin debugpinconf = {
-	.inst = GPIOA,
+	.inst = GPIOE,
 	.idx = GPIO_PIN_4
 };
 
 const struct pconf_pin errorpinconf = {
-	.inst = GPIOC,
-	.idx = GPIO_PIN_7
+	.inst = GPIOB,
+	.idx = GPIO_PIN_13
 };
 
 TIM_TypeDef *delayconf = TIM3;
@@ -319,7 +326,7 @@ const struct pconf_imu imuconf = {
 		.type = PCONF_IFACETYPE_SPI,
 		.cs = {
 			GPIOC,
-			GPIO_PIN_13
+			GPIO_PIN_11
 		},
 		.hspi = SPI1
 	}
@@ -346,8 +353,8 @@ const struct pconf_flash flashconf = {
 	.iface = {
 		.type = PCONF_IFACETYPE_SPI,
 		.cs = {
-			GPIOD,
-			GPIO_PIN_6
+			GPIOC,
+			GPIO_PIN_10
 		},
 		.hspi = SPI1
 	}
@@ -371,26 +378,26 @@ const struct pconf_wireless rfconf = {
 	.iface = {
 		.type = PCONF_IFACETYPE_SPI,
 		.cs = {
-			GPIOC,
+			GPIOE,
 			GPIO_PIN_0
 		},
 		.hspi = SPI2
 	},
 	.interrupt = {
-		.inst = GPIOC,
-		.idx = GPIO_PIN_1
+		.inst = GPIOB,
+		.idx = GPIO_PIN_5
 	},
 	.busy = {
 		.inst = GPIOB,
-		.idx = GPIO_PIN_15
+		.idx = GPIO_PIN_7
 	},
 	.boot = {
-		.inst = GPIOC,
-		.idx = GPIO_PIN_15
+		.inst = GPIOB,
+		.idx = GPIO_PIN_6
 	},
 	.reset = {
-		.inst = GPIOC,
-		.idx = GPIO_PIN_14
+		.inst = GPIOE,
+		.idx = GPIO_PIN_1
 	}
 };
 
