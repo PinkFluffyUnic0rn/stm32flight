@@ -1262,10 +1262,7 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 		pconf_hdmas[idx].Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
 		pconf_hdmas[idx].Init.Mode = DMA_NORMAL;
 		pconf_hdmas[idx].Init.Priority = DMA_PRIORITY_HIGH;
-		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_ENABLE;
-		pconf_hdmas[idx].Init.FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL;
-		pconf_hdmas[idx].Init.MemBurst = DMA_MBURST_SINGLE;
-		pconf_hdmas[idx].Init.PeriphBurst = DMA_PBURST_SINGLE;
+		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_DISABLE;
 
 		if (HAL_DMA_Init(pconf_hdmas + idx) != HAL_OK)
 			error_handler();
@@ -1549,7 +1546,7 @@ static void pconf_init_tim_pwm(int idx)
 		GPIO_InitStruct.Pin = tim->pwm[i].pin.idx;
 		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+		GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
 		GPIO_InitStruct.Alternate = pconf_tim_pinalternate(
 			&(tim->pwm[i].pin), tim->inst);
 		HAL_GPIO_Init(tim->pwm[i].pin.inst, &GPIO_InitStruct);
@@ -1786,6 +1783,18 @@ static void pconf_init_uart_crsf(int i)
 	pconf_huarts[i].AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
 	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
+		error_handler();
+
+	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_SetTxFifoThreshold(pconf_huarts + i, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_SetRxFifoThreshold(pconf_huarts + i, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_DisableFifoMode(pconf_huarts + i) != HAL_OK)
 		error_handler();
 }
 
