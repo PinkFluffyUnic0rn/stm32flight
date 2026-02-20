@@ -151,7 +151,11 @@ float batteryvoltage()
 
 	HAL_ADC_Stop(hadc);
 
+#ifdef STM32F4xx
 	return (v / (float) 0xfff * BAT_SCALE);
+#elif STM32H7xx
+	return (v / (float) 0xffff * BAT_SCALE);
+#endif
 }
 
 /**
