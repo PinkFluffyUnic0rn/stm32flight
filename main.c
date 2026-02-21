@@ -552,7 +552,7 @@ int dpsupdate(int ms)
 	float alt;
 	static float prevalt = 0.0;
 	float dt;
-	
+		
 	dt = ms / (float) TICKSPERSEC;
 
 	dt = (dt < 0.000001) ? 0.000001 : dt;
@@ -1152,7 +1152,7 @@ int main(void)
 		// get microseconds passed in this iteration
 		// one iteration duration should take at least
 		// some time, 100us was choosen
-		while ((c = __HAL_TIM_GET_COUNTER(pconf_schedhtim)) < 1);
+		while ((c = __HAL_TIM_GET_COUNTER(pconf_schedhtim)) < 10);
 
 		// update periodic events timers
 		for (i = 0; i < TEV_COUNT; ++i)
