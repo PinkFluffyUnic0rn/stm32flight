@@ -12,9 +12,12 @@
 #define DSHOT_0 160
 #define DSHOT_1 320
 #elif STM32H7xx
-#define DSHOT_BITLEN 833	
-#define DSHOT_0 313
-#define DSHOT_1 625
+//#define DSHOT_BITLEN 834
+//#define DSHOT_0 313
+//#define DSHOT_1 625
+#define DSHOT_BITLEN 416
+#define DSHOT_0 156
+#define DSHOT_1 313
 #endif
 
 struct dshot_device {

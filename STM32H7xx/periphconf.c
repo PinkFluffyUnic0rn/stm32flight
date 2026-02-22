@@ -1459,18 +1459,18 @@ static void pconf_init_dma(void)
 		irqn = pconf_dma_stream_irqn(dmas[i]);
 		
 		switch (irqn) {
-		case DMA1_Stream0_IRQn:		prep = 0;
-		case DMA1_Stream1_IRQn:		prep = 0;
-		case DMA1_Stream2_IRQn:		prep = 0;
-		case DMA1_Stream5_IRQn:		prep = 0;
-		case DMA1_Stream6_IRQn:		prep = 0;
-		case DMA1_Stream7_IRQn:		prep = 0;
-		case DMA2_Stream0_IRQn:		prep = 0;
+		case DMA1_Stream0_IRQn:		prep = 1;
+		case DMA1_Stream1_IRQn:		prep = 1;
+		case DMA1_Stream2_IRQn:		prep = 1;
+		case DMA1_Stream5_IRQn:		prep = 1;
+		case DMA1_Stream6_IRQn:		prep = 1;
+		case DMA1_Stream7_IRQn:		prep = 1;
+		case DMA2_Stream0_IRQn:		prep = 1;
 		case DMA2_Stream1_IRQn:		prep = 0;
 		case DMA2_Stream2_IRQn:		prep = 0;
-		case DMA2_Stream3_IRQn:		prep = 0;
+		case DMA2_Stream3_IRQn:		prep = 1;
 		case DMA2_Stream4_IRQn:		prep = 0;
-		case DMA2_Stream5_IRQn:		prep = 0;
+		case DMA2_Stream5_IRQn:		prep = 1;
 		case DMA2_Stream6_IRQn:		prep = 0;
 		}
 
@@ -1493,7 +1493,7 @@ static void pconf_init_tim_pwm(int idx)
 	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
 	pconf_htims[idx].Instance = tims->inst;
-	pconf_htims[idx].Init.Prescaler = 0;
+	pconf_htims[idx].Init.Prescaler = 1;
 	pconf_htims[idx].Init.CounterMode = TIM_COUNTERMODE_UP;
 	pconf_htims[idx].Init.Period = 0;
 	pconf_htims[idx].Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
