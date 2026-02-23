@@ -5,8 +5,6 @@ DIY quadcopter flight controller from scratch, two boards and software.
 
 SOFTWARE
 =======
-* STM32F405 based FC board.
-* STM32H723 based FC board (testing in progress).
 * Rotation speed stabilization using gyroscope readings.
 * Attitude stabilization using accelerometer/gyroscope readings.
 * Yaw stabilization using gyroscope readings.
