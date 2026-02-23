@@ -1,0 +1,69 @@
+c1			18 pF
+c2			18 pF
+c3			0.1 uF
+c4			5.6 pF, tbd
+c5			18 pF
+c6			18 pF
+c7			1 uF
+c8			100 uF
+c9			10 uF
+c10			0.1 uF
+c11			0.01 uF
+c12			0.1 uF
+c13			0.1 uF
+c14			0.1 uF
+c15			1 uF
+c16			0.1 uF
+c17			0.1 uF
+c18			0.1 uF
+c19			10 uF
+c20			0.1 uF
+c21			4.7 uF
+c22			0.22 uF
+c23			0.1 uF
+c24			2.2 uF
+c25			0.1 uF
+c26			2.2 uF
+c27			0.1 uF
+c28			1 uF
+c29			4.7 uF
+c30			0.1 uF
+c31			0.1 uF
+c32			2.2 uF
+c33			0.01 uF
+
+r1			3 kOhm
+r2			1 kOhm
+r3			10 kOhm
+r4			3.3 kOhm
+r5			3 kOhm
+r6			680 kOhm
+r7			3 kOhm
+r8			10 kOhm
+r9			100 Ohm
+r10			12 kOhm
+r11			1 kOhm
+r12			1 kOhm
+
+d1			shottky diode
+
+l1			tbd
+l2			tbd
+l3			10 uH
+
+led1			orange led
+led2			blue led
+pwd			green led
+
+u1			esp8285
+u2			stm32h723vgt
+u3			LDL1117S33R
+u4			TPS5430
+u5			DPS368
+u6			QMC5883L
+u7			ICM-42688-P
+u8			W25Q128FVSIG
+
+ldo -- нужен еще конденсатор?
+проверить значения dc-dc
+esp8285 chip_en на пин stm32?
