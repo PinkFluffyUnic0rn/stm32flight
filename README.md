@@ -3,7 +3,7 @@ STM32 Flight controller
 
 DIY quadcopter flight controller from scratch, two boards and software.
 
-SOFTWARE
+Software
 =======
 * Rotation speed stabilization using gyroscope readings.
 * Attitude stabilization using accelerometer/gyroscope readings.
