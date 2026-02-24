@@ -3,8 +3,16 @@ STM32 Flight controller
 
 DIY quadcopter flight controller from scratch, two boards and software.
 
+[Project structure](https://github.com/PinkFluffyUnic0rn/stm32flight/wiki/Project-structure) 
+is described on wiki page.
+
 Software
 =======
+
+Software part implements all basic quadcopter flight control features.
+Configuration commands and settings are on
+[wiki page](https://github.com/PinkFluffyUnic0rn/stm32flight/wiki/FC-configuration-commands).
+
 * Rotation speed stabilization using gyroscope readings.
 * Attitude stabilization using accelerometer/gyroscope readings.
 * Yaw stabilization using gyroscope readings.
