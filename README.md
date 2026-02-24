@@ -11,7 +11,7 @@ Software
 
 Software part implements all basic quadcopter flight control features.
 Configuration commands and settings are on
-[wiki page](https://github.com/PinkFluffyUnic0rn/stm32flight/wiki/FC-configuration-commands).
+[wiki page](https://github.com/PinkFluffyUnic0rn/stm32flight/wiki/FC-configuration-commands-and-settings).
 
 * Rotation speed stabilization using gyroscope readings.
 * Attitude stabilization using accelerometer/gyroscope readings.
