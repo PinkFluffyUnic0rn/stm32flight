@@ -40,6 +40,8 @@ STM32F405 based board
 
 STM32H723 based board
 =======
+[Schematic](https://github.com/PinkFluffyUnic0rn/stm32flight/blob/main/pcb/H7/schematic.pdf)
+
  * MCU: STM32F723VGT6
  * Crystall oscillator: 20 Mhz
  * DC-DC converter for control board and camera: TPS5430
