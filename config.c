@@ -50,8 +50,7 @@ struct settingnode
 		float *f;			/*!< setting value
 						storage in case if this
 						node is float setting */
-		int *i;
-		float *f;			/*!< setting value
+		int *i;				/*!< setting value
 						storage in case if this
 						node is int setting */
 		struct {
