@@ -72,6 +72,9 @@
 * @}
 */
 
+/**
+* @brief settings storage structure
+*/
 struct __attribute__((aligned(32))) settings
 {
 	struct {

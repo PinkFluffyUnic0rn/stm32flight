@@ -16,19 +16,24 @@ int writesettings(int slot)
 	char *pt;
 	int j;
 
+	// read all settings slots from MCU's flash to temporary storage
 	memcpy(s, (void *) (USER_FLASH), sizeof(struct settings) * 6);
 
+	// disable interrupts and unlock MCU's flash
 	__disable_irq();
 	HAL_FLASH_Unlock();
 
+	// erase MCU's flash sector containing settings
 #ifdef STM32F4xx
 	FLASH_Erase_Sector(FLASH_SECTOR_11,  VOLTAGE_RANGE_3);
 #elif STM32H7xx
 	FLASH_Erase_Sector(FLASH_SECTOR_7, FLASH_BANK_1, FLASH_VOLTAGE_RANGE_3);
 #endif
 
+	// copy current running settings to slot in temporary storage
 	memcpy(s + slot, &St, sizeof(struct settings));
 
+	// write temporary storage back to flash
 	sz = sizeof(struct settings) * 6;
 	pt = (char *) s;
 
@@ -44,6 +49,7 @@ int writesettings(int slot)
 	}
 #endif
 
+	// lock MCU's flash and enable interrupts
 	HAL_FLASH_Lock();
 	__enable_irq();
 

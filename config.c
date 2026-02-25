@@ -1,3 +1,8 @@
+/**
+* @file config.c
+* @brief Configuration commands source file
+*/
+
 #include "config.h"
 
 #include <math.h>
@@ -21,28 +26,47 @@
 #include "irc.h"
 #include "dshot.h"
 
+/**
+* @brief Config command parsing tree node type
+*/
 enum NODETYPE {
-	NODETYPE_PARENT = 0,
-	NODETYPE_FLOAT = 1,
-	NODETYPE_INT = 2,
-	NODETYPE_MAP = 3
+	NODETYPE_PARENT = 0,	/*!< non-terminal node */
+	NODETYPE_FLOAT = 1,	/*!< terminal node with float value */
+	NODETYPE_INT = 2,	/*!< terminal node with int value */
+	NODETYPE_MAP = 3	/*!< terminal node with map value */
 };
 
+/**
+* @brief Config command parsing tree node
+*/
 struct settingnode
 {
-	char *token;
-	int type;
+	char *token;				/*!< node token */
+	int type;				/*!< node type */
 	union {
-		struct settingnode **child;
-		float *f;
+		struct settingnode **child;	/*!< node children list
+						in case if this node is
+						non-terminal */
+		float *f;			/*!< setting value
+						storage in case if this
+						node is float setting */
 		int *i;
+		float *f;			/*!< setting value
+						storage in case if this
+						node is int setting */
 		struct {
-			int *m;
-			const char **k;
-		} m;
+			int *m;			/*!< value storage */
+			const char **k;		/*!< map keys list */
+		} m;				/*!< setting value
+						storage and map keys
+						list in case if this
+						node is map setting */
 	};
 };
 
+/**
+* @brief Config command parsing tree
+*/
 static struct settingnode Sttree = {
 	.token = "",
 	.type = NODETYPE_PARENT,
@@ -570,6 +594,12 @@ static struct settingnode Sttree = {
 	}
 };
 
+/**
+* @brief Search through map by key
+* @param map map
+* @param s key to search
+* @return position corresponding to key in map
+*/
 static int mapsearch(const char **map, const char *s)
 {
 	const char **p;
