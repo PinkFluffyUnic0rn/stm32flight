@@ -1262,7 +1262,10 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 		pconf_hdmas[idx].Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
 		pconf_hdmas[idx].Init.Mode = DMA_NORMAL;
 		pconf_hdmas[idx].Init.Priority = DMA_PRIORITY_HIGH;
-		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+		pconf_hdmas[idx].Init.FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL;
+		pconf_hdmas[idx].Init.MemBurst = DMA_MBURST_SINGLE;
+		pconf_hdmas[idx].Init.PeriphBurst = DMA_PBURST_SINGLE;
 
 		if (HAL_DMA_Init(pconf_hdmas + idx) != HAL_OK)
 			error_handler();
@@ -1493,6 +1496,7 @@ static void pconf_init_tim_pwm(int idx)
 	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
 	pconf_htims[idx].Instance = tims->inst;
+	//pconf_htims[idx].Init.Prescaler = 0;
 	pconf_htims[idx].Init.Prescaler = 1;
 	pconf_htims[idx].Init.CounterMode = TIM_COUNTERMODE_UP;
 	pconf_htims[idx].Init.Period = 0;
