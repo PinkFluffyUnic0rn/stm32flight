@@ -1263,7 +1263,7 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 		pconf_hdmas[idx].Init.Mode = DMA_NORMAL;
 		pconf_hdmas[idx].Init.Priority = DMA_PRIORITY_HIGH;
 		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_ENABLE;
-		pconf_hdmas[idx].Init.FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL;
+		pconf_hdmas[idx].Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
 		pconf_hdmas[idx].Init.MemBurst = DMA_MBURST_SINGLE;
 		pconf_hdmas[idx].Init.PeriphBurst = DMA_PBURST_SINGLE;
 
@@ -1482,7 +1482,7 @@ static void pconf_init_dma(void)
 	}
 }
 
-static void pconf_init_tim_pwm(int idx)
+static void pconf_init_timpwm(int idx)
 {
 
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -1496,8 +1496,7 @@ static void pconf_init_tim_pwm(int idx)
 	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
 	pconf_htims[idx].Instance = tims->inst;
-	//pconf_htims[idx].Init.Prescaler = 0;
-	pconf_htims[idx].Init.Prescaler = 1;
+	pconf_htims[idx].Init.Prescaler = 0;
 	pconf_htims[idx].Init.CounterMode = TIM_COUNTERMODE_UP;
 	pconf_htims[idx].Init.Period = 0;
 	pconf_htims[idx].Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -1550,7 +1549,7 @@ static void pconf_init_tim_pwm(int idx)
 		GPIO_InitStruct.Pin = tim->pwm[i].pin.idx;
 		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 		GPIO_InitStruct.Alternate = pconf_tim_pinalternate(
 			&(tim->pwm[i].pin), tim->inst);
 		HAL_GPIO_Init(tim->pwm[i].pin.inst, &GPIO_InitStruct);
@@ -1626,7 +1625,7 @@ static void pconf_init_tim()
 
 	for (i = 0; i < PCONF_TIMSCOUNT; ++i) {
 		if (tims[i].usage == PCONF_TIMUSAGE_PWM)
-			pconf_init_tim_pwm(i);
+			pconf_init_timpwm(i);
 		else if (tims[i].usage == PCONF_TIMUSAGE_SCHED)
 			pconf_init_tim_sched(i);
 		else if (tims[i].usage == PCONF_TIMUSAGE_DELAY)
