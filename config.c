@@ -712,10 +712,10 @@ int updateirc()
 	if (Dev[DEV_IRC].status != DEVSTATUS_INIT)
 		return 0;
 
-	Dev[DEV_IRC].configure(Dev[DEV_IRC].priv, "set",
+	Dev[DEV_IRC].configure(Dev[DEV_IRC].priv,
 		"frequency", St.irc.freq);
 
-	Dev[DEV_IRC].configure(Dev[DEV_IRC].priv, "set",
+	Dev[DEV_IRC].configure(Dev[DEV_IRC].priv,
 		"power", St.irc.power);
 
 	return 0;

@@ -1931,8 +1931,6 @@ static void irc_init()
 		goto error;
 
 	d.huart = pconf_huarts + pconf_uartidx(vtxconf.iface.huart);
-	d.power = St.irc.power;
-	d.frequency = St.irc.freq;
 
 	if (irc_initdevice(&d, Dev + DEV_IRC) < 0)
 		goto error;

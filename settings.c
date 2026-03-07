@@ -62,7 +62,7 @@ int validatesettings()
 
 	if (!irc_ispowervalid(St.irc.power))
 		St.irc.power = IRCDEFPOWER;
-	if (!irc_isfreqvalid(St.irc.power))
+	if (!irc_isfreqvalid(St.irc.freq))
 		St.irc.freq = IRCDEFFREQ;
 
 	if (St.mtr.lt < 0 || St.mtr.lt > 3)	St.mtr.lt = LTDEFNUM;

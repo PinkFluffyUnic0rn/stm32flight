@@ -110,7 +110,7 @@ int irc_configure(void *d, const char *cmd, ...)
 	dev = d;
 
 	va_start(args, cmd);
-
+		
 	if (strcmp(cmd, "frequency") == 0) {
 		int freq;
 
