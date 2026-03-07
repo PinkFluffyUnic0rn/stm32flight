@@ -16,6 +16,12 @@
 int setstabilize(int init);
 
 /**
+* @brief Update IRC VTX settings.
+* @return always 0
+*/
+int updateirc();
+
+/**
 * @brief Disarm command handler.
 * @param toks list of parsed command tokens
 * @param out command's output

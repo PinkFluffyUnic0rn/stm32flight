@@ -1074,6 +1074,9 @@ int main(void)
 	// memory slot, which is 0 at start
 	readsettings(Curslot);
 
+	// set IRC VTX power and frequency using values from settings
+	updateirc();
+
 	// initialize stabilization routine
 	setstabilize(1);
 

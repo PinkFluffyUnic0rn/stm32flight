@@ -44,13 +44,13 @@ enum IRC_FREQ {
 
 struct irc_data {
 	int power;
-	int frequency;
+	int freq;
 };
 
 struct irc_device {
 	UART_HandleTypeDef *huart;
 	enum IRC_POWER power;
-	enum IRC_FREQ frequency;
+	enum IRC_FREQ freq;
 };
 
 int irc_ispowervalid(int v);

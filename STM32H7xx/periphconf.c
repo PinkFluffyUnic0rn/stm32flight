@@ -16,7 +16,7 @@ struct pconf_pin {
 
 struct pconf_i2c {
 	I2C_TypeDef *inst;
-	
+
 	enum PCONF_I2CUSAGE {
 		PCONF_I2CUSAGE_DEVS,
 	} usage;
@@ -29,7 +29,7 @@ struct pconf_i2c {
 
 struct pconf_spi {
 	SPI_TypeDef *inst;
-	
+
 	enum PCONF_SPIUSAGE {
 		PCONF_SPIUSAGE_DEVS,
 		PCONF_SPIUSAGE_WIFI
@@ -46,7 +46,7 @@ struct pconf_exti {
 
 struct pconf_tim {
 	TIM_TypeDef *inst;
-	
+
 	enum PCONF_TIMUSAGE {
 		PCONF_TIMUSAGE_PWM,
 		PCONF_TIMUSAGE_SCHED,
@@ -82,7 +82,7 @@ struct pconf_uart {
 		PCONF_UARTUSAGE_DEBUG,
 		PCONF_UARTUSAGE_IRC
 	} usage;
-	
+
 	struct pconf_pin rx;
 	struct pconf_pin tx;
 	DMA_Stream_TypeDef *rxdma;
@@ -107,7 +107,7 @@ struct pconf_iface {
 };
 
 struct pconf_debug {
-	struct pconf_iface iface;	
+	struct pconf_iface iface;
 };
 
 struct pconf_imu {
@@ -126,7 +126,7 @@ struct pconf_bar {
 		PCONF_BARTYPE_DPS368
 	} type;
 
-	struct pconf_iface iface;	
+	struct pconf_iface iface;
 };
 
 struct pconf_mag {
@@ -135,7 +135,7 @@ struct pconf_mag {
 		PCONF_MAGTYPE_HMC5883L
 	} type;
 
-	struct pconf_iface iface;	
+	struct pconf_iface iface;
 };
 
 struct pconf_flash {
@@ -143,15 +143,15 @@ struct pconf_flash {
 		PCONF_FLASHTYPE_W25Q
 	} type;
 
-	struct pconf_iface iface;	
+	struct pconf_iface iface;
 };
 
 struct pconf_crsf {
-	struct pconf_iface iface;	
+	struct pconf_iface iface;
 };
 
 struct pconf_gnss {
-	struct pconf_iface iface;	
+	struct pconf_iface iface;
 };
 
 struct pconf_wireless {
@@ -163,7 +163,7 @@ struct pconf_wireless {
 };
 
 struct pconf_vtx {
-	struct pconf_iface iface;	
+	struct pconf_iface iface;
 };
 
 struct pconf_pwm {
@@ -226,7 +226,7 @@ static int pconf_dma_stream_irqn(const DMA_Stream_TypeDef *dma)
 	else if (dma == DMA2_Stream5)	return DMA2_Stream5_IRQn;
 	else if (dma == DMA2_Stream6)	return DMA2_Stream6_IRQn;
 	else if (dma == DMA2_Stream7)	return DMA2_Stream7_IRQn;
-	
+
 	return (-1);
 }
 
@@ -319,7 +319,7 @@ static int pconf_gpio_disable_clock(GPIO_TypeDef *inst)
 static int pconf_uart_enable_clock(USART_TypeDef *inst)
 {
 	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-	
+
 	if (inst == USART1)
 		PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART1;
 	else if (inst == USART2)
@@ -633,7 +633,7 @@ static int pconf_spi_pinalternate(const struct pconf_pin *pin,
 				return GPIO_AF6_SPI3;
 		}
 		else if (pin->inst == GPIOD)
-			return GPIO_AF5_SPI3;	
+			return GPIO_AF5_SPI3;
 	}
 	else if (inst == SPI4)
 		return GPIO_AF5_SPI4;
@@ -723,7 +723,7 @@ static int pconf_dmastream_i2crx_channel(DMA_Stream_TypeDef *inst,
 	if (i2cinst == I2C1)		return DMA_REQUEST_I2C1_RX;
 	else if (i2cinst == I2C2)	return DMA_REQUEST_I2C2_RX;
 	else if (i2cinst == I2C3)	return DMA_REQUEST_I2C3_RX;
-	
+
 	return (-1);
 }
 
@@ -772,7 +772,7 @@ static int pconf_dmastream_pwm_channel(DMA_Stream_TypeDef *inst,
 	else if (timinst == TIM24 && ch == 2)	return DMA_REQUEST_TIM24_CH2;
 	else if (timinst == TIM24 && ch == 3)	return DMA_REQUEST_TIM24_CH3;
 	else if (timinst == TIM24 && ch == 4)	return DMA_REQUEST_TIM24_CH4;
-	
+
 	return (-1);
 }
 
@@ -878,7 +878,7 @@ static int pconf_timidx(TIM_TypeDef *inst)
 static int pconf_dmaidx(DMA_Stream_TypeDef *inst)
 {
 	int i;
-	
+
 	if (inst == NULL)
 		return (-1);
 
@@ -914,7 +914,7 @@ void pconf_mspinit_uart(UART_HandleTypeDef* huart)
 		GPIO_InitStruct.Alternate = pconf_uart_pinalternate(
 			&(uart->tx), uart->inst);
 		HAL_GPIO_Init(uart->tx.inst, &GPIO_InitStruct);
-	
+
 		return;
 	}
 
@@ -956,7 +956,7 @@ void pconf_mspinit_uart(UART_HandleTypeDef* huart)
 		HAL_NVIC_SetPriority(pconf_uart_irqn(uart->inst), 0, 0);
 		HAL_NVIC_EnableIRQ(pconf_uart_irqn(uart->inst));
 	}
-	
+
 	if ((idx = pconf_dmaidx(uart->txdma)) >= 0) {
 		pconf_hdmas[idx].Instance = dmas[idx];
 		pconf_hdmas[idx].Init.Request
@@ -975,7 +975,7 @@ void pconf_mspinit_uart(UART_HandleTypeDef* huart)
 			error_handler();
 
 		__HAL_LINKDMA(huart, hdmatx, pconf_hdmas[idx]);
-	
+
 		HAL_NVIC_SetPriority(pconf_uart_irqn(uart->inst), 0, 0);
 		HAL_NVIC_EnableIRQ(pconf_uart_irqn(uart->inst));
 	}
@@ -1024,7 +1024,7 @@ void pconf_mspinit_adc(ADC_HandleTypeDef* hadc)
 	GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(adc->pin.inst, &GPIO_InitStruct);
-	
+
 	if ((idx = pconf_dmaidx(adc->dma)) >= 0) {
 		pconf_hdmas[idx].Instance = dmas[idx];
 		pconf_hdmas[idx].Init.Request
@@ -1038,7 +1038,7 @@ void pconf_mspinit_adc(ADC_HandleTypeDef* hadc)
 		pconf_hdmas[idx].Init.Mode = DMA_NORMAL;
 		pconf_hdmas[idx].Init.Priority = DMA_PRIORITY_LOW;
 		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-	
+
 		if (HAL_DMA_Init(pconf_hdmas + idx) != HAL_OK)
 			error_handler();
 
@@ -1092,7 +1092,7 @@ void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
 	GPIO_InitStruct.Alternate = pconf_i2c_pinalternate(&(i2c->scl),
 		i2c->inst);
 	HAL_GPIO_Init(i2c->scl.inst, &GPIO_InitStruct);
-	
+
 	pconf_i2c_enable_clock(hi2c->Instance);
 
 	if ((idx = pconf_dmaidx(i2c->rxdma)) >= 0) {
@@ -1114,7 +1114,7 @@ void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
 
 		__HAL_LINKDMA(hi2c, hdmarx, pconf_hdmas[idx]);
 	}
-	
+
 	if ((idx = pconf_dmaidx(i2c->txdma)) >= 0) {
 		pconf_hdmas[idx].Instance = dmas[idx];
 		pconf_hdmas[idx].Init.Request
@@ -1240,9 +1240,9 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 		return;
 
 	tim = tims + idx;
-	
+
 	pconf_tim_enable_clock(htim->Instance);
-	
+
 	for (i = 0; i < tim->chcnt; ++i) {
 		const int *dmaidx;
 		int chanidx;
@@ -1289,7 +1289,7 @@ void pconf_mspdeinit_timpwm(TIM_HandleTypeDef *htim)
 		return;
 
 	tim = tims + idx;
-	
+
 	pconf_tim_disable_clock(htim->Instance);
 
 	for (i = 0; i < tim->chcnt; ++i) {
@@ -1335,7 +1335,7 @@ void pconf_init_clock(void)
 	RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_2;
 	RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
 	RCC_OscInitStruct.PLL.PLLFRACN = 0;
-	
+
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
 		error_handler();
 
@@ -1408,7 +1408,7 @@ static void pconf_init_gpio(void)
 		HAL_GPIO_WritePin(outpins[i].inst, outpins[i].idx,
 			GPIO_PIN_RESET);
 	}
-	
+
 	for (i = 0; i < PCONF_INPINSCOUNT; ++i) {
 		HAL_GPIO_WritePin(inpins[i].inst, inpins[i].idx,
 			GPIO_PIN_RESET);
@@ -1419,7 +1419,7 @@ static void pconf_init_gpio(void)
 		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 		GPIO_InitStruct.Pull = GPIO_NOPULL;
 		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-		
+
 		HAL_GPIO_Init(outpins[i].inst, &GPIO_InitStruct);
 	}
 
@@ -1429,7 +1429,7 @@ static void pconf_init_gpio(void)
 		GPIO_InitStruct.Pull = GPIO_NOPULL;
 		GPIO_InitStruct.Pull = GPIO_NOPULL;
 		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-	
+
 		HAL_GPIO_Init(inpins[i].inst, &GPIO_InitStruct);
 	}
 
@@ -1449,7 +1449,7 @@ static void pconf_init_gpio(void)
 static void pconf_init_dma(void)
 {
 	int i;
-	
+
 	__HAL_RCC_DMA2_CLK_ENABLE();
 	__HAL_RCC_DMA1_CLK_ENABLE();
 
@@ -1461,7 +1461,7 @@ static void pconf_init_dma(void)
 			continue;
 
 		irqn = pconf_dma_stream_irqn(dmas[i]);
-		
+
 		switch (irqn) {
 		case DMA1_Stream0_IRQn:		prep = 1;
 		case DMA1_Stream1_IRQn:		prep = 1;
@@ -1651,7 +1651,7 @@ static void pconf_init_i2c()
 
 		if (HAL_I2C_Init(pconf_hi2cs + i) != HAL_OK)
 			error_handler();
-	
+
 		if (HAL_I2CEx_ConfigAnalogFilter(pconf_hi2cs + i,
 				I2C_ANALOGFILTER_ENABLE) != HAL_OK)
 			error_handler();
@@ -1738,7 +1738,7 @@ static void pconf_init_adc(void)
 
 	for (i = 0; i < PCONF_ADCSCOUNT; ++i) {
 		ADC_ChannelConfTypeDef sConfig = {0};
-	
+
 		pconf_hadcs[i].Instance = adcs[i].inst;
 		pconf_hadcs[i].Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV8;
 		pconf_hadcs[i].Init.Resolution = ADC_RESOLUTION_16B;
@@ -1755,7 +1755,7 @@ static void pconf_init_adc(void)
 		pconf_hadcs[i].Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
 		pconf_hadcs[i].Init.OversamplingMode = DISABLE;
 		pconf_hadcs[i].Init.Oversampling.Ratio = 1;
-		
+
 		if (HAL_ADC_Init(pconf_hadcs + i) != HAL_OK)
 			error_handler();
 
@@ -1887,7 +1887,7 @@ static void pconf_init_uart()
 			pconf_init_uart_debug(i);
 		else if (uarts[i].usage == PCONF_UARTUSAGE_IRC)
 			pconf_init_uart_irc(i);
-	
+
 	}
 }
 
@@ -1940,7 +1940,7 @@ static void imu_init()
 		if (icm_init() < 0)
 			goto error;
 	}
-		
+
 	uartprintf("%s initialized\r\n", Dev[DEV_IMU].name);
 
 	return;
@@ -1969,7 +1969,7 @@ static void baro_init()
 		if (dps_init() < 0)
 			goto error;
 	}
-		
+
 	uartprintf("%s initialized\r\n", Dev[DEV_BARO].name);
 
 	return;
@@ -1999,7 +1999,7 @@ static void mag_init()
 		if (qmc_init() < 0)
 			goto error;
 	}
-		
+
 	uartprintf("%s initialized\r\n", Dev[DEV_MAG].name);
 
 	return;
@@ -2047,8 +2047,8 @@ static void crsfdev_init()
 	d.huart = pconf_huarts + pconf_uartidx(crsfconf.iface.huart);
 
 	if (crsf_initdevice(&d, Dev + DEV_CRSF) < 0)
-		goto error;		
-		
+		goto error;
+
 	uartprintf("%s initialized\r\n", Dev[DEV_CRSF].name);
 
 	return;
@@ -2114,14 +2114,12 @@ static void irc_init()
 		goto error;
 
 	d.huart = pconf_huarts + pconf_uartidx(vtxconf.iface.huart);
-	d.power = St.irc.power;
-	d.frequency = St.irc.freq;
 
 	if (irc_initdevice(&d, Dev + DEV_IRC) < 0)
 		goto error;
 
 	uartprintf("%s initilized\r\n", Dev[DEV_IRC].name);
-	
+
 	return;
 
 error:
@@ -2146,7 +2144,7 @@ static void dshot_init()
 		goto error;
 
 	uartprintf("%s initilized\r\n", Dev[DEV_DSHOT].name);
-	
+
 	return;
 
 error:
@@ -2186,10 +2184,10 @@ void pconf_init(void (*errhandler)(void))
 
 	pconf_delayhtim = pconf_htims + pconf_timidx(delayconf);
 	pconf_schedhtim = pconf_htims + pconf_timidx(schedconf);
-		
+
 	pconf_batteryhadc = pconf_hadcs + pconf_adcidx(batconf.adc);
 	pconf_currenthadc = pconf_hadcs + pconf_adcidx(curconf.adc);
-	
+
 	uartdev_init();
 	imu_init();
 	baro_init();

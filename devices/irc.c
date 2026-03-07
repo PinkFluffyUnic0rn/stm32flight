@@ -94,7 +94,7 @@ int irc_read(void *d, void *dt, size_t sz)
 			break;
 	}
 
-	data->frequency = pack[2] | pack[3] << 8;
+	data->freq = pack[2] | pack[3] << 8;
 	data->power = pack[4] | pack[5] << 8;
 
 	return 0;
@@ -104,7 +104,6 @@ int irc_configure(void *d, const char *cmd, ...)
 {
 	struct irc_device *dev;
 	struct irc_data data;
-	char *par;
 	int r;
 	va_list args;
 
@@ -112,88 +111,59 @@ int irc_configure(void *d, const char *cmd, ...)
 
 	va_start(args, cmd);
 
-	if (strcmp(cmd, "set") == 0) {
-		par = va_arg(args, char *);
+	if (strcmp(cmd, "frequency") == 0) {
+		int freq;
 
-		if (strcmp(par, "frequency") == 0) {
-			int freq;
+		freq = va_arg(args, int);
 
-			freq = va_arg(args, int);
-
-			if (!irc_isfreqvalid(freq))
-				freq = IRC_FREQ_5733;
-
-			for (r = 0; r < IRC_RETRIES; ++r) {
-				irc_sendpacket(dev, 'F', freq);
-				mdelay(250);
-
-				if (irc_read(d, &data,
-						sizeof(struct irc_data)) != 0)
-					continue;
-
-				if (data.frequency == freq)
-					break;
-			}
-
-			if (r == IRC_RETRIES) {
-				va_end(args);
-				return (-1);
-			}	
-
-			dev->frequency = freq;
-		}
-		else if (strcmp(par, "power") == 0) {
-			int power;
-
-			power = va_arg(args, int);
-
-			if (!irc_ispowervalid(power))
-				power = IRC_POWER_25;
-
-			for (r = 0; r < IRC_RETRIES; ++r) {	
-				irc_sendpacket(dev, 'P', power);
-				mdelay(250);
-
-				if (irc_read(d, &data,
-						sizeof(struct irc_data)) != 0)
-					continue;
-
-				if (data.power == power)
-					break;
-			}	
-
-			if (r == IRC_RETRIES) {
-				va_end(args);
-				return (-1);
-			}	
-
-			dev->power = power;
-		}
-	}
-	else if (strcmp(cmd, "get") == 0) {
-		uint8_t pack[16];
-		int *out;
+		if (!irc_isfreqvalid(freq))
+			freq = IRC_FREQ_5733;
 
 		for (r = 0; r < IRC_RETRIES; ++r) {
-			irc_sendpacket(dev, 'v', dev->power);
+			irc_sendpacket(dev, 'F', freq);
+			mdelay(250);
 
-			HAL_UART_Receive(dev->huart, pack, 16, 1000);
+			if (irc_read(d, &data,
+					sizeof(struct irc_data)) != 0)
+				continue;
 
-			if (irc_checksum(pack + 1, 13) == pack[14])
+			if (data.freq == freq)
 				break;
 		}
 
-		par = va_arg(args, char *);
-		out = va_arg(args, int *);
-
-		if (strcmp(par, "frequency") == 0)
-			*out = pack[2] | pack[3] << 8;
-		else if (strcmp(par, "power") == 0)
-			*out = pack[4] | pack[5] << 8;
-		else {
+		if (r == IRC_RETRIES) {
 			va_end(args);
 			return (-1);
 		}
+
+		dev->freq = freq;
+	}
+	else if (strcmp(cmd, "power") == 0) {
+		int power;
+
+		power = va_arg(args, int);
+
+		if (!irc_ispowervalid(power))
+			power = IRC_POWER_25;
+
+		for (r = 0; r < IRC_RETRIES; ++r) {
+			irc_sendpacket(dev, 'P', power);
+			mdelay(250);
+
+			if (irc_read(d, &data,
+					sizeof(struct irc_data)) != 0)
+				continue;
+
+			if (data.power == power)
+				break;
+		}
+
+		if (r == IRC_RETRIES) {
+			va_end(args);
+			return (-1);
+		}
+
+		dev->power = power;
 	}
 
 	va_end(args);
@@ -203,6 +173,7 @@ int irc_configure(void *d, const char *cmd, ...)
 
 int irc_init(struct irc_device *dev)
 {
+	struct irc_data idt;
 	uint8_t data[16];
 	int retries;
 
@@ -218,11 +189,10 @@ int irc_init(struct irc_device *dev)
 	if (retries == IRC_RETRIES)
 		return (-1);
 
-	if (irc_configure(dev, "power", dev->power) < 0)
-		return (-1);
+	irc_read(dev, &idt, sizeof(struct irc_data));
 
-	if (irc_configure(dev, "frequency", dev->frequency) < 0)
-		return (-1);
+	dev->power = idt.power;
+	dev->freq = idt.freq;
 
 	return 0;
 }

@@ -707,6 +707,20 @@ int setstabilize(int init)
 	return 0;
 }
 
+int updateirc()
+{
+	if (Dev[DEV_IRC].status != DEVSTATUS_INIT)
+		return 0;
+
+	Dev[DEV_IRC].configure(Dev[DEV_IRC].priv, "set",
+		"frequency", St.irc.freq);
+
+	Dev[DEV_IRC].configure(Dev[DEV_IRC].priv, "set",
+		"power", St.irc.power);
+
+	return 0;
+}
+
 /**
 * @brief Print quadcopter's postion and tilt data into a string.
 * @param s output string
@@ -1169,16 +1183,8 @@ int applycmd(const struct cdevice *dev, const char **toks, char *out)
 		irc = dsp = log = 1;
 	}
 
-	if (irc) {
-		if (Dev[DEV_IRC].status != DEVSTATUS_INIT)
-			return 0;
-
-		Dev[DEV_IRC].configure(Dev[DEV_IRC].priv, "set",
-			"frequency", St.irc.freq);
-	
-		Dev[DEV_IRC].configure(Dev[DEV_IRC].priv, "set",
-			"power", St.irc.power);
-	}
+	if (irc)
+		updateirc();
 	
 	if (dsp)
 		setstabilize(0);
@@ -1243,7 +1249,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 			sizeof(struct irc_data));
 
 		snprintf(out, INFOLEN, "frequency: %d; power: %d\r\n",
-			data.frequency, data.power);
+			data.freq, data.power);
 	}
 	else if (strcmp(toks[1], "autopilot") == 0)
 		sprintfautopilot(out);
