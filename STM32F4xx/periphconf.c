@@ -69,6 +69,7 @@ struct pconf_adc {
 	} usage;
 
 	struct pconf_pin pin;
+	uint32_t chan;
 	DMA_Stream_TypeDef *dma;
 };
 
@@ -1575,10 +1576,10 @@ static void pconf_init_spi_wifi(int i)
 	pconf_hspis[i].Init.Mode = SPI_MODE_MASTER;
 	pconf_hspis[i].Init.Direction = SPI_DIRECTION_2LINES;
 	pconf_hspis[i].Init.DataSize = SPI_DATASIZE_8BIT;
-	pconf_hspis[i].Init.CLKPolarity = SPI_POLARITY_LOW;
-	pconf_hspis[i].Init.CLKPhase = SPI_PHASE_1EDGE;
+	pconf_hspis[i].Init.CLKPolarity = SPI_POLARITY_HIGH;
+	pconf_hspis[i].Init.CLKPhase = SPI_PHASE_2EDGE;
 	pconf_hspis[i].Init.NSS = SPI_NSS_SOFT;
-	pconf_hspis[i].Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+	pconf_hspis[i].Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
 	pconf_hspis[i].Init.FirstBit = SPI_FIRSTBIT_MSB;
 	pconf_hspis[i].Init.TIMode = SPI_TIMODE_DISABLE;
 	pconf_hspis[i].Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1607,7 +1608,7 @@ static void pconf_init_adc(void)
 	for (i = 0; i < PCONF_ADCSCOUNT; ++i) {
 		ADC_ChannelConfTypeDef sConfig = {0};
 	
-		pconf_hadcs[i].Instance = ADC1;
+		pconf_hadcs[i].Instance = adcs[i].inst;
 		pconf_hadcs[i].Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
 		pconf_hadcs[i].Init.Resolution = ADC_RESOLUTION_12B;
 		pconf_hadcs[i].Init.ScanConvMode = DISABLE;
@@ -1622,7 +1623,7 @@ static void pconf_init_adc(void)
 		if (HAL_ADC_Init(pconf_hadcs + i) != HAL_OK)
 			error_handler();
 
-		sConfig.Channel = ADC_CHANNEL_14;
+		sConfig.Channel = adcs[i].chan;
 		sConfig.Rank = 1;
 		sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
 		if (HAL_ADC_ConfigChannel(pconf_hadcs + i, &sConfig) != HAL_OK)

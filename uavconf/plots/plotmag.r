@@ -1,7 +1,7 @@
 png("file.png", width = 10000, height = 10000);
-t = read.table("data/mag7.txt", header = FALSE, sep = " ");
+t = read.table("data/magcalib.txt", header = FALSE, sep = " ");
 
-freq = 128
+freq = 256
 
 start = 0
 end = nrow(t)

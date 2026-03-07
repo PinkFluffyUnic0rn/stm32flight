@@ -223,6 +223,7 @@ const struct pconf_adc adcs[] = {
 			.inst = GPIOC,
 			.idx = GPIO_PIN_4
 		},
+		.chan = ADC_CHANNEL_4,
 		.dma = DMA2_Stream0
 	},
 	{
@@ -231,6 +232,7 @@ const struct pconf_adc adcs[] = {
 			.inst = GPIOC,
 			.idx = GPIO_PIN_5
 		},
+		.chan = ADC_CHANNEL_8,
 		.dma = DMA2_Stream3
 	}
 };

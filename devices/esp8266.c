@@ -47,9 +47,7 @@ static int esp_dequeque(volatile struct fifo *f, char *out)
 int esp_interrupt(void *dev, const void *p)
 {
 	struct esp_device *d;
-	uint8_t b;
 	uint8_t id;
-	uint8_t crc;
 	uint16_t size;
 	uint8_t buf[ESP_SPIPACKSIZE];
 
@@ -60,23 +58,18 @@ int esp_interrupt(void *dev, const void *p)
 
 	HAL_GPIO_WritePin(d->csgpio, d->cspin, GPIO_PIN_RESET);
 
-	b = 0x3;
-	HAL_SPI_Transmit(d->hspi, &b, 1, 1000);
-
-	b = 0x0;
-	HAL_SPI_Transmit(d->hspi, &b, 1, 1000);
-
+	buf[0] = 0x3;
+	buf[1] = 0x0;
+	
+	HAL_SPI_Transmit(d->hspi, buf, 2, 1000);
 	HAL_SPI_Receive(d->hspi, buf, ESP_SPIPACKSIZE, 1000);
 
 	HAL_GPIO_WritePin(d->csgpio, d->cspin, GPIO_PIN_SET);
 
 	id = buf[0];
-	crc = buf[1];
 	size = *((uint16_t *) (buf + 2));
 
-	if (size > (ESP_SPIPACKSIZE - 4)
-			|| crc8(buf + 2, size + 2) != crc
-			|| id != 0xaa)
+	if (size > (ESP_SPIPACKSIZE - 4) || id != 0xaa)
 		return 0;
 
 	memcpyv(fifo.cmd[fifo.top], buf + 4, size);
@@ -95,6 +88,7 @@ int esp_send(void *d, void *dt, size_t sz)
 	int pos;
 	size_t l;
 	char *data;
+	int t;
 
 	dev = d;
 	data = dt;
@@ -104,7 +98,6 @@ int esp_send(void *d, void *dt, size_t sz)
 	for (pos = 0; pos < l; pos += ESP_PAYLOADSZ) {
 		uint8_t buf[ESP_SPIPACKSIZE];
 		uint16_t size;
-		int t;
 		uint8_t b;
 
 		t = 0;
@@ -137,6 +130,14 @@ int esp_send(void *d, void *dt, size_t sz)
 
 		HAL_GPIO_WritePin(dev->csgpio, dev->cspin,
 			GPIO_PIN_SET);	
+	}
+
+	t = 0;
+	while (HAL_GPIO_ReadPin(dev->busygpio,
+			dev->busypin) == GPIO_PIN_SET
+			&& t / 1000 < ESP_SPITIMEOUTUS) {
+		udelay(1);
+		t += 100;
 	}
 
 	return 0;

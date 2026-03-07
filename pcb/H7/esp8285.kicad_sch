@@ -3549,7 +3549,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "b1c2b495-8317-41ba-bfc2-3e0cbdd4f316")
-		(property "Reference" "cr4"
+		(property "Reference" "cr2"
 			(at 154.94 109.474 90)
 			(effects
 				(font
@@ -3603,7 +3603,7 @@
 		(instances
 			(project "project"
 				(path "/b61a0d2b-7633-4d0a-8bfd-ad16aaa1ff64/b2e80637-8828-4221-a6bd-d0ac0b787eac"
-					(reference "cr4")
+					(reference "cr2")
 					(unit 1)
 				)
 			)

@@ -176,7 +176,11 @@ float esccurrent()
 
 	HAL_ADC_Stop(hadc);
 
+#ifdef STM32F4xx
 	return (v / (float) 0xfff * St.adj.cursc + St.adj.curroff);
+#elif STM32H7xx
+	return (v / (float) 0xffff * St.adj.cursc + St.adj.curroff);
+#endif
 }
 
 /**

@@ -30,6 +30,9 @@
 // should SPI packets got from master be CRC checked
 #define RXCRC 0
 
+// should SPI packets sent to master be CRC checked
+#define TXCRC 0
+
 // Interrupt pin, it's switched from low to high
 // when ESP8285 has data to send to SPI master
 #define INT_GPIO 4
@@ -121,7 +124,8 @@ static void IRAM_ATTR transfrombuf()
 	*((uint16_t *) (data + 2)) = len;
 
 	// calculate payload CRC
-	data[1] = crc8(data + 2, len + 2);
+	if (TXCRC)
+		data[1] = crc8(data + 2, len + 2);
 
 	// fill transmission structure
 	memset(&trans, 0x0, sizeof(trans));
@@ -138,13 +142,13 @@ static void IRAM_ATTR transfrombuf()
 	// start of the transmission, enter critical section
 	taskENTER_CRITICAL();
 
+	// perform SPI transmission	
+	spi_trans(HSPI_HOST, &trans);
+	
 	// switch interrupt pin to high signaling
 	// SPI master that new data is coming
 	gpio_set_level(INT_GPIO, 1);
-
-	// perform SPI transmission	
-	spi_trans(HSPI_HOST, &trans);
-
+		
 	// exit critical section after transmission is done
 	taskEXIT_CRITICAL();
 }
