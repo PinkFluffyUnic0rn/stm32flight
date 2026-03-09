@@ -8,7 +8,7 @@ adj althold hover 0.756
 adj pitch 0.015
 adj roll -0.005
 adj yaw 0
-adj curr offset 0
+adj curr offset -11
 adj curr scale 412.5
 adj gyro x 0
 adj gyro y 0

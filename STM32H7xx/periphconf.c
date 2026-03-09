@@ -1769,6 +1769,14 @@ static void pconf_init_adc(void)
 
 		if (HAL_ADC_ConfigChannel(pconf_hadcs + i, &sConfig) != HAL_OK)
 			error_handler();
+
+		HAL_ADC_Stop(pconf_hadcs + i);
+
+		HAL_ADCEx_Calibration_Start(pconf_hadcs + i,
+			ADC_CALIB_OFFSET_LINEARITY, ADC_SINGLE_ENDED);
+
+		HAL_ADCEx_Calibration_Start(pconf_hadcs + i,
+			ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 	}
 }
 

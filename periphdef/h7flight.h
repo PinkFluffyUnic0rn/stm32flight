@@ -440,7 +440,7 @@ const struct pconf_battery batconf = {
 };
 
 const struct pconf_current curconf = {
-	.adc = ADC1,
+	.adc = ADC2,
 	.pin = {
 		.inst = GPIOC,
 		.idx = GPIO_PIN_5
