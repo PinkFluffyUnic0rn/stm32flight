@@ -8,7 +8,7 @@ printf <- function(...) invisible(print(sprintf(...)))
 
 args = commandArgs(trailingOnly=TRUE)
 
-png("file.png", width = 10000, height = 5000);
+png("circle.png", width = 10000, height = 5000);
 t = read.table(args[1], header = FALSE, sep = " ");
 
 start = 0
