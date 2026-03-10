@@ -21,9 +21,9 @@ adj mag decl 0.3264
 adj mag xscale 0.967
 adj mag yscale 0.9641
 adj mag zscale 1
-adj mag xthscale 1169.317017
-adj mag ythscale -199.093994
-adj mag zthscale 69.819
+adj mag xthscale 1808.919
+adj mag ythscale -116.384
+adj mag zthscale 271.902
 adj pitchthrust 0
 adj rollthrust 0
 ctrl accel 0.5
