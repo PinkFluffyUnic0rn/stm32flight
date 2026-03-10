@@ -29,7 +29,7 @@
 #define DPS_FREQ 128		/*!< barometer update event frequency */
 #define QMC_FREQ 100		/*!< magnetometer update event frequency */
 #define TELE_FREQ 10		/*!< telemetry send event frequency */
-#define POWER_FREQ 500		/*!< battery power update event frequency */
+#define POWER_FREQ 100		/*!< battery power update event frequency */
 #define AUTOPILOT_FREQ 32	/*!< autopilot update event frequency */
 /**
 * @}

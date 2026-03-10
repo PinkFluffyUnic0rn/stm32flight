@@ -105,4 +105,4 @@ pid syaw i 0
 pid syaw p 1.5
 pid yaw d 0
 pid yaw i 0
-pid yaw p -1.5
+pid yaw p 1.5

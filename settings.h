@@ -58,9 +58,9 @@
 * @{
 */
 #define PID_MAX_I 0.5		/*!< maximum PID I-term value */
-#define BAT_CUTOFF 100.0	/*!< battery voltage sensor
+#define BAT_CUTOFF 10.0		/*!< battery voltage sensor
 				filter cut-off frequency */
-#define CUR_CUTOFF 100.0	/*!< battery current sensor
+#define CUR_CUTOFF 10.0		/*!< battery current sensor
 				filter cut-off frequency */
 #define TEMP_TCOEF 0.5		/*!< PCB temperature filter
 				time coefficient */

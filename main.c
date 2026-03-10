@@ -381,7 +381,7 @@ int stabilize(int ms)
 		// if single PID loop mode for yaw is used just use
 		// rotation speed values around axis Z to upadte yaw PID
 		// controller and get next yaw correciton value
-		yawcor = dsp_pidbl(Pid + PID_YAWS, Yawtarget, gz);
+		yawcor = dsp_pidbl(Pid + PID_YAWS, Yawtarget, -gz);
 	}
 	else {
 		// if in double loop mode for yaw, first use yaw value
@@ -392,7 +392,7 @@ int stabilize(int ms)
 
 		// then use this value to update yaw speed PID
 		// controller and get next yaw SPEED correction value
-		yawcor = dsp_pidbl(Pid + PID_YAWS, yawcor, gz);
+		yawcor = dsp_pidbl(Pid + PID_YAWS, yawcor, -gz);
 	}
 
 	if (Altmode == ALTMODE_POS) {
@@ -505,13 +505,13 @@ int stabilize(int ms)
 	// for yaw.
 	setthrust(Dev + DEV_DSHOT,
 		En * ltm * (thrustcor + 0.5 * rollcor
-			+ 0.5 * pitchcor - 0.5 * yawcor),
+			+ 0.5 * pitchcor + 0.5 * yawcor),
 		En * rtm * (thrustcor - 0.5 * rollcor
-			+ 0.5 * pitchcor + 0.5 * yawcor),	
+			+ 0.5 * pitchcor - 0.5 * yawcor),
 		En * lbm * (thrustcor + 0.5 * rollcor
-			- 0.5 * pitchcor + 0.5 * yawcor),
+			- 0.5 * pitchcor - 0.5 * yawcor),
 		En * rbm * (thrustcor - 0.5 * rollcor
-			- 0.5 * pitchcor - 0.5 * yawcor));
+			- 0.5 * pitchcor + 0.5 * yawcor));
 
 	// update loops counter
 	++Loops;
@@ -919,7 +919,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	}
 	else {
 		Yawspeedpid = 1;
-		Yawtarget = -cd->chf[ERLS_CH_YAW]
+		Yawtarget = cd->chf[ERLS_CH_YAW]
 			* M_PI * St.ctrl.yawrate;
 	}
 
