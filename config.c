@@ -228,6 +228,18 @@ static struct settingnode Sttree = {
 						NULL
 					}
 				},
+				&(struct settingnode) {
+					.token = "feature",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "iscaling",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.feature.iscale)
+						},
+						NULL
+					}
+				},
 				NULL
 			}
 		},
@@ -443,12 +455,24 @@ static struct settingnode Sttree = {
 						&(struct settingnode) {
 							.token = "offset",
 							.type = NODETYPE_FLOAT,
-							.f = &(St.adj.curroff)
+							.f = &(St.adj.current.offset)
 						},
 						&(struct settingnode) {
 							.token = "scale",
 							.type = NODETYPE_FLOAT,
-							.f = &(St.adj.cursc)
+							.f = &(St.adj.current.scale)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "bat",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "scale",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.batsc)
 						},
 						NULL
 					}
@@ -616,6 +640,8 @@ static int mapsearch(const char **map, const char *s)
 
 int setstabilize(int init)
 {
+	float iscale;
+	
 	// init complementary filters contexts
 	dsp_setcompl(Cmpl + CMPL_PITCH, St.cmpl.att, PID_FREQ, init);
 	dsp_setcompl(Cmpl + CMPL_ROLL, St.cmpl.att, PID_FREQ, init);
@@ -634,14 +660,22 @@ int setstabilize(int init)
 		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 
 	// init roll, pitch and yaw speed PID controller contexts
+	iscale = Speedpid ? 1.0 : St.pid.feature.iscale;
+	
 	dsp_setpidbl(Pid + PID_PITCHS,
-		St.pid.attrate.p, St.pid.attrate.i, St.pid.attrate.d,
+		St.pid.attrate.p,
+		St.pid.attrate.i * iscale,
+		St.pid.attrate.d,
 		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 	dsp_setpidbl(Pid + PID_ROLLS, 
-		St.pid.attrate.p, St.pid.attrate.i, St.pid.attrate.d,
+		St.pid.attrate.p,
+		St.pid.attrate.i * iscale,
+		St.pid.attrate.d,
 		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 	dsp_setpidbl(Pid + PID_YAWS,
-		St.pid.yawrate.p, St.pid.yawrate.i, St.pid.yawrate.d,
+		St.pid.yawrate.p,
+		St.pid.yawrate.i * iscale,
+		St.pid.yawrate.d,
 		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 
 	// init yaw position PID controller's context

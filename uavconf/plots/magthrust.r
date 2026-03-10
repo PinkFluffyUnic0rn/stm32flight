@@ -103,9 +103,9 @@ printf("diff z: %f", diffz);
 magimage("magorig.png", magx_p, magy_p, magz_p, thrust)
 
 for (i in 1:samplescount) {
-	magx_p[i] = magx_p[i] + diffx * (thrust[i]);
-	magy_p[i] = magy_p[i] + diffy * (thrust[i]);
-	magz_p[i] = magz_p[i] + diffz * (thrust[i]);
+	magx_p[i] = magx_p[i] + diffx * thrust[i];
+	magy_p[i] = magy_p[i] + diffy * thrust[i];
+	magz_p[i] = magz_p[i] + diffz * thrust[i];
 }
 
 magimage("magcorrected.png", magx_p, magy_p, magz_p, thrust)

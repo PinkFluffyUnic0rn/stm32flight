@@ -152,9 +152,9 @@ float batteryvoltage()
 	HAL_ADC_Stop(hadc);
 
 #ifdef STM32F4xx
-	return (v / (float) 0xfff * BAT_SCALE);
+	return (v / (float) 0xfff * BAT_SCALE * St.adj.batsc);
 #elif STM32H7xx
-	return (v / (float) 0xffff * BAT_SCALE);
+	return (v / (float) 0xffff * BAT_SCALE * St.adj.batsc);
 #endif
 }
 
@@ -177,9 +177,11 @@ float esccurrent()
 	HAL_ADC_Stop(hadc);
 
 #ifdef STM32F4xx
-	return (v / (float) 0xfff * St.adj.cursc + St.adj.curroff);
+	return (v / (float) 0xfff * St.adj.current.scale
+		+ St.adj.current.offset);
 #elif STM32H7xx
-	return (v / (float) 0xffff * St.adj.cursc + St.adj.curroff);
+	return (v / (float) 0xffff * St.adj.current.scale
+		+ St.adj.current.offset);
 #endif
 }
 
@@ -981,8 +983,15 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	else 
 	*/	
 	if (cd->chf[ERLS_CH_ATTMODE] > 0.25) {
+		int changed;
+
+		changed = (En == 0 || Speedpid == 1);
+
 		En = 1;
 		Speedpid = 0;
+		
+		if (changed)	
+			setstabilize(0);
 
 		// set pitch/roll targets based on
 		// channels 1-2 values (it's a joystick on most remotes)
@@ -996,8 +1005,15 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		Speedpid = 0;
 	}
 	else {
+		int changed;
+
+		changed = (En == 0 || Speedpid == 0);
+
 		En = 1;
 		Speedpid = 1;
+		
+		if (changed)	
+			setstabilize(0);
 
 		// set pitch/roll targets based on
 		// channels 1-2 values (it's a joystick on most remotes)

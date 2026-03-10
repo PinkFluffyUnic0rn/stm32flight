@@ -86,8 +86,10 @@ struct __attribute__((aligned(32))) settings
 		struct { float r, p; } mtrsc;
 
 		float hoverthrottle;
-		float curroff;
-		float cursc;
+
+		struct { float offset; float scale; } current;
+
+		float batsc;
 
 		struct { float x, y, z; } mag0;
 		struct { float x, y, z; } magsc;
@@ -132,6 +134,7 @@ struct __attribute__((aligned(32))) settings
 		struct { float p, i, d; } throttle;
 		struct { float p, i, d; } climbrate;
 		struct { float p, i, d; } alt;
+		struct { float iscale; } feature;
 	} pid;
 
 	struct {

@@ -968,6 +968,11 @@ main_widget::main_widget(QWidget *parent)
 		{"P",			"I",			"D"},
 		{"pid altitude p",	"pid altitude i",	"pid altitude d"},
 		cmdstree, true, this), 1, 2);
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"Features", "dsp",
+		{"tilt I-term scale"},
+		{"pid feature iscaling"},
+		cmdstree, true, this), 2, 0, 1, 2);
 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Complimentary filters", "dsp",
@@ -1033,11 +1038,16 @@ main_widget::main_widget(QWidget *parent)
 		cmdstree, true, this), 2, 0);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
-		"Current meter adjustments", "dsp",
+		"Current meter", "dsp",
 		{"offset",		"scale"},
 		{"adj curr offset", 	"adj curr scale"},
 		cmdstree, true, this), 2, 2);
 
+	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
+		"Battery meter", "dsp",
+		{"scale"},
+		{"adj bat scale"},
+		cmdstree, true, this), 2, 3);
 
 	tabs["control"]->add_group(new float_settings_group(nullptr,
 		"Control maximums", "dsp",
