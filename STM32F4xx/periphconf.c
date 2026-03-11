@@ -1478,7 +1478,7 @@ static void pconf_init_tim_sched(int idx)
 	pconf_htims[idx].Instance = tims[idx].inst;
 	pconf_htims[idx].Init.Prescaler = (OCSFREQ / TICKSPERSEC) - 1;
 	pconf_htims[idx].Init.CounterMode = TIM_COUNTERMODE_UP;
-	pconf_htims[idx].Init.Period = 0xfff - 1;
+	pconf_htims[idx].Init.Period = 0xffff;
 	pconf_htims[idx].Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	pconf_htims[idx].Init.RepetitionCounter = 0;
 	pconf_htims[idx].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
