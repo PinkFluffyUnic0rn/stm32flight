@@ -1741,7 +1741,7 @@ static void pconf_init_adc(void)
 
 		pconf_hadcs[i].Instance = adcs[i].inst;
 		pconf_hadcs[i].Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV8;
-		pconf_hadcs[i].Init.Resolution = ADC_RESOLUTION_16B;
+		pconf_hadcs[i].Init.Resolution = ADC_RESOLUTION_12B;
 		pconf_hadcs[i].Init.ScanConvMode = ADC_SCAN_DISABLE;
 		pconf_hadcs[i].Init.EOCSelection = ADC_EOC_SINGLE_CONV;
 		pconf_hadcs[i].Init.LowPowerAutoWait = DISABLE;
@@ -1761,7 +1761,7 @@ static void pconf_init_adc(void)
 
 		sConfig.Channel = adcs[i].chan;
 		sConfig.Rank = ADC_REGULAR_RANK_1;
-		sConfig.SamplingTime = ADC_SAMPLETIME_8CYCLES_5;
+		sConfig.SamplingTime = ADC_SAMPLETIME_64CYCLES_5;
 		sConfig.SingleDiff = ADC_SINGLE_ENDED;
 		sConfig.OffsetNumber = ADC_OFFSET_NONE;
 		sConfig.Offset = 0;

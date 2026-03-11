@@ -151,11 +151,7 @@ float batteryvoltage()
 
 	HAL_ADC_Stop(hadc);
 
-#ifdef STM32F4xx
 	return (v / (float) 0xfff * BAT_SCALE * St.adj.batsc);
-#elif STM32H7xx
-	return (v / (float) 0xffff * BAT_SCALE * St.adj.batsc);
-#endif
 }
 
 /**
@@ -176,13 +172,8 @@ float esccurrent()
 
 	HAL_ADC_Stop(hadc);
 
-#ifdef STM32F4xx
 	return (v / (float) 0xfff * St.adj.current.scale
 		+ St.adj.current.offset);
-#elif STM32H7xx
-	return (v / (float) 0xffff * St.adj.current.scale
-		+ St.adj.current.offset);
-#endif
 }
 
 /**
@@ -1082,6 +1073,8 @@ int m10msg(struct m10_data *nd)
 int main(void)
 {
 	int elrsus;
+	int prevc;
+	int curc;
 
 	// init periphery
 	pconf_init(error_handler);
@@ -1121,10 +1114,15 @@ int main(void)
 	addcommand("get", getcmd);
 	addcommand("apply", applycmd);
 
-	// initilize ERLS timer. For now ERLS polling is not a periodic
+	// initialize ERLS timer. For now ERLS polling is not a periodic
 	// event and called as frequently as possible, so it needs this
 	// separate timer.
 	elrsus = 0;
+
+	// initialize scheduler time measurement
+	prevc = curc = 0;
+
+	__HAL_TIM_SET_COUNTER(pconf_schedhtim, 0);
 
 	// main control loop
 	while (1) {
@@ -1133,8 +1131,14 @@ int main(void)
 		struct m10_data nd;
 		int c, i;
 
-		// reset iteration time counter
-		__HAL_TIM_SET_COUNTER(pconf_schedhtim, 0);
+		c = curc - prevc;
+
+		// update periodic events timers
+		for (i = 0; i < TEV_COUNT; ++i)
+			updatetimev(Evs + i, c);
+
+		// update ELRS timer
+		elrsus += c;
 
 		// poll for configuration and telemetry commands
 		// from debug wifi connection
@@ -1172,17 +1176,20 @@ int main(void)
 			}
 		}
 
+		// remember previous time measurement
+		prevc = curc;
+
 		// get microseconds passed in this iteration
-		// one iteration duration should take at least
-		// some time, 100us was choosen
-		while ((c = __HAL_TIM_GET_COUNTER(pconf_schedhtim)) < 10);
+		curc = __HAL_TIM_GET_COUNTER(pconf_schedhtim);
 
-		// update periodic events timers
-		for (i = 0; i < TEV_COUNT; ++i)
-			updatetimev(Evs + i, c);
+		// reset iteration time counter if more
+		// than half of it's period passed
+		if (curc > 0x7fff) {
+			__HAL_TIM_SET_COUNTER(pconf_schedhtim, 0);
 
-		// update ELRS timer
-		elrsus += c;
+			prevc -= curc;
+			curc = 0;
+		}
 	}
 
 	return 0;
