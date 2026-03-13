@@ -38,6 +38,7 @@ struct pconf_spi {
 	struct pconf_pin miso;
 	struct pconf_pin mosi;
 	struct pconf_pin sck;
+	DMA_Stream_TypeDef *txdma;
 };
 
 struct pconf_exti {
@@ -288,6 +289,17 @@ static int pconf_i2cer_irqn(const I2C_TypeDef *hi2c)
 	else if (hi2c == I2C3)		return I2C3_ER_IRQn;
 	else if (hi2c == I2C4)		return I2C4_ER_IRQn;
 	else if (hi2c == I2C5)		return I2C5_ER_IRQn;
+
+	return (-1);
+}
+
+static int pconf_spi_irqn(const SPI_TypeDef *hspi)
+{
+	if (hspi == SPI1)		return SPI1_IRQn;
+	else if (hspi == SPI2)		return SPI2_IRQn;
+	else if (hspi == SPI3)		return SPI3_IRQn;
+	else if (hspi == SPI4)		return SPI4_IRQn;
+	else if (hspi == SPI6)		return SPI6_IRQn;
 
 	return (-1);
 }
@@ -737,6 +749,17 @@ static int pconf_dmastream_i2ctx_channel(DMA_Stream_TypeDef *inst,
 	return (-1);
 }
 
+static int pconf_dmastream_spitx_channel(DMA_Stream_TypeDef *inst,
+	SPI_TypeDef *spiinst)
+{
+	if (spiinst == SPI1)		return DMA_REQUEST_SPI1_TX;
+	else if (spiinst == SPI2)	return DMA_REQUEST_SPI2_TX;
+	else if (spiinst == SPI3)	return DMA_REQUEST_SPI3_TX;
+	else if (spiinst == SPI4)	return DMA_REQUEST_SPI4_TX;
+
+	return (-1);
+}
+
 static int pconf_dmastream_pwm_channel(DMA_Stream_TypeDef *inst,
 	TIM_TypeDef *timinst, int ch)
 {
@@ -1060,7 +1083,8 @@ void pconf_mspdeinit_adc(ADC_HandleTypeDef* hadc)
 
 	HAL_GPIO_DeInit(adc->pin.inst, adc->pin.idx);
 
-	HAL_DMA_DeInit(hadc->DMA_Handle);
+	if ((idx = pconf_dmaidx(adc->dma)) >= 0)
+		HAL_DMA_DeInit(hadc->DMA_Handle);
 }
 
 void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
@@ -1134,6 +1158,7 @@ void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
 
 		__HAL_LINKDMA(hi2c, hdmatx, pconf_hdmas[idx]);
 	}
+
 	if ((idx = pconf_dmaidx(i2c->rxdma)) >= 0
 			|| (idx = pconf_dmaidx(i2c->txdma)) >= 0) {
 		HAL_NVIC_SetPriority(pconf_i2cev_irqn(i2c->inst), 0, 0);
@@ -1206,6 +1231,29 @@ void pconf_mspinit_spi(SPI_HandleTypeDef* hspi)
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->sck), spi->inst);
 	HAL_GPIO_Init(spi->sck.inst, &GPIO_InitStruct);
+
+	if ((idx = pconf_dmaidx(spi->txdma)) >= 0) {
+		pconf_hdmas[idx].Instance = dmas[idx];
+		pconf_hdmas[idx].Init.Request
+			= pconf_dmastream_spitx_channel(
+				spi->txdma, spi->inst);
+		pconf_hdmas[idx].Init.Direction = DMA_MEMORY_TO_PERIPH;
+		pconf_hdmas[idx].Init.PeriphInc = DMA_PINC_DISABLE;
+		pconf_hdmas[idx].Init.MemInc = DMA_MINC_ENABLE;
+		pconf_hdmas[idx].Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+		pconf_hdmas[idx].Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+		pconf_hdmas[idx].Init.Mode = DMA_NORMAL;
+		pconf_hdmas[idx].Init.Priority = DMA_PRIORITY_LOW;
+		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+
+		if (HAL_DMA_Init(pconf_hdmas + idx) != HAL_OK)
+			error_handler();
+
+		__HAL_LINKDMA(hspi, hdmatx, pconf_hdmas[idx]);
+	    
+		HAL_NVIC_SetPriority(pconf_spi_irqn(spi->inst), 0, 0);
+		HAL_NVIC_EnableIRQ(pconf_spi_irqn(spi->inst));
+	}
 }
 
 void pconf_mspdeinit_spi(SPI_HandleTypeDef* hspi)
@@ -1466,6 +1514,7 @@ static void pconf_init_dma(void)
 		case DMA1_Stream0_IRQn:		prep = 1;
 		case DMA1_Stream1_IRQn:		prep = 1;
 		case DMA1_Stream2_IRQn:		prep = 1;
+		case DMA1_Stream4_IRQn:		prep = 1;
 		case DMA1_Stream5_IRQn:		prep = 1;
 		case DMA1_Stream6_IRQn:		prep = 1;
 		case DMA1_Stream7_IRQn:		prep = 1;
@@ -2331,6 +2380,13 @@ void I2C1_EV_IRQHandler(void)
 void I2C1_ER_IRQHandler(void)
 {
 	HAL_I2C_ER_IRQHandler(pconf_hi2cs + PCONF_I2C1_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_SPI1_IDX_IRQ
+void SPI1_IRQHandler(void)
+{
+	HAL_SPI_IRQHandler(pconf_hspis + PCONF_SPI1_IDX_IRQ);
 }
 #endif
 

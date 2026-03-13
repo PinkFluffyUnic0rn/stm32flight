@@ -34,6 +34,7 @@ struct bdevice {
 	int (*read)(void *dev, size_t addr, void *data, size_t sz);
 	int (*write)(void *dev, size_t addr, const void *data,
 		size_t sz);
+	int (*interrupt)(void *dev, const void *h);
 	int (*ioctl)(void *dev, int req, ...);
 
 	int (*eraseall)(void *dev);

@@ -27,6 +27,20 @@ enum ICM_REGISTER {
 static struct icm_device icm_devs[ICM_MAXDEVS];
 static size_t icm_devcount = 0;
 
+int icm_interrupt(void *dev, const void *h)
+{
+	struct icm_device *d;
+
+	d = dev;
+
+	if (((SPI_HandleTypeDef *)h)->Instance != d->hspi->Instance)
+		return 0;
+
+	HAL_GPIO_WritePin(d->gpio, d->pin, GPIO_PIN_SET);
+
+	return 0;
+}
+
 int icm_write(struct icm_device *dev, uint8_t addr, uint8_t val)
 {
 	uint8_t sbuf[2];
@@ -47,6 +61,14 @@ int icm_read(struct icm_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	uint8_t waddr = addr | 0x80;
+	int t;
+
+	t = 0;
+	while (HAL_SPI_GetState(dev->hspi) != HAL_SPI_STATE_READY
+			&& t < 100000) {
+		udelay(100);
+		t += 100;
+	}
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
 
@@ -266,7 +288,7 @@ int icm_initdevice(void *is, struct cdevice *dev)
 	dev->read = icm_getdata;
 	dev->configure = icm_configure;
 	dev->write = NULL;
-	dev->interrupt = NULL;
+	dev->interrupt = icm_interrupt;
 
 	r = icm_init(icm_devs + icm_devcount++);
 

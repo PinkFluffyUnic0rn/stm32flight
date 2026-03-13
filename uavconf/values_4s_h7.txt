@@ -9,21 +9,21 @@ adj pitch 0.015
 adj roll -0.005
 adj yaw 0
 adj bat scale 1
-adj curr offset -11
+adj curr offset -13
 adj curr scale 412.5
 adj gyro x 0
 adj gyro y 0
 adj gyro z 0
-adj mag x0 72.523003
-adj mag y0 16.563
-adj mag z0 768.091003
+adj mag x0 101.515808
+adj mag y0 -4.167864
+adj mag z0 824.312744
 adj mag decl 0.3264
-adj mag xscale 0.967
-adj mag yscale 0.9641
+adj mag xscale 0.961226
+adj mag yscale 0.966274
 adj mag zscale 1
-adj mag xthscale 1808.919
-adj mag ythscale -116.384
-adj mag zthscale 271.902
+adj mag xthscale 1296.304932
+adj mag ythscale -99.118744
+adj mag zthscale 25.806814
 adj pitchthrust 0
 adj rollthrust 0
 ctrl accel 0.5
@@ -46,7 +46,7 @@ lpf accel 40
 lpf d 100
 lpf gyro 40
 lpf mag 0.25
-log freq 128
+log freq 500
 log recsize 8
 log record 0 mag_x
 log record 1 mag_y

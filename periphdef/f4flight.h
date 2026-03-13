@@ -20,7 +20,6 @@
 #define PCONF_DMA1_STREAM5_IRQ
 #define PCONF_DMA1_STREAM6_IRQ
 #define PCONF_DMA1_STREAM7_IRQ
-#define PCONF_DMA2_STREAM0_IRQ
 #define PCONF_DMA2_STREAM1_IRQ
 #define PCONF_DMA2_STREAM2_IRQ
 #define PCONF_DMA2_STREAM3_IRQ
@@ -29,6 +28,7 @@
 #define PCONF_DMA2_STREAM6_IRQ
 
 #define PCONF_UART2_IDX_IRQ 0
+#define PCONF_SPI1_IDX_IRQ 0
 
 #define PCONF_EXTI1_PIN_IRQ GPIO_PIN_1
 
@@ -41,7 +41,7 @@ DMA_Stream_TypeDef *const dmas[] = {
 	DMA1_Stream5,
 	DMA1_Stream6,
 	DMA1_Stream7,
-	DMA2_Stream0,
+	NULL,
 	DMA2_Stream1,
 	DMA2_Stream2,
 	DMA2_Stream3,
@@ -133,7 +133,8 @@ const struct pconf_spi spis[] = {
 		.sck = {
 			.inst = GPIOA,
 			.idx = GPIO_PIN_7
-		}
+		},
+		.txdma = DMA2_Stream3
 	},
 	{
 		.inst = SPI2,
@@ -149,7 +150,8 @@ const struct pconf_spi spis[] = {
 		.sck = {
 			.inst = GPIOB,
 			.idx = GPIO_PIN_13
-		}
+		},
+		.txdma = NULL
 	},
 };
 
@@ -213,7 +215,7 @@ const struct pconf_adc adcs[] = {
 			.idx = GPIO_PIN_4
 		},
 		.chan = ADC_CHANNEL_14,
-		.dma = DMA2_Stream0
+		.dma = NULL
 	},
 	{
 		.inst = ADC2,
@@ -222,7 +224,7 @@ const struct pconf_adc adcs[] = {
 			.idx = GPIO_PIN_5
 		},
 		.chan = ADC_CHANNEL_15,
-		.dma = DMA2_Stream3
+		.dma = NULL
 	}
 };
 

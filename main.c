@@ -65,6 +65,20 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (DEVITENABLED(Dev[DEV_UART].status))
 		Dev[DEV_UART].interrupt(Dev[DEV_UART].priv, huart);
 }
+/**
+* @brief SPI transmit callback. It calls interrupt handlers
+	from drivers for devices working through SPI.
+* @param hspi context for SPI triggered that callback
+* @return none
+*/
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+//	if (DEVITENABLED(Dev[DEV_IMU].status))
+//		Dev[DEV_IMU].interrupt(Dev[DEV_IMU].priv, hspi);
+	
+	if (DEVITENABLED(Flashdev.status))
+		Dev[DEV_IMU].interrupt(Flashdev.priv, hspi);
+}
 
 /**
 * @brief UART error callback. Calls UART error handlers
@@ -1091,16 +1105,25 @@ int main(void)
 
 	// initilize periodic events
 	inittimev(Evs + TEV_PID, 0, PID_FREQ, stabilize);
-	inittimev(Evs + TEV_CHECK, 0, CHECK_FREQ, checkconnection);
-	inittimev(Evs + TEV_DPS, 1 * DPS_FREQ / 5, DPS_FREQ, dpsupdate);
-	inittimev(Evs + TEV_QMC, 2 * QMC_FREQ / 5, QMC_FREQ, qmcupdate);
-	inittimev(Evs + TEV_LOG, 0, St.log.freq, logupdate);
-	inittimev(Evs + TEV_TELE, 3 * TELE_FREQ / 5, 
+	inittimev(Evs + TEV_LOG, 0, St.log.freq,  logupdate);
+	inittimev(Evs + TEV_CHECK,
+		1 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		CHECK_FREQ, checkconnection);
+	inittimev(Evs + TEV_DPS,
+		2 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		DPS_FREQ, dpsupdate);
+	inittimev(Evs + TEV_QMC,
+		3 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		QMC_FREQ, qmcupdate);
+	inittimev(Evs + TEV_TELE,
+		5 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
 		TELE_FREQ, telesend);
-	inittimev(Evs + TEV_POWER, 4 * POWER_FREQ / 5,
+	inittimev(Evs + TEV_POWER,
+		6 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
 		POWER_FREQ, powercheck);
-	inittimev(Evs + TEV_AUTOPILOT, 0, AUTOPILOT_FREQ,
-		autopilotupdate);
+	inittimev(Evs + TEV_AUTOPILOT,
+		7 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		AUTOPILOT_FREQ, autopilotupdate);
 	
 	// initilize debug commands
 	addcommand("r", rcmd);

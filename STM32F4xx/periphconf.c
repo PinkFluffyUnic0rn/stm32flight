@@ -38,6 +38,7 @@ struct pconf_spi {
 	struct pconf_pin miso;
 	struct pconf_pin mosi;
 	struct pconf_pin sck;
+	DMA_Stream_TypeDef *txdma;
 };
 
 struct pconf_exti {
@@ -262,6 +263,15 @@ static int pconf_uart_irqn(const USART_TypeDef *uart)
 	else if (uart == UART4)		return UART4_IRQn;
 	else if (uart == UART5)		return UART5_IRQn;
 	else if (uart == USART6)	return USART6_IRQn;
+
+	return (-1);
+}
+
+static int pconf_spi_irqn(const SPI_TypeDef *hspi)
+{
+	if (hspi == SPI1)		return SPI1_IRQn;
+	else if (hspi == SPI2)		return SPI2_IRQn;
+	else if (hspi == SPI3)		return SPI3_IRQn;
 
 	return (-1);
 }
@@ -565,6 +575,29 @@ static int pconf_dmastream_i2ctx_channel(DMA_Stream_TypeDef *inst,
 	if (inst == DMA1_Stream7) {
 		if (i2cinst == I2C1)		return DMA_CHANNEL_1;
 		else if (i2cinst == I2C2)	return DMA_CHANNEL_7;
+	}
+
+	return (-1);
+}
+
+
+static int pconf_dmastream_spitx_channel(DMA_Stream_TypeDef *inst,
+	SPI_TypeDef *spiinst)
+{
+	if (inst == DMA1_Stream4) {
+		if (spiinst == SPI2)		return DMA_CHANNEL_0;
+	}
+	if (inst == DMA1_Stream5) {
+		if (spiinst == SPI3)		return DMA_CHANNEL_0;
+	}
+	if (inst == DMA1_Stream7) {
+		if (spiinst == SPI3)		return DMA_CHANNEL_0;
+	}
+	if (inst == DMA2_Stream3) {
+		if (spiinst == SPI1)		return DMA_CHANNEL_3;
+	}
+	if (inst == DMA2_Stream5) {
+		if (spiinst == SPI1)		return DMA_CHANNEL_3;
 	}
 
 	return (-1);
@@ -1040,7 +1073,8 @@ void pconf_mspdeinit_adc(ADC_HandleTypeDef* hadc)
 
 	HAL_GPIO_DeInit(adc->pin.inst, adc->pin.idx);
 
-	HAL_DMA_DeInit(hadc->DMA_Handle);
+	if (HAL_DMA_Init(pconf_hdmas + idx) != HAL_OK)
+		HAL_DMA_DeInit(hadc->DMA_Handle);
 }
 
 void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
@@ -1176,6 +1210,29 @@ void pconf_mspinit_spi(SPI_HandleTypeDef* hspi)
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 	GPIO_InitStruct.Alternate = pconf_spi_pinalternate(spi->inst);
 	HAL_GPIO_Init(spi->sck.inst, &GPIO_InitStruct);
+
+	if ((idx = pconf_dmaidx(spi->txdma)) >= 0) {
+		pconf_hdmas[idx].Instance = dmas[idx];
+		pconf_hdmas[idx].Init.Channel 
+			= pconf_dmastream_spitx_channel(
+				spi->txdma, spi->inst);
+		pconf_hdmas[idx].Init.Direction = DMA_MEMORY_TO_PERIPH;
+		pconf_hdmas[idx].Init.PeriphInc = DMA_PINC_DISABLE;
+		pconf_hdmas[idx].Init.MemInc = DMA_MINC_ENABLE;
+		pconf_hdmas[idx].Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+		pconf_hdmas[idx].Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+		pconf_hdmas[idx].Init.Mode = DMA_NORMAL;
+		pconf_hdmas[idx].Init.Priority = DMA_PRIORITY_LOW;
+		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+
+		if (HAL_DMA_Init(pconf_hdmas + idx) != HAL_OK)
+			error_handler();
+
+		__HAL_LINKDMA(hspi, hdmatx, pconf_hdmas[idx]);
+	  
+		HAL_NVIC_SetPriority(pconf_spi_irqn(spi->inst), 0, 0);
+		HAL_NVIC_EnableIRQ(pconf_spi_irqn(spi->inst));
+	}
 }
 
 void pconf_mspdeinit_spi(SPI_HandleTypeDef* hspi)
@@ -1612,13 +1669,13 @@ static void pconf_init_adc(void)
 		pconf_hadcs[i].Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
 		pconf_hadcs[i].Init.Resolution = ADC_RESOLUTION_12B;
 		pconf_hadcs[i].Init.ScanConvMode = DISABLE;
-		pconf_hadcs[i].Init.ContinuousConvMode = ENABLE;
+		pconf_hadcs[i].Init.ContinuousConvMode = DISABLE;
 		pconf_hadcs[i].Init.DiscontinuousConvMode = DISABLE;
 		pconf_hadcs[i].Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
 		pconf_hadcs[i].Init.ExternalTrigConv = ADC_SOFTWARE_START;
 		pconf_hadcs[i].Init.DataAlign = ADC_DATAALIGN_RIGHT;
 		pconf_hadcs[i].Init.NbrOfConversion = 1;
-		pconf_hadcs[i].Init.DMAContinuousRequests = ENABLE;
+		pconf_hadcs[i].Init.DMAContinuousRequests = DISABLE;
 		pconf_hadcs[i].Init.EOCSelection = ADC_EOC_SINGLE_CONV;
 		if (HAL_ADC_Init(pconf_hadcs + i) != HAL_OK)
 			error_handler();
@@ -2113,6 +2170,13 @@ void SysTick_Handler(void)
 void USART2_IRQHandler(void)
 {
 	HAL_UART_IRQHandler(pconf_huarts + PCONF_UART2_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_SPI1_IDX_IRQ
+void SPI1_IRQHandler(void)
+{
+	HAL_SPI_IRQHandler(pconf_hspis + PCONF_SPI1_IDX_IRQ);
 }
 #endif
 

@@ -50,6 +50,18 @@ int mdelay(int ms)
 	return 0;
 }
 
+int ucounterstart()
+{
+	__HAL_TIM_SET_COUNTER(pconf_delayhtim, 0);
+
+	return 0;
+}
+
+int ucounterget()
+{
+	return __HAL_TIM_GET_COUNTER(pconf_delayhtim);
+}
+
 int isvalinlist(int v, int num, ...)
 {
 	va_list args;

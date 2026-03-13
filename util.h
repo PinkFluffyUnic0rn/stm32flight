@@ -61,6 +61,20 @@ int udelay(int us);
 int mdelay(int ms);
 
 /**
+* @brief Start microseconds counter.
+*
+* @return always 0
+*/
+int ucounterstart();
+
+/**
+* @brief Get microseconds counter passed time.
+*
+* @return microseconds passed
+*/
+int ucounterget();
+
+/**
 * @brief Is value in list.
 * @param v value.
 * @param num list of values.

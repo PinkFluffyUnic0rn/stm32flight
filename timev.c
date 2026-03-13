@@ -4,7 +4,7 @@
 
 int inittimev(struct timev *ev, int phase, int freq, int (*cb)(int))
 {
-	ev->ms = 0;
+	ev->ms = phase;
 	ev->rem = 0;
 	ev->freq = freq;
 	ev->cb = cb;
