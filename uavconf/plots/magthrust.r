@@ -43,7 +43,7 @@ args = commandArgs(trailingOnly=TRUE)
 
 t = read.table(args[1], header = FALSE, sep = " ");
 
-freq = 256
+freq = 500
 
 start = 0
 end = 2 * nrow(t) / 3
