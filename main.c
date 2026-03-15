@@ -73,9 +73,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 */
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-//	if (DEVITENABLED(Dev[DEV_IMU].status))
-//		Dev[DEV_IMU].interrupt(Dev[DEV_IMU].priv, hspi);
-	
 	if (DEVITENABLED(Flashdev.status))
 		Dev[DEV_IMU].interrupt(Flashdev.priv, hspi);
 }
@@ -764,6 +761,9 @@ int autopilotupdate(int ms)
 
 	dt = ms / (float) TICKSPERSEC;
 	
+	// divide-by-zero protection
+	dt = (dt < 0.000001) ? 0.000001 : dt;
+
 	if (!Autopilot || Pointscount == 0 || Curpoint < 0
 			|| Curpoint >= Pointscount) {
 		return 0;
@@ -1107,24 +1107,24 @@ int main(void)
 	inittimev(Evs + TEV_PID, 0, PID_FREQ, stabilize);
 	inittimev(Evs + TEV_LOG, 0, St.log.freq,  logupdate);
 	inittimev(Evs + TEV_CHECK,
-		1 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		1 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
 		CHECK_FREQ, checkconnection);
 	inittimev(Evs + TEV_DPS,
-		2 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		2 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
 		DPS_FREQ, dpsupdate);
 	inittimev(Evs + TEV_QMC,
-		3 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		3 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
 		QMC_FREQ, qmcupdate);
 	inittimev(Evs + TEV_TELE,
-		5 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		5 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
 		TELE_FREQ, telesend);
 	inittimev(Evs + TEV_POWER,
-		6 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		6 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
 		POWER_FREQ, powercheck);
 	inittimev(Evs + TEV_AUTOPILOT,
-		7 * PID_FREQ / 8 * (1000000 / PID_FREQ), 
+		7 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
 		AUTOPILOT_FREQ, autopilotupdate);
-	
+
 	// initilize debug commands
 	addcommand("r", rcmd);
 	addcommand("info", infocmd);
@@ -1163,6 +1163,15 @@ int main(void)
 		// update ELRS timer
 		elrsus += c;
 
+		// check all periodic events context's and run callbacks
+		// if enough time passed. Reset their timers after.
+		for (i = 0; i < TEV_COUNT; ++i) {
+			if (checktimev(Evs + i)) {
+				Evs[i].cb(Evs[i].ms);
+				resettimev(Evs + i);
+			}
+		}
+
 		// poll for configuration and telemetry commands
 		// from debug wifi connection
 		if (Dev[DEV_RF].read(Dev[DEV_RF].priv, &cmd,
@@ -1188,15 +1197,6 @@ int main(void)
 		if (Dev[DEV_GNSS].read(Dev[DEV_GNSS].priv, &nd,
 			sizeof(struct m10_data)) >= 0) {
 			m10msg(&nd);
-		}
-
-		// check all periodic events context's and run callbacks
-		// if enough time passed. Reset their timers after.
-		for (i = 0; i < TEV_COUNT; ++i) {
-			if (checktimev(Evs + i)) {
-				Evs[i].cb(Evs[i].ms);
-				resettimev(Evs + i);
-			}
 		}
 
 		// remember previous time measurement

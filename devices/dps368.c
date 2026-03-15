@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "util.h"
+
 #include "dps368.h"
 
 #define DPS_ADDR 0x77
@@ -25,7 +27,7 @@ static size_t dps_devcount = 0;
 static int dps_write(struct dps_device *dev, uint8_t addr, uint8_t val)
 {
 	HAL_I2C_Mem_Write(dev->hi2c, DPS_ADDR << 1, addr,
-		1, &val, 1, 1000);
+		1, &val, 1, 100);
 
 	return 0;
 }
@@ -34,7 +36,7 @@ static int dps_read(struct dps_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	HAL_I2C_Mem_Read(dev->hi2c, DPS_ADDR << 1, addr,
-		1, data, size, 1000);
+		1, data, size, 100);
 
 	return 0;
 }
@@ -56,6 +58,7 @@ int dps_getdata(void *d, void *dt, size_t sz)
 	static uint8_t buf[16];
 	static int init = 0;
 	float psc, tsc;
+	int t;
 
 	data = (struct dps_data *) dt;
 	dev = (struct dps_device *) d;
@@ -64,6 +67,13 @@ int dps_getdata(void *d, void *dt, size_t sz)
 		dps_read(dev, DPS_PRS, buf, 6);
 
 		init = 1;
+	}
+
+	t = 0;
+	while (HAL_I2C_GetState(dev->hi2c) != HAL_I2C_STATE_READY
+			&& t < 100000) {
+		udelay(10);
+		t += 10;
 	}
 
 	psc = twocompl((buf[0] << 16) | (buf[1] << 8) | buf[2], 24)

@@ -105,7 +105,7 @@ int esp_send(void *d, void *dt, size_t sz)
 				dev->busypin) == GPIO_PIN_SET
 				&& t / 1000 < ESP_SPITIMEOUTUS) {
 			udelay(1);
-			t += 100;
+			t += 1;
 		}
 
 		size = ((l - pos) < ESP_PAYLOADSZ)

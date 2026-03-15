@@ -147,8 +147,19 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 {
 	struct w25_device *dev;
 	uint8_t sbuf[4];
+	int t;
 
 	dev = (struct w25_device *) d;
+
+	if (dev->writemode != W25_IOCTL_READWRITE) {
+		t = 0;
+
+		while (HAL_SPI_GetState(dev->hspi) != HAL_SPI_STATE_READY
+				&& t < 100000) {
+			udelay(10);
+			t += 10;
+		}
+	}
 
 	w25_waitwrite(dev, W25_WTIMEOUT);
 
@@ -286,7 +297,19 @@ int w25_writesector(void *d, size_t addr, const void *data,
 int w25_ioctl(void *d, int req, ...)
 {
 	struct w25_device *dev;
+	int t;
+
 	dev = (struct w25_device *) d;
+
+	if (dev->writemode != W25_IOCTL_READWRITE) {
+		t = 0;
+
+		while (HAL_SPI_GetState(dev->hspi) != HAL_SPI_STATE_READY
+				&& t < 100000) {
+			udelay(10);
+			t += 10;
+		}
+	}
 
 	dev->writemode = req;
 
