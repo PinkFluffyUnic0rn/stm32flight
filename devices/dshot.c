@@ -121,7 +121,7 @@ static void dshotsetbuf(uint16_t *buf, uint16_t val, int tele)
 	pack = (pack << 4) | csum;
 
 	// construct PWM duty cycle buffer for the packet
-	for(i = 0; i < 16; i++) {
+	for (i = 0; i < 16; i++) {
 		buf[i] = (pack & 0x8000) ? DSHOT_1 : DSHOT_0;
 		pack <<= 1;
 	}

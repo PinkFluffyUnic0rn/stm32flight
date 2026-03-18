@@ -1368,6 +1368,12 @@ void pconf_init_clock(void)
 	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct,
 			FLASH_LATENCY_4) != HAL_OK)
 		error_handler();
+
+	if (PROFILER_ENABLED) {
+		CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+		DWT->CYCCNT = 0;
+		DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+	}
 }
 
 static void pconf_init_gpio(void)

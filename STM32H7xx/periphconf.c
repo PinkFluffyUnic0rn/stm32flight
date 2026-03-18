@@ -1364,7 +1364,6 @@ void pconf_init_clock(void)
 	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
-//	HAL_PWREx_ConfigSupply(PWR_EXTERNAL_SOURCE_SUPPLY);
 	HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
 
 	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
@@ -1413,6 +1412,13 @@ void pconf_init_clock(void)
 	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
 	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
 		error_handler();
+
+	if (PROFILER_ENABLED) {
+		CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+		DWT->LAR = 0xC5ACCE55;
+		DWT->CYCCNT = 0;
+		DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+	}
 }
 
 static void pconf_init_mpu(void)
@@ -1511,20 +1517,22 @@ static void pconf_init_dma(void)
 		irqn = pconf_dma_stream_irqn(dmas[i]);
 
 		switch (irqn) {
-		case DMA1_Stream0_IRQn:		prep = 1;
-		case DMA1_Stream1_IRQn:		prep = 1;
-		case DMA1_Stream2_IRQn:		prep = 1;
-		case DMA1_Stream4_IRQn:		prep = 1;
-		case DMA1_Stream5_IRQn:		prep = 1;
-		case DMA1_Stream6_IRQn:		prep = 1;
-		case DMA1_Stream7_IRQn:		prep = 1;
-		case DMA2_Stream0_IRQn:		prep = 1;
-		case DMA2_Stream1_IRQn:		prep = 0;
-		case DMA2_Stream2_IRQn:		prep = 0;
-		case DMA2_Stream3_IRQn:		prep = 1;
-		case DMA2_Stream4_IRQn:		prep = 0;
-		case DMA2_Stream5_IRQn:		prep = 1;
-		case DMA2_Stream6_IRQn:		prep = 0;
+		case DMA1_Stream0_IRQn:		prep = 1;	break;
+		case DMA1_Stream1_IRQn:		prep = 1;	break;
+		case DMA1_Stream2_IRQn:		prep = 1;	break;
+		case DMA1_Stream3_IRQn:		prep = 1;	break;
+		case DMA1_Stream4_IRQn:		prep = 1;	break;
+		case DMA1_Stream5_IRQn:		prep = 1;	break;
+		case DMA1_Stream6_IRQn:		prep = 1;	break;
+		case DMA1_Stream7_IRQn:		prep = 1;	break;
+		case DMA2_Stream0_IRQn:		prep = 1;	break;
+		case DMA2_Stream1_IRQn:		prep = 0;	break;
+		case DMA2_Stream2_IRQn:		prep = 0;	break;
+		case DMA2_Stream3_IRQn:		prep = 1;	break;
+		case DMA2_Stream4_IRQn:		prep = 0;	break;
+		case DMA2_Stream5_IRQn:		prep = 1;	break;
+		case DMA2_Stream6_IRQn:		prep = 0;	break;
+		default:			prep = 1;
 		}
 
 		HAL_NVIC_SetPriority(irqn, prep, 0);
@@ -1787,6 +1795,7 @@ static void pconf_init_adc(void)
 
 	for (i = 0; i < PCONF_ADCSCOUNT; ++i) {
 		ADC_ChannelConfTypeDef sConfig = {0};
+		ADC_MultiModeTypeDef multimode = {0};
 
 		pconf_hadcs[i].Instance = adcs[i].inst;
 		pconf_hadcs[i].Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV8;
@@ -1799,7 +1808,7 @@ static void pconf_init_adc(void)
 		pconf_hadcs[i].Init.DiscontinuousConvMode = DISABLE;
 		pconf_hadcs[i].Init.ExternalTrigConv = ADC_SOFTWARE_START;
 		pconf_hadcs[i].Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-		pconf_hadcs[i].Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
+		pconf_hadcs[i].Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_ONESHOT;
 		pconf_hadcs[i].Init.Overrun = ADC_OVR_DATA_PRESERVED;
 		pconf_hadcs[i].Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
 		pconf_hadcs[i].Init.OversamplingMode = DISABLE;
@@ -1808,9 +1817,16 @@ static void pconf_init_adc(void)
 		if (HAL_ADC_Init(pconf_hadcs + i) != HAL_OK)
 			error_handler();
 
+		if (adcs[i].inst == ADC1) {
+			multimode.Mode = ADC_MODE_INDEPENDENT;
+			if (HAL_ADCEx_MultiModeConfigChannel(pconf_hadcs + i,
+					&multimode) != HAL_OK)
+				error_handler();
+		}
+
 		sConfig.Channel = adcs[i].chan;
 		sConfig.Rank = ADC_REGULAR_RANK_1;
-		sConfig.SamplingTime = ADC_SAMPLETIME_64CYCLES_5;
+		sConfig.SamplingTime = ADC_SAMPLETIME_387CYCLES_5;
 		sConfig.SingleDiff = ADC_SINGLE_ENDED;
 		sConfig.OffsetNumber = ADC_OFFSET_NONE;
 		sConfig.Offset = 0;

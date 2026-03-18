@@ -144,6 +144,35 @@ void error_handler(void)
 	while (1) {}
 }
 
+float adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
+{
+	uint32_t v;
+
+#ifdef STM32F4xx
+	HAL_ADC_Start(hadc);
+	HAL_ADC_PollForConversion(hadc, 1);
+
+	v = HAL_ADC_GetValue(hadc);
+
+	HAL_ADC_Stop(hadc);
+#elif STM32H7xx
+	int t;
+
+	t = 0;
+	while ((HAL_ADC_GetState(hadc) & HAL_ADC_STATE_REG_BUSY) != 0
+			&& t < 100000) {
+		udelay(10);
+		t += 10;
+	}
+
+	v = *buf;
+
+	HAL_ADC_Start_DMA(hadc, (uint32_t *) buf, 1);
+#endif
+
+	return v;
+}
+
 /**
 * @brief Get battery voltage from ADC.
 * @return battery voltage
@@ -151,18 +180,12 @@ void error_handler(void)
 float batteryvoltage()
 {
 	ADC_HandleTypeDef *hadc;
-	uint32_t v;
+	static volatile uint16_t buf = 0;
 
 	hadc = pconf_batteryhadc;
 
-	HAL_ADC_Start(hadc);
-	HAL_ADC_PollForConversion(hadc, 1);
-
-	v = HAL_ADC_GetValue(hadc);
-
-	HAL_ADC_Stop(hadc);
-
-	return (v / (float) 0xfff * BAT_SCALE * St.adj.batsc);
+	return (adcvalue(hadc, &buf)
+		/ (float) 0xfff * BAT_SCALE * St.adj.batsc);
 }
 
 /**
@@ -172,19 +195,14 @@ float batteryvoltage()
 float esccurrent()
 {
 	ADC_HandleTypeDef *hadc;
-	uint32_t v;
+	static volatile uint16_t buf = 0;
 	
 	hadc = pconf_currenthadc;
 
-	HAL_ADC_Start(hadc);
-	HAL_ADC_PollForConversion(hadc, 1);
-
-	v = HAL_ADC_GetValue(hadc);
-
-	HAL_ADC_Stop(hadc);
-
-	return (v / (float) 0xfff * St.adj.current.scale
+	return (adcvalue(hadc, &buf)
+		/ (float) 0xfff * St.adj.current.scale
 		+ St.adj.current.offset);
+
 }
 
 /**
@@ -1107,22 +1125,22 @@ int main(void)
 	inittimev(Evs + TEV_PID, 0, PID_FREQ, stabilize);
 	inittimev(Evs + TEV_LOG, 0, St.log.freq,  logupdate);
 	inittimev(Evs + TEV_CHECK,
-		1 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
+		1 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		CHECK_FREQ, checkconnection);
 	inittimev(Evs + TEV_DPS,
-		2 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
+		2 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		DPS_FREQ, dpsupdate);
 	inittimev(Evs + TEV_QMC,
-		3 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
+		3 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		QMC_FREQ, qmcupdate);
 	inittimev(Evs + TEV_TELE,
-		5 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
+		5 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		TELE_FREQ, telesend);
 	inittimev(Evs + TEV_POWER,
-		6 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
+		6 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		POWER_FREQ, powercheck);
 	inittimev(Evs + TEV_AUTOPILOT,
-		7 * PID_FREQ / TEV_COUNT * (1000000 / PID_FREQ), 
+		7 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		AUTOPILOT_FREQ, autopilotupdate);
 
 	// initilize debug commands
@@ -1166,10 +1184,8 @@ int main(void)
 		// check all periodic events context's and run callbacks
 		// if enough time passed. Reset their timers after.
 		for (i = 0; i < TEV_COUNT; ++i) {
-			if (checktimev(Evs + i)) {
-				Evs[i].cb(Evs[i].ms);
-				resettimev(Evs + i);
-			}
+			if (checktimev(Evs + i))
+				runtimev(Evs + i);
 		}
 
 		// poll for configuration and telemetry commands

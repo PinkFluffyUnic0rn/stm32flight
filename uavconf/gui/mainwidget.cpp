@@ -290,6 +290,11 @@ void info_autopilot_click_handler(void *arg)
 	((main_widget *) arg)->send_uav_info_cmd("info autopilot");
 }
 
+void info_debug_click_handler(void *arg)
+{
+	((main_widget *) arg)->send_uav_info_cmd("info debug");
+}
+
 void info_vtx_click_handler(void *arg)
 {
 	((main_widget *) arg)->send_uav_info_cmd("info irc");
@@ -1091,9 +1096,9 @@ main_widget::main_widget(QWidget *parent)
 		new button_setting(nullptr, "VTX", info_vtx_click_handler, this)
 	);
 
-	info->add_setting(
+	info->add_setting_pair(
 		new button_setting(nullptr, "Autopilot", info_autopilot_click_handler, this),
-		false
+		new button_setting(nullptr, "Debug", info_debug_click_handler, this)
 	);	
 	
 	tabs["info"]->add_group(info, 0, 0, 1, 1);

@@ -306,6 +306,11 @@ extern struct dsp_compl Cmpl[CMPL_COUNT];
 extern struct dsp_pidblval Pid[PID_COUNT];
 
 /**
+* @brief Timer events names
+*/
+extern const char *Evnames[TEV_COUNT];
+
+/**
 * @defgroup GLOBALSTORAGE
 * @brief Global storage for sensor
 	data that aquired in separate events

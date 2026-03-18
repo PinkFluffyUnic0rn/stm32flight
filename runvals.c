@@ -8,6 +8,11 @@ struct dsp_lpf Lpf[LPF_COUNT];
 struct dsp_compl Cmpl[CMPL_COUNT];
 struct dsp_pidblval Pid[PID_COUNT];
 
+const char *Evnames[TEV_COUNT] = {
+	"pid", "check", "dps", "qmc",
+	"log", "tele", "power", "autopilot"
+};
+
 struct qmc_data Qmcdata;
 struct icm_data Imudata;
 struct gnss_data Gnss;

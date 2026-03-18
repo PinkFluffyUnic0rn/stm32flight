@@ -9,6 +9,11 @@
 #include "log.h"
 
 /**
+* @brief is event profiler enabled
+*/
+#define PROFILER_ENABLED 0
+
+/**
 * @brief periodic event timer ticks per second
 */
 #define TICKSPERSEC 1000000

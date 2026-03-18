@@ -31,6 +31,11 @@ struct timev {
 	int rem;
 	int freq;		/*!< event frequency */
 	int (*cb)(int);		/*!< event callback */
+
+	float tc;		/*!< callback duraton
+					counter time constant*/
+	float avg;		/*!< average callback duraton */
+	float devi;		/*!< callback duraton deviation */
 };
 
 /**
@@ -58,5 +63,13 @@ int modifytimev(struct timev *ev, int freq);
 * @return always 0
 */
 int resettimev(struct timev *ev);
+
+/**
+* @brief run periodic event's callback
+	and reset periodic event's counter.
+* @param ev periodic event's context.
+* @return always 0
+*/
+int runtimev(struct timev *ev);
 
 #endif

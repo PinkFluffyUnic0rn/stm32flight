@@ -955,6 +955,7 @@ static int sprintvalues(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"loops count: %d\r\n", Loopscount);
+
 	return 0;
 }
 
@@ -1193,6 +1194,35 @@ static int sprintfautopilot(char *s)
 	return 0;
 }
 
+/**
+* @brief Print autopilot trail into a string.
+* @param s output string
+* @return always 0
+*/
+static int sprintfdebug(char *s)
+{
+	int i;
+
+	if (!PROFILER_ENABLED) {
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"profiler disabled\r\n");
+		return 0;
+	}
+
+	s[0] = '\0';
+
+	for (i = 0; i < TEV_COUNT; ++i) {
+		snprintf(s + strlen(s), INFOLEN - strlen(s),
+			"event %s: avg time: %0.3f us; variation: %0.3f us\r\n",
+			Evnames[i],
+			(double) (Evs[i].avg / (float) SystemCoreClock * 1.0e6),
+			(double) (sqrtf(Evs[i].devi) /(float)  SystemCoreClock * 1.0e6));
+	}
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s), "\r\n");
+
+	return 0;
+}
 
 int rcmd(const struct cdevice *dev, const char **toks, char *out)
 {
@@ -1287,6 +1317,8 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	}
 	else if (strcmp(toks[1], "autopilot") == 0)
 		sprintfautopilot(out);
+	else if (strcmp(toks[1], "debug") == 0)
+		sprintfdebug(out);
 	else
 		return (-1);
 
