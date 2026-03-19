@@ -232,6 +232,7 @@ float qmc_heading(float r, float p, float x, float y, float z)
 */
 int stabilize(int ms)
 {
+	static float prevalt = 0.0;
 	float ltm, lbm, rbm, rtm;
 	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
@@ -241,7 +242,8 @@ int stabilize(int ms)
 	float va;
 	float ht;
 	float dt;
-
+	float alt;
+		
 	// debug pin switching
 	HAL_GPIO_WritePin(debuggpio, debugpin,
 		!(HAL_GPIO_ReadPin(debuggpio, debugpin)));
@@ -355,6 +357,27 @@ int stabilize(int ms)
 	vx = sin(-roll) * sin(-pitch);
 	vy = cos(-pitch);
 	vz = cos(-roll) * sin(-pitch);
+
+	// get last barometric altitude
+	alt = dsp_getlpf(Lpf + LPF_ALT);
+
+	// calculate climb rate from vertical acceleration and
+	// barometric altitude defference using complimentary filter
+	dsp_updatecompl(Cmpl + CMPL_CLIMBRATE,
+		9.80665 * (dsp_getlpf(Lpf + LPF_VAU) + Goffset - 1.0) * dt,
+			(dsp_getcompl(Cmpl + CMPL_ALT) - prevalt) / dt);
+	
+	// calculate presice altitiude from climb rate and
+	// barometric altitude using complimentary filter
+	dsp_updatecompl(Cmpl + CMPL_ALT,
+		dsp_getcompl(Cmpl + CMPL_CLIMBRATE) * dt, alt);
+
+	// store calculated alt for next calculation
+	prevalt = dsp_getcompl(Cmpl + CMPL_ALT);
+
+	// write climbrate and altitude values into log
+	writelog(LOG_CLIMBRATE, dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
+	writelog(LOG_ALT, dsp_getcompl(Cmpl + CMPL_ALT));
 
 	dsp_updatelpf(Lpf + LPF_FA, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
@@ -574,48 +597,21 @@ int checkconnection(int ms)
 */
 int dpsupdate(int ms)
 {
-	struct dps_data hd;
-	float alt;
-	static float prevalt = 0.0;
-	float dt;
-		
-	dt = ms / (float) TICKSPERSEC;
-
-	dt = (dt < 0.000001) ? 0.000001 : dt;
-
 	// if barometer isn't initilized, return
 	if (Dev[DEV_BARO].status != DEVSTATUS_INIT)
 		return 0;
 
 	// read barometer values
-	Dev[DEV_BARO].read(Dev[DEV_BARO].priv, &hd,
+	Dev[DEV_BARO].read(Dev[DEV_BARO].priv, &Barodata,
 		sizeof(struct dps_data));
 
 	// write barometer temperature and altitude values into log
-	writelog(LOG_BAR_TEMP, hd.tempf);
-	writelog(LOG_BAR_ALT, hd.altf);
+	writelog(LOG_BAR_TEMP, Barodata.tempf);
+	writelog(LOG_BAR_ALT, Barodata.altf);
 
 	// update altitude low-pass filter and temperature reading
-	alt = dsp_updatelpf(Lpf + LPF_ALT, hd.altf);
-	dsp_updatelpf(Lpf + LPF_BARTEMP, hd.tempf);
-
-	// calculate climb rate from vertical acceleration and
-	// barometric altitude defference using complimentary filter
-	dsp_updatecompl(Cmpl + CMPL_CLIMBRATE,
-		9.80665 * (dsp_getlpf(Lpf + LPF_VAU) + Goffset - 1.0) * dt,
-			(dsp_getcompl(Cmpl + CMPL_ALT) - prevalt) / dt);
-	
-	// calculate presice altitiude from climb rate and
-	// barometric altitude using complimentary filter
-	dsp_updatecompl(Cmpl + CMPL_ALT,
-		dsp_getcompl(Cmpl + CMPL_CLIMBRATE) * dt,
-		alt);
-	
-	prevalt = dsp_getcompl(Cmpl + CMPL_ALT);
-
-	// write climbrate and altitude values into log
-	writelog(LOG_CLIMBRATE, dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
-	writelog(LOG_ALT, dsp_getcompl(Cmpl + CMPL_ALT));
+	dsp_updatelpf(Lpf + LPF_ALT, Barodata.altf);
+	dsp_updatelpf(Lpf + LPF_BARTEMP, Barodata.tempf);
 
 	return 0;
 }

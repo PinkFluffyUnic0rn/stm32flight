@@ -648,8 +648,8 @@ int setstabilize(int init)
 	dsp_setcompl(Cmpl + CMPL_YAW, St.cmpl.yaw, PID_FREQ, init);
 
 	dsp_setcompl(Cmpl + CMPL_CLIMBRATE, St.cmpl.climbrate,
-		DPS_FREQ, init);
-	dsp_setcompl(Cmpl + CMPL_ALT, St.cmpl.alt, DPS_FREQ, init);
+		PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_ALT, St.cmpl.alt, PID_FREQ, init);
 
 	// init roll and pitch position PID controller contexts
 	dsp_setpidbl(Pid + PID_PITCHP,
