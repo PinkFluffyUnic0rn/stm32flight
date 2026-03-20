@@ -243,6 +243,7 @@ int stabilize(int ms)
 	float ht;
 	float dt;
 	float alt;
+	float tiltcoef;
 		
 	// debug pin switching
 	HAL_GPIO_WritePin(debuggpio, debugpin,
@@ -382,8 +383,11 @@ int stabilize(int ms)
 	dsp_updatelpf(Lpf + LPF_FA, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
+	// get tilt compensation coefficient
+	tiltcoef = cosf(-pitch) * cosf(-roll);
+
 	// get pitch corrected value of the hover throttle
-	ht = St.adj.hoverthrottle / (cosf(-pitch) * cosf(-roll));
+	ht = St.adj.hoverthrottle / tiltcoef;
 
 	// if vertical acceleration is negative, most likely
 	// quadcopter is upside down, perform emergency disarm
@@ -458,7 +462,7 @@ int stabilize(int ms)
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pidbl(Pid + PID_VA, thrustcor + 1.0,
-			dsp_getlpf(Lpf + LPF_VAPT1)) + ht;	
+			dsp_getlpf(Lpf + LPF_VAPT1)) / tiltcoef + ht;	
 	}
 	else if (Altmode == ALTMODE_SPEED) {
 		// if consttant climb rate mode, first use climb rate
@@ -474,7 +478,7 @@ int stabilize(int ms)
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pidbl(Pid + PID_VA, thrustcor + 1.0,
-			dsp_getlpf(Lpf + LPF_VAPT1)) + ht;	
+			dsp_getlpf(Lpf + LPF_VAPT1)) / tiltcoef + ht;	
 	}
 	else {
 		if (Hovermode) {
@@ -485,7 +489,8 @@ int stabilize(int ms)
 			// got from ERLS remote
 			thrustcor = dsp_pidbl(Pid + PID_VA,
 				Thrust + 1.0,
-				dsp_getlpf(Lpf + LPF_VAPT1)) + ht;
+				dsp_getlpf(Lpf + LPF_VAPT1))
+					/ tiltcoef + ht;
 		}
 		else {
 			// if no altitude hold and hover throttle mode

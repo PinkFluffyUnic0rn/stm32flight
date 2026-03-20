@@ -2213,6 +2213,9 @@ static void dshot_init()
 	d.timch[2] = pconf_timpwm_chan(pwmconf.pwm[2].chan);
 	d.timch[3] = pconf_timpwm_chan(pwmconf.pwm[3].chan);
 
+	d.timfreq = HAL_RCC_GetPCLK2Freq() * 2;
+	d.type = DSHOT_300;
+
 	if (dshot_initdevice(&d, Dev + DEV_DSHOT) < 0)
 		goto error;
 

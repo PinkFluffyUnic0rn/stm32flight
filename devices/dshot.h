@@ -7,30 +7,25 @@
 
 #define DSHOT_MAXDEVS 1
 
-#ifdef STM32F4xx
-#define DSHOT_BITLEN 427	
-#define DSHOT_0 160
-#define DSHOT_1 320
-#elif STM32H7xx
-
-#define DSHOT_BITLEN 834
-#define DSHOT_0 313
-#define DSHOT_1 625
-
-//#define DSHOT_BITLEN 418
-//#define DSHOT_0 150
-////#define DSHOT_0 156
-//#define DSHOT_1 313
-
-#endif
+enum DSHOT_TYPE {
+	DSHOT_150,
+	DSHOT_300,
+	DSHOT_600,
+	DSHOT_1200,
+};
 
 struct dshot_device {
 	TIM_HandleTypeDef *htim[4];
 	uint32_t timch[4];
-	
+	int timfreq;
+	enum DSHOT_TYPE type;
+
 	int timcc[4];
 	volatile uint32_t *timccr[4];
 	DMA_HandleTypeDef *hdma[4];
+	int bitlen;
+	int zerolen;
+	int onelen;
 };
 
 struct dshot_data {
