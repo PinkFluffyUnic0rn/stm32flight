@@ -76,6 +76,21 @@ static volatile uint32_t *dshot_timccr(TIM_HandleTypeDef *htim,
 }
 
 /**
+* @brief DMA callback for dshot tim burst processing.
+* @param hdma DMA device that triggered this callback
+* @return none
+*/
+static void dshotdmacbburst(DMA_HandleTypeDef *hdma)
+{
+	TIM_HandleTypeDef *htim;;
+
+	htim = (TIM_HandleTypeDef *)((DMA_HandleTypeDef *)hdma)->Parent;
+		
+	if (hdma == htim->hdma[TIM_DMA_ID_UPDATE])
+		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_UPDATE);
+}
+
+/**
 * @brief DMA callback for dshot processing.
 * @param hdma DMA device that triggered this callback
 * @return none
@@ -85,7 +100,7 @@ static void dshotdmacb(DMA_HandleTypeDef *hdma)
 	TIM_HandleTypeDef *htim;;
 
 	htim = (TIM_HandleTypeDef *)((DMA_HandleTypeDef *)hdma)->Parent;
-
+	
 	// disable DMA after bit was sent
 	if (hdma == htim->hdma[TIM_DMA_ID_CC1])
 		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC1);
@@ -97,6 +112,25 @@ static void dshotdmacb(DMA_HandleTypeDef *hdma)
 		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
 }
 
+static int dshot_updatedmawait(struct dshot_device *dev)
+{
+	int t;
+	
+	// wait for previous DMA transfer to complete
+	t = 0;
+	while (HAL_DMA_GetState(
+			dev->htim[0]->hdma[TIM_DMA_ID_UPDATE])
+			!= HAL_DMA_STATE_READY && t < 100) {
+		udelay(1);
+		t += 1;
+	}
+
+	if (t >= 100)
+		return (-1);
+
+	return 0;
+}
+
 /**
 * @brief Fill buffer, that contains PWM duty cycle values of a
 	a DSHOT packet using 16 bit value.
@@ -105,7 +139,7 @@ static void dshotdmacb(DMA_HandleTypeDef *hdma)
 * @param tele 1 if telemetry bit needed, 0 otherwise
 */
 static void dshotsetbuf(struct dshot_device *dev, uint16_t *buf,
-	uint16_t val, int tele)
+	uint16_t val, int tele, int col)
 {
 	uint16_t pack;
 	unsigned int csum;
@@ -122,14 +156,29 @@ static void dshotsetbuf(struct dshot_device *dev, uint16_t *buf,
 	pack = (pack << 4) | csum;
 
 	// construct PWM duty cycle buffer for the packet
-	for (i = 0; i < 16; i++) {
-		buf[i] = (pack & 0x8000) ? dev->onelen : dev->zerolen;
-		pack <<= 1;
-	}
+	
+	if (col < 0) {
+		for (i = 0; i < 16; i++) {
+			buf[i] = (pack & 0x8000)
+				? dev->onelen : dev->zerolen;
+			pack <<= 1;
+		}
 
-	// two bits used to maintain space between packets
-	buf[16] = 0;
-	buf[17] = 0;
+		// two bits used to maintain space between packets
+		buf[16] = 0;
+		buf[17] = 0;
+	}
+	else {
+		for (i = 0; i < 16; i++) {
+			buf[i * 4 + col] = (pack & 0x8000)
+				? dev->onelen : dev->zerolen;
+			pack <<= 1;
+		}
+
+		// two bits used to maintain space between packets
+		buf[16 * 4 + col] = 0;
+		buf[17 * 4 + col] = 0;
+	}
 }
 
 /**
@@ -140,13 +189,13 @@ static void dshotsetbuf(struct dshot_device *dev, uint16_t *buf,
 * @return always 0
 */
 static inline int dshotsetthrust(struct dshot_device *dev,
-	uint16_t *buf, float v)
+	uint16_t *buf, float v, int col)
 {
 	// convert motor thrust value from [0.0;1.0]
 	// range to int value in [48; 2047] range
 	// disable telemetry request bit
 	dshotsetbuf(dev, buf,
-		(uint16_t) (trimuf(v) * 1999.0 + 0.5) + 48, 0);
+		(uint16_t) (trimuf(v) * 1999.0 + 0.5) + 48, 0, col);
 
 	return 0;
 }
@@ -175,7 +224,7 @@ int dshot_configure(void *d, const char *cmd, ...)
 		return 0;
 	}
 	// construst a PWM duty cycle buffer for dshot ESC
-	dshotsetbuf(dev, dsbuf, dcmd, 1);
+	dshotsetbuf(dev, dsbuf, dcmd, 1, -1);
 
 	// wait for previous DSHOT packet to finish
 	udelay(100);
@@ -183,13 +232,34 @@ int dshot_configure(void *d, const char *cmd, ...)
 	// send packet with command 10 times. Specification
 	// requires 6 for most command, 10 is to be sure.
 	for (i = 0; i < 10; ++i) {
-		// instruct DMA to use the buffer
-		// for stream corresponding to DSHOT output
-		HAL_DMA_Start_IT(dev->hdma[n], (uint32_t) dsbuf,
-			(uint32_t) (dev->timccr[n]), 18);
+		if (dev->mode == DSHOT_TIMBURST) {
+			// wait for previous DMA transfer to complete
+			dshot_updatedmawait(dev);
+			
+			// instruct DMA to the common buffers
+			// for all streams corresponding to DSHOT ESCs
+			TIM1->DCR = (0 << 8) | (0x0d + n);
+			HAL_DMA_Start_IT(
+				dev->htim[0]->hdma[TIM_DMA_ID_UPDATE],
+				(uint32_t) dsbuf,
+				(uint32_t) &TIM1->DMAR, 18);
+		
+			// Enable DMA for common stream
+			// corresponding to DSHOT ESCs
+			__HAL_TIM_ENABLE_DMA(dev->htim[0],
+				TIM_DMA_UPDATE);
+		}
+		else {
+			// instruct DMA to use the buffer
+			// for stream corresponding to DSHOT output
+			HAL_DMA_Start_IT(dev->hdma[n], (uint32_t) dsbuf,
+				(uint32_t) (dev->timccr[n]), 18);
 
-		// Enable DMA for stream corresponding to DSHOT output
-		__HAL_TIM_ENABLE_DMA(dev->htim[n], (dev->timcc[n]));
+			// Enable DMA for stream 
+			// corresponding to DSHOT output
+			__HAL_TIM_ENABLE_DMA(dev->htim[n], 
+				(dev->timcc[n]));
+		}
 
 		// wait for previous command packet to finish
 		udelay(100);
@@ -207,7 +277,6 @@ int dshot_setthrust(void *d, void *dt, size_t sz)
 {
 	struct dshot_device *dev;
 	struct dshot_data *data;
-	static uint16_t dsbuf[4][18];
 
 	dev = d;
 	data = dt;
@@ -224,29 +293,57 @@ int dshot_setthrust(void *d, void *dt, size_t sz)
 		 <- r
 	*/
 
-	// construst a PWM duty cycle
-	// buffers for dshot ESCs
-	dshotsetthrust(dev, dsbuf[0], data->thrust[0]);
-	dshotsetthrust(dev, dsbuf[1], data->thrust[1]);
-	dshotsetthrust(dev, dsbuf[2], data->thrust[2]);
-	dshotsetthrust(dev, dsbuf[3], data->thrust[3]);
+	if (dev->mode == DSHOT_TIMBURST) {
+		static uint16_t mwbuf[18 * 4];
 
-	// instruct DMA to use the buffers
-	// for streams corresponding to DSHOT ESCs
-	HAL_DMA_Start_IT(dev->hdma[0], (uint32_t) dsbuf[0],
-		(uint32_t) dev->timccr[0], 18);
-	HAL_DMA_Start_IT(dev->hdma[1], (uint32_t) dsbuf[1],
-		(uint32_t) dev->timccr[1], 18);
-	HAL_DMA_Start_IT(dev->hdma[2], (uint32_t) dsbuf[2],
-		(uint32_t) dev->timccr[2], 18);
-	HAL_DMA_Start_IT(dev->hdma[3], (uint32_t) dsbuf[3],
-		(uint32_t) dev->timccr[3], 18);
+		// construst a PWM duty cycle
+		// buffers for dshot ESCs
+		dshotsetthrust(dev, mwbuf, data->thrust[0], 0);
+		dshotsetthrust(dev, mwbuf, data->thrust[1], 1);
+		dshotsetthrust(dev, mwbuf, data->thrust[2], 2);
+		dshotsetthrust(dev, mwbuf, data->thrust[3], 3);
 
-	// Enable DMA for streams corresponding to DSHOT ESCs
-	__HAL_TIM_ENABLE_DMA(dev->htim[0], dev->timcc[0]);
-	__HAL_TIM_ENABLE_DMA(dev->htim[1], dev->timcc[1]);
-	__HAL_TIM_ENABLE_DMA(dev->htim[2], dev->timcc[2]);
-	__HAL_TIM_ENABLE_DMA(dev->htim[3], dev->timcc[3]);
+		// wait for previous DMA transfer to complete
+		dshot_updatedmawait(dev);
+		
+		// instruct DMA to the common buffers
+		// for all streams corresponding to DSHOT ESCs
+		TIM1->DCR = (3 << 8) | (0x0d);
+		HAL_DMA_Start_IT(dev->htim[0]->hdma[TIM_DMA_ID_UPDATE],
+			(uint32_t) mwbuf, (uint32_t) &TIM1->DMAR,
+			18 * 4);
+		
+		// Enable DMA for common stream
+		// corresponding to DSHOT ESCs
+		__HAL_TIM_ENABLE_DMA(dev->htim[0], TIM_DMA_UPDATE);
+	}
+	else {
+		static uint16_t dsbuf[4][18];
+
+		// construst a PWM duty cycle
+		// buffers for dshot ESCs	
+		dshotsetthrust(dev, dsbuf[0], data->thrust[0], -1);
+		dshotsetthrust(dev, dsbuf[1], data->thrust[1], -1);
+		dshotsetthrust(dev, dsbuf[2], data->thrust[2], -1);
+		dshotsetthrust(dev, dsbuf[3], data->thrust[3], -1);
+
+		// instruct DMA to use the buffers
+		// for streams corresponding to DSHOT ESCs
+		HAL_DMA_Start_IT(dev->hdma[0], (uint32_t) dsbuf[0],
+			(uint32_t) dev->timccr[0], 18);
+		HAL_DMA_Start_IT(dev->hdma[1], (uint32_t) dsbuf[1],
+			(uint32_t) dev->timccr[1], 18);
+		HAL_DMA_Start_IT(dev->hdma[2], (uint32_t) dsbuf[2],
+			(uint32_t) dev->timccr[2], 18);
+		HAL_DMA_Start_IT(dev->hdma[3], (uint32_t) dsbuf[3],
+			(uint32_t) dev->timccr[3], 18);
+
+		// Enable DMA for streams corresponding to DSHOT ESCs
+		__HAL_TIM_ENABLE_DMA(dev->htim[0], dev->timcc[0]);
+		__HAL_TIM_ENABLE_DMA(dev->htim[1], dev->timcc[1]);
+		__HAL_TIM_ENABLE_DMA(dev->htim[2], dev->timcc[2]);
+		__HAL_TIM_ENABLE_DMA(dev->htim[3], dev->timcc[3]);
+	}
 
 	return 0;
 }
@@ -269,14 +366,14 @@ int dshot_init(struct dshot_device *dev)
 	else if (dev->type == DSHOT_600) {
 		dev->bitlen = 1.67 * 1e-6 * dev->timfreq + 0.5;
 		dev->onelen = 1.25 * 1e-6 * dev->timfreq + 0.5;
-		dev->zerolen = 0.625 * 1e-6 * dev->timfreq + 0.5;
+		dev->zerolen = 0.625 * 1e-6 * dev->timfreq * 0.975 + 0.5;
 	}
 	else {
 		dev->bitlen = 0.83 * 1e-6 * dev->timfreq + 0.5;
 		dev->onelen = 0.625 * 1e-6 * dev->timfreq + 0.5;
 		dev->zerolen = 0.313 * 1e-6 * dev->timfreq + 0.5;
 	}
-
+	
 	// set timer's reload value for each PWM channel
 	__HAL_TIM_SET_AUTORELOAD(dev->htim[0], dev->bitlen);
 	__HAL_TIM_SET_AUTORELOAD(dev->htim[1], dev->bitlen);
@@ -302,19 +399,27 @@ int dshot_init(struct dshot_device *dev)
 	dev->hdma[2] = dshot_timdma(dev->htim[2], dev->timch[2]);
 	dev->hdma[3] = dshot_timdma(dev->htim[3], dev->timch[3]);
 
-	// set dshot DMA callback for TIM channels
-	// corresponding to DSHOT escs
-	dev->hdma[0]->XferCpltCallback = dshotdmacb;
-	dev->hdma[1]->XferCpltCallback = dshotdmacb;
-	dev->hdma[2]->XferCpltCallback = dshotdmacb;
-	dev->hdma[3]->XferCpltCallback = dshotdmacb;
+	// set dshot DMA callback for each channel, that
+	// should stop DMA after packet is sent
+	if (dev->mode == DSHOT_TIMBURST) {
+		dev->hdma[0]->XferCpltCallback = dshotdmacbburst;
+		dev->hdma[1]->XferCpltCallback = dshotdmacbburst;
+		dev->hdma[2]->XferCpltCallback = dshotdmacbburst;
+		dev->hdma[3]->XferCpltCallback = dshotdmacbburst;
+	}
+	else {
+		dev->hdma[0]->XferCpltCallback = dshotdmacb;
+		dev->hdma[1]->XferCpltCallback = dshotdmacb;
+		dev->hdma[2]->XferCpltCallback = dshotdmacb;
+		dev->hdma[3]->XferCpltCallback = dshotdmacb;
+	}
 
 	// start PWM on TIM channels corresponding to DSHOT ESCs
   	HAL_TIM_PWM_Start(dev->htim[0], dev->timch[0]);
   	HAL_TIM_PWM_Start(dev->htim[1], dev->timch[1]);
 	HAL_TIM_PWM_Start(dev->htim[2], dev->timch[2]);
-	HAL_TIM_PWM_Start(dev->htim[3], dev->timch[3]);
-
+	HAL_TIM_PWM_Start(dev->htim[3], dev->timch[3]);	
+	
 	// set zero initial thrust for every motor
 	dd.thrust[0] = dd.thrust[1] = dd.thrust[2] = dd.thrust[3] = 0.0;
 	dshot_setthrust(dev, &dd, sizeof(struct dshot_data));

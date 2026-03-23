@@ -193,6 +193,7 @@ const struct pconf_tim tims[] = {
 				.dma = DMA2_Stream4
 			}
 		},
+		.updma = DMA2_Stream5,
 		.chcnt = 4
 	},
 	{
@@ -402,6 +403,7 @@ const struct pconf_vtx vtxconf = {
 };
 
 const struct pconf_pwm pwmconf = {
+	.dmatype = PCONF_TIMDMATYPE_CCR,
 	.pwm = {
 		{
 			.inst = TIM1,

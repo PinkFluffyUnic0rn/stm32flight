@@ -6,183 +6,9 @@
 
 #include "periphconf.h"
 #include "util.h"
+#include "periphstruct.h"
 
 #define OCSFREQ 250000000
-
-struct pconf_pin {
-	GPIO_TypeDef *inst;
-	uint16_t idx;
-};
-
-struct pconf_i2c {
-	I2C_TypeDef *inst;
-
-	enum PCONF_I2CUSAGE {
-		PCONF_I2CUSAGE_DEVS,
-	} usage;
-
-	struct pconf_pin sda;
-	struct pconf_pin scl;
-	DMA_Stream_TypeDef *rxdma;
-	DMA_Stream_TypeDef *txdma;
-};
-
-struct pconf_spi {
-	SPI_TypeDef *inst;
-
-	enum PCONF_SPIUSAGE {
-		PCONF_SPIUSAGE_DEVS,
-		PCONF_SPIUSAGE_WIFI
-	} usage;
-
-	struct pconf_pin miso;
-	struct pconf_pin mosi;
-	struct pconf_pin sck;
-	DMA_Stream_TypeDef *txdma;
-};
-
-struct pconf_exti {
-	struct pconf_pin pin;
-};
-
-struct pconf_tim {
-	TIM_TypeDef *inst;
-
-	enum PCONF_TIMUSAGE {
-		PCONF_TIMUSAGE_PWM,
-		PCONF_TIMUSAGE_SCHED,
-		PCONF_TIMUSAGE_DELAY
-	} usage;
-
-	struct {
-		int chan;
-		struct pconf_pin pin;
-		DMA_Stream_TypeDef *dma;
-	} pwm[4];
-	int chcnt;
-};
-
-struct pconf_adc {
-	ADC_TypeDef *inst;
-
-	enum PCONF_ADCUSAGE {
-		PCONF_ADCUSAGE_MEASURE,
-	} usage;
-
-	struct pconf_pin pin;
-	uint32_t chan;
-	DMA_Stream_TypeDef *dma;
-};
-
-struct pconf_uart {
-	USART_TypeDef *inst;
-
-	enum PCONF_UARTUSAGE {
-		PCONF_UARTUSAGE_CRSF,
-		PCONF_UARTUSAGE_GNSS,
-		PCONF_UARTUSAGE_DEBUG,
-		PCONF_UARTUSAGE_IRC
-	} usage;
-
-	struct pconf_pin rx;
-	struct pconf_pin tx;
-	DMA_Stream_TypeDef *rxdma;
-	DMA_Stream_TypeDef *txdma;
-};
-
-struct pconf_iface {
-	enum PCONF_IFACETYPE {
-		PCONF_IFACETYPE_I2C,
-		PCONF_IFACETYPE_SPI,
-		PCONF_IFACETYPE_UART
-	} type;
-
-	union {
-		USART_TypeDef *huart;
-		I2C_TypeDef *hi2c;
-		struct {
-			SPI_TypeDef *hspi;
-			struct pconf_pin cs;
-		};
-	};
-};
-
-struct pconf_debug {
-	struct pconf_iface iface;
-};
-
-struct pconf_imu {
-	enum PCONF_IMUTYPE {
-		PCONF_IMUTYPE_ICM42688P,
-		PCONF_IMUTYPE_MPU6500
-	} type;
-
-	struct pconf_iface iface;
-};
-
-struct pconf_bar {
-	enum PCONF_BARTYPE {
-		PCONF_BARTYPE_HP206C,
-		PCONF_BARTYPE_BMP280,
-		PCONF_BARTYPE_DPS368
-	} type;
-
-	struct pconf_iface iface;
-};
-
-struct pconf_mag {
-	enum PCONF_MAGTYPE {
-		PCONF_MAGTYPE_QMC5883L,
-		PCONF_MAGTYPE_HMC5883L
-	} type;
-
-	struct pconf_iface iface;
-};
-
-struct pconf_flash {
-	enum PCONF_FLASHTYPE {
-		PCONF_FLASHTYPE_W25Q
-	} type;
-
-	struct pconf_iface iface;
-};
-
-struct pconf_crsf {
-	struct pconf_iface iface;
-};
-
-struct pconf_gnss {
-	struct pconf_iface iface;
-};
-
-struct pconf_wireless {
-	struct pconf_iface iface;
-	struct pconf_pin interrupt;
-	struct pconf_pin busy;
-	struct pconf_pin boot;
-	struct pconf_pin reset;
-};
-
-struct pconf_vtx {
-	struct pconf_iface iface;
-};
-
-struct pconf_pwm {
-	struct {
-		TIM_TypeDef *inst;
-		int chan;
-	} pwm[4];
-};
-
-struct pconf_battery {
-	ADC_TypeDef *adc;
-	struct pconf_pin pin;
-};
-
-struct pconf_current {
-	ADC_TypeDef *adc;
-	struct pconf_pin pin;
-};
 
 static void (*error_handler)(void);
 
@@ -1291,19 +1117,48 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 
 	pconf_tim_enable_clock(htim->Instance);
 
-	for (i = 0; i < tim->chcnt; ++i) {
-		const int *dmaidx;
-		int chanidx;
+	if (tim->usage == PCONF_TIMUSAGE_PWM) {
+		for (i = 0; i < tim->chcnt; ++i) {
+			const int *dmaidx;
+			int chanidx;
 
-		if ((idx = pconf_dmaidx(tim->pwm[i].dma)) < 0)
-			continue;
+			if ((idx = pconf_dmaidx(tim->pwm[i].dma)) < 0)
+				continue;
 
-		chanidx = tim->pwm[i].chan;
+			chanidx = tim->pwm[i].chan;
+
+			pconf_hdmas[idx].Instance = dmas[idx];
+			pconf_hdmas[idx].Init.Request
+				= pconf_dmastream_pwm_channel(
+					tim->pwm[i].dma, tim->inst, chanidx);
+			pconf_hdmas[idx].Init.Direction = DMA_MEMORY_TO_PERIPH;
+			pconf_hdmas[idx].Init.PeriphInc = DMA_PINC_DISABLE;
+			pconf_hdmas[idx].Init.MemInc = DMA_MINC_ENABLE;
+			pconf_hdmas[idx].Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+			pconf_hdmas[idx].Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+			pconf_hdmas[idx].Init.Mode = DMA_NORMAL;
+			pconf_hdmas[idx].Init.Priority = DMA_PRIORITY_HIGH;
+			pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+			pconf_hdmas[idx].Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+			pconf_hdmas[idx].Init.MemBurst = DMA_MBURST_SINGLE;
+			pconf_hdmas[idx].Init.PeriphBurst = DMA_PBURST_SINGLE;
+
+			if (HAL_DMA_Init(pconf_hdmas + idx) != HAL_OK)
+				error_handler();
+
+			dmaidx = pconf_timpwm_dmaids(tim->inst,
+				chanidx, dmas[idx]);
+
+			for ( ; *dmaidx != -1; ++dmaidx)
+				__HAL_LINKDMA(htim, hdma[*dmaidx], pconf_hdmas[idx]);
+		}
+	}
+	else if (tim->usage == PCONF_TIMUSAGE_PWMBURST) {
+		if ((idx = pconf_dmaidx(tim->updma)) < 0)
+			return;
 
 		pconf_hdmas[idx].Instance = dmas[idx];
-		pconf_hdmas[idx].Init.Request
-			= pconf_dmastream_pwm_channel(
-				tim->pwm[i].dma, tim->inst, chanidx);
+		pconf_hdmas[idx].Init.Request = DMA_REQUEST_TIM1_UP;
 		pconf_hdmas[idx].Init.Direction = DMA_MEMORY_TO_PERIPH;
 		pconf_hdmas[idx].Init.PeriphInc = DMA_PINC_DISABLE;
 		pconf_hdmas[idx].Init.MemInc = DMA_MINC_ENABLE;
@@ -1315,15 +1170,10 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 		pconf_hdmas[idx].Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
 		pconf_hdmas[idx].Init.MemBurst = DMA_MBURST_SINGLE;
 		pconf_hdmas[idx].Init.PeriphBurst = DMA_PBURST_SINGLE;
-
 		if (HAL_DMA_Init(pconf_hdmas + idx) != HAL_OK)
 			error_handler();
 
-		dmaidx = pconf_timpwm_dmaids(tim->inst,
-			chanidx, dmas[idx]);
-
-		for ( ; *dmaidx != -1; ++dmaidx)
-			__HAL_LINKDMA(htim, hdma[*dmaidx], pconf_hdmas[idx]);
+		__HAL_LINKDMA(htim, hdma[TIM_DMA_ID_UPDATE], pconf_hdmas[idx]);
 	}
 }
 
@@ -1340,16 +1190,29 @@ void pconf_mspdeinit_timpwm(TIM_HandleTypeDef *htim)
 
 	pconf_tim_disable_clock(htim->Instance);
 
-	for (i = 0; i < tim->chcnt; ++i) {
-		const int *dmaidx;
-		int chanidx;
+	if (tim->usage == PCONF_TIMUSAGE_PWM) {
+		for (i = 0; i < tim->chcnt; ++i) {
+			const int *dmaidx;
+			int chanidx;
 
-		chanidx = tim->pwm[i].chan;
+			chanidx = tim->pwm[i].chan;
 
-		dmaidx = pconf_timpwm_dmaids(tim->inst, chanidx, dmas[i]);
+			dmaidx = pconf_timpwm_dmaids(tim->inst,
+				chanidx, dmas[i]);
 
-		for ( ; *dmaidx != -1; ++dmaidx)
-			HAL_DMA_DeInit(htim->hdma[*dmaidx]);
+			for ( ; *dmaidx != -1; ++dmaidx)
+				HAL_DMA_DeInit(htim->hdma[*dmaidx]);
+		}
+	}
+	else if (tim->usage == PCONF_TIMUSAGE_PWMBURST) {
+			const int *dmaidx;
+			
+			dmaidx = pconf_timpwm_dmaids(tim->inst, 
+				tim->pwm[0].chan, dmas[0]);
+
+			for ( ; *dmaidx != -1; ++dmaidx)
+				HAL_DMA_DeInit(htim->hdma[*dmaidx]);
+
 	}
 }
 
@@ -1540,7 +1403,7 @@ static void pconf_init_dma(void)
 	}
 }
 
-static void pconf_init_timpwm(int idx)
+static void pconf_init_tim_pwm(int idx)
 {
 
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -1556,10 +1419,10 @@ static void pconf_init_timpwm(int idx)
 	pconf_htims[idx].Instance = tims->inst;
 	pconf_htims[idx].Init.Prescaler = 0;
 	pconf_htims[idx].Init.CounterMode = TIM_COUNTERMODE_UP;
-	pconf_htims[idx].Init.Period = 0;
+	pconf_htims[idx].Init.Period = 0xffff;
 	pconf_htims[idx].Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	pconf_htims[idx].Init.RepetitionCounter = 0;
-	pconf_htims[idx].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	pconf_htims[idx].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
 	if (HAL_TIM_PWM_Init(pconf_htims + idx) != HAL_OK)
 		error_handler();
 
@@ -1683,7 +1546,9 @@ static void pconf_init_tim()
 
 	for (i = 0; i < PCONF_TIMSCOUNT; ++i) {
 		if (tims[i].usage == PCONF_TIMUSAGE_PWM)
-			pconf_init_timpwm(i);
+			pconf_init_tim_pwm(i);
+		else if (tims[i].usage == PCONF_TIMUSAGE_PWMBURST)
+			pconf_init_tim_pwm(i);
 		else if (tims[i].usage == PCONF_TIMUSAGE_SCHED)
 			pconf_init_tim_sched(i);
 		else if (tims[i].usage == PCONF_TIMUSAGE_DELAY)
@@ -1811,8 +1676,11 @@ static void pconf_init_adc(void)
 		pconf_hadcs[i].Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_ONESHOT;
 		pconf_hadcs[i].Init.Overrun = ADC_OVR_DATA_PRESERVED;
 		pconf_hadcs[i].Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
-		pconf_hadcs[i].Init.OversamplingMode = DISABLE;
-		pconf_hadcs[i].Init.Oversampling.Ratio = 1;
+		pconf_hadcs[i].Init.OversamplingMode = ENABLE;
+		pconf_hadcs[i].Init.Oversampling.Ratio = 16;
+		pconf_hadcs[i].Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_4;
+		pconf_hadcs[i].Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
+		pconf_hadcs[i].Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_RESUMED_MODE;
 
 		if (HAL_ADC_Init(pconf_hadcs + i) != HAL_OK)
 			error_handler();
@@ -2214,7 +2082,18 @@ static void dshot_init()
 	d.timch[3] = pconf_timpwm_chan(pwmconf.pwm[3].chan);
 
 	d.timfreq = HAL_RCC_GetPCLK2Freq() * 2;
-	d.type = DSHOT_300;
+
+	if (pwmconf.dmatype == PCONF_TIMDMATYPE_BURST)
+		d.mode = DSHOT_TIMBURST;
+	else
+		d.mode = DSHOT_DMACCR;
+
+	if (pwmconf.proto == PCONF_PROTO_DSHOT300)
+		d.type = DSHOT_300;
+	else if (pwmconf.proto == PCONF_PROTO_DSHOT600)
+		d.type = DSHOT_600;
+	else
+		d.type = DSHOT_300;
 
 	if (dshot_initdevice(&d, Dev + DEV_DSHOT) < 0)
 		goto error;

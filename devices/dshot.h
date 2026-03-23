@@ -14,10 +14,16 @@ enum DSHOT_TYPE {
 	DSHOT_1200,
 };
 
+enum DSHOT_MODE {
+	DSHOT_TIMBURST,
+	DSHOT_DMACCR
+};
+
 struct dshot_device {
 	TIM_HandleTypeDef *htim[4];
 	uint32_t timch[4];
 	int timfreq;
+	enum DSHOT_MODE mode;
 	enum DSHOT_TYPE type;
 
 	int timcc[4];

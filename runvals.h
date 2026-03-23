@@ -25,7 +25,13 @@
 * @brief Periodic events frequencies
 * @{
 */
+
+#ifdef STM32F4xx
 #define PID_FREQ 4000		/*!< PID event frequency */
+#elif STM32H7xx
+#define PID_FREQ 8000		/*!< PID event frequency */
+#endif
+
 #define CHECK_FREQ 1		/*!< connection check event frequency */
 #define DPS_FREQ 100		/*!< barometer update event frequency */
 #define QMC_FREQ 100		/*!< magnetometer update event frequency */

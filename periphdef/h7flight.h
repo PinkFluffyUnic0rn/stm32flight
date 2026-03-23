@@ -172,7 +172,7 @@ const struct pconf_spi spis[] = {
 const struct pconf_tim tims[] = {
 	{
 		.inst = TIM1,
-		.usage = PCONF_TIMUSAGE_PWM,
+		.usage = PCONF_TIMUSAGE_PWMBURST,
 		.pwm = {
 			{
 				.chan = 1,
@@ -207,6 +207,7 @@ const struct pconf_tim tims[] = {
 				.dma = DMA2_Stream4
 			}
 		},
+		.updma = DMA2_Stream1,
 		.chcnt = 4
 	},
 	{
@@ -416,6 +417,8 @@ const struct pconf_vtx vtxconf = {
 };
 
 const struct pconf_pwm pwmconf = {
+	.dmatype = PCONF_TIMDMATYPE_BURST,
+	.proto = PCONF_PROTO_DSHOT600,
 	.pwm = {
 		{
 			.inst = TIM1,

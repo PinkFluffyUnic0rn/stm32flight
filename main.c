@@ -478,7 +478,7 @@ int stabilize(int ms)
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		thrustcor = dsp_pidbl(Pid + PID_VA, thrustcor + 1.0,
-			dsp_getlpf(Lpf + LPF_VAPT1)) / tiltcoef + ht;	
+			dsp_getlpf(Lpf + LPF_VAPT1)) / tiltcoef + ht;
 	}
 	else {
 		if (Hovermode) {
