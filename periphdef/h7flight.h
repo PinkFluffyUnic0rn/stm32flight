@@ -418,7 +418,7 @@ const struct pconf_vtx vtxconf = {
 
 const struct pconf_pwm pwmconf = {
 	.dmatype = PCONF_TIMDMATYPE_BURST,
-	.proto = PCONF_PROTO_DSHOT300,
+	.proto = PCONF_PROTO_DSHOT600,
 	.pwm = {
 		{
 			.inst = TIM1,

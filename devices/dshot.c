@@ -365,8 +365,8 @@ int dshot_init(struct dshot_device *dev)
 	}
 	else if (dev->type == DSHOT_600) {
 		dev->bitlen = 1.67 * 1e-6 * dev->timfreq + 0.5;
-		dev->onelen = 1.25 * 1e-6 * dev->timfreq + 0.5;
-		dev->zerolen = 0.625 * 1e-6 * dev->timfreq * 0.97 + 0.5;
+		dev->onelen = 0.7 * 1.67 * 1e-6 * dev->timfreq + 0.5;
+		dev->zerolen = 0.35 * 1.67 * 1e-6 * dev->timfreq + 0.5;
 	}
 	else {
 		dev->bitlen = 0.83 * 1e-6 * dev->timfreq + 0.5;
@@ -375,10 +375,10 @@ int dshot_init(struct dshot_device *dev)
 	}
 	
 	// set timer's reload value for each PWM channel
-	__HAL_TIM_SET_AUTORELOAD(dev->htim[0], dev->bitlen);
-	__HAL_TIM_SET_AUTORELOAD(dev->htim[1], dev->bitlen);
-	__HAL_TIM_SET_AUTORELOAD(dev->htim[2], dev->bitlen);
-	__HAL_TIM_SET_AUTORELOAD(dev->htim[3], dev->bitlen);
+	__HAL_TIM_SET_AUTORELOAD(dev->htim[0], dev->bitlen - 1);
+	__HAL_TIM_SET_AUTORELOAD(dev->htim[1], dev->bitlen - 1);
+	__HAL_TIM_SET_AUTORELOAD(dev->htim[2], dev->bitlen - 1);
+	__HAL_TIM_SET_AUTORELOAD(dev->htim[3], dev->bitlen - 1);
 
 	// get timer's channel IDs of each PWM channel
 	dev->timcc[0] = dshot_timdmacc(dev->timch[0]);
