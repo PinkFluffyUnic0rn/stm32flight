@@ -280,6 +280,7 @@ static int pconf_i2c_disable_clock(I2C_TypeDef *inst)
 
 static int pconf_spi_enable_clock(SPI_TypeDef *inst)
 {
+/*
 	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
 	if (inst == SPI1)
@@ -302,7 +303,7 @@ static int pconf_spi_enable_clock(SPI_TypeDef *inst)
 
 	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
 		error_handler();
-
+*/
 	if (inst == SPI1)		__HAL_RCC_SPI1_CLK_ENABLE();
 	else if (inst == SPI2)		__HAL_RCC_SPI2_CLK_ENABLE();
 	else if (inst == SPI3)		__HAL_RCC_SPI3_CLK_ENABLE();
@@ -1263,7 +1264,8 @@ void pconf_init_clock(void)
 	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
 		error_handler();
 
-	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADC|RCC_PERIPHCLK_CKPER;
+	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADC
+		| RCC_PERIPHCLK_CKPER | RCC_PERIPHCLK_SPI1;
 	PeriphClkInitStruct.PLL2.PLL2M = 2;
 	PeriphClkInitStruct.PLL2.PLL2N = 19;
 	PeriphClkInitStruct.PLL2.PLL2P = 2;
@@ -1272,6 +1274,15 @@ void pconf_init_clock(void)
 	PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
 	PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
 	PeriphClkInitStruct.PLL2.PLL2FRACN = 1639;
+	PeriphClkInitStruct.PLL3.PLL3M = 25;
+	PeriphClkInitStruct.PLL3.PLL3N = 192;
+	PeriphClkInitStruct.PLL3.PLL3P = 2;
+	PeriphClkInitStruct.PLL3.PLL3Q = 2;
+	PeriphClkInitStruct.PLL3.PLL3R = 2;
+	PeriphClkInitStruct.PLL3.PLL3RGE = RCC_PLL3VCIRANGE_0;
+	PeriphClkInitStruct.PLL3.PLL3VCOSEL = RCC_PLL3VCOMEDIUM;
+	PeriphClkInitStruct.PLL3.PLL3FRACN = 0;
+	PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_PLL3;
 	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
 	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
 		error_handler();
@@ -1867,7 +1878,7 @@ static int icm_init()
 	d.gyrorate = ICM_GYRO8K;
 	d.gyroorder = ICM_GYROORDER3;
 	d.gyrolpf = ICM_GYROLPFLL;
-	d.accelscale = ICM_4G;
+	d.accelscale = ICM_16G;
 	d.accelrate = ICM_ACCEL8K;
 	d.accellpf = ICM_ACCELLPFLL;
 	d.accelorder = ICM_ACCELORDER3;

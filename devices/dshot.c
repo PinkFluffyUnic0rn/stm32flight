@@ -366,7 +366,7 @@ int dshot_init(struct dshot_device *dev)
 	else if (dev->type == DSHOT_600) {
 		dev->bitlen = 1.67 * 1e-6 * dev->timfreq + 0.5;
 		dev->onelen = 1.25 * 1e-6 * dev->timfreq + 0.5;
-		dev->zerolen = 0.625 * 1e-6 * dev->timfreq * 0.975 + 0.5;
+		dev->zerolen = 0.625 * 1e-6 * dev->timfreq * 0.97 + 0.5;
 	}
 	else {
 		dev->bitlen = 0.83 * 1e-6 * dev->timfreq + 0.5;

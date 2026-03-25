@@ -5,21 +5,21 @@ adj acc xtscale 0
 adj acc ytscale 0
 adj acc ztscale 0.00058
 adj althold hover 0.382
-adj pitch 0.015
-adj roll -0.005
+adj pitch 0.01
+adj roll 0
 adj yaw 0
 adj bat scale 1
-adj curr offset -13
+adj curr offset -20.799999
 adj curr scale 412.5
 adj gyro x 0
 adj gyro y 0
 adj gyro z 0
-adj mag x0 101.515808
-adj mag y0 -4.167864
-adj mag z0 824.312744
+adj mag x0 -31.54287
+adj mag y0 56.141792
+adj mag z0 588.79126
 adj mag decl 0.3264
-adj mag xscale 0.961226
-adj mag yscale 0.966274
+adj mag xscale 0.976501
+adj mag yscale 0.963267
 adj mag zscale 1
 adj mag xthscale 1296.304932
 adj mag ythscale -99.118744

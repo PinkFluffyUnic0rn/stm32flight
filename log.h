@@ -17,7 +17,7 @@
 /**
 * @brief log maximum frequency
 */
-#define LOG_MAXFREQ 4096
+#define LOG_MAXFREQ 8000
 
 /**
 * @brief log record size
