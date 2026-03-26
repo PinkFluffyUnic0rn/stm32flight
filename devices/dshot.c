@@ -8,6 +8,11 @@
 
 #include "dshot.h"
 
+#define DSHOT150_BITLEN (6.67 * 1e-6)
+#define DSHOT300_BITLEN (3.33 * 1e-6)
+#define DSHOT600_BITLEN (1.67 * 1e-6)
+#define DSHOT1200_BITLEN (0.83 * 1e-6)
+
 static struct dshot_device dshot_devs[DSHOT_MAXDEVS];
 static size_t dshot_devcount = 0;
 
@@ -112,11 +117,15 @@ static void dshotdmacb(DMA_HandleTypeDef *hdma)
 		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
 }
 
+/**
+* @brief Wait for previous DMA transfer to complete
+* @param dev DShot device that use DMA
+* @return -1, if wait time exceeded, 0 otherwise
+*/
 static int dshot_updatedmawait(struct dshot_device *dev)
 {
 	int t;
 	
-	// wait for previous DMA transfer to complete
 	t = 0;
 	while (HAL_DMA_GetState(
 			dev->htim[0]->hdma[TIM_DMA_ID_UPDATE])
@@ -134,9 +143,12 @@ static int dshot_updatedmawait(struct dshot_device *dev)
 /**
 * @brief Fill buffer, that contains PWM duty cycle values of a
 	a DSHOT packet using 16 bit value.
+* @param dev DShot device
 * @param buf buffer for PWM duty cycle values that is used by DMA
 * @param val 16 bit value from 0 to 2047
 * @param tele 1 if telemetry bit needed, 0 otherwise
+* @param col channel number if tim burst mode is used, -1 otherwise
+* @return none
 */
 static void dshotsetbuf(struct dshot_device *dev, uint16_t *buf,
 	uint16_t val, int tele, int col)
@@ -184,11 +196,13 @@ static void dshotsetbuf(struct dshot_device *dev, uint16_t *buf,
 /**
 * @brief Fill buffer, that contains PWM duty cycle values of a
 	a DSHOT packet with thrust value.
+* @param dev DShot device
 * @param buf buffer for PWM duty cycle values that is used by DMA
 * @param v value from 0.0 to 1.0
+* @param col channel number if tim burst mode is used, -1 otherwise
 * @return always 0
 */
-static inline int dshotsetthrust(struct dshot_device *dev,
+static inline void dshotsetthrust(struct dshot_device *dev,
 	uint16_t *buf, float v, int col)
 {
 	// convert motor thrust value from [0.0;1.0]
@@ -196,8 +210,6 @@ static inline int dshotsetthrust(struct dshot_device *dev,
 	// disable telemetry request bit
 	dshotsetbuf(dev, buf,
 		(uint16_t) (trimuf(v) * 1999.0 + 0.5) + 48, 0, col);
-
-	return 0;
 }
 
 int dshot_configure(void *d, const char *cmd, ...)
@@ -354,24 +366,24 @@ int dshot_init(struct dshot_device *dev)
 
 	// determite period, 0 and 1 duty cycles in used timer's ticks
 	if (dev->type == DSHOT_150) {
-		dev->bitlen = 6.67 * 1e-6 * dev->timfreq + 0.5;
-		dev->onelen = 5.0 * 1e-6 * dev->timfreq + 0.5;
-		dev->zerolen = 2.5 * 1e-6 * dev->timfreq + 0.5;
+		dev->bitlen = DSHOT150_BITLEN * dev->timfreq + 0.5;
+		dev->onelen = 0.7 * DSHOT150_BITLEN * dev->timfreq + 0.5;
+		dev->zerolen = 0.35 * DSHOT150_BITLEN * dev->timfreq + 0.5;
 	}
 	else if (dev->type == DSHOT_300) {
-		dev->bitlen = 3.33 * 1e-6 * dev->timfreq + 0.5;
-		dev->onelen = 2.5 * 1e-6 * dev->timfreq + 0.5;
-		dev->zerolen = 1.25 * 1e-6 * dev->timfreq + 0.5;
+		dev->bitlen = DSHOT300_BITLEN * dev->timfreq + 0.5;
+		dev->onelen = 0.7 * DSHOT300_BITLEN * dev->timfreq + 0.5;
+		dev->zerolen = 0.35 * DSHOT300_BITLEN * dev->timfreq + 0.5;
 	}
 	else if (dev->type == DSHOT_600) {
-		dev->bitlen = 1.67 * 1e-6 * dev->timfreq + 0.5;
-		dev->onelen = 0.7 * 1.67 * 1e-6 * dev->timfreq + 0.5;
-		dev->zerolen = 0.35 * 1.67 * 1e-6 * dev->timfreq + 0.5;
+		dev->bitlen = DSHOT600_BITLEN * dev->timfreq + 0.5;
+		dev->onelen = 0.7 * DSHOT600_BITLEN * dev->timfreq + 0.5;
+		dev->zerolen = 0.35 * DSHOT600_BITLEN * dev->timfreq + 0.5;
 	}
 	else {
-		dev->bitlen = 0.83 * 1e-6 * dev->timfreq + 0.5;
-		dev->onelen = 0.625 * 1e-6 * dev->timfreq + 0.5;
-		dev->zerolen = 0.313 * 1e-6 * dev->timfreq + 0.5;
+		dev->bitlen = DSHOT1200_BITLEN * dev->timfreq + 0.5;
+		dev->onelen = 0.7 * DSHOT1200_BITLEN * dev->timfreq + 0.5;
+		dev->zerolen = 0.35 * DSHOT1200_BITLEN * dev->timfreq + 0.5;
 	}
 	
 	// set timer's reload value for each PWM channel
