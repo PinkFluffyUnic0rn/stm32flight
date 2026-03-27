@@ -18,6 +18,7 @@
 #include "m10.h"
 #include "uartconf.h"
 #include "irc.h"
+#include "msp.h"
 #include "dshot.h"
 
 /**
@@ -33,7 +34,7 @@ enum DEV_ID {
 	DEV_GNSS	= 4,	/*!< GNSS device number */
 	DEV_RF		= 5,	/*!< ESP device number */
 	DEV_UART	= 6,	/*!< UART debug device number */
-	DEV_IRC		= 7,	/*!< video TX device number */
+	DEV_VTX		= 7,	/*!< video TX device number */
 	DEV_DSHOT	= 8,	/*!< DShot-300 device number */
 	DEV_COUNT	= 9	/*!< character devices count */
 };

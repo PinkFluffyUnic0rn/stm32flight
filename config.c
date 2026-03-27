@@ -743,13 +743,13 @@ int setstabilize(int init)
 
 int updateirc()
 {
-	if (Dev[DEV_IRC].status != DEVSTATUS_INIT)
+	if (Dev[DEV_VTX].status != DEVSTATUS_INIT)
 		return 0;
 
-	Dev[DEV_IRC].configure(Dev[DEV_IRC].priv,
+	Dev[DEV_VTX].configure(Dev[DEV_VTX].priv,
 		"frequency", St.irc.freq);
 
-	Dev[DEV_IRC].configure(Dev[DEV_IRC].priv,
+	Dev[DEV_VTX].configure(Dev[DEV_VTX].priv,
 		"power", St.irc.power);
 
 	return 0;
@@ -1309,7 +1309,7 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	else if (strcmp(toks[1], "irc") == 0) {
 		struct irc_data data;
 
-		Dev[DEV_IRC].read(Dev[DEV_IRC].priv, &data,
+		Dev[DEV_VTX].read(Dev[DEV_VTX].priv, &data,
 			sizeof(struct irc_data));
 
 		snprintf(out, INFOLEN, "frequency: %d; power: %d\r\n",

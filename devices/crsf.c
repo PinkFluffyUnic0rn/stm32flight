@@ -83,7 +83,7 @@ int crsf_interrupt(void *dev, const void *h)
 		}
 	}
 	else if (Packstate == 1) {
-		if (b > 64)
+		if (b > 64) // !!!
 			Packstate = 0;
 
 		Pack[Packw].len = Packrest = b;

@@ -74,7 +74,8 @@ struct pconf_uart {
 		PCONF_UARTUSAGE_CRSF,
 		PCONF_UARTUSAGE_GNSS,
 		PCONF_UARTUSAGE_DEBUG,
-		PCONF_UARTUSAGE_IRC
+		PCONF_UARTUSAGE_IRC,
+		PCONF_UARTUSAGE_MSP
 	} usage;
 
 	struct pconf_pin rx;
@@ -157,6 +158,11 @@ struct pconf_wireless {
 };
 
 struct pconf_vtx {
+	enum PCONF_VTXTYPE {
+		PCONF_VTXTYPE_IRC,
+		PCONF_VTXTYPE_MSP
+	} type;
+
 	struct pconf_iface iface;
 };
 

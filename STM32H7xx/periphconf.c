@@ -280,30 +280,6 @@ static int pconf_i2c_disable_clock(I2C_TypeDef *inst)
 
 static int pconf_spi_enable_clock(SPI_TypeDef *inst)
 {
-/*
-	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-
-	if (inst == SPI1)
-		PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI1;
-	else if (inst == SPI2)
-		PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI2;
-	else if (inst == SPI3)
-		PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI3;
-	else if (inst == SPI4)
-		PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI4;
-	else if (inst == SPI5)
-		PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI5;
-
-	if (inst == SPI1 || inst == SPI2 || inst == SPI3)
-		PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_CLKP;
-	else if (inst == SPI4 || inst == SPI5)
-		PeriphClkInitStruct.Spi45ClockSelection = RCC_SPI45CLKSOURCE_D2PCLK1;
-	else
-		PeriphClkInitStruct.Spi6ClockSelection = RCC_SPI6CLKSOURCE_D3PCLK1;
-
-	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-		error_handler();
-*/
 	if (inst == SPI1)		__HAL_RCC_SPI1_CLK_ENABLE();
 	else if (inst == SPI2)		__HAL_RCC_SPI2_CLK_ENABLE();
 	else if (inst == SPI3)		__HAL_RCC_SPI3_CLK_ENABLE();
@@ -1741,6 +1717,35 @@ static void pconf_init_uart_crsf(int i)
 	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
 		error_handler();
 
+	//////
+	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
+		error_handler();
+	//////
+
+	if (HAL_UARTEx_SetTxFifoThreshold(pconf_huarts + i, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_SetRxFifoThreshold(pconf_huarts + i, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_DisableFifoMode(pconf_huarts + i) != HAL_OK)
+		error_handler();
+}
+
+static void pconf_init_uart_gnss(int i)
+{
+	pconf_huarts[i].Instance = uarts[i].inst;
+	pconf_huarts[i].Init.BaudRate = 115200;
+	pconf_huarts[i].Init.WordLength = UART_WORDLENGTH_8B;
+	pconf_huarts[i].Init.StopBits = UART_STOPBITS_1;
+	pconf_huarts[i].Init.Parity = UART_PARITY_NONE;
+	pconf_huarts[i].Init.Mode = UART_MODE_TX_RX;
+	pconf_huarts[i].Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	pconf_huarts[i].Init.OverSampling = UART_OVERSAMPLING_16;
+	pconf_huarts[i].Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+	pconf_huarts[i].Init.ClockPrescaler = UART_PRESCALER_DIV1;
+	pconf_huarts[i].AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+
 	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
 		error_handler();
 
@@ -1754,7 +1759,7 @@ static void pconf_init_uart_crsf(int i)
 		error_handler();
 }
 
-static void pconf_init_uart_gnss(int i)
+static void pconf_init_uart_msp(int i)
 {
 	pconf_huarts[i].Instance = uarts[i].inst;
 	pconf_huarts[i].Init.BaudRate = 115200;
@@ -1839,7 +1844,8 @@ static void pconf_init_uart()
 			pconf_init_uart_debug(i);
 		else if (uarts[i].usage == PCONF_UARTUSAGE_IRC)
 			pconf_init_uart_irc(i);
-
+		else if (uarts[i].usage == PCONF_UARTUSAGE_MSP)
+			pconf_init_uart_msp(i);
 	}
 }
 
@@ -2058,24 +2064,47 @@ error:
 	uartprintf("failed to initialize ESP8266\r\n");
 }
 
-static void irc_init()
+static int irc_init()
 {
 	struct irc_device d;
 
 	if (vtxconf.iface.type != PCONF_IFACETYPE_UART)
-		goto error;
+		return (-1);
 
 	d.huart = pconf_huarts + pconf_uartidx(vtxconf.iface.huart);
 
-	if (irc_initdevice(&d, Dev + DEV_IRC) < 0)
-		goto error;
+	return irc_initdevice(&d, Dev + DEV_VTX);
+}
 
-	uartprintf("%s initilized\r\n", Dev[DEV_IRC].name);
+static int msp_init()
+{
+	struct msp_device d;
+
+	if (vtxconf.iface.type != PCONF_IFACETYPE_UART)
+		return (-1);
+
+	d.huart = pconf_huarts + pconf_uartidx(vtxconf.iface.huart);
+
+	return msp_initdevice(&d, Dev + DEV_VTX);
+}
+
+static void vtx_init()
+{
+	if (vtxconf.type == PCONF_VTXTYPE_IRC) {
+		if (irc_init() < 0)
+			goto error;
+	}
+	else if (vtxconf.type == PCONF_VTXTYPE_MSP) {
+		if (msp_init() < 0)
+			goto error;
+	}
+
+	uartprintf("%s initialized\r\n", Dev[DEV_VTX].name);
 
 	return;
 
 error:
-	uartprintf("failed to initilize IRC device\r\n");
+	uartprintf("failed to initialize flash device\r\n");
 }
 
 static void dshot_init()
@@ -2162,7 +2191,10 @@ void pconf_init(void (*errhandler)(void))
  	crsfdev_init();
 	m10dev_init();
 	espdev_init();
-	irc_init();
+	//irc_init();
+	
+	vtx_init();
+		
 	dshot_init();
 }
 
@@ -2277,6 +2309,13 @@ void USART3_IRQHandler(void)
 void UART4_IRQHandler(void)
 {
 	HAL_UART_IRQHandler(pconf_huarts + PCONF_UART4_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_UART5_IDX_IRQ
+void UART5_IRQHandler(void)
+{
+	HAL_UART_IRQHandler(pconf_huarts + PCONF_UART5_IDX_IRQ);
 }
 #endif
 

@@ -33,6 +33,7 @@
 #define PCONF_UART2_IDX_IRQ 0
 #define PCONF_UART3_IDX_IRQ 1
 #define PCONF_UART4_IDX_IRQ 2
+#define PCONF_UART5_IDX_IRQ 3
 #define PCONF_I2C1_IDX_IRQ 0
 #define PCONF_SPI1_IDX_IRQ 0
 
@@ -180,7 +181,7 @@ const struct pconf_tim tims[] = {
 					.inst = GPIOA,
 					.idx = GPIO_PIN_8
 				},
-				.dma = DMA2_Stream1
+				.dma = NULL
 			},
 			{
 				.chan = 2,
@@ -188,7 +189,7 @@ const struct pconf_tim tims[] = {
 					.inst = GPIOA,
 					.idx = GPIO_PIN_9
 				},
-				.dma = DMA2_Stream2
+				.dma = NULL
 			},
 			{
 				.chan = 3,
@@ -196,7 +197,7 @@ const struct pconf_tim tims[] = {
 					.inst = GPIOA,
 					.idx = GPIO_PIN_10
 				},
-				.dma = DMA2_Stream6
+				.dma = NULL
 			},
 			{
 				.chan = 4,
@@ -204,7 +205,7 @@ const struct pconf_tim tims[] = {
 					.inst = GPIOA,
 					.idx = GPIO_PIN_11
 				},
-				.dma = DMA2_Stream4
+				.dma = NULL
 			}
 		},
 		.updma = DMA2_Stream1,
@@ -289,7 +290,7 @@ const struct pconf_uart uarts[] = {
 	},
 	{
 		.inst = UART5,
-		.usage = PCONF_UARTUSAGE_IRC,
+		.usage = PCONF_UARTUSAGE_MSP,
 		.rx = {
 			.inst = GPIOD,
 			.idx = GPIO_PIN_2
@@ -298,8 +299,8 @@ const struct pconf_uart uarts[] = {
 			.inst = GPIOC,
 			.idx = GPIO_PIN_12
 		},
-		.rxdma = NULL,
-		.txdma = NULL
+		.rxdma = DMA1_Stream4,
+		.txdma = DMA2_Stream2
 	}
 };
 
@@ -410,6 +411,7 @@ const struct pconf_wireless rfconf = {
 };
 
 const struct pconf_vtx vtxconf = {
+	.type = PCONF_VTXTYPE_MSP,
 	.iface = {
 		.type = PCONF_IFACETYPE_UART,
 		.huart = UART5
