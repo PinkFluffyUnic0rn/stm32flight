@@ -734,10 +734,14 @@ int telesend(int ms)
 	else
 		am = "---";
 
-	snprintf((char *) Tele.mode, 14, "%c|%s|%s|%s",
-		En > 0.5 ? 'a' : 'n',
-		attmodestr[Speedpid ? 0 : 1],
-		yawmodestr[Yawspeedpid ? 0 : 1], am);
+	Tele.mode[0] = En > 0.5 ? 'a' : 'n';
+	Tele.mode[1] = '|';
+	memcpy(Tele.mode + 2, attmodestr[Speedpid ? 0 : 1], 2);
+	Tele.mode[4] = '|';
+	memcpy(Tele.mode + 5, yawmodestr[Yawspeedpid ? 0 : 1], 2);
+	Tele.mode[7] = '|';
+	memcpy(Tele.mode + 8, am, 2);
+
 
 	// in case of emergency disarming
 	// set flight mode to "stopped"

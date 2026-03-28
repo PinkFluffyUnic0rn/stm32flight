@@ -200,6 +200,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	struct battery *batpack;
 	static uint8_t buf[64];
 	static int step = 0;
+	int t;
 
 	d = dev;
 	tele = dt;
@@ -208,6 +209,13 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	baltpack = (struct baroaltitude *) (buf + 3);
 	attpack = (struct attitude *) (buf + 3);
 		
+	t = 0;
+	while (HAL_UART_GetState(d->huart) != HAL_UART_STATE_READY
+			&& t < 100000) {
+		udelay(100);
+		t += 100;
+	}
+
 	buf[0] = 0xc8;
 
 	if (step == 0) {

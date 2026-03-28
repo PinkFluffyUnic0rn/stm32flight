@@ -8,8 +8,9 @@
 
 #include "msp.h"
 
-#define RXCIRCSIZE 2
-#define BUFSIZE 64
+#define MSP_RXCIRCSIZE 2
+#define MSP_BUFSIZE 64
+#define MSP_DRAWSTEPS 14
 
 enum MSP_CHAR {
 	MSP_CHAR_M = 0x0c,
@@ -49,7 +50,7 @@ struct packet {
 
 struct msp_buffer
 {
-	uint8_t buf[BUFSIZE];
+	uint8_t buf[MSP_BUFSIZE];
 	size_t sz;
 };
 
@@ -62,7 +63,7 @@ volatile static uint8_t Packstate;
 volatile static uint8_t Packrest;
 volatile static uint8_t Packw;
 volatile static uint8_t Packr;
-volatile static struct packet Pack[RXCIRCSIZE];
+volatile static struct packet Pack[MSP_RXCIRCSIZE];
 
 static struct msp_buffer Sendbuffer;
 
@@ -82,9 +83,9 @@ static uint8_t *msp_stretchbuffer(struct msp_buffer *buf, size_t sz)
 
 	nsz = buf->sz + sz;
 
-	if (nsz >= BUFSIZE) {
-		nsz = BUFSIZE;
-		sz = nsz - BUFSIZE;
+	if (nsz >= MSP_BUFSIZE) {
+		nsz = MSP_BUFSIZE;
+		sz = nsz - MSP_BUFSIZE;
 	}
 
 	buf->sz = nsz;
@@ -105,11 +106,11 @@ int msp_interrupt(void *dev, const void *h)
 	b = Rxbuf;
 	
 	if (Packstate == 0) {
-		if ((Packw + 1) % RXCIRCSIZE == Packr)
+		if ((Packw + 1) % MSP_RXCIRCSIZE == Packr)
 			return 0;
 		
 		if (b == '$') {
-			Packw = (Packw + 1) % RXCIRCSIZE;
+			Packw = (Packw + 1) % MSP_RXCIRCSIZE;
 			Packstate = 1;
 		}
 	}
@@ -207,7 +208,7 @@ int msp_read(void *dev, void *dt, size_t sz)
 	for (i = 0; i < Pack[Packr].len; ++i)
 		crc |= Pack[Packr].pl[i];
 
-	Packr = (Packr + 1) % RXCIRCSIZE;
+	Packr = (Packr + 1) % MSP_RXCIRCSIZE;
 
 	if (crc != Pack[Packr].crc)
 		return (-1);
@@ -263,7 +264,6 @@ static int msp_drawstring(struct msp_buffer *sbuf, int x, int y,
 	buf[6] = y;
 	buf[7] = x;
 	buf[8] = color;
-
 
 	// string length check?
 	memcpy(buf + 9, str, len - 4);
@@ -443,8 +443,6 @@ static int msp_drawyaw(struct msp_buffer *sbuf, int x, int y,
 
 	return 0;
 }
-
-#define MSP_DRAWSTEPS 14
 
 int msp_write(void *dev, void *dt, size_t sz)
 {
