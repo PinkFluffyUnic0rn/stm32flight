@@ -80,3 +80,59 @@ int isvalinlist(int v, int num, ...)
 
 	return 0;
 }
+
+char *ftos(float f, char *s, size_t sz, int order, float max)
+{
+	float scale[] = {10.0, 100.0, 1000.0, 10000.0,
+		100000.0, 1000000.0, 10000000.0, 100000000.0}; 
+	char tmp[16];
+	int scaled;
+	char *p;
+	int sgn;
+	int i;
+
+	if (f < 0.0) {
+		f *= -1;
+		sgn = 1;
+	}
+	else
+		sgn = 0;
+
+	if (f > max)
+		f = max;
+
+	scaled = f * scale[order] + 0.5;
+
+	for (p = tmp; ; ++p) {
+		*p = '0' + (scaled % 10);
+		scaled /= 10;
+
+		if (scaled == 0)
+			break;
+	}
+
+	if (sgn)
+		*s++ = '-';
+
+	for (i = 0; i <= (order - (p - tmp)); ++i) {
+		*s++ = '0';
+
+		if (i == 0 && order != (p - tmp))
+			*s++ = '.';
+	}
+
+	for (; p != tmp; ) {
+		if (sz == 1)
+			break;
+
+		if (p - tmp == order)
+			*s++ = '.';
+
+		*s++ = *(p--);
+		--sz;
+	}
+	
+	*s++ = '\0';
+
+	return s;
+}

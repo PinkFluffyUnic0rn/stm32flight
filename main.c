@@ -742,7 +742,6 @@ int telesend(int ms)
 	Tele.mode[7] = '|';
 	memcpy(Tele.mode + 8, am, 2);
 
-
 	// in case of emergency disarming
 	// set flight mode to "stopped"
 	if (Emergencydisarm)

@@ -16,21 +16,21 @@ enum MSP_CHAR {
 	MSP_CHAR_M = 0x0c,
 	MSP_CHAR_MPS = 0x9f,
 	MSP_CHAR_TEMP = 0x7a,
-	MSP_BAT_6 = 0x90,
-	MSP_BAT_5 = 0x91,
-	MSP_BAT_4 = 0x92,
-	MSP_BAT_3 = 0x93,
-	MSP_BAT_2 = 0x94,
-	MSP_BAT_1 = 0x95,
-	MSP_BAT_0 = 0x96,
-	MSP_VOLT = 0x06,
-	MSP_AMP = 0x9a,
-	MSP_KMH = 0x9e,
-	MSP_SATL = 0x1e,
-	MSP_SATR = 0x1f,
-	MSP_LAT = 0x89,
-	MSP_LON = 0x98,
-	MSP_ARROW_0 = 0x68
+	MSP_CHAR_BAT_6 = 0x90,
+	MSP_CHAR_BAT_5 = 0x91,
+	MSP_CHAR_BAT_4 = 0x92,
+	MSP_CHAR_BAT_3 = 0x93,
+	MSP_CHAR_BAT_2 = 0x94,
+	MSP_CHAR_BAT_1 = 0x95,
+	MSP_CHAR_BAT_0 = 0x96,
+	MSP_CHAR_VOLT = 0x06,
+	MSP_CHAR_AMP = 0x9a,
+	MSP_CHAR_KMH = 0x9e,
+	MSP_CHAR_SATL = 0x1e,
+	MSP_CHAR_SATR = 0x1f,
+	MSP_CHAR_LAT = 0x89,
+	MSP_CHAR_LON = 0x98,
+	MSP_CHAR_ARROW_0 = 0x68
 };
 
 enum MSP_CHARCOLOR {
@@ -328,22 +328,28 @@ static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd, int step)
 {
 	char buf[16];
+	char *p;
 
 	if (step == 0) {
-		snprintf(buf, 16, "%0.1f%c", 
-			(double) osd->alt, MSP_CHAR_M);
+		p = ftos(osd->alt, buf, 15, 2, 10000.0);
+		*(p - 1) = MSP_CHAR_M;
+		*p = '\0';
 
 		msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
+
 	}
 	else if (step == 1) {
-		snprintf(buf, 16, "%0.1f%c", (double) osd->vspeed,
-			MSP_CHAR_MPS);
+		p = ftos(osd->vspeed, buf, 15, 2, 1000.0);
+		*(p - 1) = MSP_CHAR_MPS;
+		*p = '\0';
+		
 		msp_drawstring(sbuf, x, y + 1,
 			MSP_CHARCOLOR_WHITE, buf);
 	}	
 	else if (step == 2) {
-		snprintf(buf, 16, "%c%0.1f", MSP_CHAR_TEMP, 
-			(double) osd->temp);
+		buf[0] = MSP_CHAR_TEMP;
+		ftos((double) osd->temp, buf + 1, 15, 1, 1000.0);
+		
 		msp_drawstring(sbuf, x, y + 2,
 			MSP_CHARCOLOR_WHITE, buf);
 	}
@@ -356,30 +362,37 @@ static int msp_drawpower(struct msp_buffer *sbuf, int x, int y,
 {
 	char buf[16];
 	uint8_t batsym;
+	char *p;
 
 	if (state == 0) {
 		if (osd->batrem > 95.0)
-			batsym  = MSP_BAT_6;
+			batsym  = MSP_CHAR_BAT_6;
 		else if (osd->batrem > 82.0)
-			batsym  = MSP_BAT_5;
+			batsym  = MSP_CHAR_BAT_5;
 		else if (osd->batrem > 64.0)
-			batsym  = MSP_BAT_4;
+			batsym  = MSP_CHAR_BAT_4;
 		else if (osd->batrem > 46.0)
-			batsym  = MSP_BAT_3;
+			batsym  = MSP_CHAR_BAT_3;
 		else if (osd->batrem > 28.0)
-			batsym  = MSP_BAT_2;
+			batsym  = MSP_CHAR_BAT_2;
 		else if (osd->batrem > 10.0)
-			batsym  = MSP_BAT_1;
+			batsym  = MSP_CHAR_BAT_1;
 		else 
-			batsym  = MSP_BAT_0;
+			batsym  = MSP_CHAR_BAT_0;
 
-		snprintf(buf, 16, "%c%0.2f%c", batsym,
-			(double) osd->bat, MSP_VOLT);
+		buf[0] = batsym;
+		p = ftos(osd->bat, buf + 1, 15, 2, 100.0);
+		*(p - 1) = MSP_CHAR_VOLT;
+		*p = '\0';
+
 		msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
 	}
-	else if (state == 2) {
-		snprintf(buf, 16, " %0.1f%c",
-			(double) osd->curr, MSP_AMP);
+	else if (state == 1) {
+		buf[0] = ' ';
+		p = ftos(osd->curr, buf + 1, 14, 1, 1000.0);
+		*(p - 1) = MSP_CHAR_AMP;
+		*p = '\0';
+
 		msp_drawstring(sbuf, x, y + 1,
 			MSP_CHARCOLOR_WHITE, buf);
 	}
@@ -391,8 +404,12 @@ static int msp_drawspeed(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd)
 {
 	char buf[16];
+	char *p;
 
-	snprintf(buf, 16, "%0.1f%c", (double) osd->speed, MSP_KMH);
+	p = ftos(osd->speed, buf, 15, 2, 1000.0);
+	*(p - 1) = MSP_CHAR_KMH;
+	*p = '\0';
+
 	msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
 	
 	return 0;
@@ -404,19 +421,26 @@ static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
 	char buf[16];
 
 	if (state == 0) {	
-		snprintf(buf, 16, "%c%c%d", MSP_SATL,
-			MSP_SATR, osd->sats);
+		buf[0] = MSP_CHAR_SATL;
+		buf[1] = MSP_CHAR_SATR;	
+
+		ftos(osd->speed, buf + 2, 14, 0, 1000.0);
+
 		msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
 	}
 	else if (state == 1) {
-		snprintf(buf, 16, " %c%0.5f", MSP_LAT,
-			(double) osd->lat);
+		buf[0] = ' ';
+		buf[1] = MSP_CHAR_LAT;
+		ftos((double) osd->lat, buf + 2, 14, 5, 1000.0);
+
 		msp_drawstring(sbuf, x, y + 1,
 			MSP_CHARCOLOR_WHITE, buf);
 	}
 	else if (state == 2) {
-		snprintf(buf, 16, " %c%0.5f", MSP_LON,
-			(double) osd->lon);
+		buf[0] = ' ';
+		buf[1] = MSP_CHAR_LON;
+		ftos((double) osd->lon, buf + 2, 14, 5, 1000.0);
+
 		msp_drawstring(sbuf, x, y + 2,
 			MSP_CHARCOLOR_WHITE, buf);
 	}
@@ -436,9 +460,11 @@ static int msp_drawyaw(struct msp_buffer *sbuf, int x, int y,
 	if (dirn > 8)	dirn = 8;
 	if (dirn < -7)	dirn = -7;
 
-	dirsym = MSP_ARROW_0 - dirn;
+	dirsym = MSP_CHAR_ARROW_0 - dirn;
 
-	snprintf(buf, 2, "%c", dirsym);
+	buf[0] = dirsym;
+	buf[1] = '\0';
+
 	msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
 
 	return 0;
@@ -467,6 +493,8 @@ int msp_write(void *dev, void *dt, size_t sz)
 		msp_writepacket(&Sendbuffer, 182, &dpcmd, 1);
 	}
 		
+//	msp_drawalt(&Sendbuffer, 15, 1, dt, 0);
+	
 	if (step == 0)
 		msp_drawmode(&Sendbuffer, 1, 1, dt, 0);
 	else if (step == 1)
@@ -519,7 +547,6 @@ int msp_init(struct msp_device *msp)
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0
 	};
-
 
 	Packstate = 0;
 	Packrest = 0;
