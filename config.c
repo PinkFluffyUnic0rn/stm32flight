@@ -741,9 +741,12 @@ int setstabilize(int init)
 	return 0;
 }
 
-int updateirc()
+int updatevtx()
 {
 	if (Dev[DEV_VTX].status != DEVSTATUS_INIT)
+		return 0;
+
+	if (strncmp(Dev[DEV_VTX].name, "irc", 3) != 0)
 		return 0;
 
 	Dev[DEV_VTX].configure(Dev[DEV_VTX].priv,
@@ -1248,7 +1251,7 @@ int applycmd(const struct cdevice *dev, const char **toks, char *out)
 	}
 
 	if (irc)
-		updateirc();
+		updatevtx();
 	
 	if (dsp)
 		setstabilize(0);
@@ -1309,11 +1312,28 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 	else if (strcmp(toks[1], "irc") == 0) {
 		struct irc_data data;
 
-		Dev[DEV_VTX].read(Dev[DEV_VTX].priv, &data,
-			sizeof(struct irc_data));
+		if (Dev[DEV_VTX].status != DEVSTATUS_INIT) {
+			snprintf(out, INFOLEN - strlen(out),
+				"VTX not initialized\r\n");
+			return 0;
+		}
 
-		snprintf(out, INFOLEN, "frequency: %d; power: %d\r\n",
-			data.freq, data.power);
+		if (strncmp(Dev[DEV_VTX].name, "irc", 3) == 0) {
+			snprintf(out, INFOLEN - strlen(out),
+				"VTX type: IRC\r\n");
+
+			Dev[DEV_VTX].read(Dev[DEV_VTX].priv, &data,
+				sizeof(struct irc_data));
+
+			snprintf(out + strlen(out),
+				INFOLEN - strlen(out),
+				"frequency: %d; power: %d\r\n",
+				data.freq, data.power);
+		}
+		else {
+			snprintf(out, INFOLEN - strlen(out),
+				"VTX type: MSP\r\n");
+		}
 	}
 	else if (strcmp(toks[1], "autopilot") == 0)
 		sprintfautopilot(out);

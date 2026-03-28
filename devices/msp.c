@@ -8,7 +8,29 @@
 
 #include "msp.h"
 
-#define RXCIRCSIZE 4
+#define RXCIRCSIZE 2
+#define BUFSIZE 64
+
+enum MSP_CHAR {
+	MSP_CHAR_M = 0x0c,
+	MSP_CHAR_MPS = 0x9f,
+	MSP_CHAR_TEMP = 0x7a,
+	MSP_BAT_6 = 0x90,
+	MSP_BAT_5 = 0x91,
+	MSP_BAT_4 = 0x92,
+	MSP_BAT_3 = 0x93,
+	MSP_BAT_2 = 0x94,
+	MSP_BAT_1 = 0x95,
+	MSP_BAT_0 = 0x96,
+	MSP_VOLT = 0x06,
+	MSP_AMP = 0x9a,
+	MSP_KMH = 0x9e,
+	MSP_SATL = 0x1e,
+	MSP_SATR = 0x1f,
+	MSP_LAT = 0x89,
+	MSP_LON = 0x98,
+	MSP_ARROW_0 = 0x68
+};
 
 enum MSP_CHARCOLOR {
 	MSP_CHARCOLOR_WHITE = 0,
@@ -25,6 +47,12 @@ struct packet {
 	uint8_t crc;
 };
 
+struct msp_buffer
+{
+	uint8_t buf[BUFSIZE];
+	size_t sz;
+};
+
 static struct msp_device msp_devs[MSP_MAXDEVS];
 static size_t msp_devcount = 0;
 
@@ -36,6 +64,34 @@ volatile static uint8_t Packw;
 volatile static uint8_t Packr;
 volatile static struct packet Pack[RXCIRCSIZE];
 
+static struct msp_buffer Sendbuffer;
+
+static int msp_initbuffer(struct msp_buffer *buf)
+{
+	buf->sz = 0;
+
+	return 0;
+}
+
+static uint8_t *msp_stretchbuffer(struct msp_buffer *buf, size_t sz)
+{
+	size_t nsz;
+	uint8_t *p;
+
+	p = buf->buf + buf->sz;
+
+	nsz = buf->sz + sz;
+
+	if (nsz >= BUFSIZE) {
+		nsz = BUFSIZE;
+		sz = nsz - BUFSIZE;
+	}
+
+	buf->sz = nsz;
+
+	return p;
+}
+
 int msp_interrupt(void *dev, const void *h) 
 {
 	struct msp_device *d;
@@ -45,7 +101,7 @@ int msp_interrupt(void *dev, const void *h)
 
 	if (((UART_HandleTypeDef *)h)->Instance != d->huart->Instance)
 		return 0;
-	
+
 	b = Rxbuf;
 	
 	if (Packstate == 0) {
@@ -159,12 +215,19 @@ int msp_read(void *dev, void *dt, size_t sz)
 	return 0;
 }
 
+int msp_configure(void *d, const char *cmd, ...)
+{
+	return 0;
+}
 
-int msp_sendpacket(struct msp_device *dev,
+static int msp_writepacket(struct msp_buffer *sbuf,
 	uint8_t cmd, uint8_t *pl, size_t len)
 {
-	static uint8_t buf[256];
+	uint8_t *buf;
+	int i;
 
+	buf = msp_stretchbuffer(sbuf, len + 6);
+	
 	buf[0] = '$';
 	buf[1] = 'M';
 	buf[2] = '>';
@@ -173,157 +236,195 @@ int msp_sendpacket(struct msp_device *dev,
 
 	memcpy(buf + 5, pl, len);
 
-	int i;
 	buf[len + 5] = 0;
 	for (i = 3; i < len + 5; ++i)
 		buf[len + 5] ^= buf[i];
 
-	HAL_UART_Transmit(dev->huart, (uint8_t *) buf, len + 6, 1000);
-	
 	return 0;
 }
-// 0 -- write
-// 1 -- green
-// 2 -- orange
-// 3 -- red
 
-
-
-static int msp_drawstring(struct msp_device *dev, int x, int y,
+static int msp_drawstring(struct msp_buffer *sbuf, int x, int y,
 	int color, const char *str)
 {
-	uint8_t buf[256];
-	
-	buf[0] = 3;
-	buf[1] = y;
-	buf[2] = x;
-	buf[3] = color;
+	uint8_t *buf;
+	size_t len;
+	int i;
 
-	strncpy((char *) buf + 4, str, 252);
-	buf[255] = '\0';
+	len = strlen(str) + 4;
 
-	msp_sendpacket(dev, 182, buf, strlen(str) + 4);
+	buf = msp_stretchbuffer(sbuf, len + 6);
+
+	buf[0] = '$';
+	buf[1] = 'M';
+	buf[2] = '>';
+	buf[3] = len;
+	buf[4] = 182;
+	buf[5] = 3;
+	buf[6] = y;
+	buf[7] = x;
+	buf[8] = color;
+
+
+	// string length check?
+	memcpy(buf + 9, str, len - 4);
+
+	buf[len + 5] = 0;
+	for (i = 3; i < len + 5; ++i)
+		buf[len + 5] ^= buf[i];
 
 	return 0;
+
 }
 
-static int msp_drawmode(struct msp_device *dev, int x, int y,
-	struct msp_osd *osd)
+static int msp_drawmode(struct msp_buffer *sbuf, int x, int y,
+	struct msp_osd *osd, int step)
 {
-	size_t sz;
 	const char *str;
 	enum MSP_CHARCOLOR color;
 
-	if (osd->armed) {
-		str = "ARMED";
-		color = MSP_CHARCOLOR_ORANGE;
+	if (step == 0) {
+		if (osd->armed) {
+			str = "ARMED";
+			color = MSP_CHARCOLOR_ORANGE;
+		}
+		else {
+			str = "DISARM";
+			color = MSP_CHARCOLOR_GREEN;
+		}
+
+		msp_drawstring(sbuf, x, y, color, str);
 	}
-	else {
-		str = "DISARMED";
-		color = MSP_CHARCOLOR_GREEN;
+	else if (step == 1) {
+		if (osd->attmode == MSP_ATTMODE_GYRO)
+			str = "ACCRO";
+		else
+			str = "ACC";
+
+		msp_drawstring(sbuf, x, y + 1, MSP_CHARCOLOR_WHITE, str);
 	}
+	else if (step == 2) {
+		if (osd->yawmode == MSP_YAWMODE_GYRO)
+			str = "GYRO";
+		else
+			str = "MAG";
 
-	msp_drawstring(dev, x, y, color, str);
+		msp_drawstring(sbuf, x, y + 2, MSP_CHARCOLOR_WHITE, str);
+	}
+	else if (step == 3) {
+		if (osd->altmode == MSP_ALTMODE_ACCEL)
+			str = "ACCEL";
+		else if (osd->altmode == MSP_ALTMODE_SPEED)
+			str = "SPEED";
+		else
+			str = "ALT";
 
-
-	if (osd->attmode == MSP_ATTMODE_GYRO)	str = "ACCRO";
-	else					str = "STABILIZED";
-
-	msp_drawstring(dev, x, y + 1, MSP_CHARCOLOR_WHITE, str);
-
-
-	if (osd->yawmode == MSP_YAWMODE_GYRO)	str = "GYROYAW";
-	else					str = "MAGNETOMETER";
-
-	msp_drawstring(dev, x, y + 2, MSP_CHARCOLOR_WHITE, str);
-
-	if (osd->altmode == MSP_ALTMODE_ACCEL)		str = "ACCEL";
-	else if (osd->altmode == MSP_ALTMODE_SPEED)	str = "SPEED";
-	else						str = "ALT";
-
-	msp_drawstring(dev, x, y + 3, MSP_CHARCOLOR_WHITE, str);
+		msp_drawstring(sbuf, x, y + 3, MSP_CHARCOLOR_WHITE, str);
+	}
 
 	return 0;
 }
 
-static int msp_drawalt(struct msp_device *dev, int x, int y,
-	struct msp_osd *osd)
+static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
+	struct msp_osd *osd, int step)
 {
 	char buf[16];
 
-	snprintf(buf, 16, "%0.1f%c", osd->alt, 0x0c); // meters
-	msp_drawstring(dev, x, y, MSP_CHARCOLOR_WHITE, buf);
-	
-	snprintf(buf, 16, "%0.1f%c", osd->vspeed, 0x9f); // mps (meters)
-	msp_drawstring(dev, x, y + 1, MSP_CHARCOLOR_WHITE, buf);
-		
-	snprintf(buf, 16, "%c%0.1f", 0x7a, osd->temp); // temperature
-	msp_drawstring(dev, x, y + 2, MSP_CHARCOLOR_WHITE, buf);
+	if (step == 0) {
+		snprintf(buf, 16, "%0.1f%c", 
+			(double) osd->alt, MSP_CHAR_M);
+
+		msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
+	}
+	else if (step == 1) {
+		snprintf(buf, 16, "%0.1f%c", (double) osd->vspeed,
+			MSP_CHAR_MPS);
+		msp_drawstring(sbuf, x, y + 1,
+			MSP_CHARCOLOR_WHITE, buf);
+	}	
+	else if (step == 2) {
+		snprintf(buf, 16, "%c%0.1f", MSP_CHAR_TEMP, 
+			(double) osd->temp);
+		msp_drawstring(sbuf, x, y + 2,
+			MSP_CHARCOLOR_WHITE, buf);
+	}
 
 	return 0;
 }
 
-static int msp_drawpower(struct msp_device *dev, int x, int y,
-	struct msp_osd *osd)
+static int msp_drawpower(struct msp_buffer *sbuf, int x, int y,
+	struct msp_osd *osd, int state)
 {
 	char buf[16];
 	uint8_t batsym;
 
-	if (osd->batrem > 95.0)
-		batsym  = 0x90; // full
-	else if (osd->batrem > 82.0)
-		batsym  = 0x91;
-	else if (osd->batrem > 64.0)
-		batsym  = 0x92;
-	else if (osd->batrem > 46.0)
-		batsym  = 0x93;
-	else if (osd->batrem > 28.0)
-		batsym  = 0x94;
-	else if (osd->batrem > 10.0)
-		batsym  = 0x95;
-	else 
-		batsym  = 0x96;
+	if (state == 0) {
+		if (osd->batrem > 95.0)
+			batsym  = MSP_BAT_6;
+		else if (osd->batrem > 82.0)
+			batsym  = MSP_BAT_5;
+		else if (osd->batrem > 64.0)
+			batsym  = MSP_BAT_4;
+		else if (osd->batrem > 46.0)
+			batsym  = MSP_BAT_3;
+		else if (osd->batrem > 28.0)
+			batsym  = MSP_BAT_2;
+		else if (osd->batrem > 10.0)
+			batsym  = MSP_BAT_1;
+		else 
+			batsym  = MSP_BAT_0;
 
-	snprintf(buf, 16, "%c%0.2f%c", batsym, osd->bat, 0x06); // volts
-	msp_drawstring(dev, x, y, MSP_CHARCOLOR_WHITE, buf);
-
-
-	snprintf(buf, 16, " %0.1f%c", osd->curr, 0x9a); // amps
-	msp_drawstring(dev, x, y + 1, MSP_CHARCOLOR_WHITE, buf);
+		snprintf(buf, 16, "%c%0.2f%c", batsym,
+			(double) osd->bat, MSP_VOLT);
+		msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
+	}
+	else if (state == 2) {
+		snprintf(buf, 16, " %0.1f%c",
+			(double) osd->curr, MSP_AMP);
+		msp_drawstring(sbuf, x, y + 1,
+			MSP_CHARCOLOR_WHITE, buf);
+	}
 
 	return 0;
 }
 
-static int msp_drawspeed(struct msp_device *dev, int x, int y,
+static int msp_drawspeed(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd)
 {
 	char buf[16];
 
-	snprintf(buf, 16, "%0.1f%c", osd->speed, 0x9e); // kmh
-	msp_drawstring(dev, x, y, MSP_CHARCOLOR_WHITE, buf);
+	snprintf(buf, 16, "%0.1f%c", (double) osd->speed, MSP_KMH);
+	msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
 	
 	return 0;
 }
 
-static int msp_drawgps(struct msp_device *dev, int x, int y,
-	struct msp_osd *osd)
+static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
+	struct msp_osd *osd, int state)
 {
 	char buf[16];
-	
-	snprintf(buf, 16, "%c%c%d", 0x1e, 0x1f, osd->sats); // sat
-	msp_drawstring(dev, x, y, MSP_CHARCOLOR_WHITE, buf);
 
-	snprintf(buf, 16, " %c%0.5f", 0x89, osd->lat); // lat
-	msp_drawstring(dev, x, y + 1, MSP_CHARCOLOR_WHITE, buf);
-	
-	snprintf(buf, 16, " %c%0.5f", 0x98, osd->lon); // lon
-	msp_drawstring(dev, x, y + 2, MSP_CHARCOLOR_WHITE, buf);
-	
+	if (state == 0) {	
+		snprintf(buf, 16, "%c%c%d", MSP_SATL,
+			MSP_SATR, osd->sats);
+		msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
+	}
+	else if (state == 1) {
+		snprintf(buf, 16, " %c%0.5f", MSP_LAT,
+			(double) osd->lat);
+		msp_drawstring(sbuf, x, y + 1,
+			MSP_CHARCOLOR_WHITE, buf);
+	}
+	else if (state == 2) {
+		snprintf(buf, 16, " %c%0.5f", MSP_LON,
+			(double) osd->lon);
+		msp_drawstring(sbuf, x, y + 2,
+			MSP_CHARCOLOR_WHITE, buf);
+	}
+
 	return 0;
 }
 
-
-static int msp_drawyaw(struct msp_device *dev, int x, int y,
+static int msp_drawyaw(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd)
 {
 	char buf[16];
@@ -335,40 +436,78 @@ static int msp_drawyaw(struct msp_device *dev, int x, int y,
 	if (dirn > 8)	dirn = 8;
 	if (dirn < -7)	dirn = -7;
 
-	dirsym = 0x68 - dirn;
+	dirsym = MSP_ARROW_0 - dirn;
 
-	snprintf(buf, 2, "%c", dirsym); // arrow
-	msp_drawstring(dev, x, y, MSP_CHARCOLOR_WHITE, buf);
+	snprintf(buf, 2, "%c", dirsym);
+	msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
 
 	return 0;
 }
 
+#define MSP_DRAWSTEPS 14
 
 int msp_write(void *dev, void *dt, size_t sz)
 {
 	struct msp_device *d;
 	uint8_t dpcmd;
+	static int step = 0;
+	int t;
 
 	d = dev;
 
-	dpcmd = 2;
-	msp_sendpacket(d, 182, &dpcmd, 1);
+	t = 0;
+	while (HAL_UART_GetState(d->huart) != HAL_UART_STATE_READY
+			&& t < 100000) {
+		udelay(100);
+		t += 100;
+	}
 
-	msp_drawmode(d, 1, 1, dt);
-	
-	msp_drawalt(d, 15, 1, dt);
-	
-	msp_drawpower(d, 38, 1, dt);
-	
-	msp_drawspeed(d, 5, 15, dt);
-	
-	msp_drawgps(d, 43, 7, dt);
-	
-	msp_drawyaw(d, 25, 1, dt);
+	msp_initbuffer(&Sendbuffer);
 
-	dpcmd = 4;
-	msp_sendpacket(d, 182, &dpcmd, 1);
+	if (step == 0) {
+		dpcmd = 2;
+		msp_writepacket(&Sendbuffer, 182, &dpcmd, 1);
+	}
+		
+	if (step == 0)
+		msp_drawmode(&Sendbuffer, 1, 1, dt, 0);
+	else if (step == 1)
+		msp_drawmode(&Sendbuffer, 1, 1, dt, 1);
+	else if (step == 2)
+		msp_drawmode(&Sendbuffer, 1, 1, dt, 2);
+	else if (step == 3)
+		msp_drawmode(&Sendbuffer, 1, 1, dt, 3);
+	else if (step == 4)
+		msp_drawalt(&Sendbuffer, 15, 1, dt, 0);
+	else if (step == 5)
+		msp_drawalt(&Sendbuffer, 15, 1, dt, 1);
+	else if (step == 6)
+		msp_drawalt(&Sendbuffer, 15, 1, dt, 2);
+	else if (step == 7)
+		msp_drawpower(&Sendbuffer, 38, 1, dt, 0);
+	else if (step == 8)
+		msp_drawpower(&Sendbuffer, 38, 1, dt, 1);
+	else if (step == 9)
+		msp_drawspeed(&Sendbuffer, 5, 15, dt);
+	else if (step == 10)
+		msp_drawgps(&Sendbuffer, 43, 7, dt, 0);
+	else if (step == 11)
+		msp_drawgps(&Sendbuffer, 43, 7, dt, 1);
+	else if (step == 12)
+		msp_drawgps(&Sendbuffer, 43, 7, dt, 2);
+	else if (step == 13)
+		msp_drawyaw(&Sendbuffer, 25, 1, dt);
 
+	if (step == MSP_DRAWSTEPS - 1) {
+		dpcmd = 4;
+		msp_writepacket(&Sendbuffer, 182, &dpcmd, 1);
+	}
+	if (++step == MSP_DRAWSTEPS)
+		step = 0;
+
+	HAL_UART_Transmit_DMA(d->huart, Sendbuffer.buf,
+		Sendbuffer.sz);
+	
 	return 0;
 }
 
@@ -387,7 +526,7 @@ int msp_init(struct msp_device *msp)
 	Packstate = 0;
 	Packrest = 0;
 	Packw = Packr = 0;
-	
+
 	HAL_UART_Receive_DMA(msp->huart, &Rxbuf, 1);
 	
 	t = 0;
@@ -399,6 +538,8 @@ int msp_init(struct msp_device *msp)
 	}
 
 	msp_write(msp, mspbuf, 23);
+	
+	HAL_UART_DMAStop(msp->huart);
 
 	return 0;
 }
@@ -413,6 +554,7 @@ int msp_initdevice(void *is, struct cdevice *dev)
 
 	dev->priv = msp_devs + msp_devcount;
 	dev->read = msp_read;
+	dev->configure = msp_configure;
 	dev->write = msp_write;
 	dev->interrupt = msp_interrupt;
 	dev->error = msp_error;

@@ -91,6 +91,9 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	if (DEVITENABLED(Dev[DEV_CRSF].status))
 		Dev[DEV_CRSF].error(Dev[DEV_CRSF].priv, huart);
+
+	if (DEVITENABLED(Dev[DEV_VTX].status))
+		Dev[DEV_VTX].interrupt(Dev[DEV_VTX].priv, huart);
 }
 
 void NMI_Handler(void)
@@ -1150,8 +1153,7 @@ int main(void)
 	readsettings(Curslot);
 
 	// set IRC VTX power and frequency using values from settings
-//	updateirc();
-
+	updatevtx();
 
 	// initialize stabilization routine
 	setstabilize(1);

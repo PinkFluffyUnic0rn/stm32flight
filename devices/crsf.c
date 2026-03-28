@@ -198,8 +198,8 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	struct baroaltitude *baltpack;
 	struct attitude *attpack;
 	struct battery *batpack;
-	uint8_t buf[64];
-	static uint8_t bufcommon[128];
+	static uint8_t buf[64];
+	static int step = 0;
 
 	d = dev;
 	tele = dt;
@@ -207,64 +207,72 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	gpspack =  (struct gps *) (buf + 3);
 	baltpack = (struct baroaltitude *) (buf + 3);
 	attpack = (struct attitude *) (buf + 3);
-
+		
 	buf[0] = 0xc8;
 
-	buf[1] = 15;
-	buf[2] = 0x21;
-	memcpy(buf + 3, tele->mode, 14);
-	(buf + 3)[13] = '\0';
-	buf[15] = crc8(buf + 2, 13);
+	if (step == 0) {
+		buf[1] = 15;
+		buf[2] = 0x21;
+		memcpy(buf + 3, tele->mode, 14);
+		(buf + 3)[13] = '\0';
+		buf[15] = crc8(buf + 2, 13);
 
-	memcpy(bufcommon, buf, 17);
+		HAL_UART_Transmit_DMA(d->huart, (uint8_t *) buf, 17);
+	}
+	else if (step == 1) {
+		buf[1] = 10;
+		buf[2] = 0x08;
+		batpack->voltage = endian2((int16_t)(tele->bat * 10));
+		batpack->current = endian2((int16_t)(tele->curr * 10));
+		batpack->cap[0] = batpack->cap[1] = batpack->cap[2] = 0; 
+		batpack->rem = (int8_t)(tele->batrem);
+		buf[11] = crc8(buf + 2, 9);
 
-	buf[1] = 10;
-	buf[2] = 0x08;
-	batpack->voltage = endian2((int16_t)(tele->bat * 10));
-	batpack->current = endian2((int16_t)(tele->curr * 10));
-	batpack->cap[0] = batpack->cap[1] = batpack->cap[2] = 0; 
-	batpack->rem = (int8_t)(tele->batrem);
-	buf[11] = crc8(buf + 2, 9);
+		HAL_UART_Transmit_DMA(d->huart, buf, 12);
+	}
+	else if (step == 2) {
+		buf[1] = 17;
+		buf[2] = 0x02;
+		gpspack->lat = endian4((int32_t)(tele->lat * 1e7));
+		gpspack->lon = endian4((int32_t)(tele->lon * 1e7));
+		gpspack->speed = endian2((int16_t)(tele->speed * 18.52));
+		gpspack->course = endian2((int16_t)(tele->course * 100.0));
+		gpspack->alt = endian2((uint16_t)(tele->alt + 1000.0));
+		gpspack->sats = tele->sats;
+		buf[18] = crc8(buf + 2, 16);
 
-	memcpy(bufcommon + 17, buf, 12);
+		HAL_UART_Transmit_DMA(d->huart, buf, 19);
+	}
+	else if (step == 3) {
+		buf[1] = 6;
+		buf[2] = 0x09;
+		baltpack->balt = endian2((uint16_t)(tele->balt * 10.0 + 1e4));
+		baltpack->vspeed = endian2((int16_t)(tele->vspeed * 100.0));
+		buf[7] = crc8(buf + 2, 5);
 
-	buf[1] = 17;
-	buf[2] = 0x02;
-	gpspack->lat = endian4((int32_t)(tele->lat * 1e7));
-	gpspack->lon = endian4((int32_t)(tele->lon * 1e7));
-	gpspack->speed = endian2((int16_t)(tele->speed * 18.52));
-	gpspack->course = endian2((int16_t)(tele->course * 100.0));
-	gpspack->alt = endian2((uint16_t)(tele->alt + 1000.0));
-	gpspack->sats = tele->sats;
-	buf[18] = crc8(buf + 2, 16);
+		HAL_UART_Transmit_DMA(d->huart, buf, 8);
+	}
+	else if (step == 4) {
+		buf[1] = 8;
+		buf[2] = 0x1e;
+		attpack->pitch = endian2((int16_t)(tele->pitch * 1e4));
+		attpack->roll = endian2((int16_t)(tele->roll * 1e4));
+		attpack->yaw = endian2((int16_t)(tele->yaw * 1e4));
+		buf[9] = crc8(buf + 2, 7);
 
-	memcpy(bufcommon + 29, buf, 19);
+		HAL_UART_Transmit_DMA(d->huart, buf, 10);
+	}
+	else if (step == 5) {
+		buf[1] = 4;
+		buf[2] = 0x07;
+		*((int16_t *)(buf + 3)) = endian2((int16_t)(tele->vspeed * 100.0));
+		buf[5] = crc8(buf + 2, 3);
 
-	buf[1] = 6;
-	buf[2] = 0x09;
-	baltpack->balt = endian2((uint16_t)(tele->balt * 10.0 + 1e4));
-	baltpack->vspeed = endian2((int16_t)(tele->vspeed * 100.0));
-	buf[7] = crc8(buf + 2, 5);
+		HAL_UART_Transmit_DMA(d->huart, buf, 6);
+	}
 
-	memcpy(bufcommon + 48, buf, 8);
-
-	buf[1] = 8;
-	buf[2] = 0x1e;
-	attpack->pitch = endian2((int16_t)(tele->pitch * 1e4));
-	attpack->roll = endian2((int16_t)(tele->roll * 1e4));
-	attpack->yaw = endian2((int16_t)(tele->yaw * 1e4));
-	buf[9] = crc8(buf + 2, 7);
-
-	memcpy(bufcommon + 56, buf, 10);
-
-	buf[1] = 4;
-	buf[2] = 0x07;
-	*((int16_t *)(buf + 3)) = endian2((int16_t)(tele->vspeed * 100.0));
-	buf[5] = crc8(buf + 2, 3);
-
-	memcpy(bufcommon + 66, buf, 6);
-
-	HAL_UART_Transmit_DMA(d->huart, (uint8_t *) bufcommon, 72);
+	if (++step == 6)
+		step = 0;
 
 	return 0;
 }

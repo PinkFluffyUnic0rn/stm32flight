@@ -11,7 +11,7 @@
 /**
 * @brief is event profiler enabled
 */
-#define PROFILER_ENABLED 0
+#define PROFILER_ENABLED 1
 
 /**
 * @brief periodic event timer ticks per second

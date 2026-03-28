@@ -16,10 +16,10 @@
 int setstabilize(int init);
 
 /**
-* @brief Update IRC VTX settings.
+* @brief Update VTX settings.
 * @return always 0
 */
-int updateirc();
+int updatevtx();
 
 /**
 * @brief Disarm command handler.
