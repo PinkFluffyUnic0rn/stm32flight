@@ -2,7 +2,9 @@ library(pracma)
 library(geigen)
 library(conicfit)
 
-range = 500;
+range = 300;
+xcenter = -1000;
+ycenter = 200;
 
 printf <- function(...) invisible(print(sprintf(...)))
 
@@ -20,7 +22,7 @@ magz = t[start:end, 4];
 
 xz = matrix(nrow = 0, ncol=2);
 for (i in 1:nrow(t)) {
-	if (magy[i] < -range || magy[i] > range)
+	if (magy[i] + ycenter < -range || magy[i] + ycenter > range)
 		next;
 
 	xz = rbind(xz, c(magx[i], magz[i]));
@@ -33,7 +35,7 @@ xzc5<-calculateEllipse(elxz[1], elxz[2], elxz[3], elxz[4], 180 / pi * elxz[5]);
 
 yz = matrix(nrow = 0, ncol=2);
 for (i in 1:nrow(t)) {
-	if (magx[i] < -range || magx[i] > range)
+	if (magx[i] + xcenter < -range || magx[i] + xcenter > range)
 		next;
 
 	yz = rbind(yz, c(magy[i], magz[i]));

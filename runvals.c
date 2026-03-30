@@ -18,6 +18,7 @@ struct icm_data Imudata;
 struct dps_data Barodata;
 struct gnss_data Gnss;
 struct crsf_tele Tele;
+struct msp_osd Osd;
 
 float Thrust = 0.0;
 float Rolltarget = 0.0;

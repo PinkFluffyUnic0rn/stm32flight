@@ -33,6 +33,7 @@
 #include "m10.h"
 #include "uartconf.h"
 #include "irc.h"
+#include "msp.h"
 #include "dshot.h"
 
 /**
@@ -62,6 +63,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (DEVITENABLED(Dev[DEV_CRSF].status))
 		Dev[DEV_CRSF].interrupt(Dev[DEV_CRSF].priv, huart);
 
+	if (DEVITENABLED(Dev[DEV_VTX].status))
+		Dev[DEV_VTX].interrupt(Dev[DEV_VTX].priv, huart);
+
 	if (DEVITENABLED(Dev[DEV_UART].status))
 		Dev[DEV_UART].interrupt(Dev[DEV_UART].priv, huart);
 }
@@ -87,6 +91,9 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	if (DEVITENABLED(Dev[DEV_CRSF].status))
 		Dev[DEV_CRSF].error(Dev[DEV_CRSF].priv, huart);
+
+	if (DEVITENABLED(Dev[DEV_VTX].status))
+		Dev[DEV_VTX].interrupt(Dev[DEV_VTX].priv, huart);
 }
 
 void NMI_Handler(void)
@@ -727,10 +734,13 @@ int telesend(int ms)
 	else
 		am = "---";
 
-	snprintf((char *) Tele.mode, 14, "%c|%s|%s|%s",
-		En > 0.5 ? 'a' : 'n',
-		attmodestr[Speedpid ? 0 : 1],
-		yawmodestr[Yawspeedpid ? 0 : 1], am);
+	Tele.mode[0] = En > 0.5 ? 'a' : 'n';
+	Tele.mode[1] = '|';
+	memcpy(Tele.mode + 2, attmodestr[Speedpid ? 0 : 1], 2);
+	Tele.mode[4] = '|';
+	memcpy(Tele.mode + 5, yawmodestr[Yawspeedpid ? 0 : 1], 2);
+	Tele.mode[7] = '|';
+	memcpy(Tele.mode + 8, am, 2);
 
 	// in case of emergency disarming
 	// set flight mode to "stopped"
@@ -739,6 +749,35 @@ int telesend(int ms)
 
 	Dev[DEV_CRSF].write(Dev[DEV_CRSF].priv, &Tele,
 		sizeof(struct crsf_tele));
+
+	Osd.armed = (En > 0.5) ? 1 : 0;
+	Osd.attmode = Speedpid ? MSP_ATTMODE_GYRO : MSP_ATTMODE_ACC;
+	Osd.yawmode = Yawspeedpid ? MSP_YAWMODE_GYRO : MSP_YAWMODE_MAG;
+
+	if (Altmode == ALTMODE_ACCEL)
+		Osd.altmode = MSP_ALTMODE_ACCEL;
+	else if (Altmode == ALTMODE_SPEED)
+		Osd.altmode = MSP_ALTMODE_SPEED;
+	else if (Altmode == ALTMODE_POS)
+		Osd.altmode = MSP_ALTMODE_POS;
+
+	Osd.bat = Tele.bat;
+	Osd.curr = Tele.curr;
+	Osd.batrem = Tele.batrem;
+	Osd.lat = Tele.lat;
+	Osd.lon = Tele.lon;
+	Osd.speed = Tele.speed;
+	Osd.course = Tele.course;
+	Osd.alt = Tele.balt;
+	Osd.sats = Tele.sats;
+	Osd.vspeed = Tele.vspeed;
+	Osd.temp = dsp_getlpf(Lpf + LPF_BARTEMP);
+	Osd.roll = Tele.roll;
+	Osd.pitch = Tele.pitch;
+	Osd.yaw = Tele.yaw;
+
+	Dev[DEV_VTX].write(Dev[DEV_VTX].priv, &Osd,
+		sizeof(struct msp_osd));
 
 	return 0;
 }
@@ -1117,7 +1156,7 @@ int main(void)
 	readsettings(Curslot);
 
 	// set IRC VTX power and frequency using values from settings
-	updateirc();
+	updatevtx();
 
 	// initialize stabilization routine
 	setstabilize(1);

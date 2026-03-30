@@ -19,6 +19,7 @@
 #include "qmc5883l.h"
 #include "dps368.h"
 #include "crsf.h"
+#include "msp.h"
 
 /**
 * @defgroup EVENTFREQUENCIES
@@ -35,7 +36,7 @@
 #define CHECK_FREQ 1		/*!< connection check event frequency */
 #define DPS_FREQ 100		/*!< barometer update event frequency */
 #define QMC_FREQ 100		/*!< magnetometer update event frequency */
-#define TELE_FREQ 10		/*!< telemetry send event frequency */
+#define TELE_FREQ 100		/*!< telemetry send event frequency */
 #define POWER_FREQ 100		/*!< battery power update event frequency */
 #define AUTOPILOT_FREQ 50	/*!< autopilot update event frequency */
 /**
@@ -328,6 +329,7 @@ extern struct icm_data Imudata;		/*!< IMU data */
 extern struct dps_data Barodata;	/*!< Barometer data */
 extern struct gnss_data Gnss;		/*!< GNSS data */
 extern struct crsf_tele Tele;		/*!< telemetry values */
+extern struct msp_osd Osd;		/*!< OSD values */
 /**
 * @}
 */

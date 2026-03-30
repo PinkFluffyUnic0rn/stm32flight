@@ -80,3 +80,67 @@ int isvalinlist(int v, int num, ...)
 
 	return 0;
 }
+
+char *ftos(float f, char *s, size_t sz, int order)
+{
+	float scale[] = {10.0, 100.0, 1000.0, 10000.0,
+		100000.0, 1000000.0, 10000000.0, 100000000.0}; 
+	float max[] = { 214748365, 21474836, 2147484, 214748,
+		21474, 2147, 214, 21};
+	char tmp[16];
+	int scaled;
+	char *p;
+	int sgn;
+	int i;
+
+	if (f < 0.0) {
+		f *= -1;
+		sgn = 1;
+	}
+	else
+		sgn = 0;
+
+	if (f > max[order])
+		f = max[order];
+
+	scaled = f * scale[order] + 0.5;
+
+	for (p = tmp; ; ++p) {
+		*p = '0' + (scaled % 10);
+		scaled /= 10;
+
+		if (scaled == 0)
+			break;
+	}
+
+	if (sgn) {
+		*s++ = '-';
+		--sz;
+	}
+
+	for (i = 0; i <= (order - (p - tmp)); ++i) {
+		if (sz == 1)
+			break;
+	
+		*s++ = '0';
+		--sz;
+
+		if (i == 0 && order != (p - tmp))
+			*s++ = '.';
+	}
+
+	for (; p != tmp; ) {
+		if (sz == 1)
+			break;
+
+		if (p - tmp == order)
+			*s++ = '.';
+
+		*s++ = *(p--);
+		--sz;
+	}
+	
+	*s++ = '\0';
+
+	return s;
+}
