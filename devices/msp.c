@@ -11,6 +11,14 @@
 #define MSP_RXCIRCSIZE 2
 #define MSP_BUFSIZE 64
 #define MSP_DRAWSTEPS 14
+#define MSP_MAXSTRLEN 16
+#define MSP_HEADERLEN 5
+#define MSP_DPHEADERLEN 4
+
+enum MSP_CMD {
+	MSP_CMD_STATUS	= 101,
+	MSP_CMD_DP	= 182
+};
 
 enum MSP_CHAR {
 	MSP_CHAR_M = 0x0c,
@@ -54,6 +62,11 @@ struct msp_buffer
 	size_t sz;
 };
 
+struct msp_uipos {
+	int x;
+	int y;
+};
+
 static struct msp_device msp_devs[MSP_MAXDEVS];
 static size_t msp_devcount = 0;
 
@@ -83,10 +96,8 @@ static uint8_t *msp_stretchbuffer(struct msp_buffer *buf, size_t sz)
 
 	nsz = buf->sz + sz;
 
-	if (nsz >= MSP_BUFSIZE) {
-		nsz = MSP_BUFSIZE;
-		sz = nsz - MSP_BUFSIZE;
-	}
+	if (nsz >= MSP_BUFSIZE)
+		return NULL;
 
 	buf->sz = nsz;
 
@@ -227,7 +238,9 @@ static int msp_writepacket(struct msp_buffer *sbuf,
 	uint8_t *buf;
 	int i;
 
-	buf = msp_stretchbuffer(sbuf, len + 6);
+	if ((buf = msp_stretchbuffer(sbuf,
+			len + MSP_HEADERLEN + 1)) == NULL)
+		return 0;
 	
 	buf[0] = '$';
 	buf[1] = 'M';
@@ -235,11 +248,11 @@ static int msp_writepacket(struct msp_buffer *sbuf,
 	buf[3] = len;
 	buf[4] = cmd;
 
-	memcpy(buf + 5, pl, len);
+	memcpy(buf + MSP_HEADERLEN, pl, len);
 
-	buf[len + 5] = 0;
-	for (i = 3; i < len + 5; ++i)
-		buf[len + 5] ^= buf[i];
+	buf[len + MSP_HEADERLEN] = 0;
+	for (i = 3; i < len + MSP_HEADERLEN; ++i)
+		buf[len + MSP_HEADERLEN] ^= buf[i];
 
 	return 0;
 }
@@ -251,26 +264,31 @@ static int msp_drawstring(struct msp_buffer *sbuf, int x, int y,
 	size_t len;
 	int i;
 
-	len = strlen(str) + 4;
+	len = strlen(str) + MSP_DPHEADERLEN;
 
-	buf = msp_stretchbuffer(sbuf, len + 6);
+	if (len > MSP_MAXSTRLEN)
+		len = MSP_MAXSTRLEN;
+
+	if ((buf = msp_stretchbuffer(sbuf,
+			len + MSP_HEADERLEN + 1)) == NULL)
+		return 0;
 
 	buf[0] = '$';
 	buf[1] = 'M';
 	buf[2] = '>';
 	buf[3] = len;
-	buf[4] = 182;
+	buf[4] = MSP_CMD_DP;
 	buf[5] = 3;
 	buf[6] = y;
 	buf[7] = x;
 	buf[8] = color;
 
-	// string length check?
-	memcpy(buf + 9, str, len - 4);
+	memcpy(buf + MSP_HEADERLEN + MSP_DPHEADERLEN,
+		str, len - MSP_DPHEADERLEN);
 
-	buf[len + 5] = 0;
-	for (i = 3; i < len + 5; ++i)
-		buf[len + 5] ^= buf[i];
+	buf[len + MSP_HEADERLEN] = 0;
+	for (i = 3; i < len + MSP_HEADERLEN; ++i)
+		buf[len + MSP_HEADERLEN] ^= buf[i];
 
 	return 0;
 
@@ -331,7 +349,7 @@ static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
 	char *p;
 
 	if (step == 0) {
-		p = ftos(osd->alt, buf, 15, 2, 10000.0);
+		p = ftos(osd->alt, buf, 15, 2);
 		*(p - 1) = MSP_CHAR_M;
 		*p = '\0';
 
@@ -339,7 +357,7 @@ static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
 
 	}
 	else if (step == 1) {
-		p = ftos(osd->vspeed, buf, 15, 2, 1000.0);
+		p = ftos(osd->vspeed, buf, 15, 2);
 		*(p - 1) = MSP_CHAR_MPS;
 		*p = '\0';
 		
@@ -348,7 +366,7 @@ static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
 	}	
 	else if (step == 2) {
 		buf[0] = MSP_CHAR_TEMP;
-		ftos((double) osd->temp, buf + 1, 15, 1, 1000.0);
+		ftos((double) osd->temp, buf + 1, 15, 1);
 		
 		msp_drawstring(sbuf, x, y + 2,
 			MSP_CHARCOLOR_WHITE, buf);
@@ -381,7 +399,7 @@ static int msp_drawpower(struct msp_buffer *sbuf, int x, int y,
 			batsym  = MSP_CHAR_BAT_0;
 
 		buf[0] = batsym;
-		p = ftos(osd->bat, buf + 1, 15, 2, 100.0);
+		p = ftos(osd->bat, buf + 1, 14, 2);
 		*(p - 1) = MSP_CHAR_VOLT;
 		*p = '\0';
 
@@ -389,7 +407,7 @@ static int msp_drawpower(struct msp_buffer *sbuf, int x, int y,
 	}
 	else if (state == 1) {
 		buf[0] = ' ';
-		p = ftos(osd->curr, buf + 1, 14, 1, 1000.0);
+		p = ftos(osd->curr, buf + 1, 14, 1);
 		*(p - 1) = MSP_CHAR_AMP;
 		*p = '\0';
 
@@ -406,7 +424,7 @@ static int msp_drawspeed(struct msp_buffer *sbuf, int x, int y,
 	char buf[16];
 	char *p;
 
-	p = ftos(osd->speed, buf, 15, 2, 1000.0);
+	p = ftos(osd->speed, buf, 15, 2);
 	*(p - 1) = MSP_CHAR_KMH;
 	*p = '\0';
 
@@ -424,14 +442,14 @@ static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
 		buf[0] = MSP_CHAR_SATL;
 		buf[1] = MSP_CHAR_SATR;	
 
-		ftos(osd->speed, buf + 2, 14, 0, 1000.0);
+		ftos(osd->speed, buf + 2, 14, 0);
 
 		msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
 	}
 	else if (state == 1) {
 		buf[0] = ' ';
 		buf[1] = MSP_CHAR_LAT;
-		ftos((double) osd->lat, buf + 2, 14, 5, 1000.0);
+		ftos((double) osd->lat, buf + 2, 14, 5);
 
 		msp_drawstring(sbuf, x, y + 1,
 			MSP_CHARCOLOR_WHITE, buf);
@@ -439,7 +457,7 @@ static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
 	else if (state == 2) {
 		buf[0] = ' ';
 		buf[1] = MSP_CHAR_LON;
-		ftos((double) osd->lon, buf + 2, 14, 5, 1000.0);
+		ftos((double) osd->lon, buf + 2, 14, 5);
 
 		msp_drawstring(sbuf, x, y + 2,
 			MSP_CHARCOLOR_WHITE, buf);
@@ -490,11 +508,9 @@ int msp_write(void *dev, void *dt, size_t sz)
 
 	if (step == 0) {
 		dpcmd = 2;
-		msp_writepacket(&Sendbuffer, 182, &dpcmd, 1);
+		msp_writepacket(&Sendbuffer, MSP_CMD_DP, &dpcmd, 1);
 	}
 		
-//	msp_drawalt(&Sendbuffer, 15, 1, dt, 0);
-	
 	if (step == 0)
 		msp_drawmode(&Sendbuffer, 1, 1, dt, 0);
 	else if (step == 1)
@@ -526,7 +542,7 @@ int msp_write(void *dev, void *dt, size_t sz)
 
 	if (step == MSP_DRAWSTEPS - 1) {
 		dpcmd = 4;
-		msp_writepacket(&Sendbuffer, 182, &dpcmd, 1);
+		msp_writepacket(&Sendbuffer, MSP_CMD_DP, &dpcmd, 1);
 	}
 	if (++step == MSP_DRAWSTEPS)
 		step = 0;
@@ -543,8 +559,9 @@ int msp_init(struct msp_device *msp)
 	int t;
 	
 	uint8_t mspbuf[32] = {
-		101, 0, 125, 0, 0, 0, 0x7a,
-		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		MSP_CMD_STATUS,
+		0, 125, 0, 0, 0, 0x7a, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0
 	};
 
@@ -557,7 +574,7 @@ int msp_init(struct msp_device *msp)
 	t = 0;
 
 	while (msp_read(msp, &md, sizeof(struct msp_data)) <= 0
-			&& md.cmd != 101 && t < 100000) {
+			&& md.cmd != MSP_CMD_STATUS && t < 15000) {
 		HAL_Delay(100);
 		t += 100;
 	}

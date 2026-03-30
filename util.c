@@ -81,10 +81,12 @@ int isvalinlist(int v, int num, ...)
 	return 0;
 }
 
-char *ftos(float f, char *s, size_t sz, int order, float max)
+char *ftos(float f, char *s, size_t sz, int order)
 {
 	float scale[] = {10.0, 100.0, 1000.0, 10000.0,
 		100000.0, 1000000.0, 10000000.0, 100000000.0}; 
+	float max[] = { 214748365, 21474836, 2147484, 214748,
+		21474, 2147, 214, 21};
 	char tmp[16];
 	int scaled;
 	char *p;
@@ -98,8 +100,8 @@ char *ftos(float f, char *s, size_t sz, int order, float max)
 	else
 		sgn = 0;
 
-	if (f > max)
-		f = max;
+	if (f > max[order])
+		f = max[order];
 
 	scaled = f * scale[order] + 0.5;
 
@@ -111,11 +113,17 @@ char *ftos(float f, char *s, size_t sz, int order, float max)
 			break;
 	}
 
-	if (sgn)
+	if (sgn) {
 		*s++ = '-';
+		--sz;
+	}
 
 	for (i = 0; i <= (order - (p - tmp)); ++i) {
+		if (sz == 1)
+			break;
+	
 		*s++ = '0';
+		--sz;
 
 		if (i == 0 && order != (p - tmp))
 			*s++ = '.';

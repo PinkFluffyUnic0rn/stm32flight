@@ -82,6 +82,6 @@ int ucounterget();
 */
 int isvalinlist(int v, int num, ...);
 
-char *ftos(float f, char *s, size_t sz, int order, float max);
+char *ftos(float f, char *s, size_t sz, int order);
 
 #endif
