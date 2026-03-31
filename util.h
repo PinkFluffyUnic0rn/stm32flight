@@ -82,6 +82,14 @@ int ucounterget();
 */
 int isvalinlist(int v, int num, ...);
 
+/**
+* @brief Convert floating point number to string.
+* @param f floating point numnber to convert
+* @param s output buffer to store a resulting string
+* @param sz output buffer size
+* @param order requested digits count after decimal point
+* @return poisition in output buffer right after resulting string
+*/
 char *ftos(float f, char *s, size_t sz, int order);
 
 #endif

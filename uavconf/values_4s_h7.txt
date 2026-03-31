@@ -14,12 +14,12 @@ adj curr scale 412.5
 adj gyro x 0
 adj gyro y 0
 adj gyro z 0
-adj mag x0 -31.54287
-adj mag y0 56.141792
-adj mag z0 588.79126
+adj mag x0 -272.035853
+adj mag y0 88.654325
+adj mag z0 566.142469
 adj mag decl 0.3264
-adj mag xscale 0.976501
-adj mag yscale 0.963267
+adj mag xscale 0.972114
+adj mag yscale 0.989753
 adj mag zscale 1
 adj mag xthscale 1296.304932
 adj mag ythscale -99.118744

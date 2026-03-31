@@ -7,6 +7,18 @@
 
 #include "util.h"
 
+// ftos helping function, that
+// append character to resulting
+// string and jumping to end of
+// the function in case if next
+// append will cause buffer overflow
+#define FTOS_STRAPPEND(s, sz, v, end)	\
+do {					\
+	*(s)++ = v;			\
+	if (--(sz) == 1)		\
+		goto end;		\
+} while (0);
+
 void memcpyv(volatile void *dest, const volatile void *src, size_t n)
 {
 	int i;
@@ -83,64 +95,68 @@ int isvalinlist(int v, int num, ...)
 
 char *ftos(float f, char *s, size_t sz, int order)
 {
-	float scale[] = {10.0, 100.0, 1000.0, 10000.0,
-		100000.0, 1000000.0, 10000000.0, 100000000.0}; 
-	float max[] = { 214748365, 21474836, 2147484, 214748,
-		21474, 2147, 214, 21};
+	float scale[] = {1, 10.0, 100.0, 1000.0, 10000.0,
+		100000.0, 1000000.0, 10000000.0, 100000000.0};
+	float max[] = { 2147483647, 214748364, 21474836, 2147483,
+		214748, 21474, 2147, 214, 21};
+
 	char tmp[16];
 	int scaled;
 	char *p;
-	int sgn;
 	int i;
 
+	// if number is negative, append '-' to
+	// resulting string and make number positive
 	if (f < 0.0) {
 		f *= -1;
-		sgn = 1;
+		FTOS_STRAPPEND(s, sz, '-', end)
 	}
-	else
-		sgn = 0;
 
+	// if number scaling will int result integer
+	// overflow, clip it to maximum possible number
 	if (f > max[order])
 		f = max[order];
 
-	scaled = f * scale[order] + 0.5;
+	// scale number to preserve requested
+	// digits count of fraction digits,
+	// round number, if more than zero
+	// fraction digits requested
+	scaled = f * scale[order] + ((order == 0) ? 0.0 : 0.5);
 
-	for (p = tmp; ; ++p) {
-		*p = '0' + (scaled % 10);
+	// extract digits from scaled number
+	p = tmp;
+	do {
+		*p++ = '0' + (scaled % 10);
 		scaled /= 10;
+	} while (scaled != 0);
 
-		if (scaled == 0)
-			break;
+	// append zeros to resulting string
+	for (i = 0; i <= order - (int) (p - tmp); ++i) {
+		// append zero
+		FTOS_STRAPPEND(s, sz, '0', end)
+
+		// append decimal point to resulting string,
+		// if more than one zero were appended
+		if (i == 0 && order != p - tmp)
+			FTOS_STRAPPEND(s, sz, '.', end)
 	}
 
-	if (sgn) {
-		*s++ = '-';
-		--sz;
-	}
-
-	for (i = 0; i <= (order - (p - tmp)); ++i) {
-		if (sz == 1)
-			break;
-	
-		*s++ = '0';
-		--sz;
-
-		if (i == 0 && order != (p - tmp))
-			*s++ = '.';
-	}
-
-	for (; p != tmp; ) {
-		if (sz == 1)
-			break;
-
+	// append extracted digits to resulting string
+	do {
+		// append decimal point to resulting string,
+		// after integer part, if fraction part exists
 		if (p - tmp == order)
-			*s++ = '.';
+			FTOS_STRAPPEND(s, sz, '.', end)
 
-		*s++ = *(p--);
-		--sz;
-	}
-	
+		// append digit
+		FTOS_STRAPPEND(s, sz, *(--p), end)
+	} while (p != tmp);
+
+end:
+	// make string null terminated
 	*s++ = '\0';
 
+	// return pointer to position in output buffer
+	// right after end of resulting string
 	return s;
 }

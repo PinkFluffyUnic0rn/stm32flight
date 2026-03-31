@@ -20,8 +20,9 @@ Configuration commands and settings are on
 * Acceleration stabilization using accelerometer readings.
 * Altitude stabilization using barometer/accelerometer readings.
 * Configuration through Wi-Fi.
-* Dshot-300 ESC control protocol.
+* Dshot-300 and Dshot-600 ESC control protocols.
 * IRC Tramp VTX control.
+* OSD for digital VTX through MSP.
 * Telemetry and control through eLRS.
 * Terminal configuration tool.
 * Qt5 based GUI configuration tool for desktop and android.
@@ -42,7 +43,7 @@ STM32H723 based board
 =======
 [Schematic](https://github.com/PinkFluffyUnic0rn/stm32flight/blob/main/pcb/H7/schematic.pdf)
 
- * MCU: STM32F723VGT6
+ * MCU: STM32H723VGT6
  * Crystall oscillator: 20 Mhz
  * DC-DC converter for control board and camera: TPS5430
  * Control board voltage regulator: LDL1117S33R
