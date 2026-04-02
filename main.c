@@ -154,15 +154,6 @@ void error_handler(void)
 float adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
 {
 	uint32_t v;
-
-#ifdef STM32F4xx
-	HAL_ADC_Start(hadc);
-	HAL_ADC_PollForConversion(hadc, 1);
-
-	v = HAL_ADC_GetValue(hadc);
-
-	HAL_ADC_Stop(hadc);
-#elif STM32H7xx
 	int t;
 
 	t = 0;
@@ -175,7 +166,6 @@ float adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
 	v = *buf;
 
 	HAL_ADC_Start_DMA(hadc, (uint32_t *) buf, 1);
-#endif
 
 	return v;
 }

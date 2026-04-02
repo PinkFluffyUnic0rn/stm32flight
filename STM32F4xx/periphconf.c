@@ -1723,7 +1723,7 @@ static int icm_init()
 	d.gyrorate = ICM_GYRO8K;
 	d.gyroorder = ICM_GYROORDER3;
 	d.gyrolpf = ICM_GYROLPFLL;
-	d.accelscale = ICM_4G;
+	d.accelscale = ICM_16G;
 	d.accelrate = ICM_ACCEL8K;
 	d.accellpf = ICM_ACCELLPFLL;
 	d.accelorder = ICM_ACCELORDER3;

@@ -64,7 +64,7 @@ int dps_getdata(void *d, void *dt, size_t sz)
 	dev = (struct dps_device *) d;
 
 	if (!init) {
-		dps_read(dev, DPS_PRS, buf, 6);
+		dps_read(dev, DPS_PRS, (uint8_t *) buf, 6);
 
 		init = 1;
 	}
@@ -92,7 +92,7 @@ int dps_getdata(void *d, void *dt, size_t sz)
 		* 44330.0f;
 
 	HAL_I2C_Mem_Read_DMA(dev->hi2c, DPS_ADDR << 1, DPS_PRS,
-		1, buf, 6);
+		1, (uint8_t *) buf, 6);
 
 	return 0;
 }

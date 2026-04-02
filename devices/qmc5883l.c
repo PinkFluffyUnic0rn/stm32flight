@@ -43,7 +43,7 @@ int qmc_getintdata(struct qmc_device *dev, struct qmc_data *data)
 	int t;
 
 	if (!init) {
-		qmc_read(dev, QMC_DATA, buf, 6);
+		qmc_read(dev, QMC_DATA, (uint8_t *) buf, 6);
 
 		init = 1;
 	}
@@ -60,7 +60,7 @@ int qmc_getintdata(struct qmc_device *dev, struct qmc_data *data)
 	data->z = buf[4] | buf[5] << 8;
 
 	HAL_I2C_Mem_Read_DMA(dev->hi2c, QMC_ADDR << 1, QMC_DATA,
-		1, buf, 6);
+		1, (uint8_t *) buf, 6);
 
 	return 0;
 }
