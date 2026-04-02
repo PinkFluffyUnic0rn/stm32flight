@@ -611,7 +611,6 @@ int pconf_timpwm_chan(int ch)
 	case 4:		return TIM_CHANNEL_4;
 	default:	return (-1);
 	}
-
 }
 
 const int *pconf_timpwm_dmaids(TIM_TypeDef *inst, int ch,
@@ -830,6 +829,11 @@ void pconf_mspdeinit_uart(UART_HandleTypeDef* huart)
 
 	if (uart->txdma != NULL)
 		HAL_DMA_DeInit(huart->hdmatx);
+
+	if (pconf_dmaidx(uart->rxdma) >= 0
+			|| pconf_dmaidx(uart->txdma) >= 0) {
+		HAL_NVIC_DisableIRQ(pconf_uart_irqn(uart->inst));
+	}
 }
 
 void pconf_mspinit_adc(ADC_HandleTypeDef* hadc)
@@ -962,13 +966,13 @@ void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
 		__HAL_LINKDMA(hi2c, hdmatx, pconf_hdmas[idx]);
 	}
 
-	if ((idx = pconf_dmaidx(i2c->rxdma)) >= 0
-			|| (idx = pconf_dmaidx(i2c->txdma)) >= 0) {
+	if (pconf_dmaidx(i2c->rxdma) >= 0
+			|| pconf_dmaidx(i2c->txdma) >= 0) {
 		HAL_NVIC_SetPriority(pconf_i2cev_irqn(i2c->inst), 0, 0);
-		HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
+		HAL_NVIC_EnableIRQ(pconf_i2cev_irqn(i2c->inst));
 
 		HAL_NVIC_SetPriority(pconf_i2cer_irqn(i2c->inst), 0, 0);
-		HAL_NVIC_EnableIRQ(I2C1_ER_IRQn);
+		HAL_NVIC_EnableIRQ(pconf_i2cer_irqn(i2c->inst));
 	}
 }
 
@@ -995,6 +999,12 @@ void pconf_mspdeinit_i2c(I2C_HandleTypeDef* hi2c)
 
 	if (i2c->txdma != NULL)
 		HAL_DMA_DeInit(hi2c->hdmatx);
+
+	if (pconf_dmaidx(i2c->rxdma) >= 0
+			|| pconf_dmaidx(i2c->txdma) >= 0) {
+		HAL_NVIC_DisableIRQ(pconf_i2cev_irqn(i2c->inst));
+		HAL_NVIC_DisableIRQ(pconf_i2cer_irqn(i2c->inst));
+	}
 }
 
 void pconf_mspinit_spi(SPI_HandleTypeDef* hspi)
@@ -1074,6 +1084,8 @@ void pconf_mspdeinit_spi(SPI_HandleTypeDef* hspi)
 	pconf_gpio_disable_clock(spi->miso.inst);
 	pconf_gpio_disable_clock(spi->mosi.inst);
 	pconf_gpio_disable_clock(spi->sck.inst);
+		
+	HAL_NVIC_DisableIRQ(pconf_spi_irqn(spi->inst));
 }
 
 void pconf_mspinit_tim(TIM_HandleTypeDef *htim)
@@ -1175,22 +1187,14 @@ void pconf_mspdeinit_timpwm(TIM_HandleTypeDef *htim)
 			chanidx = tim->pwm[i].chan;
 
 			dmaidx = pconf_timpwm_dmaids(tim->inst,
-				chanidx, dmas[i]);
+				chanidx, dmas[idx]);
 
 			for ( ; *dmaidx != -1; ++dmaidx)
 				HAL_DMA_DeInit(htim->hdma[*dmaidx]);
 		}
 	}
-	else if (tim->usage == PCONF_TIMUSAGE_PWMBURST) {
-			const int *dmaidx;
-			
-			dmaidx = pconf_timpwm_dmaids(tim->inst, 
-				tim->pwm[0].chan, dmas[0]);
-
-			for ( ; *dmaidx != -1; ++dmaidx)
-				HAL_DMA_DeInit(htim->hdma[*dmaidx]);
-
-	}
+	else if (tim->usage == PCONF_TIMUSAGE_PWMBURST)
+		HAL_DMA_DeInit(htim->hdma[TIM_DMA_ID_UPDATE]);
 }
 
 void tim_mspdeinit(TIM_HandleTypeDef *htim)
@@ -1717,11 +1721,6 @@ static void pconf_init_uart_crsf(int i)
 	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
 		error_handler();
 
-	//////
-	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
-		error_handler();
-	//////
-
 	if (HAL_UARTEx_SetTxFifoThreshold(pconf_huarts + i, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
 		error_handler();
 
@@ -2191,11 +2190,17 @@ void pconf_init(void (*errhandler)(void))
  	crsfdev_init();
 	m10dev_init();
 	espdev_init();
-	//irc_init();
-	
 	vtx_init();
 		
 	dshot_init();
+}
+
+int pconf_i2cmemread(I2C_HandleTypeDef *hi2c,
+	uint8_t daddr, uint8_t maddr, uint8_t *data, size_t size)
+{
+	HAL_I2C_Mem_Read_DMA(hi2c, daddr, maddr, 1, data, size);
+
+	return 0;
 }
 
 void assert_failed(uint8_t *file, uint32_t line)

@@ -91,4 +91,16 @@ extern ADC_HandleTypeDef *pconf_currenthadc;	/*!< ESC current
 */
 void pconf_init();
 
+/**
+* @brief Read memory register from I2C device
+* @param hi2c i2c handle
+* @param daddr i2c device address
+* @param maddr i2c device register address
+* @param data output buffer
+* @param size read size
+* @return -1 on error, 0 otherwise
+*/
+int pconf_i2cmemread(I2C_HandleTypeDef *hi2c,
+	uint8_t daddr, uint8_t maddr, uint8_t *data, size_t size);
+
 #endif

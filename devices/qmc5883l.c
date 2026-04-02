@@ -4,6 +4,7 @@
 #include "util.h"
 
 #include "qmc5883l.h"
+#include "periphconf.h"
 
 #define QMC_ADDR 0x0d
 
@@ -59,8 +60,8 @@ int qmc_getintdata(struct qmc_device *dev, struct qmc_data *data)
 	data->y = buf[2] | buf[3] << 8;
 	data->z = buf[4] | buf[5] << 8;
 
-	HAL_I2C_Mem_Read_DMA(dev->hi2c, QMC_ADDR << 1, QMC_DATA,
-		1, (uint8_t *) buf, 6);
+	pconf_i2cmemread(dev->hi2c, QMC_ADDR << 1, QMC_DATA,
+		(uint8_t *) buf, 6);
 
 	return 0;
 }

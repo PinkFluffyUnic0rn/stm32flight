@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "util.h"
+#include "periphconf.h"
 
 #include "dps368.h"
 
@@ -91,8 +92,8 @@ int dps_getdata(void *d, void *dt, size_t sz)
 	data->altf = (1.0f - powf(data->pressf / 101325.0f, 0.190295f))
 		* 44330.0f;
 
-	HAL_I2C_Mem_Read_DMA(dev->hi2c, DPS_ADDR << 1, DPS_PRS,
-		1, (uint8_t *) buf, 6);
+	pconf_i2cmemread(dev->hi2c, DPS_ADDR << 1, DPS_PRS,
+		(uint8_t *) buf, 6);
 
 	return 0;
 }

@@ -14,6 +14,12 @@ static void (*error_handler)(void);
 
 #include "periphdef.h"
 
+static uint8_t *i2cbuf = NULL;
+static uint8_t i2csz = 0;
+static uint8_t i2cmaddr = 0;
+static uint8_t i2cdaddr = 0;
+static uint8_t i2creceiving = 0;
+
 ADC_HandleTypeDef pconf_hadcs[5];
 DMA_HandleTypeDef pconf_hdmas[16];
 I2C_HandleTypeDef pconf_hi2cs[3];
@@ -89,6 +95,24 @@ static int pconf_uart_irqn(const USART_TypeDef *uart)
 	else if (uart == UART4)		return UART4_IRQn;
 	else if (uart == UART5)		return UART5_IRQn;
 	else if (uart == USART6)	return USART6_IRQn;
+
+	return (-1);
+}
+
+static int pconf_i2cev_irqn(const I2C_TypeDef *hi2c)
+{
+	if (hi2c == I2C1)		return I2C1_EV_IRQn;
+	else if (hi2c == I2C2)		return I2C2_EV_IRQn;
+	else if (hi2c == I2C3)		return I2C3_EV_IRQn;
+
+	return (-1);
+}
+
+static int pconf_i2cer_irqn(const I2C_TypeDef *hi2c)
+{
+	if (hi2c == I2C1)		return I2C1_ER_IRQn;
+	else if (hi2c == I2C2)		return I2C2_ER_IRQn;
+	else if (hi2c == I2C3)		return I2C3_ER_IRQn;
 
 	return (-1);
 }
@@ -1014,6 +1038,15 @@ void pconf_mspinit_i2c(I2C_HandleTypeDef* hi2c)
 			error_handler();
 
 		__HAL_LINKDMA(hi2c, hdmatx, pconf_hdmas[idx]);
+	}
+
+	if ((idx = pconf_dmaidx(i2c->rxdma)) >= 0
+			|| (idx = pconf_dmaidx(i2c->txdma)) >= 0) {
+		HAL_NVIC_SetPriority(pconf_i2cev_irqn(i2c->inst), 0, 0);
+		HAL_NVIC_EnableIRQ(pconf_i2cev_irqn(i2c->inst));
+
+		HAL_NVIC_SetPriority(pconf_i2cer_irqn(i2c->inst), 0, 0);
+		HAL_NVIC_EnableIRQ(pconf_i2cer_irqn(i2c->inst));
 	}
 }
 
@@ -2033,6 +2066,28 @@ void pconf_init(void (*errhandler)(void))
 	dshot_init();
 }
 
+int pconf_i2cmemread(I2C_HandleTypeDef *hi2c,
+	uint8_t daddr, uint8_t maddr, uint8_t *data, size_t size)
+{
+	int t;
+
+	t = 0;
+	while (i2creceiving != 0 && t < 100000) {
+		udelay(10);
+		t += 10;
+	}
+
+	i2cbuf = data;
+	i2csz = size;
+	i2cmaddr = maddr;
+	i2cdaddr = daddr;
+	i2creceiving = 1;
+
+	HAL_I2C_Master_Transmit_DMA(hi2c, daddr, &i2cmaddr, 1);
+
+	return 0;
+}
+
 void assert_failed(uint8_t *file, uint32_t line)
 {
 
@@ -2127,10 +2182,35 @@ void SysTick_Handler(void)
 	HAL_IncTick();
 }
 
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+	if (!i2creceiving)
+		return;
+
+	HAL_I2C_Master_Receive_DMA(hi2c, i2cdaddr, i2cbuf, i2csz);
+}
+
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+	i2creceiving = 0;
+}
+
 #ifdef PCONF_UART2_IDX_IRQ
 void USART2_IRQHandler(void)
 {
 	HAL_UART_IRQHandler(pconf_huarts + PCONF_UART2_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_I2C1_IDX_IRQ
+void I2C1_EV_IRQHandler(void)
+{
+	HAL_I2C_EV_IRQHandler(pconf_hi2cs + PCONF_I2C1_IDX_IRQ);
+}
+
+void I2C1_ER_IRQHandler(void)
+{
+	HAL_I2C_ER_IRQHandler(pconf_hi2cs + PCONF_I2C1_IDX_IRQ);
 }
 #endif
 
