@@ -75,6 +75,16 @@ int irc_receivepacket(struct irc_device *dev, uint8_t *data)
 	return 0;
 }
 
+int irc_interrupt(void *dev, const void *h) 
+{
+	return 0;
+}
+
+int irc_error(void *dev, const void *h)
+{
+
+	return 0;}
+
 int irc_read(void *d, void *dt, size_t sz)
 {
 	struct irc_data *data;
@@ -97,6 +107,11 @@ int irc_read(void *d, void *dt, size_t sz)
 	data->freq = pack[2] | pack[3] << 8;
 	data->power = pack[4] | pack[5] << 8;
 
+	return 0;
+}
+
+int irc_write(void *dev, void *dt, size_t sz)
+{
 	return 0;
 }
 
@@ -208,9 +223,9 @@ int irc_initdevice(void *is, struct cdevice *dev)
 	dev->priv = irc_devs + irc_devcount;
 	dev->read = irc_read;
 	dev->configure = irc_configure;
-	dev->write = NULL;
-	dev->interrupt = NULL;
-	dev->error = NULL;
+	dev->write = irc_write;
+	dev->interrupt = irc_interrupt;
+	dev->error = irc_error;
 
 	dev->status = DEVSTATUS_INIT;
 

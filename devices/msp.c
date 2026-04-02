@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-
+#include <math.h>
 
 #include "crc.h"
 #include "util.h"
@@ -498,7 +498,7 @@ int msp_write(void *dev, void *dt, size_t sz)
 	d = dev;
 
 	t = 0;
-	while (HAL_UART_GetState(d->huart) != HAL_UART_STATE_READY
+	while (HAL_UART_GetState(d->huart) == HAL_UART_STATE_BUSY_TX
 			&& t < 100000) {
 		udelay(100);
 		t += 100;

@@ -93,7 +93,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		Dev[DEV_CRSF].error(Dev[DEV_CRSF].priv, huart);
 
 	if (DEVITENABLED(Dev[DEV_VTX].status))
-		Dev[DEV_VTX].interrupt(Dev[DEV_VTX].priv, huart);
+		Dev[DEV_VTX].error(Dev[DEV_VTX].priv, huart);
 }
 
 void NMI_Handler(void)
@@ -746,7 +746,7 @@ int telesend(int ms)
 	// set flight mode to "stopped"
 	if (Emergencydisarm)
 		strcpy((char *) Tele.mode, "stopped");
-
+	
 	Dev[DEV_CRSF].write(Dev[DEV_CRSF].priv, &Tele,
 		sizeof(struct crsf_tele));
 

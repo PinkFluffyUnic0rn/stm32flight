@@ -208,9 +208,9 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	gpspack =  (struct gps *) (buf + 3);
 	baltpack = (struct baroaltitude *) (buf + 3);
 	attpack = (struct attitude *) (buf + 3);
-		
+	
 	t = 0;
-	while (HAL_UART_GetState(d->huart) != HAL_UART_STATE_READY
+	while (HAL_UART_GetState(d->huart) == HAL_UART_STATE_BUSY_TX
 			&& t < 100000) {
 		udelay(100);
 		t += 100;

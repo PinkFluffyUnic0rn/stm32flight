@@ -38,7 +38,7 @@ int qmc_read(struct qmc_device *dev, uint8_t addr,
 
 int qmc_getintdata(struct qmc_device *dev, struct qmc_data *data)
 {
-	static uint8_t buf[6];
+	static volatile uint8_t buf[6];
 	static int init = 0;
 	int t;
 

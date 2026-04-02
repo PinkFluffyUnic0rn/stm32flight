@@ -2104,7 +2104,7 @@ static void vtx_init()
 	return;
 
 error:
-	uartprintf("failed to initialize flash device\r\n");
+	uartprintf("failed to initialize VTX device\r\n");
 }
 
 static void dshot_init()

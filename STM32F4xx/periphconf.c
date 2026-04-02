@@ -1176,8 +1176,8 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 				__HAL_LINKDMA(htim, hdma[*dmaidx], pconf_hdmas[idx]);
 		}
 	}
-	else {
-		if ((idx = pconf_dmaidx(tim->pwm[0].dma)) < 0)
+	else if (tim->usage == PCONF_TIMUSAGE_PWMBURST) {
+		if ((idx = pconf_dmaidx(tim->updma)) < 0)
 			return;
 
 		pconf_hdmas[idx].Instance = dmas[idx];
@@ -1192,7 +1192,7 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 		pconf_hdmas[idx].Init.Mode = DMA_NORMAL;
 		pconf_hdmas[idx].Init.Priority = DMA_PRIORITY_HIGH;
 		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_ENABLE;
-		pconf_hdmas[idx].Init.FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL;
+		pconf_hdmas[idx].Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
 		pconf_hdmas[idx].Init.MemBurst = DMA_MBURST_SINGLE;
 		pconf_hdmas[idx].Init.PeriphBurst = DMA_PBURST_SINGLE;
 
@@ -1342,19 +1342,20 @@ static void pconf_init_dma(void)
 		irqn = pconf_dma_stream_irqn(dmas[i]);
 		
 		switch (irqn) {
-		case DMA1_Stream0_IRQn:		prep = 0;
-		case DMA1_Stream1_IRQn:		prep = 1;
-		case DMA1_Stream2_IRQn:		prep = 1;
-		case DMA1_Stream5_IRQn:		prep = 1;
-		case DMA1_Stream6_IRQn:		prep = 0;
-		case DMA1_Stream7_IRQn:		prep = 0;
-		case DMA2_Stream0_IRQn:		prep = 1;
-		case DMA2_Stream1_IRQn:		prep = 1;
-		case DMA2_Stream2_IRQn:		prep = 1;
-		case DMA2_Stream3_IRQn:		prep = 0;
-		case DMA2_Stream4_IRQn:		prep = 1;
-		case DMA2_Stream5_IRQn:		prep = 1;
-		case DMA2_Stream6_IRQn:		prep = 1;
+		case DMA1_Stream0_IRQn:		prep = 0;	break;
+		case DMA1_Stream1_IRQn:		prep = 1;	break;
+		case DMA1_Stream2_IRQn:		prep = 1;	break;
+		case DMA1_Stream5_IRQn:		prep = 1;	break;
+		case DMA1_Stream6_IRQn:		prep = 0;	break;
+		case DMA1_Stream7_IRQn:		prep = 0;	break;
+		case DMA2_Stream0_IRQn:		prep = 1;	break;
+		case DMA2_Stream1_IRQn:		prep = 1;	break;
+		case DMA2_Stream2_IRQn:		prep = 1;	break;
+		case DMA2_Stream3_IRQn:		prep = 0;	break;
+		case DMA2_Stream4_IRQn:		prep = 1;	break;
+		case DMA2_Stream5_IRQn:		prep = 1;	break;
+		case DMA2_Stream6_IRQn:		prep = 1;	break;
+		default:			prep = 1;
 		}
 
 		HAL_NVIC_SetPriority(irqn, prep, 0);
@@ -1623,6 +1624,21 @@ static void pconf_init_uart_gnss(int i)
 		error_handler();
 }
 
+static void pconf_init_uart_msp(int i)
+{
+	pconf_huarts[i].Instance = uarts[i].inst;
+	pconf_huarts[i].Init.BaudRate = 115200;
+	pconf_huarts[i].Init.WordLength = UART_WORDLENGTH_8B;
+	pconf_huarts[i].Init.StopBits = UART_STOPBITS_1;
+	pconf_huarts[i].Init.Parity = UART_PARITY_NONE;
+	pconf_huarts[i].Init.Mode = UART_MODE_TX_RX;
+	pconf_huarts[i].Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	pconf_huarts[i].Init.OverSampling = UART_OVERSAMPLING_16;
+
+	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
+		error_handler();
+}
+
 static void pconf_init_uart_debug(int i)
 {
 	pconf_huarts[i].Instance = uarts[i].inst;
@@ -1649,6 +1665,7 @@ static void pconf_init_uart_irc(int i)
 	pconf_huarts[i].Init.HwFlowCtl = UART_HWCONTROL_NONE;
 	pconf_huarts[i].Init.OverSampling = UART_OVERSAMPLING_16;
 
+
 	if (HAL_HalfDuplex_Init(pconf_huarts + i) != HAL_OK)
 		error_handler();
 }
@@ -1666,7 +1683,8 @@ static void pconf_init_uart()
 			pconf_init_uart_debug(i);
 		else if (uarts[i].usage == PCONF_UARTUSAGE_IRC)
 			pconf_init_uart_irc(i);
-	
+		else if (uarts[i].usage == PCONF_UARTUSAGE_MSP)
+			pconf_init_uart_msp(i);
 	}
 }
 
@@ -1885,24 +1903,47 @@ error:
 	uartprintf("failed to initialize ESP8266\r\n");
 }
 
-static void irc_init()
+static int irc_init()
 {
 	struct irc_device d;
 
 	if (vtxconf.iface.type != PCONF_IFACETYPE_UART)
-		goto error;
+		return (-1);
 
 	d.huart = pconf_huarts + pconf_uartidx(vtxconf.iface.huart);
 
-	if (irc_initdevice(&d, Dev + DEV_IRC) < 0)
-		goto error;
+	return irc_initdevice(&d, Dev + DEV_VTX);
+}
 
-	uartprintf("%s initilized\r\n", Dev[DEV_IRC].name);
-	
+static int msp_init()
+{
+	struct msp_device d;
+
+	if (vtxconf.iface.type != PCONF_IFACETYPE_UART)
+		return (-1);
+
+	d.huart = pconf_huarts + pconf_uartidx(vtxconf.iface.huart);
+
+	return msp_initdevice(&d, Dev + DEV_VTX);
+}
+
+static void vtx_init()
+{
+	if (vtxconf.type == PCONF_VTXTYPE_IRC) {
+		if (irc_init() < 0)
+			goto error;
+	}
+	else if (vtxconf.type == PCONF_VTXTYPE_MSP) {
+		if (msp_init() < 0)
+			goto error;
+	}
+
+	uartprintf("%s initialized\r\n", Dev[DEV_VTX].name);
+
 	return;
 
 error:
-	uartprintf("failed to initilize IRC device\r\n");
+	uartprintf("failed to initialize VTX device\r\n");
 }
 
 static void dshot_init()
@@ -1920,11 +1961,22 @@ static void dshot_init()
 	d.timch[3] = pconf_timpwm_chan(pwmconf.pwm[3].chan);
 
 	d.timfreq = HAL_RCC_GetHCLKFreq();
-	d.mode = DSHOT_DMACCR;
-	d.type = DSHOT_300;
+
+	if (pwmconf.dmatype == PCONF_TIMDMATYPE_BURST)
+		d.mode = DSHOT_TIMBURST;
+	else
+		d.mode = DSHOT_DMACCR;
+
+	if (pwmconf.proto == PCONF_PROTO_DSHOT300)
+		d.type = DSHOT_300;
+	else if (pwmconf.proto == PCONF_PROTO_DSHOT600)
+		d.type = DSHOT_600;
+	else
+		d.type = DSHOT_300;
 
 	if (dshot_initdevice(&d, Dev + DEV_DSHOT) < 0)
 		goto error;
+
 
 	uartprintf("%s initilized\r\n", Dev[DEV_DSHOT].name);
 	
@@ -1977,7 +2029,7 @@ void pconf_init(void (*errhandler)(void))
 	crsfdev_init();
 	m10dev_init();
 	espdev_init();
-	irc_init();
+	vtx_init();
 	dshot_init();
 }
 

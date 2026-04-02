@@ -55,7 +55,7 @@ int dps_getdata(void *d, void *dt, size_t sz)
 	struct dps_data *data;
 	float scf[] = { 524288.0, 1572864.0, 3670016.0, 7864320.0,
 		253952.0, 516096.0, 1040384.0, 2088960.0 };
-	static uint8_t buf[16];
+	static volatile uint8_t buf[16];
 	static int init = 0;
 	float psc, tsc;
 	int t;

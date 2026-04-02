@@ -158,7 +158,7 @@ const struct pconf_spi spis[] = {
 const struct pconf_tim tims[] = {
 	{
 		.inst = TIM1,
-		.usage = PCONF_TIMUSAGE_PWM,
+		.usage = PCONF_TIMUSAGE_PWMBURST,
 		.pwm = {
 			{
 				.chan = 1,
@@ -396,6 +396,7 @@ const struct pconf_wireless rfconf = {
 };
 
 const struct pconf_vtx vtxconf = {
+	.type = PCONF_VTXTYPE_IRC,
 	.iface = {
 		.type = PCONF_IFACETYPE_UART,
 		.huart = UART5
@@ -403,7 +404,7 @@ const struct pconf_vtx vtxconf = {
 };
 
 const struct pconf_pwm pwmconf = {
-	.dmatype = PCONF_TIMDMATYPE_CCR,
+	.dmatype = PCONF_TIMDMATYPE_BURST,
 	.pwm = {
 		{
 			.inst = TIM1,

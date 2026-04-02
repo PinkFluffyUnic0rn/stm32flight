@@ -317,7 +317,7 @@ int dshot_setthrust(void *d, void *dt, size_t sz)
 
 		// wait for previous DMA transfer to complete
 		dshot_updatedmawait(dev);
-		
+
 		// instruct DMA to the common buffers
 		// for all streams corresponding to DSHOT ESCs
 		TIM1->DCR = (3 << 8) | (0x0d);
