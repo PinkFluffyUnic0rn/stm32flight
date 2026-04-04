@@ -9,6 +9,11 @@
 #include "log.h"
 
 /**
+* @brief is debug uart interactive
+*/
+#define INTERACTIVE_UART 0
+
+/**
 * @brief is event profiler enabled
 */
 #define PROFILER_ENABLED 1

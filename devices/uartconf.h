@@ -10,6 +10,7 @@
 
 struct uart_device {
 	UART_HandleTypeDef *huart;
+	int interactive;
 };
 
 int uart_initdevice(void *is, struct cdevice *dev);

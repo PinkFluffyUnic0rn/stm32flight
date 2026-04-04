@@ -1,3 +1,4 @@
+#include <termios.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -53,6 +54,88 @@ struct loggetdata {
 	size_t maxsz;		// raw data buffer allocated size
 	size_t sz;		// raw data size got after call
 };
+
+// Common function for sending data into debug connection,
+// which can be UART or UDP socket
+//
+// fd -- debug connection file descriptor.
+// buf -- a data buffer to send.
+// len -- the data buffer length.
+// flags -- flags to pass into sendto in case of UDP socket.
+// addr -- UDP peer address, should be 0 in case of UART connection.
+// addrlen -- UDP peer address len
+static ssize_t sendtochan(int fd, const void *buf, size_t len,
+	int flags, const struct sockaddr *addr, socklen_t addrlen)
+{
+	if (addr == NULL) {
+		char bufr[BUFSZ];
+		size_t slen;
+
+		slen = strlen(buf);
+
+		strcpy(bufr, buf);
+
+		if (slen < BUFSZ - 1)
+			strcat(bufr, "\r");
+
+		return write(fd, bufr, len + 1);
+	}
+
+	return sendto(fd, buf, len, flags, addr, addrlen);
+}
+
+// Common function for sending data into debug connection,
+// which can be UART or UDP socket
+//
+// fd -- debug connection file descriptor.
+// buf -- a data buffer to send.
+// len -- the data buffer length.
+// flags -- flags to pass into recvfrom in case of UDP socket.
+// addr -- UDP peer address, should be 0 in case of UART connection.
+// addrlen -- UDP peer address len
+static ssize_t recvfromchan(int fd, void *buf, size_t len,
+	int flags, struct sockaddr *addr, socklen_t *addrlen)
+{
+	if (addr == NULL)
+		return read(fd, buf, len);
+
+	return recvfrom(fd, buf, len, flags, addr, addrlen);
+}
+
+// Init configuration connection sockets.
+//
+// lsfd -- UART file descriptor for configuration connection.
+// rsi -- UART device file path.
+int inituart(int *lsfd, const char *path)
+{
+	struct termios tty;
+
+	// open UART device file
+	if ((*lsfd = open(path, O_RDWR | O_NOCTTY)) < 0) {
+		fprintf(stderr, "cannot file\n");
+		exit(1);
+	}
+
+	// get UART device attributes
+	tcgetattr(*lsfd, &tty);
+
+	// set baudrate to 921600
+	cfsetispeed(&tty, B921600);
+	cfsetospeed(&tty, B921600);
+
+	// set raw mode
+	cfmakeraw(&tty);
+
+	// set blocking for CMDMAXSZ bytes, and
+	// set timeout between bytes to 0.1s
+	tty.c_cc[VMIN] = CMDMAXSZ;
+	tty.c_cc[VTIME] = 1;
+
+	// set new UART device attributes
+	tcsetattr(*lsfd, TCSANOW, &tty);
+
+	return 0;
+}
 
 // Init configuration connection sockets.
 //
@@ -131,7 +214,7 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	// passed, only one iteration is performed.
 	do {
 		// send command into UDP socket
-		sendto(lsfd, scmd, strlen(scmd), MSG_CONFIRM,
+		sendtochan(lsfd, scmd, strlen(scmd), MSG_CONFIRM,
 			(const struct sockaddr *) rsi,
 			sizeof(struct sockaddr_in));
 
@@ -210,16 +293,17 @@ int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 
 	// try to receive response from UDP socket
 	rsis = sizeof(rsi);
-	if ((rsz = recvfrom(lsfd, out, BUFSZ, 0,
-			(struct sockaddr *) &rsi, &rsis)) <= 0) {
-
-		// it no response and maximum wait time haven't
+	if ((rsz = recvfromchan(lsfd, out, BUFSZ, 0,
+			(struct sockaddr *) rsi, &rsis)) <= 0) {
+		
+		// if no response and maximum wait time haven't
 		// already reached, increase it
-		wait = (wait < MAXWAIT) ? (wait * 15 / 10) :  wait;
+		wait = (wait < MAXWAIT) ? (wait * 15 / 10) : wait;
 
 		return (-1);
 	}
-
+	else
+		wait = (wait > MINWAIT) ? (wait * 10 / 15) : wait;
 
 	// CRC-16 check output	
 	out[5] = '\0';
@@ -269,10 +353,9 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 
 	// try to receive response from UDP socket
 	rsis = sizeof(rsi);
-	if ((rsz = recvfrom(lsfd, out, BUFSZ, 0,
-			(struct sockaddr *) &rsi, &rsis)) <= 0) {
-
-		// it no response and maximum wait time haven't
+	if ((rsz = recvfromchan(lsfd, out, BUFSZ, 0,
+			(struct sockaddr *) rsi, &rsis)) <= 0) {	
+		// if no response and maximum wait time haven't
 		// already reached, increase it
 		wait = (wait < MAXWAIT) ? (wait * 15 / 10) :  wait;
 
@@ -332,8 +415,8 @@ int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 		logbuf = d->buf + d->bufoffset;
 
 		rsis = sizeof(rsi);
-		if ((rsz = recvfrom(lsfd, logbuf + d->sz,
-				BUFSZ, 0, (struct sockaddr *) &rsi,
+		if ((rsz = recvfromchan(lsfd, logbuf + d->sz,
+				BUFSZ, 0, (struct sockaddr *) rsi,
 				&rsis)) < 0) {
 			break;
 		}
@@ -553,7 +636,6 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 			if (outfunc != NULL) {
 				cmd[strlen(cmd) - 2] = '\0';
 				outfunc(data, cmd);
-				cmd[strlen(cmd)] = '\r';
 			}
 
 			// request log records
@@ -663,13 +745,13 @@ int recvoutput(int lsfd, const struct sockaddr_in *rsi, char *buf)
 		int rsz;
 
 		rsis = sizeof(rsi);
-		if ((rsz = recvfrom(lsfd, buf, BUFSZ, 0,
-			(struct sockaddr *) &rsi, &rsis)) <= 0) {
+		if ((rsz = recvfromchan(lsfd, buf, BUFSZ, 0,
+			(struct sockaddr *) rsi, &rsis)) <= 0) {
 			return (-1);
 		}
 
 		buf[rsz] = '\0';
-
+		
 		return 0;
 	}
 

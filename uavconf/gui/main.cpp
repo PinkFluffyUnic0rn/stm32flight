@@ -8,11 +8,18 @@
 int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
-	main_widget w;
 
 #if defined(ANDROID)
-    QtAndroidPrivate::requestPermission(QString("android.permission.WRITE_EXTERNAL_STORAGE"));
+	main_widget w;
+	
+	QtAndroidPrivate::requestPermission(QString("android.permission.WRITE_EXTERNAL_STORAGE"));
 #else
+	char *uartdev;
+
+	uartdev = (argc > 1) ? argv[1] : NULL;
+	
+	main_widget w(uartdev);
+
 	w.resize(1200, 800);
 #endif
 

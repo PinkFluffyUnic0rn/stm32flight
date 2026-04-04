@@ -3,6 +3,8 @@
 
 #define BUFSZ 1024
 
+int inituart(int *lsfd, const char *path);
+
 int initsocks(int *lsfd, struct sockaddr_in *rsi);
 
 int infofunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,

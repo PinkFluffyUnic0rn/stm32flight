@@ -1856,6 +1856,7 @@ static void uartdev_init()
 		goto error;
 
 	d.huart = pconf_huarts + pconf_uartidx(debugconf.iface.huart);
+	d.interactive = INTERACTIVE_UART;
 
 	if (uart_initdevice(&d, Dev + DEV_UART) < 0)
 		goto error;

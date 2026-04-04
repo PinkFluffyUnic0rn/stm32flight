@@ -912,7 +912,7 @@ void main_widget::tab_bar_scroll()
 	qDebug("hello!");
 }
 
-main_widget::main_widget(QWidget *parent)
+main_widget::main_widget(const char *uartdev, QWidget *parent)
 	: QWidget(parent), catchuavout(true)
 {
 	int i;
@@ -926,7 +926,14 @@ main_widget::main_widget(QWidget *parent)
 
 	cmdstree = new commands_tree;
 
-	initsocks(&lsfd, &rsi);
+	if (uartdev != NULL) {
+		rsi = NULL;
+		inituart(&lsfd, uartdev);
+	}
+	else {
+		rsi = new struct sockaddr_in;
+		initsocks(&lsfd, rsi);
+	}
 
 	tabs["pid"] = new settings_tab;
 	tabs["adjustments"] = new settings_tab;
@@ -1441,19 +1448,19 @@ string main_widget::conf_to_string()
 
 void main_widget::send_uav_conf_cmd(string cmd)
 {
-	sendcmd(lsfd, &rsi, cmd.c_str(), conffunc,
+	sendcmd(lsfd, rsi, cmd.c_str(), conffunc,
 		write_term, (void *) term);
 }
 
 void main_widget::send_uav_info_cmd(string cmd)
 {
-	sendcmd(lsfd, &rsi, cmd.c_str(), infofunc,
+	sendcmd(lsfd, rsi, cmd.c_str(), infofunc,
 		write_term, (void *) term);
 }
 
 void main_widget::send_uav_get_cmd(string cmd, string *out)
 {
-	sendcmd(lsfd, &rsi, cmd.c_str(), getfunc,
+	sendcmd(lsfd, rsi, cmd.c_str(), getfunc,
 		write_conf, out);
 }
 
@@ -1462,7 +1469,7 @@ void main_widget::get_uav_log(string &s)
 	char *output;
 	size_t outsize;
 
-	getlog(lsfd, &rsi, 
+	getlog(lsfd, rsi, 
 		stoi(tabs["log"]->get_group("Log read")
 		 	->get_setting("from")->get_value()),
 		stoi(tabs["log"]->get_group("Log read")
@@ -1507,7 +1514,7 @@ void main_widget::return_pressed()
 
 	cmd = term->get_line()->text().toStdString() + "\n";
 
-	sendcmd(lsfd, &rsi, cmd.c_str(), infofunc,
+	sendcmd(lsfd, rsi, cmd.c_str(), infofunc,
 		write_term, (void *) term);
 
 	term->get_line()->setText("");
@@ -1520,7 +1527,7 @@ void main_widget::timer_handler()
 	if (!catchuavout)
 		return;
 
-	if (recvoutput(lsfd, &rsi, buf) != 0)
+	if (recvoutput(lsfd, rsi, buf) != 0)
 		return;
 
 	term->add_output(string(buf));

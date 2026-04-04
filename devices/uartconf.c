@@ -55,10 +55,16 @@ int uart_interrupt(void *dev, const void *h)
 
 	*cmd = Rxbyte;
 
-	HAL_UART_Transmit(d->huart, (uint8_t *) &Rxbyte, 1, 100);
+	if (d->interactive) {
+		HAL_UART_Transmit(d->huart, 
+			(uint8_t *) &Rxbyte, 1, 100);
+	}
 
 	if (*cmd == '\r') {
-		HAL_UART_Transmit(d->huart, (uint8_t *) "\n", 1, 100);
+		if (d->interactive) {
+			HAL_UART_Transmit(d->huart,
+				(uint8_t *) "\n", 1, 100);
+		}
 
 		*cmd = '\0';
 
@@ -96,6 +102,23 @@ int uart_read(void *dev, void *dt, size_t sz)
 	return 0;
 }
 
+int uart_configure(void *d, const char *cmd, ...)
+{
+	struct uart_device *dev;
+	va_list args;
+
+	dev = d;
+
+	va_start(args, cmd);
+		
+	if (strcmp(cmd, "isinteractive") == 0)
+		*(va_arg(args, int *)) = dev->interactive;
+	else if (strcmp(cmd, "interactive") == 0)
+		dev->interactive = *(va_arg(args, int *));
+
+	return 0;
+}
+
 int uart_initdevice(void *is, struct cdevice *dev)
 {
 	memmove(uart_devs + uart_devcount, is, sizeof(struct uart_device));
@@ -104,7 +127,7 @@ int uart_initdevice(void *is, struct cdevice *dev)
 
 	dev->priv = uart_devs + uart_devcount;
 	dev->read = uart_read;
-	dev->configure = NULL;
+	dev->configure = uart_configure;
 	dev->write = uart_send;
 	dev->interrupt = uart_interrupt;
 	dev->error = NULL;

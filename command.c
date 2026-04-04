@@ -62,12 +62,15 @@ int runcommand(const struct cdevice *d, char *cmd)
 	char *toks[MAX_CMDTOKS];
 	uint16_t crc;
 	int toksoff;
-	int isuart;
+	int isinteractive;
 	int i;
 
-	// set special flag if device that
-	// sent that command is an UART device
-	isuart = (strncmp(d->name, "uart", strlen("uart")) == 0);
+	isinteractive = 0;
+
+	// set special flag if device that sent that
+	// command is an UART device in interactive mode
+	if (strncmp(d->name, "uart", strlen("uart")) == 0)
+		d->configure(d->priv, "isinteractive", &isinteractive);
 
 	// if command is empty, do nothing
 	if (cmd[0] == '\0')
@@ -79,12 +82,12 @@ int runcommand(const struct cdevice *d, char *cmd)
 
 	// if command wasn't got through UART device, first
 	// token is CRC sum, so offset command tokens by 1
-	toksoff = isuart ? 0 : 1;
+	toksoff = isinteractive ? 0 : 1;
 
 	// if command wasn't got through UART device, calculate CRC
 	// localy and compare it's to CRC got from remote. If they
 	// dont match, send back CRC fail error.
-	if (!isuart) {
+	if (!isinteractive) {
 		crc = crc16((uint8_t *) cmd + 6, strlen(cmd) - 6);
 
 		if (atoi(toks[0]) != crc)
@@ -106,7 +109,7 @@ int runcommand(const struct cdevice *d, char *cmd)
 
 			// r > 0, then it's a printing command and
 			// it does not transmission confirm
-			if (r == 0 && !isuart) {
+			if (r == 0 && !isinteractive) {
 				char hdr[CMDSIZE];
 
 				memcpy(hdr, cmd, CMDSIZE);

@@ -265,7 +265,7 @@ class main_widget : public QWidget
 {
 	Q_OBJECT
 public:
-	main_widget(QWidget *parent = 0);
+	main_widget(const char *uartdev = NULL, QWidget *parent = 0);
 	~main_widget();
 
 	void write_to_terminal(string s);
@@ -298,7 +298,7 @@ private:
 	void tab_bar_scroll();
 
 	bool catchuavout;
-	struct sockaddr_in rsi;
+	struct sockaddr_in *rsi;
 	int lsfd;
 
 	commands_tree *cmdstree;
