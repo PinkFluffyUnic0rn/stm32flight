@@ -442,7 +442,7 @@ static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
 		buf[0] = MSP_CHAR_SATL;
 		buf[1] = MSP_CHAR_SATR;	
 
-		ftos(osd->speed, buf + 2, 14, 0);
+		ftos(osd->sats, buf + 2, 14, 0);
 
 		msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
 	}

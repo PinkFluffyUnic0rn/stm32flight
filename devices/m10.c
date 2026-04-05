@@ -534,7 +534,8 @@ int m10_read(void *dev, void *dt, size_t sz)
 			&(data->rmc.lonmin));
 		data->rmc.londir = (m.msg + m.field[6])[0];
 
-		data->rmc.speed = strtof(m.msg + m.field[7], NULL);
+		data->rmc.speed = strtof(m.msg + m.field[7], NULL)
+			* 1.852;
 		data->rmc.course = strtof(m.msg + m.field[8], NULL);
 
 		m10_date(m.msg + m.field[9], data->rmc.date);
