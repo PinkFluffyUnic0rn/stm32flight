@@ -1,3 +1,8 @@
+/**
+* @file m10.h
+* @brief M10 GNSS device driver
+*/
+
 #ifndef M10_H
 #define M10_H
 

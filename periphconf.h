@@ -22,9 +22,7 @@
 #include "dshot.h"
 
 /**
-* @defgroup DEVIDS
 * @brief Character devices IDs
-* @{
 */
 enum DEV_ID {
 	DEV_IMU		= 0,	/*!< IMU device number */
@@ -38,10 +36,6 @@ enum DEV_ID {
 	DEV_DSHOT	= 8,	/*!< DShot-300 device number */
 	DEV_COUNT	= 9	/*!< character devices count */
 };
-/**
-* @}
-*/
-
 
 /**
 * @defgroup PERIPHHANDLERS

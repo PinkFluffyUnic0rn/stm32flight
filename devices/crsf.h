@@ -1,3 +1,8 @@
+/**
+* @file crsf.h
+* @brief CRSF eLRS device driver
+*/
+
 #ifndef CRSF_H
 #define CRSF_H
 

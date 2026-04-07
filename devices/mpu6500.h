@@ -1,3 +1,8 @@
+/**
+* @file mpu6500.h
+* @brief MPU-6500 device driver
+*/
+
 #ifndef MPU6500_H
 #define MPU6500_H
 

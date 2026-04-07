@@ -1,3 +1,8 @@
+/**
+* @file esp8266.h
+* @brief esp8266/esp8285 configuration device SPI driver
+*/
+
 #ifndef ESP_H
 #define ESP_H
 

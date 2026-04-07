@@ -14,56 +14,75 @@
 
 #include "../../crc.h"
 
-// UDP connection port
+/**
+* @brief UDP connection port
+*/
 #define PORT 8880
 
-// UDP connection address
+/**
+* @brief UDP connection address
+*/
 #define ADDR "192.168.3.1"
 
-// socket send/receive buffer size
+/**
+* @brief socket send/receive buffer size
+*/
 #define BUFSZ 1024
 
-// UDP packet receive timeout
+/**
+* @brief UDP packet receive timeout
+*/
 #define UDPTIMEOUT 1000000
 
-// minimum and maximum wait time for
-// UAV configuration command to execute
+/**
+* @brief minimum and maximum wait time for
+	UAV configuration command to execute
+*/
 #define MINWAIT 5000
 #define MAXWAIT 1000000
 #define FLASHWAIT 2000000
 #define IRCWAIT 1000000
 
-// maximum UAV command size
+/**
+* @brief maximum UAV command size
+*/
 #define CMDMAXSZ 60
 
-// log size in records
-//#define LOGSIZE (1024 * 64)
+/**
+* @brief log size in records
+*/
 #define LOGSIZE (1024 * 16)
 
-// maximum number of log records in
-// batch when reading whole log
+/**
+* @brief maximum number of log records in
+	batch when reading whole log
+*/
 #define BATCHSIZE 5
 
-// userdata structure passed to server-side
-// part of log download command
+/**
+* @brief userdata structure passed to server-side
+	part of log download command
+*/
 struct loggetdata {
-	int reccnt;		// number of log records to get
-	char *buf;		// raw data buffer to hold all data
-				// got from UDP socket
-	size_t bufoffset;	// raw data buffer offset
-	size_t maxsz;		// raw data buffer allocated size
-	size_t sz;		// raw data size got after call
+	int reccnt;		/*!< number of log records to get */
+	char *buf;		/*!< raw data buffer to hold all data */
+				/*!< got from UDP socket */
+	size_t bufoffset;	/*!< raw data buffer offset */
+	size_t maxsz;		/*!< raw data buffer allocated size */
+	size_t sz;		/*!< raw data size got after call */
 };
 
-// Common function for sending data into debug connection,
-// which can be UART or UDP socket
-//
-// fd -- debug connection file descriptor.
-// buf -- a data buffer to send.
-// len -- the data buffer length.
-// flags -- flags to pass into sendto in case of UDP socket.
-// addr -- UDP peer address, should be 0 in case of UART connection.
-// addrlen -- UDP peer address len
+/**
+* @brief Common function for sending data into debug connection,
+	which can be UART or UDP socket.
+*
+* @param fd debug connection file descriptor
+* @param buf a data buffer to send
+* @param len the data buffer length
+* @param flags flags to pass into sendto in case of UDP socket
+* @param addr UDP peer address, should be 0 in case of UART connection
+* @param addrlen UDP peer address len
+*/
 static ssize_t sendtochan(int fd, const void *buf, size_t len,
 	int flags, const struct sockaddr *addr, socklen_t addrlen)
 {
@@ -84,15 +103,17 @@ static ssize_t sendtochan(int fd, const void *buf, size_t len,
 	return sendto(fd, buf, len, flags, addr, addrlen);
 }
 
-// Common function for sending data into debug connection,
-// which can be UART or UDP socket
-//
-// fd -- debug connection file descriptor.
-// buf -- a data buffer to send.
-// len -- the data buffer length.
-// flags -- flags to pass into recvfrom in case of UDP socket.
-// addr -- UDP peer address, should be 0 in case of UART connection.
-// addrlen -- UDP peer address len
+/*
+* @brief Common function for sending data into debug connection,
+	which can be UART or UDP socket.
+*
+* @param fd debug connection file descriptor
+* @param buf a data buffer to send
+* @param len the data buffer length
+* @param flags flags to pass into recvfrom in case of UDP socket
+* @param addr UDP peer address, should be 0 in case of UART connection
+* @param addrlen UDP peer address len
+*/
 static ssize_t recvfromchan(int fd, void *buf, size_t len,
 	int flags, struct sockaddr *addr, socklen_t *addrlen)
 {
@@ -102,17 +123,13 @@ static ssize_t recvfromchan(int fd, void *buf, size_t len,
 	return recvfrom(fd, buf, len, flags, addr, addrlen);
 }
 
-// Init configuration connection sockets.
-//
-// lsfd -- UART file descriptor for configuration connection.
-// rsi -- UART device file path.
 int inituart(int *lsfd, const char *path)
 {
 	struct termios tty;
 
 	// open UART device file
 	if ((*lsfd = open(path, O_RDWR | O_NOCTTY)) < 0) {
-		fprintf(stderr, "cannot file\n");
+		fprintf(stderr, "cannot file\n"); //////
 		exit(1);
 	}
 
@@ -137,10 +154,6 @@ int inituart(int *lsfd, const char *path)
 	return 0;
 }
 
-// Init configuration connection sockets.
-//
-// lsfd -- UDP socket for configuration connection.
-// rsi -- quadcopter's esp07 IP address.
 int initsocks(int *lsfd, struct sockaddr_in *rsi)
 {
 	struct timeval tv;
@@ -187,14 +200,6 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi)
 	return 0;
 }
 
-// Send command into configuration connection.
-//
-// lsfd -- UDP socket for configuration connection.
-// rsi -- remote IP address.
-// cmd -- command to send.
-// serverfunc -- function that needs to be called on server-side after
-// 	command was sent.
-// data -- userdata passed to serverfunc as it's fourth argument.
 int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	int (*serverfunc)(int, const struct sockaddr_in *,
 		const char *,
@@ -231,14 +236,6 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	return 0;
 }
 
-// Server-side part of configuration command got from UAV
-// configuration file passed to this program as argument.
-//
-// lsfd -- UDP socket for configuration connection.
-// rsi -- remote IP address.
-// cmd -- command was sent.
-// outfunc -- function used to process command output
-// data -- userdata passed to sendcmd.
 int infofunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void (*outfunc) (void *, const char *), void *data)
 {
@@ -260,14 +257,6 @@ int infofunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	return 0;
 }
 
-// Server-side part of configuration command got from UAV
-// configuration file passed to this program as argument.
-//
-// lsfd -- UDP socket for configuration connection.
-// rsi -- remote IP address.
-// cmd -- command was sent.
-// outfunc -- function used to process command output
-// data -- userdata passed to sendcmd.
 int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void (*outfunc) (void *, const char *), void *data)
 {
@@ -321,14 +310,7 @@ int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	return 0;
 }
 
-// Server-side part of configuration command got from UAV
-// configuration file passed to this program as argument.
-//
-// lsfd -- UDP socket for configuration connection.
-// rsi -- remote IP address.
-// cmd -- command was sent.
-// outfunc -- function used to process command output
-// data -- userdata passed to sendcmd.
+
 int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void (*outfunc) (void *, const char *), void *data)
 {
@@ -375,12 +357,15 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	return 0;
 }
 
-// Server-side part of log download command.
-//
-// lsfd -- UDP socket for configuration connection.
-// rsi -- remote IP address.
-// cmd -- command was sent.
-// data -- userdata passed to sendcmd.
+/**
+* @brief Server-side part of log download command.
+*
+* lsfd UDP socket for configuration connection.
+* rsi remote IP address.
+* cmd command was sent.
+* outfunc
+* data userdata passed to sendcmd.
+*/
 int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	void (*outfunc) (void *, const char *), void *data)
 {
@@ -453,13 +438,15 @@ int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	return 0;
 }
 
-// Parse, CRC check and store log record that has format:
-// 	[crc] [number] [vals]
-//
-// 	logbuf -- raw data buffer.
-// 	logbufoffset -- raw data buffer offset.
-// 	records -- output array that stores log records sorted by
-// 		their number.
+/*
+* Parse, CRC check and store log record that has format:
+	[crc] [number] [vals]
+*
+* @param logbuf raw data buffer
+* @param logbufoffset raw data buffer offset
+* @param records output array that stores log records sorted by
+	their number
+*/
 int parserecords(char *logbuf, size_t logbufoffset, int *records)
 {
 	char *b, *e;
@@ -564,10 +551,6 @@ int reqlogrecords(int lsfd, const struct sockaddr_in *rsi,
 	return 0;
 }
 
-// Download whole log from UDP socket.
-//
-// lsfd -- UDP socket for configuration connection.
-// rsi -- remote IP address.
 int getlog(int lsfd, const struct sockaddr_in *rsi,
 	int loadfrom, int loadto,
 	char **output, size_t *outsize,

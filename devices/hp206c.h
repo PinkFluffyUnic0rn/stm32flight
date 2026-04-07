@@ -1,3 +1,8 @@
+/**
+* @file hp206c.h
+* @brief HP206C barometer device driver
+*/
+
 #ifndef HP206C_H
 #define HP206C_H
 

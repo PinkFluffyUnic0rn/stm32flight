@@ -1,3 +1,8 @@
+/**
+* @file irc.h
+* @brief IRC VTX device driver
+*/
+
 #ifndef IRC_H
 #define IRC_H
 

@@ -1,54 +1,179 @@
+/**
+* @file device.h
+* @brief Common interfaces for character and block devices
+*/
+
 #ifndef DEVICE_H
 #define DEVICE_H
 
 #include <stdint.h>
 #include <stddef.h>
 
+/**
+* @brief maximum device name length
+*/
 #define DEVNAMEMAX 32
 
+/**
+* @brief check if interrupts on devices are enabled
+*
+* @param dev device
+* @return 1 if interrupts are enabled on device, 0 otherwise
+*/
 #define DEVITENABLED(dev) ((dev) == DEVSTATUS_IT \
 	|| (dev) == DEVSTATUS_INIT)
 
+/**
+* @brief device status
+*/
 enum DEVSTATUS {
-	DEVSTATUS_IT = 0,
-	DEVSTATUS_INIT = 1,
-	DEVSTATUS_FAILED = 2,
-	DEVSTATUS_NOINIT = 3
+	DEVSTATUS_IT = 0,	/*!< interrupts are enabled, but
+				device not initialized */
+	DEVSTATUS_INIT = 1,	/*!< device initialized */
+	DEVSTATUS_FAILED = 2,	/*!< device failed to initialize */
+	DEVSTATUS_NOINIT = 3	/*!< device not initialized */
 };
 
+/**
+* @brief character device
+*/
 struct cdevice {
-	char name[DEVNAMEMAX];
-	
-	int (*read)(void *dev, void *data, size_t sz);
-	int (*write)(void *dev, void *data, size_t sz);
-	int (*interrupt)(void *dev, const void *h);
-	int (*error)(void *dev, const void *h);
-	int (*configure)(void *dev, const char *cmd, ...);
-	volatile enum DEVSTATUS status;
+	char name[DEVNAMEMAX];			/*!< device name */
 
-	void *priv;
+	/**
+	* @brief read data from device
+	* @param dev device's private data
+	* @param data output buffer
+	* @param sz output buffer size
+	* @return -1 in case of error, 0 otherwise
+	*/	
+	int (*read)(void *dev, void *data, size_t sz);
+
+	/**
+	* @brief write data to device
+	* @param dev device's private data
+	* @param data input buffer
+	* @param sz input buffer size
+	* @return -1 in case of error, 0 otherwise
+	*/	
+	int (*write)(void *dev, void *data, size_t sz);
+
+	/**
+	* @brief process interrupt triggered by device
+	* @param dev device's private data
+	* @param interface that triggered interrupt
+	* @return -1 in case of error, 0 otherwise
+	*/
+	int (*interrupt)(void *dev, const void *h);
+	
+	
+	/**
+	* @brief process error interrupt triggered by device
+	* @param dev device's private data
+	* @param interface that triggered error interrupt
+	* @return -1 in case of error, 0 otherwise
+	*/
+	int (*error)(void *dev, const void *h);
+
+	/**
+	* @brief confugure device
+	* @param dev device's private data
+	* @param cmd configuration command followed by it's arguments
+	* @return -1 in case of error, 0 otherwise
+	*/
+	int (*configure)(void *dev, const char *cmd, ...);
+
+	volatile enum DEVSTATUS status;		/*!< device status */
+
+	void *priv;				/*!< device's private
+						data */
 };
 
+/**
+* @brief block device
+*/
 struct bdevice {
-	char name[DEVNAMEMAX];
+	char name[DEVNAMEMAX];	/*!< device name */
+
+	/**
+	* @brief read data from device
+	* @param dev device's private data
+	* @param addr address on device to read data from
+	* @param data output buffer
+	* @param sz output buffer size
+	* @return -1 in case of error, 0 otherwise
+	*/	
 	int (*read)(void *dev, size_t addr, void *data, size_t sz);
+
+	/**
+	* @brief write data to device
+	* @param dev device's private data
+	* @param addr address on device to write data
+	* @param data input buffer
+	* @param sz input buffer size
+	* @return -1 in case of error, 0 otherwise
+	*/	
 	int (*write)(void *dev, size_t addr, const void *data,
 		size_t sz);
+
+	/**
+	* @brief process interrupt triggered by device
+	* @param dev device's private data
+	* @param interface that triggered interrupt
+	* @return -1 in case of error, 0 otherwise
+	*/
 	int (*interrupt)(void *dev, const void *h);
+
+	/**
+	* @brief confugure device
+	* @param dev device's private data
+	* @param req configuration command followed by it's arguments
+	* @return -1 in case of error, 0 otherwise
+	*/
 	int (*ioctl)(void *dev, int req, ...);
 
+	/**
+	* @brief erase all data on device
+	* @param dev device's private data
+	* @return -1 in case of error, 0 otherwise
+	*/
 	int (*eraseall)(void *dev);
+
+	/**
+	* @brief erase sector on device
+	* @param dev device's private data
+	* @param addr starting address of sector
+	* @return -1 in case of error, 0 otherwise
+	*/
 	int (*erasesector)(void *dev, size_t addr);
+
+	/**
+	* @brief erase block on device
+	* @param dev device's private data
+	* @param addr starting address of block
+	* @return -1 in case of error, 0 otherwise
+	*/
 	int (*eraseblock)(void *dev, size_t addr);
+
+
+	/**
+	* @brief write whole sector on device
+	* @param dev device's private data
+	* @param addr starting address of device's sector to write data
+	* @param data input buffer
+	* @param sz input buffer size
+	* @return -1 in case of error, 0 otherwise
+	*/	
 	int (*writesector)(void *dev, size_t addr, const void *data,
 		size_t sz);
-	int status;
 
-	size_t writesize;
-	size_t sectorsize;
-	size_t totalsize;
+	int status;		/*!< device status */
 
-	void *priv;
+	size_t writesize;	/*!< write block size */
+	size_t sectorsize;	/*!< sector size */
+	size_t totalsize;	/*!< total size */
+
+	void *priv;		/*!< device's private */
 };
 
 #endif

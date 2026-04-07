@@ -1,3 +1,8 @@
+/**
+* @file hmc5883l.h
+* @brief HMC5883L magnetometer device driver
+*/
+
 #ifndef HMC5883L_H
 #define HMC5883L
 

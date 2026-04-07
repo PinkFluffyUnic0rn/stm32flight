@@ -1,3 +1,8 @@
+/**
+* @file dps368.h
+* @brief DPS368 barometer device driver
+*/
+
 #ifndef DSP368_H
 #define DSP368_H
 

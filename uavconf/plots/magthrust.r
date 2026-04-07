@@ -95,6 +95,9 @@ diffx = -diffx / cnt
 diffy = -diffy / cnt
 diffz = -diffz / cnt
 
+#diffx = 15000.0;
+#diffx = 0.0;
+
 printf("starting sample: %d", startpos)
 printf("diff x: %f", diffx);
 printf("diff y: %f", diffy);
@@ -103,6 +106,7 @@ printf("diff z: %f", diffz);
 magimage("magorig.png", magx_p, magy_p, magz_p, thrust)
 
 for (i in 1:samplescount) {
+	#magx_p[i] = magx_p[i] + diffx * thrust[i] ^ 3;
 	magx_p[i] = magx_p[i] + diffx * thrust[i];
 	magy_p[i] = magy_p[i] + diffy * thrust[i];
 	magz_p[i] = magz_p[i] + diffz * thrust[i];

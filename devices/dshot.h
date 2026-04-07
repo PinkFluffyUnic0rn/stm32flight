@@ -1,3 +1,8 @@
+/**
+* @file dshot.h
+* @brief dshot PWM device driver
+*/
+
 #ifndef DSHOT_H
 #define DSHOT_H
 

@@ -1,3 +1,8 @@
+/**
+* @file icm42688.h
+* @brief ICM-42688-P IMU device driver
+*/
+
 #ifndef ICM42688_H
 #define ICM42688_H
 

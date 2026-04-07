@@ -1,3 +1,8 @@
+/**
+* @file bmp280.h
+* @brief BMP280 barometer device driver
+*/
+
 #ifndef BMP280_H
 #define BMP280_H
 

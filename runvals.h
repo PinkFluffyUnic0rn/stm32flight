@@ -1,5 +1,5 @@
 /**
-* @file runvalues.c
+* @file runvals.h
 * @brief Global values that can be changed during run and dsp contexts
 */
 
@@ -82,7 +82,6 @@
 /**
 * @defgroup TIMEREVENTIDS
 * @brief Timer events IDs
-* @{
 */
 enum TEV_ID { 
 	TEV_PID		= 0,	/*!< PID event ID */
@@ -95,14 +94,10 @@ enum TEV_ID {
 	TEV_AUTOPILOT	= 7,	/*!< autopilot event ID */
 	TEV_COUNT	= 8	/*!< timer events count */
 };
-/**
-* @}
-*/
 
 /**
 * @defgroup LPFIDS
 * @brief low-pass filters IDs
-* @{
 */
 enum LPF_ID {
 	LPF_BAT		= 0,	/*!< battery voltage low-pass filter */
@@ -130,14 +125,10 @@ enum LPF_ID {
 	LPF_YAW		= 22,	/*!< yaw unity filter */
 	LPF_COUNT	= 23	/*!< low-pass filters count */
 };
-/**
-* @}
-*/
 
 /**
 * @defgroup CMPLIDS
 * @brief complimentary filters IDs
-* @{
 */
 enum CMPL_ID {
 	CMPL_PITCH 	= 0,	/*!< pitch low-pass filter */
@@ -147,14 +138,10 @@ enum CMPL_ID {
 	CMPL_ALT 	= 4,	/*!< altitude complimentary filter */
 	CMPL_COUNT 	= 5	/*!< complimentary filters count */
 };
-/**
-* @}
-*/
 
 /**
 * @defgroup PIDIDS
 * @brief PID controllers IDs
-* @{
 */
 enum PID_ID {
 	PID_PITCHP	= 0,	/*!< pitch PID context */
@@ -168,10 +155,6 @@ enum PID_ID {
 	PID_ALT		= 8,	/*!< altitude PID context */
 	PID_COUNT	= 9	/*!< pid controllers count */
 };
-/**
-* @}
-*/
-
 
 /**
 * @brief Altitude control mode.
