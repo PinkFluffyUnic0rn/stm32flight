@@ -47,9 +47,8 @@ enum QMC_OSR {
 * @brief output data
 */
 struct qmc_data {
-	int16_t x, y, z;		/*!< x, y and z raw values */
-	float fx, fy, fz;		/*!< x, y and z values converted
-					into gauss */
+	int16_t x, y, z;	///< x, y and z raw values
+	float fx, fy, fz;	///< x, y and z values in gauss
 };
 
 /**
@@ -69,6 +68,7 @@ struct qmc_device {
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
+* @return -1 in case of error, 0 otherwise
 */
 int qmc_initdevice(void *is, struct cdevice *dev);
 

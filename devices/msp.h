@@ -89,6 +89,7 @@ struct msp_osd {
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
+* @return -1 in case of error, 0 otherwise
 */
 int msp_initdevice(void *is, struct cdevice *dev);
 

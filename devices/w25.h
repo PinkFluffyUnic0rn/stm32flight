@@ -15,7 +15,6 @@
 */
 #define W25_PAGESIZE 256
 
-
 /**
 * @brief device sector size
 */
@@ -62,6 +61,7 @@ struct w25_device {
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
+* @return -1 in case of error, 0 otherwise
 */
 int w25_initdevice(void *is, struct bdevice *dev);
 
