@@ -87,9 +87,12 @@ int isvalinlist(int v, int num, ...);
 * @param f floating point numnber to convert
 * @param s output buffer to store a resulting string
 * @param sz output buffer size
+* @param zfill minimum digits count, if output number is
+	integer, if resulting number has less digits than
+	minimum, zeros will be prepended
 * @param order requested digits count after decimal point
 * @return poisition in output buffer right after resulting string
 */
-char *ftos(float f, char *s, size_t sz, int order);
+char *ftos(float f, char *s, size_t sz, int zfill, int order);
 
 #endif

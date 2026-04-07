@@ -349,7 +349,7 @@ static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
 	char *p;
 
 	if (step == 0) {
-		p = ftos(osd->alt, buf, 15, 2);
+		p = ftos(osd->alt, buf, 15, 0, 2);
 		*(p - 1) = MSP_CHAR_M;
 		*p = '\0';
 
@@ -357,7 +357,7 @@ static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
 
 	}
 	else if (step == 1) {
-		p = ftos(osd->vspeed, buf, 15, 2);
+		p = ftos(osd->vspeed, buf, 15, 0, 2);
 		*(p - 1) = MSP_CHAR_MPS;
 		*p = '\0';
 		
@@ -366,7 +366,7 @@ static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
 	}	
 	else if (step == 2) {
 		buf[0] = MSP_CHAR_TEMP;
-		ftos((double) osd->temp, buf + 1, 15, 1);
+		ftos((double) osd->temp, buf + 1, 15, 0, 1);
 		
 		msp_drawstring(sbuf, x, y + 2,
 			MSP_CHARCOLOR_WHITE, buf);
@@ -399,7 +399,7 @@ static int msp_drawpower(struct msp_buffer *sbuf, int x, int y,
 			batsym  = MSP_CHAR_BAT_0;
 
 		buf[0] = batsym;
-		p = ftos(osd->bat, buf + 1, 14, 2);
+		p = ftos(osd->bat, buf + 1, 14, 0, 2);
 		*(p - 1) = MSP_CHAR_VOLT;
 		*p = '\0';
 
@@ -407,7 +407,7 @@ static int msp_drawpower(struct msp_buffer *sbuf, int x, int y,
 	}
 	else if (state == 1) {
 		buf[0] = ' ';
-		p = ftos(osd->curr, buf + 1, 14, 1);
+		p = ftos(osd->curr, buf + 1, 14, 0, 1);
 		*(p - 1) = MSP_CHAR_AMP;
 		*p = '\0';
 
@@ -424,7 +424,7 @@ static int msp_drawspeed(struct msp_buffer *sbuf, int x, int y,
 	char buf[16];
 	char *p;
 
-	p = ftos(osd->speed, buf, 15, 2);
+	p = ftos(osd->speed, buf, 15, 0, 2);
 	*(p - 1) = MSP_CHAR_KMH;
 	*p = '\0';
 
@@ -442,14 +442,14 @@ static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
 		buf[0] = MSP_CHAR_SATL;
 		buf[1] = MSP_CHAR_SATR;	
 
-		ftos(osd->sats, buf + 2, 14, 0);
+		ftos(osd->sats, buf + 2, 14, 0, 0);
 
 		msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
 	}
 	else if (state == 1) {
 		buf[0] = ' ';
 		buf[1] = MSP_CHAR_LAT;
-		ftos((double) osd->lat, buf + 2, 14, 5);
+		ftos((double) osd->lat, buf + 2, 14, 0, 5);
 
 		msp_drawstring(sbuf, x, y + 1,
 			MSP_CHARCOLOR_WHITE, buf);
@@ -457,7 +457,7 @@ static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
 	else if (state == 2) {
 		buf[0] = ' ';
 		buf[1] = MSP_CHAR_LON;
-		ftos((double) osd->lon, buf + 2, 14, 5);
+		ftos((double) osd->lon, buf + 2, 14, 0, 5);
 
 		msp_drawstring(sbuf, x, y + 2,
 			MSP_CHARCOLOR_WHITE, buf);

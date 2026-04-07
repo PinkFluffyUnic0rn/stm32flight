@@ -44,7 +44,7 @@ enum M10_QUALITY
 enum M10_TYPE
 {
 	M10_TYPE_GGA = 0,	/*!< GGA message */
-	M10_TYPE_RMC = 1,,	/*!< RMC message */
+	M10_TYPE_RMC = 1,	/*!< RMC message */
 	M10_TYPE_OTHER = 2,	/*!< other message */
 };
 

@@ -51,8 +51,7 @@ struct dshot_device {
 	volatile uint32_t *timccr[4];	/*!< private: capture-compare
 						register corresponding
 						to each PWM channel*/
-	DMA_HandleTypeDef *hdma[4];
-	volatile uint32_t *timccr[4];	/*!< private: DMA stream
+	DMA_HandleTypeDef *hdma[4];	/*!< private: DMA stream
 						corresponding to each
 						PWM channel*/
 	int bitlen;			/*!< private: length of bit

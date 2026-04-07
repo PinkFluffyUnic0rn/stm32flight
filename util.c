@@ -93,7 +93,7 @@ int isvalinlist(int v, int num, ...)
 	return 0;
 }
 
-char *ftos(float f, char *s, size_t sz, int order)
+char *ftos(float f, char *s, size_t sz, int zfill, int order)
 {
 	float scale[] = {1, 10.0, 100.0, 1000.0, 10000.0,
 		100000.0, 1000000.0, 10000000.0, 100000000.0};
@@ -129,6 +129,18 @@ char *ftos(float f, char *s, size_t sz, int order)
 		*p++ = '0' + (scaled % 10);
 		scaled /= 10;
 	} while (scaled != 0);
+
+	// in case of integer output, fill it
+	// with required number of zeros
+	if (order == 0 && zfill > (p - tmp) ) {
+		int zeros;
+
+		zeros = zfill - (p - tmp);
+
+		for (i = 0; i < zeros; ++i) {
+			FTOS_STRAPPEND(s, sz, '0', end)
+		}
+	}
 
 	// append zeros to resulting string
 	for (i = 0; i <= order - (int) (p - tmp); ++i) {
