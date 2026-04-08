@@ -53,7 +53,6 @@ enum MPU_DLPF {
 */
 enum MPU_DEVTYPE {
 	MPU_DEV6050 = 0x68,	/*!< MPU-6050 */
-	MPU_DEV6050_1 = 0x98,	/*!< MPU-6050 */
 	MPU_DEV6500 = 0x70	/*!< MPU-6500 */
 };
 
@@ -80,13 +79,12 @@ struct mpu_stdata {
 * @brief device initialization and private data
 */
 struct mpu_device {
-	I2C_HandleTypeDef *hi2c;	/*!< I2C interface */
 	SPI_HandleTypeDef *hspi;	/*!< SPI interface */
 
 	GPIO_TypeDef *gpio;		/*!< CS pin GPIO port */
 	uint16_t pin;			/*!< CS pin number */
 
-	int devtype;			/*!< device type */
+	enum MPU_DEVTYPE devtype;	/*!< device type */
 	enum MPU_ACCELSCALE accelscale;	/*!< accelerometer scale */
 	enum MPU_GYROSCALE gyroscale;	/*!< gyroscope scale */
 	enum MPU_DLPF dlpfwidth;	/*!< LPF width */

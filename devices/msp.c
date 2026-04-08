@@ -10,7 +10,7 @@
 
 #define MSP_RXCIRCSIZE 2
 #define MSP_BUFSIZE 64
-#define MSP_DRAWSTEPS 14
+#define MSP_DRAWSTEPS 15
 #define MSP_MAXSTRLEN 16
 #define MSP_HEADERLEN 5
 #define MSP_DPHEADERLEN 4
@@ -54,6 +54,16 @@ struct packet {
 	uint8_t cmd;
 	uint8_t pl[256];
 	uint8_t crc;
+};
+
+/**
+* @brief MSP command data
+*/
+struct msp_data {
+	char pl[256];	/*!< payload */
+	uint8_t cmd;	/*!< cmd */
+	uint8_t len;	/*!< payload length */
+	char type;	/*!< request or response */
 };
 
 struct msp_buffer
@@ -466,6 +476,28 @@ static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
 	return 0;
 }
 
+static int msp_drawtime(struct msp_buffer *sbuf, int x, int y,
+	struct msp_osd *osd)
+{
+	char buf[16];
+	uint32_t t;
+	int m, s;
+	char *p;
+
+	t = HAL_GetTick() / 1000 % 3600;
+
+	m = t / 60;
+	s = t % 60;
+
+	p = ftos(m, buf, 15, 2, 0);
+	*(p - 1) = ':';
+	p = ftos(s, p, 15, 2, 0);
+
+	msp_drawstring(sbuf, x, y, MSP_CHARCOLOR_WHITE, buf);
+	
+	return 0;
+}
+
 static int msp_drawyaw(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd)
 {
@@ -473,7 +505,7 @@ static int msp_drawyaw(struct msp_buffer *sbuf, int x, int y,
 	uint8_t dirsym;
 	int dirn;
 
-	dirn = ((osd->yaw / (M_PI)) * 8.0) + 0.5;
+	dirn = ((-osd->yaw / (M_PI)) * 8.0) + 0.5;
 
 	if (dirn > 8)	dirn = 8;
 	if (dirn < -7)	dirn = -7;
@@ -539,6 +571,8 @@ int msp_write(void *dev, void *dt, size_t sz)
 		msp_drawgps(&Sendbuffer, 43, 7, dt, 2);
 	else if (step == 13)
 		msp_drawyaw(&Sendbuffer, 25, 1, dt);
+	else if (step == 14)
+		msp_drawtime(&Sendbuffer, 29, 1, dt);
 
 	if (step == MSP_DRAWSTEPS - 1) {
 		dpcmd = 4;

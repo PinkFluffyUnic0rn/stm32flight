@@ -51,8 +51,9 @@ struct w25_device {
 	GPIO_TypeDef *gpio;		/*!< CS pin GPIO port */
 	uint16_t pin;			/*!< CS pin number */
 
-	int writemode;			/*!< private: device mode,
-       					1, if write only, 0 otherwise */
+	enum W25_IOCTL writemode;	/*!< private: device mode,
+       						1, if write only,
+						0 otherwise */
 };
 
 /**

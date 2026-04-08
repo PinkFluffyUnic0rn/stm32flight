@@ -26,7 +26,7 @@ enum ICM_GYROSCALE {
 	ICM_125DPS	= 0x4,	/*!< 125 degrees/s */
 	ICM_62_5DPS	= 0x5,	/*!< 62.5 degrees/s */
 	ICM_31_25DPS	= 0x6,	/*!< 31.25 degrees/s */
-	ICM_15_625DPS	= 0x7,	/*!< 15.625 degrees/s */
+	ICM_15_625DPS	= 0x7	/*!< 15.625 degrees/s */
 };
 
 /**
@@ -39,11 +39,12 @@ enum ICM_GYRORATE {
 	ICM_GYRO4K	= 0x4,	/*!< 4 kHz */
 	ICM_GYRO2K	= 0x5,	/*!< 2 kHz */
 	ICM_GYRO1K	= 0x6,	/*!< 1 kHz */
-	ICM_GYRO200	= 0x7,	/*!< 200 Hz */
-	ICM_GYRO100	= 0x8,	/*!< 100 Hz */
-	ICM_GYRO50	= 0x9,	/*!< 50 Hz */
-	ICM_GYRO2_5	= 0xa,	/*!< 25 Hz */
-	ICM_GYRO1_25	= 0xb,	/*!< 12.5 Hz */
+	ICM_GYRO200	= 0x7,	/*!< 200 hz */
+	ICM_GYRO100	= 0x8,	/*!< 100 hz */
+	ICM_GYRO50	= 0x9,	/*!< 50 hz */
+	ICM_GYRO25	= 0xa,	/*!< 25 hz */
+	ICM_GYRO12_5	= 0xb,	/*!< 12.5 hz */
+	ICM_GYRO500	= 0xf	/*!< 500 hz */
 };
 
 /**
@@ -52,7 +53,7 @@ enum ICM_GYRORATE {
 enum ICM_GYROORDER {
 	ICM_GYROORDER1	= 0x1,	/*!< 1st order LPF */
 	ICM_GYROORDER2	= 0x2,	/*!< 2nd order LPF */
-	ICM_GYROORDER3	= 0x3,	/*!< 3rd order LPF */
+	ICM_GYROORDER3	= 0x3	/*!< 3rd order LPF */
 };
 
 /**
@@ -60,14 +61,14 @@ enum ICM_GYROORDER {
 */
 enum ICM_GYROLPF {
 	ICM_GYROLPF2	= 0x0,	/*!< ODR / 2 */
-	ICM_GYROLPF4	= 0x1,	/*!< max(400 Hz, ODR) / 4 */
-	ICM_GYROLPF5	= 0x2,	/*!< max(400 Hz, ODR) / 5 */
-	ICM_GYROLPF8	= 0x3,	/*!< max(400 Hz, ODR) / 8 */
-	ICM_GYROLPF10	= 0x4,	/*!< max(400 Hz, ODR) / 10 */
-	ICM_GYROLPF16	= 0x5,	/*!< max(400 Hz, ODR) / 16 */
-	ICM_GYROLPF20	= 0x6,	/*!< max(400 Hz, ODR) / 20 */
-	ICM_GYROLPF40	= 0x7,	/*!< max(400 Hz, ODR) / 20 */
-	ICM_GYROLPFLL	= 0x15,	/*!< low latency */
+	ICM_GYROLPF4	= 0x1,	/*!< max(400 hz, ODR) / 4 */
+	ICM_GYROLPF5	= 0x2,	/*!< max(400 hz, ODR) / 5 */
+	ICM_GYROLPF8	= 0x3,	/*!< max(400 hz, ODR) / 8 */
+	ICM_GYROLPF10	= 0x4,	/*!< max(400 hz, ODR) / 10 */
+	ICM_GYROLPF16	= 0x5,	/*!< max(400 hz, ODR) / 16 */
+	ICM_GYROLPF20	= 0x6,	/*!< max(400 hz, ODR) / 20 */
+	ICM_GYROLPF40	= 0x7,	/*!< max(400 hz, ODR) / 20 */
+	ICM_GYROLPFLL	= 0x15	/*!< low latency */
 };
 
 /**
@@ -90,12 +91,12 @@ enum ICM_ACCELRATE {
 	ICM_ACCEL4K	= 0x4,	/*!< 4 kHz */
 	ICM_ACCEL2K	= 0x5,	/*!< 2 kHz */
 	ICM_ACCEL1K	= 0x6,	/*!< 1 kHz */
-	ICM_ACCEL200	= 0x7,	/*!< 200 Hz */
-	ICM_ACCEL100	= 0x8,	/*!< 100 Hz */
-	ICM_ACCEL50	= 0x9,	/*!< 50 Hz */
-	ICM_ACCEL25	= 0xa,	/*!< 25 Hz */
-	ICM_ACCEL12_5	= 0xb,	/*!< 12.5 Hz */
-	ICM_ACCEL500	= 0xf	/*!< 500 Hz */
+	ICM_ACCEL200	= 0x7,	/*!< 200 hz */
+	ICM_ACCEL100	= 0x8,	/*!< 100 hz */
+	ICM_ACCEL50	= 0x9,	/*!< 50 hz */
+	ICM_ACCEL25	= 0xa,	/*!< 25 hz */
+	ICM_ACCEL12_5	= 0xb,	/*!< 12.5 hz */
+	ICM_ACCEL500	= 0xf	/*!< 500 hz */
 };
 
 /**
@@ -103,13 +104,13 @@ enum ICM_ACCELRATE {
 */
 enum ICM_ACCELLPF {
 	ICM_ACCELLPF2	= 0x0,	/*!< ODR / 2 */
-	ICM_ACCELLPF4	= 0x1,	/*!< max(400 Hz, ODR) / 4 */
-	ICM_ACCELLPF5	= 0x2,	/*!< max(400 Hz, ODR) / 5 */
-	ICM_ACCELLPF8	= 0x3,	/*!< max(400 Hz, ODR) / 8 */
-	ICM_ACCELLPF10	= 0x4,	/*!< max(400 Hz, ODR) / 10 */
-	ICM_ACCELLPF16	= 0x5,	/*!< max(400 Hz, ODR) / 16 */
-	ICM_ACCELLPF20	= 0x6,	/*!< max(400 Hz, ODR) / 20 */
-	ICM_ACCELLPF40	= 0x7,	/*!< max(400 Hz, ODR) / 40 */
+	ICM_ACCELLPF4	= 0x1,	/*!< max(400 hz, ODR) / 4 */
+	ICM_ACCELLPF5	= 0x2,	/*!< max(400 hz, ODR) / 5 */
+	ICM_ACCELLPF8	= 0x3,	/*!< max(400 hz, ODR) / 8 */
+	ICM_ACCELLPF10	= 0x4,	/*!< max(400 hz, ODR) / 10 */
+	ICM_ACCELLPF16	= 0x5,	/*!< max(400 hz, ODR) / 16 */
+	ICM_ACCELLPF20	= 0x6,	/*!< max(400 hz, ODR) / 20 */
+	ICM_ACCELLPF40	= 0x7,	/*!< max(400 hz, ODR) / 40 */
 	ICM_ACCELLPFLL	= 0x15	/*!< low latency */
 };
 
@@ -119,7 +120,7 @@ enum ICM_ACCELLPF {
 enum ICM_ACCELORDER {
 	ICM_ACCELORDER1	= 0x1,	/*!< 1st order LPF */
 	ICM_ACCELORDER2	= 0x2,	/*!< 2nd order LPF */
-	ICM_ACCELORDER3	= 0x3,	/*!< 3rd order LPF */
+	ICM_ACCELORDER3	= 0x3	/*!< 3rd order LPF */
 };
 
 /**

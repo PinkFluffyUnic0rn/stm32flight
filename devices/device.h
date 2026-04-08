@@ -47,7 +47,7 @@ struct cdevice {
 	* @param sz output buffer size
 	* @return -1 in case of error, 0 otherwise
 	*/	
-	int (*read)(void *dev, void *data, size_t sz);
+	int (*read)(void *priv, void *data, size_t sz);
 
 	/**
 	* @brief write data to device
@@ -56,7 +56,7 @@ struct cdevice {
 	* @param sz input buffer size
 	* @return -1 in case of error, 0 otherwise
 	*/	
-	int (*write)(void *dev, void *data, size_t sz);
+	int (*write)(void *priv, void *data, size_t sz);
 
 	/**
 	* @brief process interrupt triggered by device
@@ -64,7 +64,7 @@ struct cdevice {
 	* @param interface that triggered interrupt
 	* @return -1 in case of error, 0 otherwise
 	*/
-	int (*interrupt)(void *dev, const void *h);
+	int (*interrupt)(void *priv, const void *h);
 	
 	
 	/**
@@ -73,7 +73,7 @@ struct cdevice {
 	* @param interface that triggered error interrupt
 	* @return -1 in case of error, 0 otherwise
 	*/
-	int (*error)(void *dev, const void *h);
+	int (*error)(void *priv, const void *h);
 
 	/**
 	* @brief confugure device
@@ -103,7 +103,7 @@ struct bdevice {
 	* @param sz output buffer size
 	* @return -1 in case of error, 0 otherwise
 	*/	
-	int (*read)(void *dev, size_t addr, void *data, size_t sz);
+	int (*read)(void *priv, size_t addr, void *data, size_t sz);
 
 	/**
 	* @brief write data to device
@@ -113,7 +113,7 @@ struct bdevice {
 	* @param sz input buffer size
 	* @return -1 in case of error, 0 otherwise
 	*/	
-	int (*write)(void *dev, size_t addr, const void *data,
+	int (*write)(void *priv, size_t addr, const void *data,
 		size_t sz);
 
 	/**
@@ -122,7 +122,7 @@ struct bdevice {
 	* @param interface that triggered interrupt
 	* @return -1 in case of error, 0 otherwise
 	*/
-	int (*interrupt)(void *dev, const void *h);
+	int (*interrupt)(void *priv, const void *h);
 
 	/**
 	* @brief confugure device
@@ -130,14 +130,14 @@ struct bdevice {
 	* @param req configuration command followed by it's arguments
 	* @return -1 in case of error, 0 otherwise
 	*/
-	int (*ioctl)(void *dev, int req, ...);
+	int (*ioctl)(void *priv, int req, ...);
 
 	/**
 	* @brief erase all data on device
 	* @param dev device's private data
 	* @return -1 in case of error, 0 otherwise
 	*/
-	int (*eraseall)(void *dev);
+	int (*eraseall)(void *priv);
 
 	/**
 	* @brief erase sector on device
@@ -145,7 +145,7 @@ struct bdevice {
 	* @param addr starting address of sector
 	* @return -1 in case of error, 0 otherwise
 	*/
-	int (*erasesector)(void *dev, size_t addr);
+	int (*erasesector)(void *priv, size_t addr);
 
 	/**
 	* @brief erase block on device
@@ -153,7 +153,7 @@ struct bdevice {
 	* @param addr starting address of block
 	* @return -1 in case of error, 0 otherwise
 	*/
-	int (*eraseblock)(void *dev, size_t addr);
+	int (*eraseblock)(void *priv, size_t addr);
 
 
 	/**
@@ -164,7 +164,7 @@ struct bdevice {
 	* @param sz input buffer size
 	* @return -1 in case of error, 0 otherwise
 	*/	
-	int (*writesector)(void *dev, size_t addr, const void *data,
+	int (*writesector)(void *priv, size_t addr, const void *data,
 		size_t sz);
 
 	int status;		/*!< device status */

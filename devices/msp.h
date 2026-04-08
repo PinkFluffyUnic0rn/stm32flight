@@ -49,15 +49,6 @@ struct msp_device {
 	UART_HandleTypeDef *huart;	/*!< UART interface */
 };
 
-/**
-* @brief MSP command data
-*/
-struct msp_data {
-	char pl[256];	/*!< payload */
-	uint8_t cmd;	/*!< cmd */
-	uint8_t len;	/*!< payload length */
-	char type;	/*!< request or response */
-};
 
 /**
 * @brief MSP osd input data

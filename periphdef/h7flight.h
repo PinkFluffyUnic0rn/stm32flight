@@ -442,19 +442,11 @@ const struct pconf_pwm pwmconf = {
 };
 
 const struct pconf_battery batconf = {
-	.adc = ADC1,
-	.pin = {
-		.inst = GPIOC,
-		.idx = GPIO_PIN_4
-	}
+	.adc = ADC1
 };
 
 const struct pconf_current curconf = {
-	.adc = ADC2,
-	.pin = {
-		.inst = GPIOC,
-		.idx = GPIO_PIN_5
-	}
+	.adc = ADC2
 };
 
 #endif

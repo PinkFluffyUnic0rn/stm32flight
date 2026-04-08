@@ -43,7 +43,6 @@ struct hp_data {
 struct hp_device {
 	I2C_HandleTypeDef *hi2c;	/*!< I2C interface */
 	enum HP_OSR osr;		/*!< oversampling rate */
-	float alt0;
 };
 
 /**

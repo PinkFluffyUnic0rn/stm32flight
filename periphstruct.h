@@ -328,7 +328,6 @@ struct pconf_pwm {
 */
 struct pconf_battery {
 	ADC_TypeDef *adc;	/*!< ADC used for battery sensor */
-	struct pconf_pin pin;;	/*!< pin used for battery sensor */
 };
 
 /**
@@ -336,5 +335,4 @@ struct pconf_battery {
 */
 struct pconf_current {
 	ADC_TypeDef *adc;	/*!< ADC used for current sensor */
-	struct pconf_pin pin;	/*!< ADC used for current sensor */
 };

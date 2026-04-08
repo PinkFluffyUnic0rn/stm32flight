@@ -55,7 +55,6 @@ struct hmc_data {
 */
 struct hmc_device {
 	I2C_HandleTypeDef *hi2c;	/*!< I2C interface */
-	int devtype;			/*!< device type */
 	enum HMC_RATE rate;		/*!< sampling rate */
 	enum HMC_SCALE scale;		/*!< measurement scale */
 };

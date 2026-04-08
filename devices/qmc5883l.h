@@ -56,7 +56,6 @@ struct qmc_data {
 */
 struct qmc_device {
 	I2C_HandleTypeDef *hi2c;	/*!< I2C interface */
-	int devtype;			/*!< device type */
 	enum QMC_RATE rate;		/*!< sampling rate */
 	enum QMC_SCALE scale;		/*!< measurement scale */
 	enum QMC_SCALE osr;		/*!< oversampling rate */
