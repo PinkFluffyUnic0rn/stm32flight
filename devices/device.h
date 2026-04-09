@@ -28,7 +28,7 @@
 */
 enum DEVSTATUS {
 	DEVSTATUS_IT = 0,	/*!< interrupts are enabled, but
-				device not initialized */
+					device not initialized */
 	DEVSTATUS_INIT = 1,	/*!< device initialized */
 	DEVSTATUS_FAILED = 2,	/*!< device failed to initialize */
 	DEVSTATUS_NOINIT = 3	/*!< device not initialized */

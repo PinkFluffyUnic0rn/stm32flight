@@ -977,6 +977,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// AUTOPILOT channel is used to turn on/off autopilot
 	// if it is greater than 0, autopilot is on, otherwise
 	// it is turned off
+	Autopilot = 0;
+/*
 	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.0) {
 		if (Autopilot == 0)
 			Curpoint = 0;
@@ -985,6 +987,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	}
 	else
 		Autopilot = 0;
+*/		
 
 	// set magnetometer stabilization mode, if YAWMODE channel has
 	// value more than 0, set gyroscope only stabilization mode 
@@ -993,8 +996,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	//	Yawtarget = 0.0;
 		Yawspeedpid = 0;
 	}
-	else 
-	if (cd->chf[ERLS_CH_YAWMODE] > 0.0) {
+	else if (cd->chf[ERLS_CH_YAWMODE] > 0.0
+			&& Dev[DEV_MAG].status == DEVSTATUS_INIT) {
 		Yawspeedpid = 0;
 
 		// in magnetometer stabilization mode absolute yaw
@@ -1016,12 +1019,18 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	if (Autopilot) {
 		Altmode = ALTMODE_POS;
 	}
-	else if (cd->chf[ERLS_CH_THRMODE] > 0.25) {
+	else if (cd->chf[ERLS_CH_THRMODE] > 0.25
+			&& Dev[DEV_BARO].status == DEVSTATUS_INIT) {
 		Altmode = ALTMODE_POS;
 		Thrust = (cd->chf[ERLS_CH_THRUST] + 1.0)
 			/ 2.0 * St.ctrl.altmax;
 	}
-	else if (cd->chf[ERLS_CH_THRMODE] < -0.25) {
+	else if (cd->chf[ERLS_CH_THRMODE] > -0.25
+			&& Dev[DEV_BARO].status == DEVSTATUS_INIT) {
+		Altmode = ALTMODE_SPEED;
+		Thrust = cd->chf[ERLS_CH_THRUST] * St.ctrl.climbratemax;
+	}
+	else {
 		Altmode = ALTMODE_ACCEL;
 
 		// Set throttle mode usging HOVER channel,
@@ -1039,11 +1048,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 			Thrust = (cd->chf[ERLS_CH_THRUST])
 				/ 2.0 * St.ctrl.accelmax;
 		}
-
-	}
-	else {
-		Altmode = ALTMODE_SPEED;
-		Thrust = cd->chf[ERLS_CH_THRUST] * St.ctrl.climbratemax;
 	}
 
 	// if ALTCALIB channel is active (it's no-fix button on remote
