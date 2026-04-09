@@ -35,7 +35,7 @@ struct pconf_i2c {
 };
 
 /**
-* @brief spi interface
+* @brief Spi interface
 */
 struct pconf_spi {
 	SPI_TypeDef *inst;		/*!< SPI HAL instance */
@@ -56,14 +56,14 @@ struct pconf_spi {
 };
 
 /**
-* @brief external interrupt interface
+* @brief External interrupt interface
 */
 struct pconf_exti {
 	struct pconf_pin pin;		/*!< pin used for interrupt */
 };
 
 /**
-* @brief timer interface
+* @brief Timer interface
 */
 struct pconf_tim {
 	TIM_TypeDef *inst;		/*!< timer HAL instance */
@@ -150,7 +150,7 @@ struct pconf_uart {
 };
 
 /**
-* @brief board device interface
+* @brief Board device interface
 */
 struct pconf_iface {
 	/**
@@ -180,7 +180,7 @@ struct pconf_iface {
 };
 
 /**
-* @brief debug connection device
+* @brief Debug connection device
 */
 struct pconf_debug {
 	struct pconf_iface iface;	/*!< used interface */
@@ -202,7 +202,7 @@ struct pconf_imu {
 };
 
 /**
-* @brief barometer device
+* @brief Barometer device
 */
 struct pconf_bar {
 	/**
@@ -218,7 +218,7 @@ struct pconf_bar {
 };
 
 /**
-* @brief magmetometer device
+* @brief Magmetometer device
 */
 struct pconf_mag {
 	/**
@@ -233,7 +233,7 @@ struct pconf_mag {
 };
 
 /**
-* @brief flash device
+* @brief Flash device
 */
 struct pconf_flash {
 	/**
@@ -324,14 +324,14 @@ struct pconf_pwm {
 };
 
 /**
-* @brief battery sensor
+* @brief Battery sensor
 */
 struct pconf_battery {
 	ADC_TypeDef *adc;	/*!< ADC used for battery sensor */
 };
 
 /**
-* @brief current sensor
+* @brief Current sensor
 */
 struct pconf_current {
 	ADC_TypeDef *adc;	/*!< ADC used for current sensor */

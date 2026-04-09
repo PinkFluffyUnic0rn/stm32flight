@@ -41,17 +41,17 @@ struct timev {
 /**
 * @brief Initilize periodic event's context
 *
-* @param ev periodic event's context.
-* @param freq periodic event's frequency in Hz (calls per second).
-* @param cb callback that is called by this event.
+* @param ev periodic event's context
+* @param freq periodic event's frequency in Hz (calls per second)
+* @param cb callback that is called by this event
 * @return always 0
 */
 int inittimev(struct timev *ev, int phase, int freq, int (*cb)(int));
 
 /**
-* @brief Update periodic event's frequency
-* @param ev periodic event's context.
-* @param freq periodic event's frequency in Hz (calls per second).
+* @brief Update periodic event's frequency.
+* @param ev periodic event's context
+* @param freq periodic event's frequency in Hz (calls per second)
 * @return always 0
 */
 int modifytimev(struct timev *ev, int freq);
@@ -59,7 +59,7 @@ int modifytimev(struct timev *ev, int freq);
 /**
 * @brief reset periodic event's counter. Used after every
 	event's callback call.
-* @param ev periodic event's context.
+* @param ev periodic event's context
 * @return always 0
 */
 int resettimev(struct timev *ev);
@@ -67,7 +67,7 @@ int resettimev(struct timev *ev);
 /**
 * @brief run periodic event's callback
 	and reset periodic event's counter.
-* @param ev periodic event's context.
+* @param ev periodic event's context
 * @return always 0
 */
 int runtimev(struct timev *ev);

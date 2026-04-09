@@ -86,7 +86,7 @@ int hmc_init(struct hmc_device *dev)
 	return 0;
 }
 
-int hmc_initdevice(void *is, struct cdevice *dev)
+int hmc_initdevice(struct hmc_device *is, struct cdevice *dev)
 {
 	int r;
 

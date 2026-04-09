@@ -14,6 +14,8 @@
 
 #include "../../crc.h"
 
+#include "uavconf.h"
+
 /**
 * @brief UDP connection port
 */
@@ -75,13 +77,13 @@ struct loggetdata {
 /**
 * @brief Common function for sending data into debug connection,
 	which can be UART or UDP socket.
-*
 * @param fd debug connection file descriptor
 * @param buf a data buffer to send
 * @param len the data buffer length
 * @param flags flags to pass into sendto in case of UDP socket
 * @param addr UDP peer address, should be 0 in case of UART connection
 * @param addrlen UDP peer address len
+* @return write or sendto return code
 */
 static ssize_t sendtochan(int fd, const void *buf, size_t len,
 	int flags, const struct sockaddr *addr, socklen_t addrlen)
@@ -106,13 +108,13 @@ static ssize_t sendtochan(int fd, const void *buf, size_t len,
 /*
 * @brief Common function for sending data into debug connection,
 	which can be UART or UDP socket.
-*
 * @param fd debug connection file descriptor
 * @param buf a data buffer to send
 * @param len the data buffer length
 * @param flags flags to pass into recvfrom in case of UDP socket
 * @param addr UDP peer address, should be 0 in case of UART connection
 * @param addrlen UDP peer address len
+* @return write or sendto return code
 */
 static ssize_t recvfromchan(int fd, void *buf, size_t len,
 	int flags, struct sockaddr *addr, socklen_t *addrlen)
@@ -121,6 +123,212 @@ static ssize_t recvfromchan(int fd, void *buf, size_t len,
 		return read(fd, buf, len);
 
 	return recvfrom(fd, buf, len, flags, addr, addrlen);
+}
+
+/**
+* @brief Server-side part of log download command.
+* @param lsfd UDP socket for configuration connection
+* @param rsi remote IP address
+* @param cmd command was sent
+* @param outfunc function used to process command output
+* @param data userdata passed to sendcmd
+* @return always 0
+*/
+static int logget(int lsfd, const struct sockaddr_in *rsi,
+	const char *cmd, void (*outfunc) (void *, const char *),
+	void *data)
+{
+	struct loggetdata *d;
+	char *logbuf;
+	int i;
+
+	(void)(cmd);
+	(void)(outfunc);
+
+	d = data;
+
+	// read requested log records through UDP
+	d->sz = 0;
+	for (i = 0; i < d->reccnt; ++i) {
+		socklen_t rsis;
+		size_t offset;
+		char c;
+		char *s;
+		int rsz;
+
+		// reallocate the raw data buffer if it is to
+		// small to hold next packet
+		if (d->sz + d->bufoffset + BUFSZ >= d->maxsz) {
+			d->maxsz = (d->bufoffset + d->sz + BUFSZ + 1) * 2;
+			d->buf = realloc(d->buf, d->maxsz);
+		}
+
+		// add offset to raw data buffer. This offset needed
+		// because the raw data buffer can be used between many
+		// consecutive call.
+		logbuf = d->buf + d->bufoffset;
+
+		rsis = sizeof(rsi);
+		if ((rsz = recvfromchan(lsfd, logbuf + d->sz,
+				BUFSZ, 0, (struct sockaddr *) rsi,
+				&rsis)) < 0) {
+			break;
+		}
+
+		// temporally null terminate data got from UDP socket
+		c = logbuf[d->sz + rsz];
+		logbuf[d->sz + rsz] = '\0';
+
+		// search for end marker in in currently got packet
+		// with offset such that end of previous packet changed
+		// too. This is needed because end marker can be divided
+		// between two packets.
+		offset = (d->sz < strlen("-end"))
+			? d->sz : (d->sz - strlen("-end"));
+
+		s = strstr(logbuf + offset, "-end-");
+
+		// put back character that was
+		// repalced by null character
+		logbuf[d->sz + rsz] = c;
+
+		// if end marker found, stop receiving data and
+		// return indicating successful command execution.
+		if (s != NULL) {
+			// increase received raw data size
+			d->sz += rsz;
+			break;
+		}
+
+		// increase received raw data size
+		d->sz += rsz;
+	}
+
+	return 0;
+}
+
+/*
+* Parse, CRC check and store log record that has format:
+	[crc] [number] [vals]
+* @param logbuf raw data buffer
+* @param logbufoffset raw data buffer offset
+* @param records output array that stores log records sorted by
+	their number
+* @return always 0
+*/
+static int parserecords(char *logbuf, size_t logbufoffset, int *records)
+{
+	char *b, *e;
+
+	// start from raw data buffer with offset
+	e = b = logbuf + logbufoffset;
+
+	// all records separated by newline character,
+	// so iterate through raw data buffer by them
+	while ((e = strchr(e, '\n')) != NULL) {
+		char *num, *val;
+		uint16_t crc;
+		size_t n;
+		char *endptr;
+
+		// on every iteration assume that begin of a record is
+		// position after end of a previous record and end of
+		// this record is found newline character
+
+		// if record is less than 5 characters,
+		// skip it as corrupted
+		if (e - b < 7)
+			goto skip;
+
+		// calculate record's CRC
+		crc = crc16((uint8_t *) b + 6, e - b - 6 + 1);
+
+		// if it is not the last record, replace newline
+		// character with null character making separate
+		// string of the current record.
+		*e = '\0';
+
+		// make separate string of first 6 characters of the
+		// record. It contains record's CRC calculated on remote
+		// side, as decimal string
+		b[5] = '\0';
+
+		// set pointer to characters after
+		// CRC, it is record's number
+		num = b + 6;
+
+		// set pointer to first whitespace character after
+		// record's number, it is begin of record's values
+		val = strchr(num, ' ');
+
+		// if record's values are empty, skip it as corrupted
+		if (val == NULL)
+			goto skip;
+
+		// null terminate record's number and move record's
+		// values pointer making it point to start of record's
+		// values string
+		*(val++) = '\0';
+
+		// compare calculated CRC and CRC got from remote.
+		// If they don't match, skip record as corrupted.
+		if (strtol(b, &endptr, 10) != crc
+				|| *b == '\0' || *endptr != '\0')
+			goto skip;
+
+		// convert record number from string to integer
+		n = strtol(num, &endptr, 10);
+		if (*num == '\0' || *endptr != '\0')
+			goto skip;
+
+		// if record number is correct, store current record's
+		// values offset in raw data buffer to ordered records
+		// output array
+		records[n] = val - logbuf;
+
+skip:
+		// set begin of next record's string to first
+		// character after end of current record
+		b = ++e;
+	}
+
+	return 0;
+}
+
+/**
+* @brief Server-side part of log download command.
+* @param lsfd UDP socket for configuration connection
+* @param rsi remote IP address
+* @param cmd command to request log records
+* @param d log records request structure
+* @param logtotalsz total size of read log records
+* @param recs output array that stores log records sorted by
+	their number
+* @return always 0
+*/
+static int reqlogrecords(int lsfd, const struct sockaddr_in *rsi,
+	const char *cmd, struct loggetdata *d, size_t *logtotalsz,
+	int *recs)
+{
+	// set raw data buffer offset
+	// beyond it's end
+	d->bufoffset = *logtotalsz;
+
+	// send current batch command
+	sendcmd(lsfd, rsi, cmd, logget, NULL, d);
+
+	// null-terminate data got
+	// from UDP socket
+	d->buf[d->bufoffset + d->sz] = '\0';
+
+	// parse raw data, got after
+	// command sent earlier
+	parserecords(d->buf, d->bufoffset, recs);
+
+	// update total raw data buffer size
+	*logtotalsz += d->sz + 1;
+
+	return 0;
 }
 
 int inituart(int *lsfd, const char *path)
@@ -353,200 +561,6 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 	// command wasn't executed successfuly or response is corrupted
 	if (strncmp(cmd, out, strlen(cmd)) != 0)
 		return (-1);
-
-	return 0;
-}
-
-/**
-* @brief Server-side part of log download command.
-*
-* lsfd UDP socket for configuration connection.
-* rsi remote IP address.
-* cmd command was sent.
-* outfunc
-* data userdata passed to sendcmd.
-*/
-int logget(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
-	void (*outfunc) (void *, const char *), void *data)
-{
-	struct loggetdata *d;
-	char *logbuf;
-	int i;
-
-	(void)(cmd);
-	(void)(outfunc);
-
-	d = data;
-
-	// read requested log records through UDP
-	d->sz = 0;
-	for (i = 0; i < d->reccnt; ++i) {
-		socklen_t rsis;
-		size_t offset;
-		char c;
-		char *s;
-		int rsz;
-
-		// reallocate the raw data buffer if it is to
-		// small to hold next packet
-		if (d->sz + d->bufoffset + BUFSZ >= d->maxsz) {
-			d->maxsz = (d->bufoffset + d->sz + BUFSZ + 1) * 2;
-			d->buf = realloc(d->buf, d->maxsz);
-		}
-
-		// add offset to raw data buffer. This offset needed
-		// because the raw data buffer can be used between many
-		// consecutive call.
-		logbuf = d->buf + d->bufoffset;
-
-		rsis = sizeof(rsi);
-		if ((rsz = recvfromchan(lsfd, logbuf + d->sz,
-				BUFSZ, 0, (struct sockaddr *) rsi,
-				&rsis)) < 0) {
-			break;
-		}
-
-		// temporally null terminate data got from UDP socket
-		c = logbuf[d->sz + rsz];
-		logbuf[d->sz + rsz] = '\0';
-
-		// search for end marker in in currently got packet
-		// with offset such that end of previous packet changed
-		// too. This is needed because end marker can be divided
-		// between two packets.
-		offset = (d->sz < strlen("-end"))
-			? d->sz : (d->sz - strlen("-end"));
-
-		s = strstr(logbuf + offset, "-end-");
-
-		// put back character that was
-		// repalced by null character
-		logbuf[d->sz + rsz] = c;
-
-		// if end marker found, stop receiving data and
-		// return indicating successful command execution.
-		if (s != NULL) {
-			// increase received raw data size
-			d->sz += rsz;
-			break;
-		}
-
-		// increase received raw data size
-		d->sz += rsz;
-	}
-
-	return 0;
-}
-
-/*
-* Parse, CRC check and store log record that has format:
-	[crc] [number] [vals]
-*
-* @param logbuf raw data buffer
-* @param logbufoffset raw data buffer offset
-* @param records output array that stores log records sorted by
-	their number
-*/
-int parserecords(char *logbuf, size_t logbufoffset, int *records)
-{
-	char *b, *e;
-
-	// start from raw data buffer with offset
-	e = b = logbuf + logbufoffset;
-
-	// all records separated by newline character,
-	// so iterate through raw data buffer by them
-	while ((e = strchr(e, '\n')) != NULL) {
-		char *num, *val;
-		uint16_t crc;
-		size_t n;
-		char *endptr;
-
-		// on every iteration assume that begin of a record is
-		// position after end of a previous record and end of
-		// this record is found newline character
-
-		// if record is less than 5 characters,
-		// skip it as corrupted
-		if (e - b < 7)
-			goto skip;
-
-		// calculate record's CRC
-		crc = crc16((uint8_t *) b + 6, e - b - 6 + 1);
-
-		// if it is not the last record, replace newline
-		// character with null character making separate
-		// string of the current record.
-		*e = '\0';
-
-		// make separate string of first 6 characters of the
-		// record. It contains record's CRC calculated on remote
-		// side, as decimal string
-		b[5] = '\0';
-
-		// set pointer to characters after
-		// CRC, it is record's number
-		num = b + 6;
-
-		// set pointer to first whitespace character after
-		// record's number, it is begin of record's values
-		val = strchr(num, ' ');
-
-		// if record's values are empty, skip it as corrupted
-		if (val == NULL)
-			goto skip;
-
-		// null terminate record's number and move record's
-		// values pointer making it point to start of record's
-		// values string
-		*(val++) = '\0';
-
-		// compare calculated CRC and CRC got from remote.
-		// If they don't match, skip record as corrupted.
-		if (strtol(b, &endptr, 10) != crc
-				|| *b == '\0' || *endptr != '\0')
-			goto skip;
-
-		// convert record number from string to integer
-		n = strtol(num, &endptr, 10);
-		if (*num == '\0' || *endptr != '\0')
-			goto skip;
-
-		// if record number is correct, store current record's
-		// values offset in raw data buffer to ordered records
-		// output array
-		records[n] = val - logbuf;
-
-skip:
-		// set begin of next record's string to first
-		// character after end of current record
-		b = ++e;
-	}
-
-	return 0;
-}
-
-int reqlogrecords(int lsfd, const struct sockaddr_in *rsi,
-	const char *cmd, struct loggetdata *d, size_t *logtotalsz,
-	int *recs)
-{
-	// set raw data buffer offset
-	// beyond it's end
-	d->bufoffset = *logtotalsz;
-
-	// send current batch command
-	sendcmd(lsfd, rsi, cmd, logget, NULL, d);
-
-	// null-terminate data got
-	// from UDP socket
-	d->buf[d->bufoffset + d->sz] = '\0';
-
-	// parse raw data, got after
-	// command sent earlier
-	parserecords(d->buf, d->bufoffset, recs);
-
-	// update total raw data buffer size
-	*logtotalsz += d->sz + 1;
 
 	return 0;
 }

@@ -9,27 +9,27 @@
 #include "log.h"
 
 /**
-* @brief is debug uart interactive
+* @brief Is debug uart interactive
 */
 #define INTERACTIVE_UART 0
 
 /**
-* @brief is event profiler enabled
+* @brief Is event profiler enabled
 */
 #define PROFILER_ENABLED 1
 
 /**
-* @brief periodic event timer ticks per second
+* @brief Periodic event timer ticks per second
 */
 #define TICKSPERSEC 1000000
 
 /**
-* @brief maximum length for info packet sent back to operator
+* @brief Maximum length for info packet sent back to operator
 */
 #define INFOLEN 512
 
 /**
-* @brief maximum length for control command
+* @brief Maximum length for control command
 */
 #define CMDSIZE 64
 
@@ -37,6 +37,67 @@
 * @brief MCU flash address where quadcopter settings is stored
 */
 #define USER_FLASH 0x080e0000
+
+/**
+* @defgroup EVENTFREQUENCIES
+* @brief Periodic events frequencies
+* @{
+*/
+
+#ifdef STM32F4xx
+#define PID_FREQ 4000		/*!< PID event frequency */
+#elif STM32H7xx
+#define PID_FREQ 8000		/*!< PID event frequency */
+#endif
+
+#define CHECK_FREQ 1		/*!< connection check event frequency */
+#define DPS_FREQ 100		/*!< barometer update event frequency */
+#define QMC_FREQ 100		/*!< magnetometer update event frequency */
+#define TELE_FREQ 100		/*!< telemetry send event frequency */
+#define POWER_FREQ 100		/*!< battery power update event frequency */
+#define AUTOPILOT_FREQ 50	/*!< autopilot update event frequency */
+/**
+* @}
+*/
+
+/**
+* @brief Timeout in seconds before quadcopter disarm
+	when got no data from ERLS receiver
+*/
+#define ELRS_TIMEOUT 2
+
+/**
+* @brief Time required to register button push,
+	used for buttons and switches that controls
+	time consuming functions
+*/
+#define ELRS_PUSHTIMEOUT 0.1
+
+/**
+* @defgroup ERLSCHANNELS
+* @brief eRLS channels mapping
+* @{
+*/
+#define ERLS_CH_ROLL		0	/*!< roll channel */
+#define ERLS_CH_PITCH		1	/*!< pitch channel */
+#define ERLS_CH_THRUST		2	/*!< throttle channel */
+#define ERLS_CH_YAW		3	/*!< yaw channel */
+#define ERLS_CH_YAWMODE		4	/*!< yaw mode channel */
+#define ERLS_CH_ATTMODE		5	/*!< attitude mode channel */
+#define ERLS_CH_THRMODE		6	/*!< altitude mode channel */
+#define ERLS_CH_ONOFF		7	/*!< on/off channel */
+#define ERLS_CH_ALTCALIB	8	/*!< recalibration channel */
+#define ERLS_CH_HOVER		10	/*!< hover mode channel */
+#define ERLS_CH_AUTOPILOT	11	/*!< autopilot mode channel */
+#define ERLS_CH_SETSLOT		15	/*!< settings slot channel */
+/**
+* @}
+*/
+
+/**
+* @brief Maximum autopilot track points
+*/
+#define MAX_POINT_COUNT 16
 
 /**
 * @defgroup DEF default settings values
@@ -59,7 +120,7 @@
 */
 
 /**
-* @brief quadcopter setting's slot
+* @brief Quadcopter setting's slot
 */
 #define USER_SETSLOTS (0x80 / sizeof(struct settings))
 
@@ -83,7 +144,7 @@
 */
 
 /**
-* @brief settings storage structure
+* @brief Settings storage structure
 */
 struct __attribute__((aligned(32))) settings
 {
@@ -167,13 +228,13 @@ struct __attribute__((aligned(32))) settings
 };
 
 /**
-* @brief settings
+* @brief Settings
 */
 extern struct settings St;
 
 /**
-* @brief write quadcopter settings into internal MCU flash.
-* @param slot offset in settings array in flash.
+* @brief Write quadcopter settings into internal MCU flash.
+* @param slot offset in settings array in flash
 * @return always 0
 */
 int writesettings(int slot);

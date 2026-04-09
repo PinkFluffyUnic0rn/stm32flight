@@ -10,7 +10,6 @@
 
 /**
 * @brief Init configuration connection sockets.
-
 * @param lsfd UART file descriptor for configuration connection
 * @param rsi UART device file path
 * @return always 0
@@ -19,7 +18,6 @@ int inituart(int *lsfd, const char *path);
 
 /**
 * Init configuration connection sockets.
-*
 * @param lsfd UDP socket for configuration connection
 * @param rsi UAV's ESP32 chip IP address
 * @return always 0
@@ -29,7 +27,6 @@ int initsocks(int *lsfd, struct sockaddr_in *rsi);
 /**
 * @brief Server-side part of configuration command got from UAV
 	configuration file passed to this program as argument.
-*
 * @param lsfd UDP socket for configuration connection
 * @param rsi remote IP address, or NULL, if using UART
 * @param cmd command was sent
@@ -43,7 +40,6 @@ int infofunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 /**
 * @brief Server-side part of configuration command got from UAV
 	configuration file passed to this program as argument.
-*
 * @param lsfd UDP socket for configuration connection
 * @param rsi remote IP address, or NULL, if using UART
 * @param cmd command was sent
@@ -57,7 +53,6 @@ int getfunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 /**
 * @brief Server-side part of configuration command got from UAV
 	configuration file passed to this program as argument.
-*
 * @param lsfd UDP socket for configuration connection
 * @param rsi remote IP address, or NULL, if using UART
 * @param cmd command was sent
@@ -70,12 +65,12 @@ int conffunc(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 
 /**
 * @brief Send command into configuration connection.
-*
 * @param lsfd UDP socket for configuration connection
 * @param rsi remote IP address, or NULL, if using UART
 * @param cmd command to send
 * @param serverfunc function that needs to be called on server-side
 	after command was sent
+* @param outfunc function used to process command output
 * @param data userdata passed to serverfunc as it's fourth argument
 * @return always 0
 */
@@ -86,7 +81,6 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 
 /**
 * @brief Download whole log from UDP socket.
-*
 * @param lsfd file for configuration connection
 * @param rsi remote IP address, or NULL, if using UART
 * @param loadfrom starting log record
@@ -105,7 +99,6 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 /**
 * @brief Check if new pending on configuration connection
 * file and return it if it does.
-*
 * @param lsfd file for configuration connection
 * @param rsi remote IP address, or NULL, if using UART
 * @param output buffer, should be as least BUFSZ size

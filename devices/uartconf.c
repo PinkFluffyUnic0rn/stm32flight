@@ -119,9 +119,10 @@ int uart_configure(void *d, const char *cmd, ...)
 	return 0;
 }
 
-int uart_initdevice(void *is, struct cdevice *dev)
+int uart_initdevice(struct uart_device *is, struct cdevice *dev)
 {
-	memmove(uart_devs + uart_devcount, is, sizeof(struct uart_device));
+	memmove(uart_devs + uart_devcount, is,
+		sizeof(struct uart_device));
 
 	sprintf(dev->name, "%s_%d", "uart", uart_devcount);
 

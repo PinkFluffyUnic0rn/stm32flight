@@ -7,23 +7,33 @@
 #include "device.h"
 #include "crc.h"
 
-// debug command handler structure
+/**
+* @brief Configuration command handler structure
+*/
 struct command {
 	const char *name;
 	int (*func)(const struct cdevice*, const char **, char *);
 };
 
-// Debug commands handlers
+/**
+* @brief Configuration commands handlers
+*/
 static struct command commtable[MAX_COMMANDS];
+
+/**
+* @brief Configuration commands handlers count
+*/
 static size_t commcount;
 
-// Parse configureation command got from debug wi-fi connection
-// by just splitting it into tokens by spaces. Last token is
-// the terminating token and always is an empty string.
-//
-// toks -- result array of command tokens (it's a paring result).
-// maxtoks -- maximum number of tokens posible.
-// data -- command to be parsed.
+/**
+* @brief Parse configureation command got from debug wi-fi connection
+	by just splitting it into tokens by spaces. Last token is
+	the terminating token and always is an empty string.
+* @param toks result array of command tokens (it's a paring result)
+* @param maxtoks maximum number of tokens posible
+* @param data command to be parsed
+* @return tokens count
+*/
 static int parsecommand(char **toks, int maxtoks, char *data)
 {
 	int i;

@@ -439,7 +439,7 @@ int dshot_init(struct dshot_device *dev)
 	return 0;
 }
 
-int dshot_initdevice(void *is, struct cdevice *dev)
+int dshot_initdevice(struct dshot_device *is, struct cdevice *dev)
 {
 	int r;
 

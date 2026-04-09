@@ -71,12 +71,11 @@ struct dshot_data {
 
 /**
 * @brief initialize DShot PWM device.
-*
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
 * @return -1 in case of error, 0 otherwise
 */
-int dshot_initdevice(void *is, struct cdevice *dev);
+int dshot_initdevice(struct dshot_device *is, struct cdevice *dev);
 
 #endif

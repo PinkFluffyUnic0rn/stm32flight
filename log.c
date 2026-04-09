@@ -8,9 +8,24 @@
 
 #include "log.h"
 
+/**
+* @brief Current position in log write buffer
+*/
 static int logbufpos = 0;
+
+/**
+* @brief Current write address position at flash device
+*/
 static int logflashpos = 0;
+
+/**
+* @brief Current log size
+*/
 static size_t logsize = 0;
+
+/**
+* @brief Log write buffer
+*/
 static float logbuf[LOG_BUFSIZE / sizeof(float)];
 
 const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {

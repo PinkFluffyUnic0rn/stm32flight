@@ -147,7 +147,7 @@ int dps_init(struct dps_device *dev)
 	return 0;
 }
 
-int dps_initdevice(void *is, struct cdevice *dev)
+int dps_initdevice(struct dps_device *is, struct cdevice *dev)
 {
 	int r;
 

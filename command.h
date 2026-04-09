@@ -9,12 +9,12 @@
 #include "device.h"
 
 /**
-* @brief debug commands maximum count
+* @brief Debug commands maximum count
 */
 #define MAX_COMMANDS 32
 
 /**
-* @brief debug commands maximum token count
+* @brief Debug commands maximum token count
 */
 #define MAX_CMDTOKS 12
 

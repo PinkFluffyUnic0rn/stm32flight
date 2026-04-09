@@ -212,7 +212,7 @@ int irc_init(struct irc_device *dev)
 	return 0;
 }
 
-int irc_initdevice(void *is, struct cdevice *dev)
+int irc_initdevice(struct irc_device *is, struct cdevice *dev)
 {
 	int r;
 

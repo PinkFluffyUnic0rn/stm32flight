@@ -104,7 +104,7 @@ int qmc_init(struct qmc_device *dev)
 	return 0;
 }
 
-int qmc_initdevice(void *is, struct cdevice *dev)
+int qmc_initdevice(struct qmc_device *is, struct cdevice *dev)
 {
 	int r;
 

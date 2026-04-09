@@ -578,7 +578,7 @@ int m10_init(struct m10_device *m10)
 	return 0;
 }
 
-int m10_initdevice(void *is, struct cdevice *dev)
+int m10_initdevice(struct m10_device *is, struct cdevice *dev)
 {
 	int r; 
 

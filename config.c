@@ -45,21 +45,26 @@ struct settingnode
 	int type;				/*!< node type */
 	union {
 		struct settingnode **child;	/*!< node children list
-						in case if this node is
-						non-terminal */
+							in case if this
+							node is
+							non-terminal */
 		float *f;			/*!< setting value
-						storage in case if this
-						node is float setting */
+							storage in case
+							if this node is
+							float setting */
 		int *i;				/*!< setting value
-						storage in case if this
-						node is int setting */
+							storage in case
+							if this node is
+							int setting */
 		struct {
 			int *m;			/*!< value storage */
 			const char **k;		/*!< map keys list */
 		} m;				/*!< setting value
-						storage and map keys
-						list in case if this
-						node is map setting */
+							storage and map
+							keys list in
+							case if this
+							node is map
+							setting */
 	};
 };
 

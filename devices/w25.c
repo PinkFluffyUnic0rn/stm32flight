@@ -316,7 +316,7 @@ int w25_ioctl(void *d, int req, ...)
 	return 0;
 }
 
-int w25_initdevice(void *is, struct bdevice *dev)
+int w25_initdevice(struct w25_device *is, struct bdevice *dev)
 {
 	int r;
 

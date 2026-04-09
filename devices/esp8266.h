@@ -44,12 +44,11 @@ struct esp_device {
 
 /**
 * @brief initialize ESP8266/ESP8285 device.
-*
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
 * @return -1 in case of error, 0 otherwise
 */
-int esp_initdevice(void *is, struct cdevice *dev);
+int esp_initdevice(struct esp_device *is, struct cdevice *dev);
 
 #endif

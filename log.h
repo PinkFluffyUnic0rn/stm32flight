@@ -10,22 +10,22 @@
 #include "w25.h"
 
 /**
-* @brief log records buffer size
+* @brief Log records buffer size
 */
 #define LOG_BUFSIZE W25_PAGESIZE
 
 /**
-* @brief log maximum frequency
+* @brief Log maximum frequency
 */
 #define LOG_MAXFREQ 8000
 
 /**
-* @brief log record size
+* @brief Log record size
 */
 #define LOG_MAXRECSIZE	32
 
 /**
-* @brief log value id's count
+* @brief Log value id's count
 */
 #define LOG_FIELDSTRSIZE 42
 
@@ -82,12 +82,12 @@ enum LOG_FIELD {
 */
 
 /**
-* @brief log records per buffer
+* @brief Log records per buffer
 */
 #define LOG_RECSPERBUF (LOG_BUFSIZE / (sizeof(float) * St.log.recsize))
 
 /**
-* @brief log values names
+* @brief Log values names
 */
 extern const char *logfieldmap[LOG_FIELDSTRSIZE + 1];
 
@@ -101,7 +101,6 @@ void writelog(int pos, float val);
 
 /**
 * @brief Print all log values into character device.
-*
 * @param d character device to write log values
 * @param buf buffer to store temporary data, should be INFOLEN size
 * @param from record to start from
@@ -113,19 +112,20 @@ int printlog(const struct cdevice *d, char *buf,
 
 /**
 * @brief Update log frame. If buffer isn't full, just move buffer
-* pointer, otherwise save buffer content into flash and set buffer
-* pointer to 0.
+	pointer, otherwise save buffer content into flash and set buffer
+	pointer to 0
 * @return always 0
 */
 int updatelog();
 
 /**
-* Set log size and start or stop logging.
+* @brief Set log size and start or stop logging.
 * @param size log size in records. If size is greater than 0 logging
-* will be started or restarted, if size is 0, logging will be stopped
+	will be started or restarted, if size is 0, logging 
+	will be stopped
 * @param d character device to print operation status info
 * @param s buffer of INFOLEN size to store temporary inforation when
-* 	writing to device d.
+ 	writing to device d
 * @return -1 on error, 0 otherwise
 */
 int setlog(int size, const struct cdevice *d, char *s);

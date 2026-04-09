@@ -76,12 +76,11 @@ struct msp_osd {
 
 /**
 * @brief initialize MSP VTX device.
-*
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
 * @return -1 in case of error, 0 otherwise
 */
-int msp_initdevice(void *is, struct cdevice *dev);
+int msp_initdevice(struct msp_device *is, struct cdevice *dev);
 
 #endif

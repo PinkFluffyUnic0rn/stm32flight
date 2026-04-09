@@ -22,64 +22,6 @@
 #include "msp.h"
 
 /**
-* @defgroup EVENTFREQUENCIES
-* @brief Periodic events frequencies
-* @{
-*/
-
-#ifdef STM32F4xx
-#define PID_FREQ 4000		/*!< PID event frequency */
-#elif STM32H7xx
-#define PID_FREQ 8000		/*!< PID event frequency */
-#endif
-
-#define CHECK_FREQ 1		/*!< connection check event frequency */
-#define DPS_FREQ 100		/*!< barometer update event frequency */
-#define QMC_FREQ 100		/*!< magnetometer update event frequency */
-#define TELE_FREQ 100		/*!< telemetry send event frequency */
-#define POWER_FREQ 100		/*!< battery power update event frequency */
-#define AUTOPILOT_FREQ 50	/*!< autopilot update event frequency */
-/**
-* @}
-*/
-
-/**
-* @brief timeout in seconds before quadcopter disarm
-	when got no data from ERLS receiver
-*/
-#define ELRS_TIMEOUT 2
-
-/**
-* @brief time required to register button push,
-	used for buttons and switches that controls
-	time consuming functions
-*/
-#define ELRS_PUSHTIMEOUT 0.1
-
-/**
-* @defgroup ERLSCHANNELS
-* @brief eRLS channels mapping
-* @{
-*/
-#define ERLS_CH_ROLL		0	/*!< roll channel */
-#define ERLS_CH_PITCH		1	/*!< pitch channel */
-#define ERLS_CH_THRUST		2	/*!< throttle channel */
-#define ERLS_CH_YAW		3	/*!< yaw channel */
-#define ERLS_CH_YAWMODE		4	/*!< yaw mode channel */
-#define ERLS_CH_ATTMODE		5	/*!< attitude mode channel */
-#define ERLS_CH_THRMODE		6	/*!< altitude mode channel */
-#define ERLS_CH_ONOFF		7	/*!< on/off channel */
-#define ERLS_CH_ALTCALIB	8	/*!< recalibration channel */
-#define ERLS_CH_HOVER		10	/*!< hover mode channel */
-#define ERLS_CH_AUTOPILOT	11	/*!< autopilot mode channel */
-#define ERLS_CH_SETSLOT		15	/*!< settings slot channel */
-/**
-* @}
-*/
-
-#define MAX_POINT_COUNT 16
-
-/**
 * @defgroup TIMEREVENTIDS
 * @brief Timer events IDs
 */
@@ -128,7 +70,7 @@ enum LPF_ID {
 
 /**
 * @defgroup CMPLIDS
-* @brief complimentary filters IDs
+* @brief Complimentary filters IDs
 */
 enum CMPL_ID {
 	CMPL_PITCH 	= 0,	/*!< pitch low-pass filter */
@@ -348,7 +290,7 @@ extern float Alt0;	/*!< reference altitude */
 extern float Goffset;	/*!< free fall acceleration (g) value offset */
 
 /**
-* @brief autopilot track points
+* @brief Autopilot track points
 */
 extern struct trackpoint Points[MAX_POINT_COUNT];
 extern int Pointscount;		/*!< autopilot track points count */
@@ -370,7 +312,7 @@ extern int Loopscount; /*!< stabilization loops performed in last second */
 extern int Elrstimeout;
 
 /**
-* @brief emergency disarm triggered, further
+* @brief Emergency disarm triggered, further
 	arming is possible only after reboot
 */
 extern int Emergencydisarm;

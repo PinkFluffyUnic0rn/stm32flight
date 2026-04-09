@@ -337,7 +337,7 @@ int mpu_init(struct mpu_device *dev)
 	return 0;
 }
 
-int mpu_initdevice(void *is, struct cdevice *dev)
+int mpu_initdevice(struct mpu_device *is, struct cdevice *dev)
 {
 	int r;
 

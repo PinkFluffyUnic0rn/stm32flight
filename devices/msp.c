@@ -620,7 +620,7 @@ int msp_init(struct msp_device *msp)
 	return 0;
 }
 
-int msp_initdevice(void *is, struct cdevice *dev)
+int msp_initdevice(struct msp_device *is, struct cdevice *dev)
 {
 	int r; 
 

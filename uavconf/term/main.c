@@ -13,20 +13,28 @@
 
 #include "../api/uavconf.h"
 
-// log size in records
+/**
+* Log size in records
+*/
 #define LOGSIZE (1024 * 64)
 
-// maximum UAV command size
+/**
+* Maximum UAV command size
+*/
 #define CMDMAXSZ 60
 
-// socket send/receive buffer size
+/**
+* Socket send/receive buffer size
+*/
 #define BUFSZ 1024
 
-// Handle command got from terminal.
-//
-// event -- key press event.
-// lsfd -- UDP socket for configuration connection.
-// rsi -- quadcopter's esp8285 IP address.
+/**
+* @brief Handle command got from terminal.
+* @param event key press event
+* @param lsfd UDP socket for configuration connection
+* @param rsi quadcopter's esp8285 IP address
+* @return 1, if exit command was read, 0 otherwise
+*/
 int handlecmd(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 {
 	char buf[CMDMAXSZ];
@@ -80,7 +88,12 @@ int handlecmd(const char *cmd, int lsfd, const struct sockaddr_in *rsi)
 	return 0;
 }
 
-// Entry point.
+/**
+* @brief Entry point.
+* @param argc command line agruments count
+* @param argv command line arguments 
+* return always 0
+*/
 int main(int argc, char *argv[])
 {
 	struct sockaddr_in rsi;

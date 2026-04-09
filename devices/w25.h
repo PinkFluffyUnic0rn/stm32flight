@@ -58,12 +58,11 @@ struct w25_device {
 
 /**
 * @brief initialize W25Q device.
-*
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
 * @return -1 in case of error, 0 otherwise
 */
-int w25_initdevice(void *is, struct bdevice *dev);
+int w25_initdevice(struct w25_device *is, struct bdevice *dev);
 
 #endif

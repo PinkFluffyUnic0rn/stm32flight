@@ -206,7 +206,7 @@ static int esp_init(struct esp_device *dev)
 	return 0;
 }
 
-int esp_initdevice(void *is, struct cdevice *dev)
+int esp_initdevice(struct esp_device *is, struct cdevice *dev)
 {
 	int r;
 

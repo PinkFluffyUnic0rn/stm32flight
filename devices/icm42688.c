@@ -276,7 +276,7 @@ int icm_configure(void *d, const char *cmd, ...)
 	return 0;
 }
 
-int icm_initdevice(void *is, struct cdevice *dev)
+int icm_initdevice(struct icm_device *is, struct cdevice *dev)
 {
 	int r;
 

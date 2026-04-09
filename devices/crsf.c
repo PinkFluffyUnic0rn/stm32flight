@@ -296,11 +296,12 @@ int crsf_init(struct crsf_device *crsf)
 	return 0;
 }
 
-int crsf_initdevice(void *is, struct cdevice *dev)
+int crsf_initdevice(struct crsf_device *is, struct cdevice *dev)
 {
 	int r; 
 
-	memmove(crsf_devs + crsf_devcount, is, sizeof(struct crsf_device));
+	memmove(crsf_devs + crsf_devcount, is,
+		sizeof(struct crsf_device));
 
 	sprintf(dev->name, "%s_%d", "crsf", crsf_devcount);
 

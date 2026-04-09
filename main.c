@@ -96,6 +96,10 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		Dev[DEV_VTX].error(Dev[DEV_VTX].priv, huart);
 }
 
+/**
+* @brief Non-maskable interrupt handler.
+* @return none
+*/
 void NMI_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
@@ -105,6 +109,10 @@ void NMI_Handler(void)
 	while (1) {}
 }
 
+/**
+* @brief Hard-fault interrupt handler.
+* @return none
+*/
 void HardFault_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
@@ -114,6 +122,10 @@ void HardFault_Handler(void)
 	while (1) {}
 }
 
+/**
+* @brief Memory management error interrupt handler.
+* @return none
+*/
 void MemManage_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
@@ -123,6 +135,10 @@ void MemManage_Handler(void)
 	while (1) {}
 }
 
+/**
+* @brief Bus fault error interrupt handler.
+* @return none
+*/
 void BusFault_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
@@ -132,6 +148,10 @@ void BusFault_Handler(void)
 	while (1) {}
 }
 
+/**
+* @brief Usage fault error interrupt handler.
+* @return none
+*/
 void UsageFault_Handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
@@ -141,6 +161,10 @@ void UsageFault_Handler(void)
 	while (1) {}
 }
 
+/**
+* @brief HAL error handler.
+* @return none
+*/
 void error_handler(void)
 {
 	TIM1->CCR1 = TIM1->CCR2 = TIM1->CCR3 = TIM1->CCR4 = 0;
@@ -151,6 +175,12 @@ void error_handler(void)
 	while (1) {}
 }
 
+/**
+* @brief Get ADC sampled value.
+* @param hadc ADC handle
+* @param buf write buffer for DMA
+* @return samlped value
+*/
 float adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
 {
 	uint32_t v;
@@ -736,7 +766,9 @@ int telesend(int ms)
 	// set flight mode to "stopped"
 	if (Emergencydisarm)
 		strcpy((char *) Tele.mode, "stopped");
-	
+
+	// perform telemetry write step	on CRSF eLRS
+	// reciever to send it back to remote
 	Dev[DEV_CRSF].write(Dev[DEV_CRSF].priv, &Tele,
 		sizeof(struct crsf_tele));
 
@@ -766,6 +798,7 @@ int telesend(int ms)
 	Osd.pitch = Tele.pitch;
 	Osd.yaw = Tele.yaw;
 
+	// perform OSD draw step on VTX device
 	Dev[DEV_VTX].write(Dev[DEV_VTX].priv, &Osd,
 		sizeof(struct msp_osd));
 
@@ -1130,7 +1163,7 @@ int m10msg(struct m10_data *nd)
 
 /**
 * @brief Entry point
-* @return none
+* @return always 0
 */
 int main(void)
 {

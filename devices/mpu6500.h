@@ -92,12 +92,11 @@ struct mpu_device {
 
 /**
 * @brief initialize MPU-6500/6050 device.
-*
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
 * @return -1 in case of error, 0 otherwise
 */
-int mpu_initdevice(void *is, struct cdevice *dev);
+int mpu_initdevice(struct mpu_device *is, struct cdevice *dev);
 
 #endif

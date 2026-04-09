@@ -75,7 +75,6 @@ struct irc_device {
 
 /**
 * @brief power validation against power table.
-*
 * @param dev power value
 * @return 1 is power value is valid, 0 otherwise
 */
@@ -83,7 +82,6 @@ int irc_ispowervalid(int v);
 
 /**
 * @brief frequency validation against power table.
-*
 * @param dev frequency value
 * @return 1 is frequency value is valid, 0 otherwise
 */
@@ -91,11 +89,10 @@ int irc_isfreqvalid(int v);
 
 /**
 * @brief initialize IRC VTX device.
-*
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
 */
-int irc_initdevice(void *is, struct cdevice *dev);
+int irc_initdevice(struct irc_device *is, struct cdevice *dev);
 
 #endif

@@ -47,12 +47,11 @@ struct hp_device {
 
 /**
 * @brief initialize HP206C device.
-*
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
 * @return -1 in case of error, 0 otherwise
 */
-int hp_initdevice(void *is, struct cdevice *dev);
+int hp_initdevice(struct hp_device *is, struct cdevice *dev);
 
 #endif

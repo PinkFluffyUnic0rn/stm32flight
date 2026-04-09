@@ -54,7 +54,7 @@ extern UART_HandleTypeDef pconf_huarts[5];	/*!< uart handles */
 
 /**
 * @defgroup BOARDDEVICES
-* @brief board devices
+* @brief Board devices
 * @{
 */
 extern GPIO_TypeDef *armgpio;	/*!< arming indication led port */
@@ -81,7 +81,7 @@ extern ADC_HandleTypeDef *pconf_currenthadc;	/*!< ESC current
 */
 
 /**
-* @brief initialize STM32 peripherals and board devices
+* @brief Initialize STM32 peripherals and board devices
 */
 void pconf_init();
 

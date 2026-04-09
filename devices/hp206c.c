@@ -73,7 +73,7 @@ int hp_init(struct hp_device *dev)
 	return 0;
 }
 
-int hp_initdevice(void *is, struct cdevice *dev)
+int hp_initdevice(struct hp_device *is, struct cdevice *dev)
 {
 	int r;
 

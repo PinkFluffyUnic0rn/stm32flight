@@ -158,7 +158,7 @@ int bmp_init(struct bmp_device *dev,
 	return 0;
 }
 
-int bmp_initdevice(void *is, struct cdevice *dev)
+int bmp_initdevice(struct bmp_device *is, struct cdevice *dev)
 {
 	int r;
 

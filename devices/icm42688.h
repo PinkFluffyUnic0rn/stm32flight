@@ -167,12 +167,11 @@ struct icm_device {
 
 /**
 * @brief initialize ICM-42688-P device.
-*
 * @param is device initialization and private
 	data structure with set non-private fields
 * @param dev block device context to initialize
 * @return -1 in case of error, 0 otherwise
 */
-int icm_initdevice(void *is, struct cdevice *dev);
+int icm_initdevice(struct icm_device *is, struct cdevice *dev);
 
 #endif
