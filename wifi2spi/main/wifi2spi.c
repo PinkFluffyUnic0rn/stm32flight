@@ -43,7 +43,7 @@
 #define GOT_GPIO 2
 
 // UDP send/receive buffer size
-#define BUFSIZE	2048
+#define BUFSIZE	1024
 
 // debug UART buffer size
 #define UARTBUFSIZE 512
@@ -85,6 +85,8 @@ static volatile int Sending = 0;
 
 // UDP socket descriptor
 volatile int Sock;
+
+volatile int Sockoverflow = 0;
 
 // wifi connection event handler. Here it is just a dummy function
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
@@ -162,6 +164,9 @@ static void IRAM_ATTR spi_event_callback(int event, void* arg)
 {
 	uint32_t trans_done;
 	BaseType_t xHigherPriorityTaskWoken;
+
+	if (Sockoverflow)
+		return;
 
 	// set got data pin indicating to SPI master that
 	// esp8285 unable to receive new data now
@@ -241,6 +246,14 @@ static void IRAM_ATTR udp_server_task_w(void *pvParameters)
 		struct sockaddr_in saddr;
 		int len;
 
+		if (xStreamBufferBytesAvailable(Rxbuf)
+			> 3 * STREAMBUFSIZE / 4) {
+			Sockoverflow = 1;
+			gpio_set_level(GOT_GPIO, 1);
+		}
+		else
+			Sockoverflow = 0;
+
 		// get data from Rx stream buffer
 		len = xStreamBufferReceive(Rxbuf, buf, BUFSIZE,
 			portMAX_DELAY);
@@ -260,7 +273,7 @@ static void IRAM_ATTR udp_server_task_w(void *pvParameters)
 
 skip:
 		// wait for 5 ms
-		vTaskDelay(5 / portTICK_PERIOD_MS);
+		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
 
 	vTaskDelete(NULL);

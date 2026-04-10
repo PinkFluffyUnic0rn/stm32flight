@@ -149,7 +149,7 @@ int printlog(const struct cdevice *d, char *buf,
 			d->write(d->priv, buf, strlen(buf));
 		}
 	}
-
+	
 	return 1;
 }
 

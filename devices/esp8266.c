@@ -9,7 +9,7 @@
 #include "esp8266.h"
 
 #define ESP_TIMEOUT 1000
-#define ESP_SPITIMEOUTUS 10
+#define ESP_SPITIMEOUTUS 100
 #define ESP_SPIPACKSIZE 64
 #define ESP_PAYLOADSZ (ESP_SPIPACKSIZE - 4)
 #define ESP_FIFOSIZE 8
@@ -69,7 +69,7 @@ int esp_interrupt(void *dev, const void *p)
 	id = buf[0];
 	size = *((uint16_t *) (buf + 2));
 
-	if (size > (ESP_SPIPACKSIZE - 4) || id != 0xaa)
+	if (size >= (ESP_SPIPACKSIZE - 4) || id != 0xaa)
 		return 0;
 
 	memcpyv(fifo.cmd[fifo.top], buf + 4, size);
@@ -137,7 +137,7 @@ int esp_send(void *d, void *dt, size_t sz)
 			dev->busypin) == GPIO_PIN_SET
 			&& t / 1000 < ESP_SPITIMEOUTUS) {
 		udelay(1);
-		t += 100;
+		t += 1;
 	}
 
 	return 0;

@@ -69,6 +69,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (DEVITENABLED(Dev[DEV_UART].status))
 		Dev[DEV_UART].interrupt(Dev[DEV_UART].priv, huart);
 }
+
 /**
 * @brief SPI transmit callback. It calls interrupt handlers
 	from drivers for devices working through SPI.
@@ -251,6 +252,15 @@ float qmc_heading(float r, float p, float x, float y, float z)
 	return circf(atan2f(y, x) + St.adj.magdecl);
 }
 
+int imuupdate(int ms)
+{
+	// get accelerometer and gyroscope readings
+	Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &Imudata,
+		sizeof(struct icm_data));
+
+	return 0;
+}
+
 /**
 * @brief Stabilization loop. Callback for TEV_PID periodic event.
 	It is the place where is almost all work happening.
@@ -271,7 +281,7 @@ int stabilize(int ms)
 	float dt;
 	float alt;
 	float tiltcoef;
-		
+
 	// debug pin switching
 	HAL_GPIO_WritePin(debuggpio, debugpin,
 		!(HAL_GPIO_ReadPin(debuggpio, debugpin)));
@@ -294,10 +304,6 @@ int stabilize(int ms)
 	// toggle arming indication led
 	HAL_GPIO_WritePin(armgpio, armpin,
 		(En > 0.5) ? GPIO_PIN_SET : GPIO_PIN_RESET);
-
-	// get accelerometer and gyroscope readings
-	Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &Imudata,
-		sizeof(struct icm_data));
 
 	// apply accelerometer offsets
 	Imudata.afx += (Imudata.ft - 25.0) * St.adj.acctsc.x;
@@ -1165,16 +1171,71 @@ int m10msg(struct m10_data *nd)
 	return 0;
 }
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+	static int elrsus = 0;
+
+	char cmd[CMDSIZE];
+	struct crsf_data cd;
+	struct m10_data nd;
+	int c, i;
+
+	if (htim->Instance != pconf_schedhtim->Instance)
+		return;
+
+	if (!Init)
+		return;
+
+	c = TICKSPERSEC / PID_FREQ;
+
+	// update periodic events timers
+	for (i = 0; i < TEV_COUNT; ++i)
+		updatetimev(Evs + i, c);
+
+	// update ELRS timer
+	elrsus += c;
+
+	// check all periodic events context's and run callbacks
+	// if enough time passed. Reset their timers after.
+	for (i = 0; i < TEV_COUNT; ++i) {
+		if (checktimev(Evs + i))
+			runtimev(Evs + i);
+	}
+
+	// poll for configuration and telemetry commands
+	// from debug wifi connection
+	if (Dev[DEV_RF].read(Dev[DEV_RF].priv, &cmd,
+			CMDSIZE) >= 0) {
+		runcommand(Dev + DEV_RF, cmd);
+	}
+
+	// poll for configuration and telemtry commands
+	// from debug uart connection
+	if (Dev[DEV_UART].read(Dev[DEV_UART].priv, &cmd,
+			UART_CMDSIZE) >= 0) {
+		runcommand(Dev + DEV_UART, cmd);
+	}
+
+	// read the ELRS remote's packet
+	if (Dev[DEV_CRSF].read(Dev[DEV_CRSF].priv, &cd,
+			sizeof(struct crsf_data)) >= 0) {
+		crsfcmd(&cd, elrsus);
+		elrsus = 0;
+	}
+
+	// check the M10 messages
+	if (Dev[DEV_GNSS].read(Dev[DEV_GNSS].priv, &nd,
+			sizeof(struct m10_data)) >= 0) {
+		m10msg(&nd);
+	}
+}
+
 /**
 * @brief Entry point
 * @return always 0
 */
 int main(void)
 {
-	int elrsus;
-	int prevc;
-	int curc;
-
 	// init periphery
 	pconf_init(error_handler);
 	
@@ -1189,8 +1250,9 @@ int main(void)
 	setstabilize(1);
 
 	// initilize periodic events
-	inittimev(Evs + TEV_PID, 0, PID_FREQ, stabilize);
+	inittimev(Evs + TEV_IMU, 0, PID_FREQ, imuupdate);
 	inittimev(Evs + TEV_LOG, 0, St.log.freq,  logupdate);
+	inittimev(Evs + TEV_PID, 0, PID_FREQ, stabilize);
 	inittimev(Evs + TEV_CHECK,
 		1 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		CHECK_FREQ, checkconnection);
@@ -1222,81 +1284,12 @@ int main(void)
 	addcommand("get", getcmd);
 	addcommand("apply", applycmd);
 
-	// initialize ERLS timer. For now ERLS polling is not a periodic
-	// event and called as frequently as possible, so it needs this
-	// separate timer.
-	elrsus = 0;
-
-	// initialize scheduler time measurement
-	prevc = curc = 0;
-
 	__HAL_TIM_SET_COUNTER(pconf_schedhtim, 0);
 
+	Init = 1;
+
 	// main control loop
-	while (1) {
-		char cmd[CMDSIZE];
-		struct crsf_data cd;
-		struct m10_data nd;
-		int c, i;
-
-		c = curc - prevc;
-
-		// update periodic events timers
-		for (i = 0; i < TEV_COUNT; ++i)
-			updatetimev(Evs + i, c);
-
-		// update ELRS timer
-		elrsus += c;
-
-		// check all periodic events context's and run callbacks
-		// if enough time passed. Reset their timers after.
-		for (i = 0; i < TEV_COUNT; ++i) {
-			if (checktimev(Evs + i))
-				runtimev(Evs + i);
-		}
-
-		// poll for configuration and telemetry commands
-		// from debug wifi connection
-		if (Dev[DEV_RF].read(Dev[DEV_RF].priv, &cmd,
-			CMDSIZE) >= 0) {
-			runcommand(Dev + DEV_RF, cmd);
-		}
-
-		// poll for configuration and telemtry commands
-		// from debug uart connection
-		if (Dev[DEV_UART].read(Dev[DEV_UART].priv, &cmd,
-			UART_CMDSIZE) >= 0) {
-			runcommand(Dev + DEV_UART, cmd);
-		}
-
-		// read the ELRS remote's packet
-		if (Dev[DEV_CRSF].read(Dev[DEV_CRSF].priv, &cd,
-			sizeof(struct crsf_data)) >= 0) {
-			crsfcmd(&cd, elrsus);
-			elrsus = 0;
-		}
-
-		// check the M10 messages
-		if (Dev[DEV_GNSS].read(Dev[DEV_GNSS].priv, &nd,
-			sizeof(struct m10_data)) >= 0) {
-			m10msg(&nd);
-		}
-
-		// remember previous time measurement
-		prevc = curc;
-
-		// get microseconds passed in this iteration
-		curc = __HAL_TIM_GET_COUNTER(pconf_schedhtim);
-
-		// reset iteration time counter if more
-		// than half of it's period passed
-		if (curc > 0x7fff) {
-			__HAL_TIM_SET_COUNTER(pconf_schedhtim, 0);
-
-			prevc -= curc;
-			curc = 0;
-		}
-	}
+	while (1) { }
 
 	return 0;
 }

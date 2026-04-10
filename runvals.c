@@ -3,14 +3,17 @@
 
 #include "runvals.h"
 
+int Init = 0;
+
 struct timev Evs[TEV_COUNT];
 struct dsp_lpf Lpf[LPF_COUNT];
 struct dsp_compl Cmpl[CMPL_COUNT];
 struct dsp_pidblval Pid[PID_COUNT];
 
 const char *Evnames[TEV_COUNT] = {
-	"pid", "check", "dps", "qmc",
-	"log", "tele", "power", "autopilot"
+	"imu", "log", "pid", "check",
+	"baro", "mag", "tele", "power",
+	"autopilot"
 };
 
 struct qmc_data Qmcdata;

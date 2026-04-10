@@ -93,9 +93,9 @@ static int w25_waitwrite(struct w25_device *dev, int timeout)
 
 	us = 0;
 	do {
-		udelay(10);
+		udelay(1);
 		HAL_SPI_Receive(dev->hspi, rbuf, 1, 100);
-		us += 10;
+		us += 1;
 	} while ((rbuf[0] & 0x01) == 0x01 && us < timeout);
 
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
@@ -135,10 +135,12 @@ int w25_read(void *d, size_t addr, void *data, size_t sz)
 	sbuf[2] = (addr >> 8) & 0xff;
 	sbuf[3] = addr & 0xff;
 
+	__disable_irq();
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
 	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 100);
 	HAL_SPI_Receive(dev->hspi, data, sz, 100);
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
+	__enable_irq();
 
 	return 0;
 }

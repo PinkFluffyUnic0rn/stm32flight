@@ -31,6 +31,7 @@
 #define PCONF_UART2_IDX_IRQ 0
 #define PCONF_I2C1_IDX_IRQ 0
 #define PCONF_SPI1_IDX_IRQ 0
+#define PCONF_TIM8_IDX_IRQ 1
 
 #define PCONF_EXTI1_PIN_IRQ GPIO_PIN_1
 
@@ -428,19 +429,11 @@ const struct pconf_pwm pwmconf = {
 };
 
 const struct pconf_battery batconf = {
-	.adc = ADC1,
-	.pin = {
-		.inst = GPIOC,
-		.idx = GPIO_PIN_4
-	}
+	.adc = ADC1
 };
 
 const struct pconf_current curconf = {
-	.adc = ADC2,
-	.pin = {
-		.inst = GPIOC,
-		.idx = GPIO_PIN_5
-	}
+	.adc = ADC2
 };
 
 #endif

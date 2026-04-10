@@ -126,6 +126,23 @@ static int pconf_spi_irqn(const SPI_TypeDef *hspi)
 	return (-1);
 }
 
+static int pconf_timup_irqn(const TIM_TypeDef *htim)
+{
+	if (htim == TIM1)		return TIM1_UP_TIM10_IRQn;
+	else if (htim == TIM2)		return TIM2_IRQn;
+	else if (htim == TIM3)		return TIM3_IRQn;
+	else if (htim == TIM4)		return TIM4_IRQn;
+	else if (htim == TIM5)		return TIM5_IRQn;
+	else if (htim == TIM6)		return TIM6_DAC_IRQn;
+	else if (htim == TIM7)		return TIM7_IRQn;
+	else if (htim == TIM8)		return TIM8_UP_TIM13_IRQn;
+	else if (htim == TIM12)		return TIM8_BRK_TIM12_IRQn;
+	else if (htim == TIM13)		return TIM8_UP_TIM13_IRQn;
+	else if (htim == TIM14)		return TIM8_TRG_COM_TIM14_IRQn;
+
+	return (-1);
+}
+
 static int pconf_gpio_enable_clock(GPIO_TypeDef *inst)
 {
 	if (inst == GPIOA)		__HAL_RCC_GPIOA_CLK_ENABLE();
@@ -1156,7 +1173,20 @@ void pconf_mspdeinit_spi(SPI_HandleTypeDef* hspi)
 
 void pconf_mspinit_tim(TIM_HandleTypeDef *htim)
 {
+	const struct pconf_tim *tim;
+	int idx;
+
+	if ((idx = pconf_timidx(htim->Instance)) < 0)
+		return;
+
+	tim = tims + idx;
+
 	pconf_tim_enable_clock(htim->Instance);
+
+	if (tim->usage == PCONF_TIMUSAGE_SCHED) {
+		HAL_NVIC_SetPriority(pconf_timup_irqn(tim->inst), 2, 0);
+		HAL_NVIC_EnableIRQ(pconf_timup_irqn(tim->inst));
+	}
 }
 
 void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
@@ -1264,7 +1294,18 @@ void pconf_mspdeinit_timpwm(TIM_HandleTypeDef *htim)
 
 void tim_mspdeinit(TIM_HandleTypeDef *htim)
 {
+	const struct pconf_tim *tim;
+	int idx;
+
+	if ((idx = pconf_timidx(htim->Instance)) < 0)
+		return;
+
+	tim = tims + idx;
+
 	pconf_tim_disable_clock(htim->Instance);
+
+	if (tim->usage == PCONF_TIMUSAGE_SCHED)
+		HAL_NVIC_DisableIRQ(pconf_timup_irqn(tim->inst));
 }
 
 void pconf_init_clock(void)
@@ -1472,7 +1513,7 @@ static void pconf_init_tim_sched(int idx)
 	pconf_htims[idx].Instance = tims[idx].inst;
 	pconf_htims[idx].Init.Prescaler = (OCSFREQ / TICKSPERSEC) - 1;
 	pconf_htims[idx].Init.CounterMode = TIM_COUNTERMODE_UP;
-	pconf_htims[idx].Init.Period = 0xffff;
+	pconf_htims[idx].Init.Period = TICKSPERSEC / PID_FREQ - 1;
 	pconf_htims[idx].Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	pconf_htims[idx].Init.RepetitionCounter = 0;
 	pconf_htims[idx].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -2195,6 +2236,107 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
 	i2creceiving = 0;
 }
+
+#ifdef PCONF_TIM1_IDX_IRQ
+void TIM1_UP_TIM10_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM1_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM2_IDX_IRQ
+void TIM2_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM2_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM3_IDX_IRQ
+void TIM3_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM3_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM4_IDX_IRQ
+void TIM4_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM4_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM5_IDX_IRQ
+void TIM5_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM5_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM6_IDX_IRQ
+void TIM6_DAC_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM6_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM7_IDX_IRQ
+void TIM7_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM7_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM8_IDX_IRQ
+void TIM8_UP_TIM13_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM8_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM9_IDX_IRQ
+void TIM1_BRK_TIM9_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM9_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM10_IDX_IRQ
+void TIM1_UP_TIM10_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM10_IDX_IRQ);
+}
+#endif
+
+
+#ifdef PCONF_TIM11_IDX_IRQ
+void TIM1_TRG_COM_TIM11_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM11_IDX_IRQ);
+}
+#endif
+
+
+#ifdef PCONF_TIM12_IDX_IRQ
+void TIM8_BRK_TIM12_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM12_IDX_IRQ);
+}
+#endif
+
+
+#ifdef PCONF_TIM13_IDX_IRQ
+void TIM8_UP_TIM13_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM13_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_TIM14_IDX_IRQ
+void TIM8_TRG_COM_TIM14_IRQHandler(void)
+{
+	HAL_TIM_IRQHandler(pconf_htims + PCONF_TIM14_IDX_IRQ);
+}
+#endif
 
 #ifdef PCONF_UART2_IDX_IRQ
 void USART2_IRQHandler(void)

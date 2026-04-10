@@ -26,15 +26,16 @@
 * @brief Timer events IDs
 */
 enum TEV_ID { 
-	TEV_PID		= 0,	/*!< PID event ID */
-	TEV_CHECK	= 1,	/*!< connection check event ID */
-	TEV_DPS		= 2,	/*!< barometer update event ID */
-	TEV_QMC		= 3,	/*!< magnetometer update event ID */
-	TEV_LOG		= 4,	/*!< log update event ID */
-	TEV_TELE	= 5,	/*!< telemetry send event ID */
-	TEV_POWER	= 6,	/*!< battery power update event ID */
-	TEV_AUTOPILOT	= 7,	/*!< autopilot event ID */
-	TEV_COUNT	= 8	/*!< timer events count */
+	TEV_IMU		= 0,	/*!< log update event ID */
+	TEV_LOG		= 1,	/*!< log update event ID */
+	TEV_PID		= 2,	/*!< PID event ID */
+	TEV_CHECK	= 3,	/*!< connection check event ID */
+	TEV_DPS		= 4,	/*!< barometer update event ID */
+	TEV_QMC		= 5,	/*!< magnetometer update event ID */
+	TEV_TELE	= 6,	/*!< telemetry send event ID */
+	TEV_POWER	= 7,	/*!< battery power update event ID */
+	TEV_AUTOPILOT	= 8,	/*!< autopilot event ID */
+	TEV_COUNT	= 9	/*!< timer events count */
 };
 
 /**
@@ -217,6 +218,8 @@ struct trackpoint {
 
 	enum AUTOPILOT_TYPE type; /*!< point type */
 };
+
+extern int Init;
 
 /**
 * @brief Timer events

@@ -12,7 +12,7 @@
 /**
 * @brief Log records buffer size
 */
-#define LOG_BUFSIZE W25_PAGESIZE
+#define LOG_BUFSIZE (W25_PAGESIZE / 2)
 
 /**
 * @brief Log maximum frequency
