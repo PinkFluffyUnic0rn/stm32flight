@@ -62,7 +62,10 @@ int esp_interrupt(void *dev, const void *p)
 	buf[1] = 0x0;
 	
 	HAL_SPI_Transmit(d->hspi, buf, 2, 1000);
-	HAL_SPI_Receive(d->hspi, buf, ESP_SPIPACKSIZE, 1000);
+	if (HAL_SPI_ReceiveOVR(d->hspi, buf, ESP_SPIPACKSIZE, 100)
+			== HAL_ERROR) {
+		__HAL_SPI_CLEAR_OVRFLAG(d->hspi);
+	}
 
 	HAL_GPIO_WritePin(d->csgpio, d->cspin, GPIO_PIN_SET);
 

@@ -1394,7 +1394,7 @@ static void pconf_init_gpio(void)
 		HAL_GPIO_Init(extis[i].pin.inst, &GPIO_InitStruct);
 
 		HAL_NVIC_SetPriority(pconf_exti_irqn(extis[i].pin.idx),
-			0, 0);
+			2, 0);
 		HAL_NVIC_EnableIRQ(pconf_exti_irqn(extis[i].pin.idx));
 	}
 

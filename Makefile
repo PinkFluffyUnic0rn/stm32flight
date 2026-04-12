@@ -20,6 +20,8 @@ SOURCES=$(wildcard ./*.c) $(wildcard ./devices/*.c) \
 	$(wildcard ./$(DEVICE)/*.c)
 STARTUP=$(wildcard ./$(DEVICE)/*.s)
 OBJECTS=$(SOURCES:%.c=$(BUILDDIR)/%.o) $(STARTUP:%.s=$(BUILDDIR)/%.o)
+OBJECTSDBG=$(SOURCES:%.c=$(BUILDDIR)/%.o.dbg) \
+	$(STARTUP:%.s=$(BUILDDIR)/%.o.dbg)
 LDFLAGS=-mcpu=$(CPU) -T./$(DEVICE)/linker-script.ld \
 	--specs=nosys.specs -Wl,--gc-sections -static \
 	--specs=nano.specs -mfpu=$(FPU) -mfloat-abi=hard -mthumb \
@@ -46,13 +48,16 @@ all: F4FLIGHT
 F4FLIGHT: load
 H7FLIGHT: load
 
-load: $(BUILDDIR)/prog.elf
+load: $(BUILDDIR)/prog.elf $(BUILDDIR)/prog_dbg.elf
 	openocd -f interface/stlink.cfg -f target/$(OCDTARGET).cfg \
 		-c "program $(BUILDDIR)/prog.elf verify reset exit"
 
 .SECONDEXPANSION:
 $(BUILDDIR)/prog.elf: $$(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+
+$(BUILDDIR)/prog_dbg.elf: $$(OBJECTSDBG)
+	$(CC) $(LDFLAGS) -g3 $(OBJECTSDBG) -o $@
 
 $(BUILDDIR)/%.o: %.s
 	@mkdir -p $(@D)
@@ -61,6 +66,14 @@ $(BUILDDIR)/%.o: %.s
 $(BUILDDIR)/%.o: %.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILDDIR)/%.o.dbg: %.s
+	@mkdir -p $(@D)
+	$(CC) $(SFLAGS) -g3 $< -o $@
+
+$(BUILDDIR)/%.o.dbg: %.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) -g3 $< -o $@
 
 clean:
 	rm -r build
