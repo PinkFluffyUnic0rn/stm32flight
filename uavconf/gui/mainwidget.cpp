@@ -1039,8 +1039,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Altitude hold", "dsp",
-		{"hover throttle"},
-		{"adj althold hover"},
+		{"hover throttle", "coefficient a", "coefficient b", "coefficient c"},
+		{"adj althold hover", "adj althold coefa", "adj althold coefb", "adj althold coefc"},
 		cmdstree, true, this), 2, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,

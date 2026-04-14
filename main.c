@@ -281,6 +281,7 @@ int stabilize(int ms)
 	float dt;
 	float alt;
 	float tiltcoef;
+	float altth;
 
 	// debug pin switching
 	HAL_GPIO_WritePin(debuggpio, debugpin,
@@ -404,6 +405,14 @@ int stabilize(int ms)
 	// get last barometric altitude
 	alt = dsp_getlpf(Lpf + LPF_ALT);
 
+	// calculate altitude thrust compensation
+	altth = St.adj.althold.alttha * dsp_getlpf(Lpf + LPF_AVGTHRA)
+		+ St.adj.althold.altthb;
+	altth = (altth < 0.0) ? 0.0 : altth;
+
+	// compensate thrust for altitude
+	alt -= altth;	
+
 	// calculate climb rate from vertical acceleration and
 	// barometric altitude defference using complimentary filter
 	dsp_updatecompl(Cmpl + CMPL_CLIMBRATE,
@@ -426,7 +435,7 @@ int stabilize(int ms)
 	tiltcoef = cosf(-pitch) * cosf(-roll);
 
 	// get pitch corrected value of the hover throttle
-	ht = St.adj.hoverthrottle / tiltcoef;
+	ht = St.adj.althold.hoverthrottle / tiltcoef;
 
 	// if vertical acceleration is negative, most likely
 	// quadcopter is upside down, perform emergency disarm

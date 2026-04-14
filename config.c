@@ -489,7 +489,22 @@ static struct settingnode Sttree = {
 						&(struct settingnode) {
 							.token = "hover",
 							.type = NODETYPE_FLOAT,
-							.f = &(St.adj.hoverthrottle)
+							.f = &(St.adj.althold.hoverthrottle)
+						},
+						&(struct settingnode) {
+							.token = "coefa",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.althold.alttha)
+						},
+						&(struct settingnode) {
+							.token = "coefb",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.althold.altthb)
+						},
+						&(struct settingnode) {
+							.token = "coefc",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.althold.altthc)
 						},
 						NULL
 					}
@@ -710,6 +725,7 @@ int setstabilize(int init)
 
 	// init average thrust low-pass filter
 	dsp_setunity(Lpf + LPF_AVGTHR, init);
+	dsp_setlpf1t(Lpf + LPF_AVGTHRA, St.lpf.va, PID_FREQ, init);
 
 	// init low-pass fitlers for altitude and vertical acceleration
 	dsp_setunity(Lpf + LPF_BARTEMP, init);

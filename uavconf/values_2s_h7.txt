@@ -4,6 +4,9 @@ adj acc z 0
 adj acc xtscale 0
 adj acc ytscale 0
 adj acc ztscale 0.00058
+adj althold coefa 5.2
+adj althold coefb -3.7
+adj althold coefc 0
 adj althold hover 0.756
 adj pitch 0.01
 adj roll 0

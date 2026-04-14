@@ -1,29 +1,32 @@
-png("file.png", width = 10000, height = 10000);
-t = read.table("alt5.txt", header = FALSE, sep = " ");
+args = commandArgs(trailingOnly=TRUE);
 
-freq = 64
+
+png("file.png", width = 10000, height = 10000);
+t = read.table(args[1], header = FALSE, sep = " ");
+
+freq = 1000
 
 start = 0
 end = nrow(t)
 
-#start = 83 * freq;
-#end = 91 * freq;
+start = 13.0 * freq
+end = 15.0 * freq
 
-linepos = 2.0 * freq;
+linepos = 12.7 * freq;
 
-baralt = t[start:end, 3];
-alt = t[start:end, 4];
-climbrate = t[start:end, 2];
-ch0 = t[start:end, 5];
-va = t[start:end, 6];
-altdif = t[start:end, 7];
-climbcor = t[start:end, 8];
-thrustcor = t[start:end, 9];
+fa = t[start:end, 2];
+va = t[start:end, 3];
+baralt = t[start:end, 4];
+climbrate = t[start:end, 5];
+alt = t[start:end, 6];
+ch0 = t[start:end, 7];
+ch1 = t[start:end, 8];
+ch2 = t[start:end, 9];
 
 alpha = exp(-1.0 / freq / 0.25)
 
-va_p = 0;
-s = 0;
+va_p = va[1];
+s = va[1];
 for (i in 1:length(climbrate)) {
 	s = alpha * s + (1 - alpha) * va[i];
 	va_p[i] = s;
@@ -38,14 +41,16 @@ logplot <- function(title, values, yfrom, yto, line) {
 	axis(side = 2, lwd = 5, at=round(seq(yfrom, yto, (yto - yfrom) / 7), digits = 3), mgp = c(10, 10, 0), las=1)
 }
 
-par(mfrow = c(8, 1))
+#par(mfrow = c(8, 1))
+par(mfrow = c(7, 1))
 par(mar = c(20, 50, 0, 0), cex.axis=10, mgp = c(15, 15, 0), tck=-0.05)
 
-logplot("barometric altitude", baralt, min(baralt), max(baralt), linepos)
-logplot("calculated altitude", alt, min(baralt), max(baralt), linepos)
+logplot("forward acceleration", fa, -1, 1, linepos)
+logplot("climb acceleration", va_p, 0.9, 1.1, linepos)
 logplot("climb speed", climbrate, min(climbrate), max(climbrate), linepos)
-logplot("pitch control", ch0, -1.0, 1.0, linepos)
-logplot("climb acceleration", va_p, 0.8, 1.2, linepos)
-logplot("altitude difference", altdif, -2.0, 2.0, linepos)
-logplot("climb speed correction", climbcor, -0.3, 0.3, linepos)
-logplot("climb acceleration correction", thrustcor, 0.756 - 0.1, 0.756 + 0.1, linepos)
+#logplot("barometric altitude", baralt, min(baralt), max(baralt), linepos)
+logplot("barometric altitude", baralt, 11.2, 13.9, linepos)
+logplot("calculated altitude", alt, 11.2, 13.9, linepos)
+#logplot("channel 0", ch0, min(ch0), max(ch0), linepos)
+logplot("channel 1", ch1, min(ch1), max(ch1), linepos)
+logplot("channel 2", ch2, min(ch2), max(ch2), linepos)

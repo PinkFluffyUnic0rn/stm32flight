@@ -46,27 +46,29 @@ enum LPF_ID {
 	LPF_BAT		= 0,	/*!< battery voltage low-pass filter */
 	LPF_CUR		= 1,	/*!< battery voltage low-pass filter */
 	LPF_AVGTHR	= 2,	/*!< average motors thrust filter */
-	LPF_VAU		= 3,	/*!< vertical acceleration unity filter */
-	LPF_THR		= 4,	/*!< trust acceleration low-pass filter */
-	LPF_VAPT1	= 5,	/*!< vertical acceleration low-pass filter */
-	LPF_VAAVG	= 6,	/*!< vertical acceleration averaging filter */
-	LPF_FA		= 7,	/*!< forward acceleration low-pass filter */
-	LPF_ALT		= 8,	/*!< altitude low-pass filter */
-	LPF_BARTEMP	= 9,	/*!< temperature low-pass filter */
-	LPF_IMUTEMP	= 10,	/*!< IMU temperature unity filter */
-	LPF_ACCX	= 11,	/*!< accelerometer x low-pass filter */
-	LPF_ACCY	= 12,	/*!< accelerometer y low-pass filter */
-	LPF_ACCZ	= 13,	/*!< accelerometer z low-pass filter */
-	LPF_GYROX	= 14,	/*!< gyroscope x low-pass filter */
-	LPF_GYROY	= 15,	/*!< gyroscope y low-pass filter */
-	LPF_GYROZ	= 16,	/*!< gyroscope z low-pass filter */
-	LPF_MAGX	= 17,	/*!< gyroscope x low-pass filter */
-	LPF_MAGY	= 18,	/*!< gyroscope y low-pass filter */
-	LPF_MAGZ	= 19,	/*!< gyroscope z low-pass filter */
-	LPF_ROLL	= 20,	/*!< roll unity filter */
-	LPF_PITCH	= 21,	/*!< pitch unity filter */
-	LPF_YAW		= 22,	/*!< yaw unity filter */
-	LPF_COUNT	= 23	/*!< low-pass filters count */
+	LPF_AVGTHRA	= 3,	/*!< average motors thrust filter
+					for altitude correction*/
+	LPF_VAU		= 4,	/*!< vertical acceleration unity filter */
+	LPF_THR		= 5,	/*!< trust acceleration low-pass filter */
+	LPF_VAPT1	= 6,	/*!< vertical acceleration low-pass filter */
+	LPF_VAAVG	= 7,	/*!< vertical acceleration averaging filter */
+	LPF_FA		= 8,	/*!< forward acceleration low-pass filter */
+	LPF_ALT		= 9,	/*!< altitude low-pass filter */
+	LPF_BARTEMP	= 10,	/*!< temperature low-pass filter */
+	LPF_IMUTEMP	= 11,	/*!< IMU temperature unity filter */
+	LPF_ACCX	= 12,	/*!< accelerometer x low-pass filter */
+	LPF_ACCY	= 13,	/*!< accelerometer y low-pass filter */
+	LPF_ACCZ	= 14,	/*!< accelerometer z low-pass filter */
+	LPF_GYROX	= 15,	/*!< gyroscope x low-pass filter */
+	LPF_GYROY	= 16,	/*!< gyroscope y low-pass filter */
+	LPF_GYROZ	= 17,	/*!< gyroscope z low-pass filter */
+	LPF_MAGX	= 18,	/*!< gyroscope x low-pass filter */
+	LPF_MAGY	= 19,	/*!< gyroscope y low-pass filter */
+	LPF_MAGZ	= 20,	/*!< gyroscope z low-pass filter */
+	LPF_ROLL	= 21,	/*!< roll unity filter */
+	LPF_PITCH	= 22,	/*!< pitch unity filter */
+	LPF_YAW		= 23,	/*!< yaw unity filter */
+	LPF_COUNT	= 24	/*!< low-pass filters count */
 };
 
 /**

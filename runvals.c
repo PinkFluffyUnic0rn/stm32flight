@@ -77,6 +77,7 @@ int setthrust(struct cdevice *dev,
 	avgthrust = avgthrust < 0.0 ? 0.0 : avgthrust;
 
 	dsp_updatelpf(Lpf + LPF_AVGTHR, avgthrust);
+	dsp_updatelpf(Lpf + LPF_AVGTHRA, avgthrust);
 
 	// write thrust values for each motor into log
 	writelog(LOG_LT, ltd);

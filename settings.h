@@ -156,7 +156,12 @@ struct __attribute__((aligned(32))) settings
 		struct { float roll, pitch, yaw; } att0;
 		struct { float r, p; } mtrsc;
 
-		float hoverthrottle;
+		struct {
+			float hoverthrottle;
+			float alttha;
+			float altthb;
+			float altthc;
+		} althold;
 
 		struct { float offset; float scale; } current;
 
