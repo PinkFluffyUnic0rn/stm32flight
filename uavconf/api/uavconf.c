@@ -69,6 +69,7 @@ struct loggetdata {
 	int reccnt;		/*!< number of log records to get */
 	char *buf;		/*!< raw data buffer to hold all data */
 				/*!< got from UDP socket */
+	void *data;
 	size_t bufoffset;	/*!< raw data buffer offset */
 	size_t maxsz;		/*!< raw data buffer allocated size */
 	size_t sz;		/*!< raw data size got after call */
@@ -140,16 +141,14 @@ static int logget(int lsfd, const struct sockaddr_in *rsi,
 {
 	struct loggetdata *d;
 	char *logbuf;
-	int i;
 
 	(void)(cmd);
-	(void)(outfunc);
 
 	d = data;
 
 	// read requested log records through UDP
 	d->sz = 0;
-	for (i = 0; i < d->reccnt; ++i) {
+	while(1) {
 		socklen_t rsis;
 		size_t offset;
 		char c;
@@ -202,6 +201,15 @@ static int logget(int lsfd, const struct sockaddr_in *rsi,
 
 		// increase received raw data size
 		d->sz += rsz;
+
+		if ((d->sz / 1024) % 4 == 0
+				&& d->sz / 1024 != 0) {
+			char cmd[256];
+
+			snprintf(cmd, 256, "got %u kb",
+				(unsigned int) d->sz / 1024);
+			outfunc(d->data, cmd);
+		}
 	}
 
 	return 0;
@@ -304,18 +312,19 @@ skip:
 * @param logtotalsz total size of read log records
 * @param recs output array that stores log records sorted by
 	their number
+* @param outfunc function used to process command output
 * @return always 0
 */
 static int reqlogrecords(int lsfd, const struct sockaddr_in *rsi,
 	const char *cmd, struct loggetdata *d, size_t *logtotalsz,
-	int *recs)
+	int *recs, void (*outfunc) (void *, const char *))
 {
 	// set raw data buffer offset
 	// beyond it's end
 	d->bufoffset = *logtotalsz;
 
 	// send current batch command
-	sendcmd(lsfd, rsi, cmd, logget, NULL, d);
+	sendcmd(lsfd, rsi, cmd, logget, outfunc, d);
 
 	// null-terminate data got
 	// from UDP socket
@@ -585,6 +594,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 	// initilize userdata structure for
 	// server-side log download function
 	d.reccnt = loadto;
+	d.data = data;
 	d.buf = NULL;
 	d.sz = 0;
 	d.maxsz = 0;
@@ -637,7 +647,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 
 			// request log records
 			reqlogrecords(lsfd, rsi, cmd,
-				&d, &logtotalsz, recs);
+				&d, &logtotalsz, recs, outfunc);
 
 			// set downloaded records flag
 			check = 1;
@@ -692,7 +702,7 @@ int getlog(int lsfd, const struct sockaddr_in *rsi,
 
 				// request log records
 				reqlogrecords(lsfd, rsi, cmd,
-					&d, &logtotalsz, recs);
+					&d, &logtotalsz, recs, outfunc);
 
 				// build first part of a
 				// next batch load command

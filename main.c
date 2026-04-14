@@ -383,14 +383,23 @@ int stabilize(int ms)
 	dsp_updatelpf(Lpf + LPF_VAU, va);
 	dsp_updatelpf(Lpf + LPF_VAPT1, va);
 	dsp_updatelpf(Lpf + LPF_VAAVG, va);
-	
-	writelog(LOG_CUSTOM0, dsp_getlpf(Lpf + LPF_VAU));
 
-	// update forward acceleration using acceleration
-	// vector to gravity vector projection
+	// write vertical acceleration into log	
+	writelog(LOG_VACCEL, dsp_getlpf(Lpf + LPF_VAU));
+
+	// calculate forward direction vector in IMU
+	// coordination system using pitch and roll values;
 	vx = sin(-roll) * sin(-pitch);
 	vy = cos(-pitch);
 	vz = cos(-roll) * sin(-pitch);
+
+	// update forward acceleration using acceleration
+	// vector to gravity vector projection
+	dsp_updatelpf(Lpf + LPF_FA, (vx * ax + vy * ay + vz * az)
+		/ sqrtf(vx * vx + vy * vy + vz * vz));
+	
+	// write forward acceleration into log	
+	writelog(LOG_FACCEL, dsp_getlpf(Lpf + LPF_FA));
 
 	// get last barometric altitude
 	alt = dsp_getlpf(Lpf + LPF_ALT);
@@ -412,9 +421,6 @@ int stabilize(int ms)
 	// write climbrate and altitude values into log
 	writelog(LOG_CLIMBRATE, dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
 	writelog(LOG_ALT, dsp_getcompl(Cmpl + CMPL_ALT));
-
-	dsp_updatelpf(Lpf + LPF_FA, (vx * ax + vy * ay + vz * az)
-		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
 	// get tilt compensation coefficient
 	tiltcoef = cosf(-pitch) * cosf(-roll);
@@ -629,11 +635,11 @@ int checkconnection(int ms)
 
 /**
 * @brief Get readings from barometer. Callback for
-	TEV_DPS periodic event.
+	TEV_BARO periodic event.
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int dpsupdate(int ms)
+int baroupdate(int ms)
 {
 	// if barometer isn't initilized, return
 	if (Dev[DEV_BARO].status != DEVSTATUS_INIT)
@@ -655,12 +661,12 @@ int dpsupdate(int ms)
 }
 
 /**
-* @brief Get readings from magnetomer. Callback for TEV_QMC
+* @brief Get readings from magnetomer. Callback for TEV_MAG
 	periodic event.
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int qmcupdate(int ms)
+int magupdate(int ms)
 {
 	// if magnetometer isn't initilized, return
 	if (Dev[DEV_MAG].status != DEVSTATUS_INIT)
@@ -737,8 +743,8 @@ int telesend(int ms)
 
 	Tele.batrem = trimf(100.0 * Tele.batrem, 0.0, 100.0);
 
-	Tele.lat = Gnss.lat + Gnss.latmin / 60.0;
-	Tele.lon = Gnss.lon + Gnss.lonmin / 60.0;
+	Tele.lat = Gnss.declat;
+	Tele.lon = Gnss.declon;
 	Tele.speed = Gnss.speed;
 	Tele.course = Gnss.course;
 	Tele.alt = Gnss.altitude;
@@ -1140,6 +1146,11 @@ int m10msg(struct m10_data *nd)
 		Gnss.quality = nd->gga.quality;
 		Gnss.satellites = nd->gga.sats;
 
+		// write GGA values into log
+		writelog(LOG_GNSS_ALT, Gnss.altitude);
+		writelog(LOG_GNSS_QUAL, Gnss.quality);
+		writelog(LOG_GNSS_SATS, Gnss.satellites);
+
 		return 0;
 	}
 
@@ -1155,11 +1166,13 @@ int m10msg(struct m10_data *nd)
 	Gnss.lat = nd->rmc.lat;
 	Gnss.latdir = (tolower(nd->rmc.latdir) == 'n')
 		? LATDIR_N : LATDIR_S;
+	Gnss.declat = Gnss.lat + Gnss.latmin / 60.0;
 
 	Gnss.lonmin = nd->gga.lonmin;
 	Gnss.lon = nd->rmc.lon;
 	Gnss.londir = (tolower(nd->rmc.londir) == 'e')
 		? LONDIR_E : LONDIR_W;
+	Gnss.declon = Gnss.lon + Gnss.lonmin / 60.0;
 
 	Gnss.magvar = nd->rmc.magvar;
 	Gnss.magvardir = (tolower(nd->rmc.magvardir) == 'e')
@@ -1167,6 +1180,12 @@ int m10msg(struct m10_data *nd)
 
 	Gnss.speed = nd->rmc.speed;
 	Gnss.course = nd->rmc.course;
+
+	// write RMC values into log
+	writelog(LOG_GNSS_LAT, Gnss.declat);
+	writelog(LOG_GNSS_LON, Gnss.declon);
+	writelog(LOG_GNSS_SPEED, Gnss.speed);
+	writelog(LOG_GNSS_COURSE, Gnss.course);
 
 	return 0;
 }
@@ -1256,12 +1275,12 @@ int main(void)
 	inittimev(Evs + TEV_CHECK,
 		1 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		CHECK_FREQ, checkconnection);
-	inittimev(Evs + TEV_DPS,
+	inittimev(Evs + TEV_BARO,
 		2 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
-		DPS_FREQ, dpsupdate);
-	inittimev(Evs + TEV_QMC,
+		DPS_FREQ, baroupdate);
+	inittimev(Evs + TEV_MAG,
 		3 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
-		QMC_FREQ, qmcupdate);
+		QMC_FREQ, magupdate);
 	inittimev(Evs + TEV_TELE,
 		5 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		TELE_FREQ, telesend);

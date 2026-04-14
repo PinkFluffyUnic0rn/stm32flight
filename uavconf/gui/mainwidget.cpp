@@ -1157,11 +1157,14 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 		cmdstree, {
 			"acc_x", "acc_y", "acc_z", "gyro_x", "gyro_y",
 			"gyro_z", "mag_x", "mag_y", "mag_z", "bar_temp",
-			"bar_alt", "roll", "pitch", "yaw", "climbrate",
+			"bar_alt", "roll", "pitch", "yaw",
+			"faccel", "saccel", "vaccel", "climbrate",
 			"alt", "lt", "lb", "rb", "rt", "bat", "cur",
 			"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6",
 			"ch7", "ch8", "ch9", "ch10", "ch11", "ch12",
-			"ch13", "ch14", "ch15", "custom0", "custom1",
+			"ch13", "ch14", "ch15", "gnss_qual", "gnss_lat",
+			"gnss_lon", "gnss_speed", "gnss_course",
+			"gnss_alt", "gnss_sats", "custom0", "custom1",
 			"custom2", "custom3", "none"
 		}, "none", true, this), 0, 2, 3, 1);
 
@@ -1180,11 +1183,14 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 		cmdstree, {
 			"acc_x", "acc_y", "acc_z", "gyro_x", "gyro_y",
 			"gyro_z", "mag_x", "mag_y", "mag_z", "bar_temp",
-			"bar_alt", "roll", "pitch", "yaw", "climbrate",
+			"bar_alt", "roll", "pitch", "yaw",
+			"faccel", "saccel", "vaccel", "climbrate",
 			"alt", "lt", "lb", "rb", "rt", "bat", "cur",
 			"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6",
 			"ch7", "ch8", "ch9", "ch10", "ch11", "ch12",
-			"ch13", "ch14", "ch15", "custom0", "custom1",
+			"ch13", "ch14", "ch15", "gnss_qual", "gnss_lat",
+			"gnss_lon", "gnss_speed", "gnss_course",
+			"gnss_alt", "gnss_sats", "custom0", "custom1",
 			"custom2", "custom3", "none"
 		}, "none", true, this), 0, 3, 3, 1);
 
@@ -1203,11 +1209,14 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 		cmdstree, {
 			"acc_x", "acc_y", "acc_z", "gyro_x", "gyro_y",
 			"gyro_z", "mag_x", "mag_y", "mag_z", "bar_temp",
-			"bar_alt", "roll", "pitch", "yaw", "climbrate",
+			"bar_alt", "roll", "pitch", "yaw",
+			"faccel", "saccel", "vaccel", "climbrate",
 			"alt", "lt", "lb", "rb", "rt", "bat", "cur",
 			"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6",
 			"ch7", "ch8", "ch9", "ch10", "ch11", "ch12",
-			"ch13", "ch14", "ch15", "custom0", "custom1",
+			"ch13", "ch14", "ch15", "gnss_qual", "gnss_lat",
+			"gnss_lon", "gnss_speed", "gnss_course",
+			"gnss_alt", "gnss_sats", "custom0", "custom1",
 			"custom2", "custom3", "none"
 		}, "none", true, this), 0, 4, 3, 1);
 

@@ -30,8 +30,8 @@ enum TEV_ID {
 	TEV_LOG		= 1,	/*!< log update event ID */
 	TEV_PID		= 2,	/*!< PID event ID */
 	TEV_CHECK	= 3,	/*!< connection check event ID */
-	TEV_DPS		= 4,	/*!< barometer update event ID */
-	TEV_QMC		= 5,	/*!< magnetometer update event ID */
+	TEV_BARO	= 4,	/*!< barometer update event ID */
+	TEV_MAG		= 5,	/*!< magnetometer update event ID */
 	TEV_TELE	= 6,	/*!< telemetry send event ID */
 	TEV_POWER	= 7,	/*!< battery power update event ID */
 	TEV_AUTOPILOT	= 8,	/*!< autopilot event ID */
@@ -165,32 +165,37 @@ enum AUTOPILOT_TYPE {
 * @brief Values got from GNSS module using NMEA protocol
 */
 struct gnss_data {
-	enum GNSSSTATUS status;		/*!< GNSS data status 
-					1 if valid, 0 otherwise */
+	enum GNSSSTATUS status;		/*!< GNSS data status 1 if
+						valid, 0 otherwise */
 
 	float time;			/*!< seconds passed from
-					00:00 UTC */
+						00:00 UTC */
 	char date[10];			/*!< date in format dd.mm.yy */
 
 	uint8_t lat;			/*!< latitude */
 	float latmin;			/*!< latitude minutes */
 	enum LATDIR latdir;		/*!< latitude direction, 1 if
-					south, 0 if north */
+						south, 0 if north */
+	float declat;			/*!< latitude in decimal
+						degress format */
 
 	uint8_t lon;			/*!< longitude */
 	float lonmin;			/*!< longitude minutes */
 	enum LONDIR londir;		/*!< longitude direction, 1 if */
 					/*!< west, 0 if east */
+	float declon;			/*!< longitude in decimal
+						degress format */
+
 
 	float magvar;			/*!< magnetic declination in
-					degrees */
+						degrees */
 	enum MAGVARDIR  magvardir;	/*!< magnetic declination
-					direction, 0 if east, 1 if
-					west */
+						direction, 0 if east,
+						1 if west */
 
 	float speed;			/*!< speed in knots */
 	float course;			/*!< course toward north pole
-					in degrees */
+						in degrees */
 	float altitude;			/*!< altitude in meters */
 
 	int quality;			/*!< link quality */

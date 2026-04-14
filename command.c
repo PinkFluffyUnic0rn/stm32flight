@@ -98,7 +98,14 @@ int runcommand(const struct cdevice *d, char *cmd)
 	// localy and compare it's to CRC got from remote. If they
 	// dont match, send back CRC fail error.
 	if (!isinteractive) {
-		crc = crc16((uint8_t *) cmd + 6, strlen(cmd) - 6);
+		size_t len;
+
+		len = strlen(cmd);
+
+		if (len < 6)
+			goto unknown;
+
+		crc = crc16((uint8_t *) cmd + 6, len - 6);
 
 		if (atoi(toks[0]) != crc)
 			goto crcfail;

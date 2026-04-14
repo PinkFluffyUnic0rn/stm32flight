@@ -80,8 +80,10 @@ int validatesettings()
 	}
 
 	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-		if (St.log.fieldid[i] < 0)
+		if (St.log.fieldid[i] < 0 
+				|| St.log.fieldid[i] >= LOG_MAXRECSIZE) {
 			St.log.fieldid[i] = LOGFIELDDEFPOS;
+		}
 	}
 
 	return 0;
