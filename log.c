@@ -36,7 +36,7 @@ const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {
 	"roll", "pitch", "yaw",
 	"faccel", "saccel",
 	"vaccel", "climbrate", "alt",
-	"lt", "lb", "rb", "rt",
+	"lt", "lb", "rb", "rt", "avgthr",
 	"bat", "cur",
 	"ch0", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7",
 	"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15",

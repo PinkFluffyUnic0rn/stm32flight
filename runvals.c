@@ -79,12 +79,15 @@ int setthrust(struct cdevice *dev,
 	dsp_updatelpf(Lpf + LPF_AVGTHR, avgthrust);
 	dsp_updatelpf(Lpf + LPF_AVGTHRA, avgthrust);
 
-	// write thrust values for each motor into log
+	// write throttle values for each motor into log
 	writelog(LOG_LT, ltd);
 	writelog(LOG_LB, lbd);
 	writelog(LOG_RB, rbd);
 	writelog(LOG_RT, rtd);
 
+	// write average throttle values into log
+	writelog(LOG_AVGTHR, dsp_getlpf(Lpf + LPF_AVGTHR));
+	
 	// set thrust values using DShot output device
 	dev->write(dev->priv, &dd, sizeof(struct dshot_data));
 
