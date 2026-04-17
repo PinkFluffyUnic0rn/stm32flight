@@ -16,6 +16,16 @@
 #define M10_MAXDEVS 1
 
 /**
+* @brief does GNSS has fix
+* @param qual quality value
+*/
+#define M10_HASFIX(qual) ((qual) == M10_QUAL_SINGLE		\
+	|| (qual) == M10_QUAL_PSEUDORANGE			\
+	|| (qual) == M10_QUAL_FIXEDAMB				\
+	|| (qual) == M10_QUAL_FLOATAMB				\
+	|| (qual) == M10_QUAL_PSEUDORANGE)
+
+/**
 * @brief device initialization and private data
 */
 struct m10_device {

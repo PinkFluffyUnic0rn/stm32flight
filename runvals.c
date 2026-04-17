@@ -36,6 +36,8 @@ int Elrs = 0;
 int Autopilot = 0;
 
 float Alt0 = 0.0;
+float Lat0 = 0.0;
+float Lon0 = 0.0;
 float Goffset = 0.0;
 
 struct trackpoint Points[MAX_POINT_COUNT];

@@ -734,6 +734,7 @@ int setstabilize(int init)
 	dsp_setlpf1t(Lpf + LPF_VAPT1, St.lpf.va, PID_FREQ, init);
 	dsp_setlpf1t(Lpf + LPF_VAAVG, VA_AVG_TCOEF, PID_FREQ, init);
 	dsp_setunity(Lpf + LPF_FA, init);
+	dsp_setunity(Lpf + LPF_SA, init);
 	dsp_setunity(Lpf + LPF_ALT, init);
 
 	// init low-pass fitlers for IMU temperature sensor

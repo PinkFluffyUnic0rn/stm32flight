@@ -53,22 +53,23 @@ enum LPF_ID {
 	LPF_VAPT1	= 6,	/*!< vertical acceleration low-pass filter */
 	LPF_VAAVG	= 7,	/*!< vertical acceleration averaging filter */
 	LPF_FA		= 8,	/*!< forward acceleration low-pass filter */
-	LPF_ALT		= 9,	/*!< altitude low-pass filter */
-	LPF_BARTEMP	= 10,	/*!< temperature low-pass filter */
-	LPF_IMUTEMP	= 11,	/*!< IMU temperature unity filter */
-	LPF_ACCX	= 12,	/*!< accelerometer x low-pass filter */
-	LPF_ACCY	= 13,	/*!< accelerometer y low-pass filter */
-	LPF_ACCZ	= 14,	/*!< accelerometer z low-pass filter */
-	LPF_GYROX	= 15,	/*!< gyroscope x low-pass filter */
-	LPF_GYROY	= 16,	/*!< gyroscope y low-pass filter */
-	LPF_GYROZ	= 17,	/*!< gyroscope z low-pass filter */
-	LPF_MAGX	= 18,	/*!< gyroscope x low-pass filter */
-	LPF_MAGY	= 19,	/*!< gyroscope y low-pass filter */
-	LPF_MAGZ	= 20,	/*!< gyroscope z low-pass filter */
-	LPF_ROLL	= 21,	/*!< roll unity filter */
-	LPF_PITCH	= 22,	/*!< pitch unity filter */
-	LPF_YAW		= 23,	/*!< yaw unity filter */
-	LPF_COUNT	= 24	/*!< low-pass filters count */
+	LPF_SA		= 9,	/*!< sideward acceleration low-pass filter */
+	LPF_ALT		= 10,	/*!< altitude low-pass filter */
+	LPF_BARTEMP	= 11,	/*!< temperature low-pass filter */
+	LPF_IMUTEMP	= 12,	/*!< IMU temperature unity filter */
+	LPF_ACCX	= 13,	/*!< accelerometer x low-pass filter */
+	LPF_ACCY	= 14,	/*!< accelerometer y low-pass filter */
+	LPF_ACCZ	= 15,	/*!< accelerometer z low-pass filter */
+	LPF_GYROX	= 16,	/*!< gyroscope x low-pass filter */
+	LPF_GYROY	= 17,	/*!< gyroscope y low-pass filter */
+	LPF_GYROZ	= 18,	/*!< gyroscope z low-pass filter */
+	LPF_MAGX	= 19,	/*!< gyroscope x low-pass filter */
+	LPF_MAGY	= 20,	/*!< gyroscope y low-pass filter */
+	LPF_MAGZ	= 21,	/*!< gyroscope z low-pass filter */
+	LPF_ROLL	= 22,	/*!< roll unity filter */
+	LPF_PITCH	= 23,	/*!< pitch unity filter */
+	LPF_YAW		= 24,	/*!< yaw unity filter */
+	LPF_COUNT	= 25	/*!< low-pass filters count */
 };
 
 /**
@@ -297,6 +298,8 @@ extern int Elrs; /*!< 1 when ELRS control is active (ELRS remote's
 */
 
 extern float Alt0;	/*!< reference altitude */
+extern float Lat0;	/*!< reference latitude */
+extern float Lon0;	/*!< reference longitude */
 extern float Goffset;	/*!< free fall acceleration (g) value offset */
 
 /**

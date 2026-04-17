@@ -281,7 +281,7 @@ int stabilize(int ms)
 	float dt;
 	float alt;
 	float tiltcoef;
-	float altth;
+	float altcor;
 
 	// debug pin switching
 	HAL_GPIO_WritePin(debuggpio, debugpin,
@@ -398,20 +398,42 @@ int stabilize(int ms)
 	// vector to gravity vector projection
 	dsp_updatelpf(Lpf + LPF_FA, (vx * ax + vy * ay + vz * az)
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
-	
+
 	// write forward acceleration into log	
 	writelog(LOG_FACCEL, dsp_getlpf(Lpf + LPF_FA));
+
+	// calculate sideward direction vector in IMU
+	// coordination system using pitch and roll values;
+	vx = cos(-roll);
+	vy = 0.0;
+	vz = -sin(-roll);
+
+	// update sideward acceleration using acceleration
+	// vector to gravity vector projection
+	dsp_updatelpf(Lpf + LPF_SA, (vx * ax + vy * ay + vz * az)
+		/ sqrtf(vx * vx + vy * vy + vz * vz));
+	
+	// write sideward acceleration into log	
+	writelog(LOG_SACCEL, dsp_getlpf(Lpf + LPF_SA));
 
 	// get last barometric altitude
 	alt = dsp_getlpf(Lpf + LPF_ALT);
 
 	// calculate altitude thrust compensation
-	altth = St.adj.althold.alttha * dsp_getlpf(Lpf + LPF_AVGTHRA)
+	altcor = St.adj.althold.alttha * dsp_getlpf(Lpf + LPF_AVGTHRA)
 		+ St.adj.althold.altthb;
-	altth = (altth < 0.0) ? 0.0 : altth;
+	altcor = (altcor < 0.0) ? 0.0 : altcor;
 
 	// compensate thrust for altitude
-	alt -= altth;	
+	alt -= altcor;	
+
+	// if GNSS is locked, use speed to compensate dynamic pressure
+	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
+			&& M10_HASFIX(Gnss.quality)) {
+		altcor = St.adj.althold.altthc
+			* Gnss.speed * Gnss.speed;
+		alt -= altcor;
+	}
 
 	// calculate climb rate from vertical acceleration and
 	// barometric altitude defference using complimentary filter
@@ -1076,6 +1098,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// altitude
 	if (cd->chf[ERLS_CH_ALTCALIB] > 0.0) {
 		Alt0 = dsp_getcompl(Cmpl + CMPL_ALT);
+		Lat0 = Gnss.declat;
+		Lon0 = Gnss.declon;
 		Goffset = 1.0 - dsp_getlpf(Lpf + LPF_VAAVG);
 	}
 
@@ -1195,6 +1219,11 @@ int m10msg(struct m10_data *nd)
 	writelog(LOG_GNSS_LON, Gnss.declon);
 	writelog(LOG_GNSS_SPEED, Gnss.speed);
 	writelog(LOG_GNSS_COURSE, Gnss.course);
+
+	writelog(LOG_CUSTOM0, (Lat0 - Gnss.declat) * 111320);
+	writelog(LOG_CUSTOM1, (Lon0 - Gnss.declon) * 111320
+		* cosf(deg2rad(Lat0)));
+	writelog(LOG_CUSTOM2, deg2rad(Gnss.course) - M_PI);
 
 	return 0;
 }
