@@ -1045,8 +1045,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Motor scale", "dsp",
-		{"roll",		"pitch"},
-		{"adj rollthrust", 	"adj pitchthrust"},
+		{"roll",		"pitch",		"thrust"},
+		{"adj rollthrust", 	"adj pitchthrust",	"adj thrust"},
 		cmdstree, true, this), 2, 0);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,

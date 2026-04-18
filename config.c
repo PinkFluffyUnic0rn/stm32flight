@@ -322,6 +322,11 @@ static struct settingnode Sttree = {
 					.f = &(St.adj.mtrsc.p)
 				},
 				&(struct settingnode) {
+					.token = "thrust",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.adj.mtrsc.thr)
+				},
+				&(struct settingnode) {
 					.token = "roll",
 					.type = NODETYPE_FLOAT,
 					.f = &(St.adj.att0.roll)

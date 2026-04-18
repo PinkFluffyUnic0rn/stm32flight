@@ -4,10 +4,10 @@ adj acc z 0
 adj acc xtscale 0
 adj acc ytscale 0
 adj acc ztscale 0.00058
-adj althold coefa 5.2
-adj althold coefb -3.7
+adj althold coefa 0
+adj althold coefb 0
 adj althold coefc 0
-adj althold hover 0.756
+adj althold hover 0.64
 adj pitch 0.01
 adj roll 0
 adj yaw 0
@@ -24,11 +24,12 @@ adj mag decl 0.3264
 adj mag xscale 0.970278
 adj mag yscale 0.986666
 adj mag zscale 1
-adj mag xthscale 1296.304932
+adj mag xthscale 1600
 adj mag ythscale -99.118744
 adj mag zthscale 25.806814
 adj pitchthrust 0
 adj rollthrust 0
+adj thrust 1.6
 ctrl accel 0.5
 ctrl altmax 4
 ctrl pitch 0.25

@@ -154,7 +154,7 @@ struct __attribute__((aligned(32))) settings
 		struct { float x, y, z; } gyro0;
 
 		struct { float roll, pitch, yaw; } att0;
-		struct { float r, p; } mtrsc;
+		struct { float r, p, thr; } mtrsc;
 
 		struct {
 			float hoverthrottle;

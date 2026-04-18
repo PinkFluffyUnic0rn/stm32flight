@@ -66,13 +66,6 @@ int setthrust(struct cdevice *dev,
 	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
 		|| isnan(lbd) || !Elrs)
 		ltd = rtd = rbd = lbd = 0.0;
-						
-	// set values for thrust channels using
-	// motor to PWM channel mapping values
-	dd.thrust[St.mtr.lt] = ltd;
-	dd.thrust[St.mtr.lb] = lbd;
-	dd.thrust[St.mtr.rt] = rtd;
-	dd.thrust[St.mtr.rb] = rbd;
 
 	// update average thrust LPF
 	avgthrust = (ltd + rtd + rbd + lbd) / 4.0;
@@ -80,6 +73,19 @@ int setthrust(struct cdevice *dev,
 
 	dsp_updatelpf(Lpf + LPF_AVGTHR, avgthrust);
 	dsp_updatelpf(Lpf + LPF_AVGTHRA, avgthrust);
+
+	// linearize thrust
+	ltd = pow(ltd, 1.0 / St.adj.mtrsc.thr);
+	rtd = pow(rtd, 1.0 / St.adj.mtrsc.thr);
+	lbd = pow(lbd, 1.0 / St.adj.mtrsc.thr);
+	rbd = pow(rbd, 1.0 / St.adj.mtrsc.thr);
+
+	// set values for thrust channels using
+	// motor to PWM channel mapping values
+	dd.thrust[St.mtr.lt] = ltd;
+	dd.thrust[St.mtr.lb] = lbd;
+	dd.thrust[St.mtr.rt] = rtd;
+	dd.thrust[St.mtr.rb] = rbd;
 
 	// write throttle values for each motor into log
 	writelog(LOG_LT, ltd);
