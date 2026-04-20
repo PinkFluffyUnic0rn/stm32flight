@@ -853,6 +853,10 @@ static int sprintimu(char *s, struct icm_data *id)
 		"forward acceleration: %f\r\n",
 		(double) dsp_getlpf(Lpf + LPF_FA));
 
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"sideward acceleration: %f\r\n",
+		(double) dsp_getlpf(Lpf + LPF_SA));
+
 	return 0;
 }
 

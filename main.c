@@ -351,14 +351,14 @@ int stabilize(int ms)
 	// trigonometry.
 	roll = dsp_updatelpf(Lpf + LPF_ROLL,
 		dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
-			atan2f(-ax, sqrt(ay * ay + az * az)))
-				- St.adj.att0.roll);
+			atan2f(-ax, az) - St.adj.att0.roll));
 
 	// same as for roll but for different axes
 	pitch = dsp_updatelpf(Lpf + LPF_PITCH,
 		dsp_updatecompl(Cmpl + CMPL_PITCH, gx * dt,
 			atan2f(ay, sqrt(ax * ax + az * az))) 
 				- St.adj.att0.pitch);
+
 
 	// update complimenraty filter for yaw axis and get next yaw
 	// value. First signal is the speed of the rotation around Z
@@ -372,9 +372,9 @@ int stabilize(int ms)
 
 	// calculate gravity direction vector in IMU coordination system
 	// using pitch and roll values;
-	vx = cos(-pitch) * sin(-roll);
-	vy = -sin(-pitch);
-	vz = cos(-pitch) * cos(-roll);
+	vx = -sin(roll);
+	vy = sin(pitch) * cos(roll);
+	vz = cos(pitch) * cos(roll);
 
 	// update vertical acceleration using acceleration
 	// vector to gravity vector projection
@@ -390,9 +390,9 @@ int stabilize(int ms)
 
 	// calculate forward direction vector in IMU
 	// coordination system using pitch and roll values;
-	vx = sin(-roll) * sin(-pitch);
-	vy = cos(-pitch);
-	vz = cos(-roll) * sin(-pitch);
+	vx = 0;
+	vy = cos(pitch);
+	vz = -sin(pitch);
 
 	// update forward acceleration using acceleration
 	// vector to gravity vector projection
@@ -404,9 +404,9 @@ int stabilize(int ms)
 
 	// calculate sideward direction vector in IMU
 	// coordination system using pitch and roll values;
-	vx = cos(-roll);
-	vy = 0.0;
-	vz = -sin(-roll);
+	vx = cos(roll);
+	vy = sin(pitch) * sin(roll);
+	vz = sin(roll) * cos(pitch);
 
 	// update sideward acceleration using acceleration
 	// vector to gravity vector projection
