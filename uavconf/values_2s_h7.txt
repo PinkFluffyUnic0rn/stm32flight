@@ -14,9 +14,9 @@ adj yaw 0
 adj bat scale 1
 adj curr offset -20.4
 adj curr scale 412.5
-adj gyro x 0
-adj gyro y 0
-adj gyro z 0
+adj gyro x -0.309
+adj gyro y -0.093
+adj gyro z -0.277
 adj mag x0 -324.060699
 adj mag y0 142.908081
 adj mag z0 580.333496
@@ -42,7 +42,7 @@ ctrl syaw 1.5
 irc frequency 5733
 irc power 25
 compl altitude 1
-compl attitude 0.75
+compl attitude 5
 compl climbrate 1
 compl yaw 1
 lpf vaccel 0.25

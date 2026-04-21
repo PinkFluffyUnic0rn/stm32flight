@@ -359,7 +359,6 @@ int stabilize(int ms)
 			atan2f(ay, sqrt(ax * ax + az * az))) 
 				- St.adj.att0.pitch);
 
-
 	// update complimenraty filter for yaw axis and get next yaw
 	// value. First signal is the speed of the rotation around Z
 	// axis. Second signal is the heading value that is
