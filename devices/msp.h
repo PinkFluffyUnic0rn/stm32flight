@@ -43,6 +43,15 @@ enum MSP_ALTMODE {
 };
 
 /**
+* @brief GNSS mode
+*/
+enum MSP_GNSSMODE {
+	MSP_GNSSMODE_NONE,	/*!< no GNSS stabilization */
+	MSP_GNSSMODE_SPEED,	/*!< speed stabilization */
+	MSP_GNSSMODE_POS	/*!< pos stabilization */
+};
+
+/**
 * @brief device initialization and private data
 */
 struct msp_device {
@@ -58,6 +67,7 @@ struct msp_osd {
 	enum MSP_ATTMODE attmode;	/*!< attitude mode */
 	enum MSP_YAWMODE yawmode;	/*!< yaw mode */
 	enum MSP_ALTMODE altmode;	/*!< altitude mode */
+	enum MSP_GNSSMODE gnssmode;	/*!< GNSS mode */
 	float bat;			/*!< battery voltage */
 	float curr;			/*!< current draw */
 	float batrem;			/*!< remaining battery charge */

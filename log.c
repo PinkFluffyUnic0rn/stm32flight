@@ -42,6 +42,7 @@ const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {
 	"ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14", "ch15",
 	"gnss_qual", "gnss_lat", "gnss_lon", "gnss_speed",
 	"gnss_course", "gnss_alt", "gnss_sats",
+	"speed", "slat", "slon", "lat", "lon",
 	"custom0", "custom1", "custom2", "custom3", NULL
 };
 

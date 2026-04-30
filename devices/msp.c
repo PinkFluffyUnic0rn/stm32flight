@@ -10,7 +10,7 @@
 
 #define MSP_RXCIRCSIZE 2
 #define MSP_BUFSIZE 64
-#define MSP_DRAWSTEPS 15
+#define MSP_DRAWSTEPS 16
 #define MSP_MAXSTRLEN 16
 #define MSP_HEADERLEN 5
 #define MSP_DPHEADERLEN 4
@@ -348,7 +348,17 @@ static int msp_drawmode(struct msp_buffer *sbuf, int x, int y,
 
 		msp_drawstring(sbuf, x, y + 3, MSP_CHARCOLOR_WHITE, str);
 	}
+	else if (step == 4) {
+		if (osd->gnssmode == MSP_GNSSMODE_NONE)
+			str = "NONE";
+		else if (osd->gnssmode == MSP_GNSSMODE_SPEED)
+			str = "SPEED";
+		else
+			str = "POS";
 
+		msp_drawstring(sbuf, x, y + 4, MSP_CHARCOLOR_WHITE, str);
+	}
+	
 	return 0;
 }
 
@@ -552,26 +562,28 @@ int msp_write(void *dev, void *dt, size_t sz)
 	else if (step == 3)
 		msp_drawmode(&Sendbuffer, 1, 1, dt, 3);
 	else if (step == 4)
-		msp_drawalt(&Sendbuffer, 15, 1, dt, 0);
+		msp_drawmode(&Sendbuffer, 1, 1, dt, 4);
 	else if (step == 5)
-		msp_drawalt(&Sendbuffer, 15, 1, dt, 1);
+		msp_drawalt(&Sendbuffer, 15, 1, dt, 0);
 	else if (step == 6)
-		msp_drawalt(&Sendbuffer, 15, 1, dt, 2);
+		msp_drawalt(&Sendbuffer, 15, 1, dt, 1);
 	else if (step == 7)
-		msp_drawpower(&Sendbuffer, 38, 1, dt, 0);
+		msp_drawalt(&Sendbuffer, 15, 1, dt, 2);
 	else if (step == 8)
-		msp_drawpower(&Sendbuffer, 38, 1, dt, 1);
+		msp_drawpower(&Sendbuffer, 38, 1, dt, 0);
 	else if (step == 9)
-		msp_drawspeed(&Sendbuffer, 5, 15, dt);
+		msp_drawpower(&Sendbuffer, 38, 1, dt, 1);
 	else if (step == 10)
-		msp_drawgps(&Sendbuffer, 43, 7, dt, 0);
+		msp_drawspeed(&Sendbuffer, 5, 15, dt);
 	else if (step == 11)
-		msp_drawgps(&Sendbuffer, 43, 7, dt, 1);
+		msp_drawgps(&Sendbuffer, 43, 7, dt, 0);
 	else if (step == 12)
-		msp_drawgps(&Sendbuffer, 43, 7, dt, 2);
+		msp_drawgps(&Sendbuffer, 43, 7, dt, 1);
 	else if (step == 13)
-		msp_drawyaw(&Sendbuffer, 25, 1, dt);
+		msp_drawgps(&Sendbuffer, 43, 7, dt, 2);
 	else if (step == 14)
+		msp_drawyaw(&Sendbuffer, 25, 1, dt);
+	else if (step == 15)
 		msp_drawtime(&Sendbuffer, 29, 1, dt);
 
 	if (step == MSP_DRAWSTEPS - 1) {

@@ -2,9 +2,13 @@ library(pracma)
 library(geigen)
 library(conicfit)
 
+#range = 300;
+#xcenter = -1000;
+#ycenter = 200;
+
 range = 300;
-xcenter = -1000;
-ycenter = 200;
+xcenter = -400;
+ycenter = 0;
 
 printf <- function(...) invisible(print(sprintf(...)))
 

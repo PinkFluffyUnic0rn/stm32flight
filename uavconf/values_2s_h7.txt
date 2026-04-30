@@ -20,6 +20,7 @@ adj gyro z -0.277
 adj mag x0 -324.060699
 adj mag y0 142.908081
 adj mag z0 580.333496
+adj mag decl 0.0
 adj mag decl 0.3264
 adj mag xscale 0.970278
 adj mag yscale 0.986666
@@ -44,6 +45,8 @@ irc power 25
 compl altitude 1
 compl attitude 5
 compl climbrate 1
+compl pos 1
+compl speed 1
 compl yaw 1
 lpf vaccel 0.25
 lpf accel 40
@@ -110,3 +113,9 @@ pid syaw p 3
 pid yaw d 0
 pid yaw i 0
 pid yaw p 1.5
+pid pos d 0
+pid pos i 0
+pid pos p 0.1
+pid speed d 0
+pid speed i 0
+pid speed p 0.1

@@ -980,16 +980,29 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 		{"P",			"I",			"D"},
 		{"pid altitude p",	"pid altitude i",	"pid altitude d"},
 		cmdstree, true, this), 1, 2);
+
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"Features", "dsp",
 		{"tilt I-term scale"},
 		{"pid feature iscaling"},
 		cmdstree, true, this), 2, 0, 1, 2);
 
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"speed PID", "dsp",
+		{"P",			"I",			"D"},
+		{"pid speed p",	"pid speed i",	"pid speed d"},
+		cmdstree, true, this), 2, 2);
+
+	tabs["pid"]->add_group(new float_settings_group(nullptr,
+		"position PID", "dsp",
+		{"P",			"I",			"D"},
+		{"pid pos p",	"pid pos i",	"pid pos d"},
+		cmdstree, true, this), 2, 3);
+
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Complimentary filters", "dsp",
-		{"attitude",		"yaw",		"climb rate", 		"altitude"},
-		{"compl attitude",	"compl yaw",	"compl climbrate",	"compl altitude"},
+		{"attitude",		"yaw",		"climb rate", 		"altitude",		"speed",	"position"},
+		{"compl attitude",	"compl yaw",	"compl climbrate",	"compl altitude",	"compl speed",	"compl pos"},
 		cmdstree, true, this), 3, 0, 2, 1); 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Low-pass filters", "dsp",
@@ -1022,8 +1035,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 		cmdstree, true, this), 0, 3);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Magnetometer offsets", "dsp",
-		{"X",		"Y",		"Z",		"declination"},
-		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl"},
+		{"X",		"Y",		"Z",		"declination",	"yaw GPS mix"},
+		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl", "adj mag decl"},
 		cmdstree, true, this), 1, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Magnetometer scale", "dsp",
@@ -1165,7 +1178,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 			"ch11", "ch12", "ch13", "ch14", "ch15",
 			"gnss_qual", "gnss_lat", "gnss_lon",
 			"gnss_speed", "gnss_course", "gnss_alt",
-			"gnss_sats", "custom0", "custom1",
+			"gnss_sats", "speed", "slat", "slon", "lat",
+			"lon", "custom0", "custom1",
 			"custom2", "custom3", "none"
 		}, "none", true, this), 0, 2, 3, 1);
 
@@ -1192,7 +1206,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 			"ch11", "ch12", "ch13", "ch14", "ch15",
 			"gnss_qual", "gnss_lat", "gnss_lon",
 			"gnss_speed", "gnss_course", "gnss_alt",
-			"gnss_sats", "custom0", "custom1",
+			"gnss_sats", "speed", "slat", "slon", "lat",
+			"lon", "custom0", "custom1",
 			"custom2", "custom3", "none"
 		}, "none", true, this), 0, 3, 3, 1);
 
@@ -1219,7 +1234,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 			"ch11", "ch12", "ch13", "ch14", "ch15",
 			"gnss_qual", "gnss_lat", "gnss_lon",
 			"gnss_speed", "gnss_course", "gnss_alt",
-			"gnss_sats", "custom0", "custom1",
+			"gnss_sats", "speed", "slat", "slon", "lat",
+			"lon", "custom0", "custom1",
 			"custom2", "custom3", "none"
 		}, "none", true, this), 0, 4, 3, 1);
 

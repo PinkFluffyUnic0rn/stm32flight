@@ -233,6 +233,51 @@ static struct settingnode Sttree = {
 						NULL
 					}
 				},
+
+				&(struct settingnode) {
+					.token = "speed",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "p",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.speed.p)
+						},
+						&(struct settingnode) {
+							.token = "i",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.speed.i)
+						},
+						&(struct settingnode) {
+							.token = "d",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.speed.d)
+						},
+						NULL
+					}
+				},
+				&(struct settingnode) {
+					.token = "pos",
+					.type = NODETYPE_PARENT,
+					.child = (struct settingnode *[]) {
+						&(struct settingnode) {
+							.token = "p",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.pos.p)
+						},
+						&(struct settingnode) {
+							.token = "i",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.pos.i)
+						},
+						&(struct settingnode) {
+							.token = "d",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.pos.d)
+						},
+						NULL
+					}
+				},
 				&(struct settingnode) {
 					.token = "feature",
 					.type = NODETYPE_PARENT,
@@ -271,6 +316,16 @@ static struct settingnode Sttree = {
 					.token = "altitude",
 					.type = NODETYPE_FLOAT,
 					.f = &(St.cmpl.alt)
+				},
+				&(struct settingnode) {
+					.token = "speed",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.cmpl.speed)
+				},
+				&(struct settingnode) {
+					.token = "pos",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.cmpl.pos)
 				},
 				NULL
 			}
@@ -454,6 +509,11 @@ static struct settingnode Sttree = {
 							.token = "decl",
 							.type = NODETYPE_FLOAT,
 							.f = &(St.adj.magdecl)
+						},
+						&(struct settingnode) {
+							.token = "yawmix",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.adj.yawmix)
 						},
 						NULL
 					}
@@ -676,6 +736,11 @@ int setstabilize(int init)
 		PID_FREQ, init);
 	dsp_setcompl(Cmpl + CMPL_ALT, St.cmpl.alt, PID_FREQ, init);
 
+	dsp_setcompl(Cmpl + CMPL_SLAT, St.cmpl.speed, PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_SLON, St.cmpl.speed, PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_LAT, St.cmpl.pos, PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_LON, St.cmpl.pos, PID_FREQ, init);
+
 	// init roll and pitch position PID controller contexts
 	dsp_setpidbl(Pid + PID_PITCHP,
 		St.pid.attpos.p, St.pid.attpos.i, St.pid.attpos.d,
@@ -724,6 +789,25 @@ int setstabilize(int init)
 		St.pid.alt.p, St.pid.alt.i, St.pid.alt.d,
 		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
 
+	// init speed through latitude and longitude 
+	// PID controllers contexts
+	dsp_setpidbl(Pid + PID_SLAT,
+		St.pid.speed.p, St.pid.speed.i, St.pid.speed.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
+	dsp_setpidbl(Pid + PID_SLON,
+		St.pid.speed.p, St.pid.speed.i, St.pid.speed.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
+	// init latitude and longitude PID controllers contexts
+	dsp_setpidbl(Pid + PID_LAT,
+		St.pid.pos.p, St.pid.pos.i, St.pid.pos.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
+	dsp_setpidbl(Pid + PID_LON,
+		St.pid.pos.p, St.pid.pos.i, St.pid.pos.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
 	// init battery voltage low-pass filter
 	dsp_setlpf1f(Lpf + LPF_BAT, BAT_CUTOFF, POWER_FREQ, init);
 	dsp_setlpf1f(Lpf + LPF_CUR, CUR_CUTOFF, POWER_FREQ, init);
@@ -732,7 +816,7 @@ int setstabilize(int init)
 	dsp_setunity(Lpf + LPF_AVGTHR, init);
 	dsp_setlpf1t(Lpf + LPF_AVGTHRA, St.lpf.va, PID_FREQ, init);
 
-	// init low-pass fitlers for altitude and vertical acceleration
+	// init low-pass fitlers for altitude, accelerations and speed
 	dsp_setunity(Lpf + LPF_BARTEMP, init);
 	dsp_setlpf1t(Lpf + LPF_THR, St.lpf.va, PID_FREQ, init);
 	dsp_setunity(Lpf + LPF_VAU, init);
@@ -741,6 +825,9 @@ int setstabilize(int init)
 	dsp_setunity(Lpf + LPF_FA, init);
 	dsp_setunity(Lpf + LPF_SA, init);
 	dsp_setunity(Lpf + LPF_ALT, init);
+	dsp_setunity(Lpf + LPF_SPEED, init);
+	dsp_setunity(Lpf + LPF_LATM, init);
+	dsp_setunity(Lpf + LPF_LONM, init);
 
 	// init low-pass fitlers for IMU temperature sensor
 	dsp_setlpf1t(Lpf + LPF_IMUTEMP, TEMP_TCOEF, PID_FREQ, init);
@@ -1065,7 +1152,7 @@ static int sprintpid(char *s)
 static int sprintgnss(char *s) {
 	s[0] = '\0';
 
-	sprintf(s, "%s: %f\r\n%s: %hd\r\n%s: %hd %f %c\r\n\
+	snprintf(s, INFOLEN, "%s: %f\r\n%s: %hd\r\n%s: %hd %f %c\r\n\
 %s: %hd %f %c\r\n%s: %f\r\n%s: %f\r\n\
 %s: %d\r\n%s: %d\r\n%s: %f\r\n%s: %s\r\n%s: %f\r\n%s: %c\r\n",
 		"time", (double) Gnss.time,
@@ -1085,6 +1172,14 @@ static int sprintgnss(char *s) {
 		"magvar", (double) Gnss.magvar,
 		"magverdir",
 		(Gnss.magvardir == MAGVARDIR_W) ? 'W' : 'E');
+	
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"speed: %f %f (%f)\r\npos: %f %f\r\n",
+		(double) dsp_getcompl(Cmpl + CMPL_SLAT),
+		(double) dsp_getcompl(Cmpl + CMPL_SLON),
+		(double) dsp_getlpf(Lpf + LPF_SPEED),
+		(double) dsp_getcompl(Cmpl + CMPL_LAT),
+		(double) dsp_getcompl(Cmpl + CMPL_LON));
 
 	return 0;
 }

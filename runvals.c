@@ -29,6 +29,7 @@ float Pitchtarget = 0.0;
 float Yawtarget = 0.0;
 float En = 0.0;
 enum ALTMODE Altmode = 0;
+enum GNSSMODE Gnssmode = 0;
 int Speedpid = 0;
 int Yawspeedpid = 0;
 int Hovermode = 0;

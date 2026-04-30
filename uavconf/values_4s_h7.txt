@@ -4,7 +4,7 @@ adj acc z 0
 adj acc xtscale 0
 adj acc ytscale 0
 adj acc ztscale 0.00058
-adj althold coefa 0
+adj althold coefa 3.484
 adj althold coefb 0
 adj althold coefc 0.003
 adj althold hover 0.287
@@ -20,6 +20,7 @@ adj gyro z -0.277
 adj mag x0 -272.035858
 adj mag y0 88.654327
 adj mag z0 566.142456
+adj mag decl 0.0
 adj mag decl 0.3264
 adj mag xscale 0.972114
 adj mag yscale 0.989753
@@ -44,6 +45,8 @@ irc power 25
 compl altitude 1
 compl attitude 5
 compl climbrate 1
+compl pos 1
+compl speed 1
 compl yaw 1
 lpf vaccel 0.25
 lpf accel 40
@@ -110,3 +113,9 @@ pid syaw p 1.5
 pid yaw d 0
 pid yaw i 0
 pid yaw p 1.5
+pid pos d 0
+pid pos i 0
+pid pos p 0.1
+pid speed d 0
+pid speed i 0
+pid speed p 0.1

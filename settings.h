@@ -87,6 +87,7 @@
 #define ERLS_CH_THRMODE		6	/*!< altitude mode channel */
 #define ERLS_CH_ONOFF		7	/*!< on/off channel */
 #define ERLS_CH_ALTCALIB	8	/*!< recalibration channel */
+#define ERLS_CH_GNSSMODE	9	/*!< gnss hold mode channel */
 #define ERLS_CH_HOVER		10	/*!< hover mode channel */
 #define ERLS_CH_AUTOPILOT	11	/*!< autopilot mode channel */
 #define ERLS_CH_SETSLOT		15	/*!< settings slot channel */
@@ -171,6 +172,7 @@ struct __attribute__((aligned(32))) settings
 		struct { float x, y, z; } magsc;
 		struct { float x, y, z; } magthrsc;
 		float magdecl;
+		float yawmix;
 	} adj;
 
 	struct {
@@ -192,6 +194,8 @@ struct __attribute__((aligned(32))) settings
 		float yaw;
 		float climbrate;
 		float alt;
+		float speed;
+		float pos;
 	} cmpl;
 
 	struct {
@@ -210,6 +214,8 @@ struct __attribute__((aligned(32))) settings
 		struct { float p, i, d; } throttle;
 		struct { float p, i, d; } climbrate;
 		struct { float p, i, d; } alt;
+		struct { float p, i, d; } speed;
+		struct { float p, i, d; } pos;
 		struct { float iscale; } feature;
 	} pid;
 

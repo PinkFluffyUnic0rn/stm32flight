@@ -69,7 +69,10 @@ enum LPF_ID {
 	LPF_ROLL	= 22,	/*!< roll unity filter */
 	LPF_PITCH	= 23,	/*!< pitch unity filter */
 	LPF_YAW		= 24,	/*!< yaw unity filter */
-	LPF_COUNT	= 25	/*!< low-pass filters count */
+	LPF_SPEED	= 25,	/*!< speed unity filter */
+	LPF_LATM	= 26,	/*!< latitude in meters unity filter */
+	LPF_LONM	= 27,	/*!< longitude in meters unity filter */
+	LPF_COUNT	= 28	/*!< low-pass filters count */
 };
 
 /**
@@ -77,12 +80,18 @@ enum LPF_ID {
 * @brief Complimentary filters IDs
 */
 enum CMPL_ID {
-	CMPL_PITCH 	= 0,	/*!< pitch low-pass filter */
-	CMPL_ROLL 	= 1,	/*!< roll low-pass filter */
-	CMPL_YAW	= 2,	/*!< yaw low-pass filter */
+	CMPL_PITCH 	= 0,	/*!< pitch compimentary filter */
+	CMPL_ROLL 	= 1,	/*!< roll compimentary filter */
+	CMPL_YAW	= 2,	/*!< yaw compimentary filter */
 	CMPL_CLIMBRATE	= 3,	/*!< climb rate complimentary filter */
 	CMPL_ALT 	= 4,	/*!< altitude complimentary filter */
-	CMPL_COUNT 	= 5	/*!< complimentary filters count */
+	CMPL_SLAT	= 5,	/*!< moving through latitiude speed
+					complimentary filter */
+	CMPL_SLON	= 6,	/*!< moving through longitude speed
+					complimentary filter */
+	CMPL_LAT	= 7,	/*!< latitude complimentary filter */
+	CMPL_LON	= 8,	/*!< longitude complimentary filter */
+	CMPL_COUNT 	= 9	/*!< complimentary filters count */
 };
 
 /**
@@ -99,7 +108,11 @@ enum PID_ID {
 	PID_VA		= 6,	/*!< vertical acceleration PID context */
 	PID_CLIMBRATE	= 7,	/*!< climb rate PID context */
 	PID_ALT		= 8,	/*!< altitude PID context */
-	PID_COUNT	= 9	/*!< pid controllers count */
+	PID_SLAT	= 9,	/*!< speed through latitiude PID context */
+	PID_SLON	= 10,	/*!< speed through longitude PID context */
+	PID_LAT		= 11,	/*!< latitude PID context */
+	PID_LON		= 12,	/*!< longitude PID context */
+	PID_COUNT	= 13	/*!< pid controllers count */
 };
 
 /**
@@ -109,6 +122,15 @@ enum ALTMODE {
 	ALTMODE_ACCEL	= 0,	/*!< acceleration stabilization */
 	ALTMODE_SPEED	= 1,	/*!< climb rate stabilization */
 	ALTMODE_POS	= 2	/*!< altitude stabilization */
+};
+
+/**
+* @brief GNSS control mode.
+*/
+enum GNSSMODE {
+	GNSSMODE_NONE	= 0,	/*!< no GNSS stabilization */
+	GNSSMODE_SPEED	= 1,	/*!< speed stabilization */
+	GNSSMODE_POS	= 2	/*!< position stabilization */
 };
 
 /**
@@ -283,6 +305,10 @@ extern float En; /*!< 1.0 when motors turned on, 0.0 otherwise */
 extern enum ALTMODE Altmode; /*!< ALTMODE_POS if in altitude hold mode,
 				ALTMODE_SPEED if climbrate control mode,
 				ALTMODE_ACCEL if acceleration control mode */
+
+extern enum GNSSMODE Gnssmode; /*!< GNSSMODE_NONE GNSS hold not used,
+				GNSSMODE_SPEED if speed control mode,
+				GNSSMODE_POS if position control mode */
 extern int Speedpid;	/*!<  1 if only gyroscope if used for yaw
 			stabilization, 0 if accelerometer is used */
 extern int Yawspeedpid;	/*!< 1 if only gyroscope if used for yaw

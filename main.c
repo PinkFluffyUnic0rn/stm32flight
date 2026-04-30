@@ -415,6 +415,66 @@ int stabilize(int ms)
 	// write sideward acceleration into log	
 	writelog(LOG_SACCEL, dsp_getlpf(Lpf + LPF_SA));
 
+	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
+			&& M10_HASFIX(Gnss.quality)) {
+		float heading, hc;
+
+		// calculate weighted heading, giving more
+		// weight to magnetometer+gyroscope calculated
+		// weight when speed is small
+		hc = Gnss.speed * St.adj.yawmix;
+
+		hc = hc > 1.0 ? 1.0 : 0.0;
+
+		heading = (1.0 - hc) * yaw + hc * Gnss.course;
+
+		writelog(LOG_CUSTOM3, heading);
+
+		// calculate speed through latitude from
+		// forward and sideward accelerations and
+		// GNSS speed using complimetary filter
+		dsp_updatecompl(Cmpl + CMPL_SLAT,
+			9.80665 * (
+			- dsp_getlpf(Lpf + LPF_FA) * cosf(heading)
+			+ dsp_getlpf(Lpf + LPF_SA) * sinf(heading))
+			* dt, -Gnss.speed / 3.6 * cosf(heading));
+
+		// calculate speed through longitude from
+		// forward and sideward accelerations and
+		// GNSS speed using complimetary filter
+		dsp_updatecompl(Cmpl + CMPL_SLON,
+			9.80665 * (
+			- dsp_getlpf(Lpf + LPF_FA) * sinf(heading)
+			- dsp_getlpf(Lpf + LPF_SA) * cosf(heading))
+			* dt, -Gnss.speed / 3.6 * sinf(heading));
+
+		// calculate latitude from speed and GNSS
+		// latitude using complimentary filter
+		dsp_updatecompl(Cmpl + CMPL_LAT,
+			dsp_getcompl(Cmpl + CMPL_SLAT) * dt,
+			dsp_getlpf(Lpf + LPF_LATM));
+
+		// calculate longitude from speed and GNSS
+		// latitude using complimentary filter
+		dsp_updatecompl(Cmpl + CMPL_LON,
+			dsp_getcompl(Cmpl + CMPL_SLON) * dt,
+			dsp_getlpf(Lpf + LPF_LONM));
+
+		// calculate horizontal speed from speed
+		// values through longitude and latitude
+		dsp_updatelpf(Lpf + LPF_SPEED,
+			sqrtf(powf(dsp_getcompl(Cmpl + CMPL_SLAT), 2.0)
+			+ powf(dsp_getcompl(Cmpl + CMPL_SLON), 2.0)));
+
+		// write speed values through latitude and longitude,
+		// horizontal speed, latitude and longitude into log
+		writelog(LOG_SLAT, dsp_getcompl(Cmpl + CMPL_SLAT));
+		writelog(LOG_SLON, dsp_getcompl(Cmpl + CMPL_SLON));
+		writelog(LOG_SPEED, dsp_getlpf(Lpf + LPF_SPEED));
+		writelog(LOG_LAT, dsp_getcompl(Cmpl + CMPL_LAT));
+		writelog(LOG_LON, dsp_getcompl(Cmpl + CMPL_LON));
+	}
+
 	// get last barometric altitude
 	alt = dsp_getlpf(Lpf + LPF_ALT);
 
@@ -429,8 +489,11 @@ int stabilize(int ms)
 	// if GNSS is locked, use speed to compensate dynamic pressure
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
-		altcor = St.adj.althold.altthc
-			* Gnss.speed * Gnss.speed;
+		float sp;
+
+		sp = dsp_getlpf(Lpf + LPF_SPEED);
+
+		altcor = St.adj.althold.altthc * sp * sp;
 		alt -= altcor;
 	}
 
@@ -471,7 +534,50 @@ int stabilize(int ms)
 	writelog(LOG_PITCH, pitch);
 	writelog(LOG_YAW, yaw);
 
-	if (Speedpid) {
+	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
+			&& M10_HASFIX(Gnss.quality)
+			&& Gnssmode == GNSSMODE_POS) {
+		rollcor = dsp_pidbl(Pid + PID_LON, Rolltarget, roll);
+		pitchcor = dsp_pidbl(Pid + PID_LAT, Pitchtarget, pitch);
+
+		rollcor = -dsp_pidbl(Pid + PID_SLON, rollcor, roll);
+		pitchcor = dsp_pidbl(Pid + PID_SLAT, pitchcor, pitch);
+
+		rollcor = trimf(rollcor,
+			-M_PI * St.ctrl.rollmax * 0.5,
+			M_PI * St.ctrl.rollmax * 0.5);
+
+		pitchcor = trimf(pitchcor,
+			-M_PI * St.ctrl.pitchmax * 0.5,
+			M_PI * St.ctrl.pitchmax * 0.5);
+
+		rollcor = dsp_pidbl(Pid + PID_ROLLP, rollcor, roll);
+		pitchcor = dsp_pidbl(Pid + PID_PITCHP, pitchcor, pitch);
+
+		rollcor = dsp_pidbl(Pid + PID_ROLLS, rollcor, gy);
+		pitchcor = dsp_pidbl(Pid + PID_PITCHS, pitchcor, gx);
+	}
+	else if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
+			&& M10_HASFIX(Gnss.quality)
+			&& Gnssmode == GNSSMODE_SPEED) {	
+		rollcor = -dsp_pidbl(Pid + PID_SLON, Rolltarget, roll);
+		pitchcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget, pitch);
+
+		rollcor = trimf(rollcor,
+			-M_PI * St.ctrl.rollmax * 0.5,
+			M_PI * St.ctrl.rollmax * 0.5);
+
+		pitchcor = trimf(pitchcor,
+			-M_PI * St.ctrl.pitchmax * 0.5,
+			M_PI * St.ctrl.pitchmax * 0.5);
+
+		rollcor = dsp_pidbl(Pid + PID_ROLLP, rollcor, roll);
+		pitchcor = dsp_pidbl(Pid + PID_PITCHP, pitchcor, pitch);
+
+		rollcor = dsp_pidbl(Pid + PID_ROLLS, rollcor, gy);
+		pitchcor = dsp_pidbl(Pid + PID_PITCHS, pitchcor, gx);
+	}
+	else if (Speedpid) {
 		// if in single PID loop mode for tilt
 		// (called accro mode), use only rotation speed values
 		// from the gyroscope. Update speed PID controllers for
@@ -492,8 +598,8 @@ int stabilize(int ms)
 		rollcor = dsp_pidbl(Pid + PID_ROLLS, rollcor, gy);
 		pitchcor = dsp_pidbl(Pid + PID_PITCHS, pitchcor, gx);
 	}
-
-	if (Yawspeedpid) {
+			
+	if (Yawspeedpid && Gnssmode == GNSSMODE_NONE) {
 		// if single PID loop mode for yaw is used just use
 		// rotation speed values around axis Z to upadte yaw PID
 		// controller and get next yaw correciton value
@@ -798,7 +904,14 @@ int telesend(int ms)
 
 	Tele.mode[0] = En > 0.5 ? 'a' : 'n';
 	Tele.mode[1] = '|';
-	memcpy(Tele.mode + 2, attmodestr[Speedpid ? 0 : 1], 2);
+	
+	if (Gnssmode == GNSSMODE_SPEED)
+		memcpy(Tele.mode + 2, attmodestr[2], 2);
+	else if (Gnssmode == GNSSMODE_POS)
+		memcpy(Tele.mode + 2, attmodestr[3], 2);
+	else
+		memcpy(Tele.mode + 2, attmodestr[Speedpid ? 0 : 1], 2);
+	
 	Tele.mode[4] = '|';
 	memcpy(Tele.mode + 5, yawmodestr[Yawspeedpid ? 0 : 1], 2);
 	Tele.mode[7] = '|';
@@ -824,6 +937,13 @@ int telesend(int ms)
 		Osd.altmode = MSP_ALTMODE_SPEED;
 	else if (Altmode == ALTMODE_POS)
 		Osd.altmode = MSP_ALTMODE_POS;
+
+	if (Gnssmode == GNSSMODE_NONE)
+		Osd.gnssmode = MSP_GNSSMODE_NONE;
+	else if (Gnssmode == GNSSMODE_SPEED)
+		Osd.gnssmode = MSP_GNSSMODE_SPEED;
+	else if (Gnssmode == GNSSMODE_POS)
+		Osd.gnssmode = MSP_GNSSMODE_POS;
 
 	Osd.bat = Tele.bat;
 	Osd.curr = Tele.curr;
@@ -932,19 +1052,6 @@ int autopilotupdate(int ms)
 		Thrust = -1.0;
 	}
 	else if (nextpoint->type == AUTOPILOT_FORWARD) {
-/*
-		float dx, dy;
-	
-		Pitchtarget = M_PI / 12.0;
-		
-		Yawtarget = atan2f(nextpoint->forward.x,
-			nextpoint->forward.y);
-
-		dx = nextpoint->forward.x - Points[Curpoint].forward.x;
-		dy = nextpoint->forward.y - Points[Curpoint].forward.y;
-
-		if (forwardpath > sqrtf(dx * dx + dy * dy))
-*/
 		autopilotstep();
 	}
 
@@ -1157,6 +1264,26 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 			* (M_PI * St.ctrl.pitchrate);
 	}
 
+	if (cd->chf[ERLS_CH_GNSSMODE] > 0.25
+			&& Dev[DEV_GNSS].status == DEVSTATUS_INIT
+			&& M10_HASFIX(Gnss.quality)) {
+		Gnssmode = GNSSMODE_POS;
+
+		Rolltarget += dt * St.ctrl.rollrate;
+		Pitchtarget += dt * St.ctrl.pitchrate;
+	}
+	else if (cd->chf[ERLS_CH_GNSSMODE] > -0.25
+			&& Dev[DEV_GNSS].status == DEVSTATUS_INIT
+			&& M10_HASFIX(Gnss.quality)) {
+		Gnssmode = GNSSMODE_SPEED;
+
+		Rolltarget = St.ctrl.rollrate;
+		Pitchtarget = St.ctrl.pitchrate;
+	}
+	else {
+		Gnssmode = GNSSMODE_NONE;
+	}
+
 	// disable thrust when motors should be
 	// disabled, for additional safety
 	if (En < 0.5)
@@ -1219,9 +1346,14 @@ int m10msg(struct m10_data *nd)
 	writelog(LOG_GNSS_SPEED, Gnss.speed);
 	writelog(LOG_GNSS_COURSE, Gnss.course);
 
-	writelog(LOG_CUSTOM0, (Lat0 - Gnss.declat) * 111320);
-	writelog(LOG_CUSTOM1, (Lon0 - Gnss.declon) * 111320
-		* cosf(deg2rad(Lat0)));
+	// Calculate distance from starting point
+	// through latitude and longitude in meters
+	dsp_updatelpf(Lpf + LPF_LATM, (Gnss.declat - Lat0) * 111320);
+	dsp_updatelpf(Lpf + LPF_LONM,
+		(Gnss.declon - Lon0) * 111320 * cosf(deg2rad(Lat0)));
+
+	writelog(LOG_CUSTOM0, dsp_getlpf(Lpf + LPF_LATM));
+	writelog(LOG_CUSTOM1, dsp_getlpf(Lpf + LPF_LONM));
 	writelog(LOG_CUSTOM2, deg2rad(Gnss.course) - M_PI);
 
 	return 0;

@@ -27,7 +27,7 @@
 /**
 * @brief Log value id's count
 */
-#define LOG_FIELDSTRSIZE 53
+#define LOG_FIELDSTRSIZE 58
 
 /**
 * @defgroup LOG log values id
@@ -83,10 +83,15 @@ enum LOG_FIELD {
 	LOG_GNSS_COURSE	= 46,
 	LOG_GNSS_ALT	= 47,
 	LOG_GNSS_SATS	= 48,
-	LOG_CUSTOM0	= 49,
-	LOG_CUSTOM1	= 50,
-	LOG_CUSTOM2	= 51,
-	LOG_CUSTOM3	= 52
+	LOG_SPEED	= 49,
+	LOG_SLAT	= 50,
+	LOG_SLON	= 51,
+	LOG_LAT		= 52,
+	LOG_LON		= 53,
+	LOG_CUSTOM0	= 54,
+	LOG_CUSTOM1	= 55,
+	LOG_CUSTOM2	= 56,
+	LOG_CUSTOM3	= 57
 };
 /**
 * @}
