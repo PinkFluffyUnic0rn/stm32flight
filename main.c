@@ -537,19 +537,43 @@ int stabilize(int ms)
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)
 			&& Gnssmode == GNSSMODE_POS) {
-		rollcor = dsp_pidbl(Pid + PID_LON, Rolltarget, roll);
-		pitchcor = dsp_pidbl(Pid + PID_LAT, Pitchtarget, pitch);
+		rollcor = dsp_pidbl(Pid + PID_LON, Rolltarget,
+			dsp_getcompl(Cmpl + CMPL_SLAT));
+		pitchcor = dsp_pidbl(Pid + PID_LAT, Pitchtarget,
+			dsp_getcompl(Cmpl + CMPL_LAT));
 
-		rollcor = -dsp_pidbl(Pid + PID_SLON, rollcor, roll);
-		pitchcor = dsp_pidbl(Pid + PID_SLAT, pitchcor, pitch);
+/*
+		float loncor, latcor;
+
+		loncor = dsp_pidbl(Pid + PID_SLON, Rolltarget,
+			dsp_getcompl(Cmpl + CMPL_SLON));
+		latcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
+			dsp_getcompl(Cmpl + CMPL_SLAT));
+
+		rollcor = -cos(heading) * loncor + sin(heading) * latcor;
+		pitchcor = cos(heading) * latcor + sin(heading) * loncor;
 
 		rollcor = trimf(rollcor,
-			-M_PI * St.ctrl.rollmax * 0.5,
-			M_PI * St.ctrl.rollmax * 0.5);
+			-M_PI * St.ctrl.rollmax * 0.25,
+			M_PI * St.ctrl.rollmax * 0.25);
 
 		pitchcor = trimf(pitchcor,
-			-M_PI * St.ctrl.pitchmax * 0.5,
-			M_PI * St.ctrl.pitchmax * 0.5);
+			-M_PI * St.ctrl.pitchmax * 0.25,
+			M_PI * St.ctrl.pitchmax * 0.25);
+*/
+
+		rollcor = -dsp_pidbl(Pid + PID_SLON, Rolltarget,
+			dsp_getcompl(Cmpl + CMPL_SLON));
+		pitchcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
+			dsp_getcompl(Cmpl + CMPL_SLAT));
+
+		rollcor = trimf(rollcor,
+			-M_PI * St.ctrl.rollmax * 0.25,
+			M_PI * St.ctrl.rollmax * 0.25);
+
+		pitchcor = trimf(pitchcor,
+			-M_PI * St.ctrl.pitchmax * 0.25,
+			M_PI * St.ctrl.pitchmax * 0.25);
 
 		rollcor = dsp_pidbl(Pid + PID_ROLLP, rollcor, roll);
 		pitchcor = dsp_pidbl(Pid + PID_PITCHP, pitchcor, pitch);
@@ -559,17 +583,39 @@ int stabilize(int ms)
 	}
 	else if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)
-			&& Gnssmode == GNSSMODE_SPEED) {	
-		rollcor = -dsp_pidbl(Pid + PID_SLON, Rolltarget, roll);
-		pitchcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget, pitch);
+			&& Gnssmode == GNSSMODE_SPEED) {
+/*
+		float loncor, latcor;
+
+		loncor = dsp_pidbl(Pid + PID_SLON, Rolltarget,
+			dsp_getcompl(Cmpl + CMPL_SLON));
+		latcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
+			dsp_getcompl(Cmpl + CMPL_SLAT));
+
+		rollcor = -cos(heading) * loncor + sin(heading) * latcor;
+		pitchcor = cos(heading) * latcor + sin(heading) * loncor;
 
 		rollcor = trimf(rollcor,
-			-M_PI * St.ctrl.rollmax * 0.5,
-			M_PI * St.ctrl.rollmax * 0.5);
+			-M_PI * St.ctrl.rollmax * 0.25,
+			M_PI * St.ctrl.rollmax * 0.25);
 
 		pitchcor = trimf(pitchcor,
-			-M_PI * St.ctrl.pitchmax * 0.5,
-			M_PI * St.ctrl.pitchmax * 0.5);
+			-M_PI * St.ctrl.pitchmax * 0.25,
+			M_PI * St.ctrl.pitchmax * 0.25);
+*/
+
+		rollcor = -dsp_pidbl(Pid + PID_SLON, Rolltarget,
+			dsp_getcompl(Cmpl + CMPL_SLON));
+		pitchcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
+			dsp_getcompl(Cmpl + CMPL_SLAT));
+
+		rollcor = trimf(rollcor,
+			-M_PI * St.ctrl.rollmax * 0.25,
+			M_PI * St.ctrl.rollmax * 0.25);
+
+		pitchcor = trimf(pitchcor,
+			-M_PI * St.ctrl.pitchmax * 0.25,
+			M_PI * St.ctrl.pitchmax * 0.25);
 
 		rollcor = dsp_pidbl(Pid + PID_ROLLP, rollcor, roll);
 		pitchcor = dsp_pidbl(Pid + PID_PITCHP, pitchcor, pitch);
@@ -689,6 +735,10 @@ int stabilize(int ms)
 		dsp_resetpidbl(Pid + PID_VA);
 		dsp_resetpidbl(Pid + PID_CLIMBRATE);
 		dsp_resetpidbl(Pid + PID_ALT);
+		dsp_resetpidbl(Pid + PID_SLAT);
+		dsp_resetpidbl(Pid + PID_SLON);
+		dsp_resetpidbl(Pid + PID_LAT);
+		dsp_resetpidbl(Pid + PID_LON);
 	}
 
 	// disable I-term for all
@@ -707,6 +757,10 @@ int stabilize(int ms)
 		dsp_resetpidbls(Pid + PID_VA);
 		dsp_resetpidbls(Pid + PID_CLIMBRATE);
 		dsp_resetpidbls(Pid + PID_ALT);
+		dsp_resetpidbls(Pid + PID_SLAT);
+		dsp_resetpidbls(Pid + PID_SLON);
+		dsp_resetpidbls(Pid + PID_LAT);
+		dsp_resetpidbls(Pid + PID_LON);
 	}
 
 	// calculate weights for motors
