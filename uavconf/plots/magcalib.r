@@ -7,8 +7,8 @@ library(conicfit)
 #ycenter = 200;
 
 range = 300;
-xcenter = -400;
-ycenter = 0;
+xcenter = -700;
+ycenter = -200;
 
 printf <- function(...) invisible(print(sprintf(...)))
 

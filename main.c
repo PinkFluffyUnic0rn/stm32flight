@@ -544,14 +544,25 @@ int stabilize(int ms)
 
 /*
 		float loncor, latcor;
+		float heading, hc;
+
+		// calculate weighted heading, giving more
+		// weight to magnetometer+gyroscope calculated
+		// weight when speed is small
+		hc = Gnss.speed * St.adj.yawmix;
+
+		hc = hc > 1.0 ? 1.0 : 0.0;
+
+		heading = (1.0 - hc) * yaw + hc * Gnss.course;
+
 
 		loncor = dsp_pidbl(Pid + PID_SLON, Rolltarget,
 			dsp_getcompl(Cmpl + CMPL_SLON));
 		latcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
-		rollcor = -cos(heading) * loncor + sin(heading) * latcor;
-		pitchcor = cos(heading) * latcor + sin(heading) * loncor;
+		rollcor = -cosf(heading) * loncor + sinf(heading) * latcor;
+		pitchcor = cosf(heading) * latcor + sinf(heading) * loncor;
 
 		rollcor = trimf(rollcor,
 			-M_PI * St.ctrl.rollmax * 0.25,
@@ -586,14 +597,25 @@ int stabilize(int ms)
 			&& Gnssmode == GNSSMODE_SPEED) {
 /*
 		float loncor, latcor;
+		float heading, hc;
+
+		// calculate weighted heading, giving more
+		// weight to magnetometer+gyroscope calculated
+		// weight when speed is small
+		hc = Gnss.speed * St.adj.yawmix;
+
+		hc = hc > 1.0 ? 1.0 : 0.0;
+
+		heading = (1.0 - hc) * yaw + hc * Gnss.course;
+
 
 		loncor = dsp_pidbl(Pid + PID_SLON, Rolltarget,
 			dsp_getcompl(Cmpl + CMPL_SLON));
 		latcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
-		rollcor = -cos(heading) * loncor + sin(heading) * latcor;
-		pitchcor = cos(heading) * latcor + sin(heading) * loncor;
+		rollcor = -cosf(heading) * loncor + sinf(heading) * latcor;
+		pitchcor = cosf(heading) * latcor + sinf(heading) * loncor;
 
 		rollcor = trimf(rollcor,
 			-M_PI * St.ctrl.rollmax * 0.25,
@@ -645,7 +667,7 @@ int stabilize(int ms)
 		pitchcor = dsp_pidbl(Pid + PID_PITCHS, pitchcor, gx);
 	}
 			
-	if (Yawspeedpid && Gnssmode == GNSSMODE_NONE) {
+	if (Yawspeedpid) {
 		// if single PID loop mode for yaw is used just use
 		// rotation speed values around axis Z to upadte yaw PID
 		// controller and get next yaw correciton value
@@ -935,7 +957,8 @@ int telesend(int ms)
 
 	Tele.lat = Gnss.declat;
 	Tele.lon = Gnss.declon;
-	Tele.speed = Gnss.speed;
+	Tele.speed = dsp_getlpf(Lpf + LPF_SPEED);
+//	Tele.speed = Gnss.speed;
 	Tele.course = Gnss.course;
 	Tele.alt = Gnss.altitude;
 	Tele.sats = Gnss.satellites;
@@ -1323,16 +1346,16 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 			&& M10_HASFIX(Gnss.quality)) {
 		Gnssmode = GNSSMODE_POS;
 
-		Rolltarget += dt * St.ctrl.rollrate;
-		Pitchtarget += dt * St.ctrl.pitchrate;
+		Rolltarget += dt * cd->chf[ERLS_CH_ROLL];
+		Pitchtarget += dt * cd->chf[ERLS_CH_PITCH];
 	}
 	else if (cd->chf[ERLS_CH_GNSSMODE] > -0.25
 			&& Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
 		Gnssmode = GNSSMODE_SPEED;
 
-		Rolltarget = St.ctrl.rollrate;
-		Pitchtarget = St.ctrl.pitchrate;
+		Rolltarget = -cd->chf[ERLS_CH_ROLL] * 4.0;
+		Pitchtarget = -cd->chf[ERLS_CH_PITCH] * 4.0;
 	}
 	else {
 		Gnssmode = GNSSMODE_NONE;

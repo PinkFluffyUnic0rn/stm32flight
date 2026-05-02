@@ -1036,7 +1036,7 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Magnetometer offsets", "dsp",
 		{"X",		"Y",		"Z",		"declination",	"yaw GPS mix"},
-		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl", "adj mag decl"},
+		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl", "adj mag yawmix"},
 		cmdstree, true, this), 1, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Magnetometer scale", "dsp",
