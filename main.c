@@ -883,10 +883,13 @@ int magupdate(int ms)
 	// if magnetometer isn't initilized, return
 	if (Dev[DEV_MAG].status != DEVSTATUS_INIT)
 		return 0;
-
+/*
 	// read magnetometer values
 	Dev[DEV_MAG].read(Dev[DEV_MAG].priv, &Qmcdata,
 		sizeof(struct qmc_data));
+*/
+	Dev[DEV_MAG].read(Dev[DEV_MAG].priv, &Qmcdata,
+		sizeof(struct lis_data));
 
 	// apply offsets to magnetometer values
 	Qmcdata.fx = St.adj.magsc.x * (Qmcdata.fx + St.adj.mag0.x);

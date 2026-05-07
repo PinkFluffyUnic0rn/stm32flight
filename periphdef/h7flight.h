@@ -351,7 +351,8 @@ const struct pconf_bar barconf = {
 };
 
 const struct pconf_mag magconf = {
-	.type = PCONF_MAGTYPE_QMC5883L,
+//	.type = PCONF_MAGTYPE_QMC5883L,
+	.type = PCONF_MAGTYPE_LIS3MDL,
 	.iface = {
 		.type = PCONF_IFACETYPE_I2C,
 		.hi2c = I2C1

@@ -17,6 +17,7 @@
 
 #include "icm42688.h"
 #include "qmc5883l.h"
+#include "lis3mdl.h"
 #include "dps368.h"
 #include "crsf.h"
 #include "msp.h"
@@ -282,7 +283,8 @@ extern const char *Evnames[TEV_COUNT];
 	data that aquired in separate events
 * @{
 */
-extern struct qmc_data Qmcdata;		/*!< magnetometer data */
+//extern struct qmc_data Qmcdata;		/*!< magnetometer data */
+extern struct lis_data Qmcdata;		/*!< magnetometer data */
 extern struct icm_data Imudata;		/*!< IMU data */
 extern struct dps_data Barodata;	/*!< Barometer data */
 extern struct gnss_data Gnss;		/*!< GNSS data */

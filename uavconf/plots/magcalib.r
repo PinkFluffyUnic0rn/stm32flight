@@ -6,9 +6,10 @@ library(conicfit)
 #xcenter = -1000;
 #ycenter = 200;
 
-range = 300;
-xcenter = -700;
-ycenter = -200;
+range = 0.2;
+ycenter = 0.7;
+xcenter = 0.5;
+
 
 printf <- function(...) invisible(print(sprintf(...)))
 

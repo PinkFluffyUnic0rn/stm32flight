@@ -1997,10 +1997,28 @@ static int qmc_init()
 	return qmc_initdevice(&d, Dev + DEV_MAG);
 }
 
+static int lis_init()
+{
+	struct lis_device d;
+
+	if (magconf.iface.type != PCONF_IFACETYPE_I2C)
+		return (-1);
+
+	d.hi2c = pconf_hi2cs + pconf_i2cidx(magconf.iface.hi2c);
+	d.scale = LIS_SCALE_8;
+	d.rate = LIS_RATE_80;
+
+	return lis_initdevice(&d, Dev + DEV_MAG);
+}
+
 static void mag_init()
 {
 	if (magconf.type == PCONF_MAGTYPE_QMC5883L) {
 		if (qmc_init() < 0)
+			goto error;
+	}
+	else if (magconf.type == PCONF_MAGTYPE_LIS3MDL) {
+		if (lis_init() < 0)
 			goto error;
 	}
 
