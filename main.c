@@ -546,6 +546,15 @@ int stabilize(int ms)
 		float loncor, latcor;
 		float heading, hc;
 
+		float rt, pt;
+
+
+		rt = -Rolltarget * cosf(heading)
+			+ Pitchtarget * sinf(heading);
+			
+		pt = -Rolltarget * sinf(heading)
+			- Pitchtarget * cosf(heading);
+
 		// calculate weighted heading, giving more
 		// weight to magnetometer+gyroscope calculated
 		// weight when speed is small
@@ -556,9 +565,9 @@ int stabilize(int ms)
 		heading = (1.0 - hc) * yaw + hc * Gnss.course;
 
 
-		loncor = dsp_pidbl(Pid + PID_SLON, Rolltarget,
+		loncor = dsp_pidbl(Pid + PID_SLON, rt,
 			dsp_getcompl(Cmpl + CMPL_SLON));
-		latcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
+		latcor = dsp_pidbl(Pid + PID_SLAT, pt,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
 		rollcor = -cosf(heading) * loncor + sinf(heading) * latcor;
@@ -598,6 +607,13 @@ int stabilize(int ms)
 /*
 		float loncor, latcor;
 		float heading, hc;
+		float rt, pt;
+
+		rt = -Rolltarget * cosf(heading)
+			+ Pitchtarget * sinf(heading);
+			
+		pt = -Rolltarget * sinf(heading)
+			- Pitchtarget * cosf(heading);
 
 		// calculate weighted heading, giving more
 		// weight to magnetometer+gyroscope calculated
@@ -608,10 +624,9 @@ int stabilize(int ms)
 
 		heading = (1.0 - hc) * yaw + hc * Gnss.course;
 
-
-		loncor = dsp_pidbl(Pid + PID_SLON, Rolltarget,
+		loncor = dsp_pidbl(Pid + PID_SLON, rt,
 			dsp_getcompl(Cmpl + CMPL_SLON));
-		latcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
+		latcor = dsp_pidbl(Pid + PID_SLAT, pt,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
 		rollcor = -cosf(heading) * loncor + sinf(heading) * latcor;
