@@ -427,36 +427,23 @@ int stabilize(int ms)
 
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
-		float heading, hc;
-
-		// calculate weighted heading, giving more
-		// weight to magnetometer+gyroscope calculated
-		// weight when speed is small
-		hc = Gnss.speed * St.adj.yawmix;
-
-		hc = hc > 1.0 ? 1.0 : 0.0;
-
-		heading = (1.0 - hc) * yaw + hc * Gnss.course;
-
-		writelog(LOG_CUSTOM3, heading);
-
 		// calculate speed through latitude from
 		// forward and sideward accelerations and
 		// GNSS speed using complimetary filter
 		dsp_updatecompl(Cmpl + CMPL_SLAT,
 			9.80665 * (
-			+ dsp_getlpf(Lpf + LPF_FA) * cosf(heading)
-			- dsp_getlpf(Lpf + LPF_SA) * sinf(heading))
-			* dt, Gnss.speed / 3.6 * cosf(heading));
+			+ dsp_getlpf(Lpf + LPF_FA) * cosf(yaw)
+			- dsp_getlpf(Lpf + LPF_SA) * sinf(yaw))
+			* dt, Gnss.speed / 3.6 * cosf(Gnss.course));
 
 		// calculate speed through longitude from
 		// forward and sideward accelerations and
 		// GNSS speed using complimetary filter
 		dsp_updatecompl(Cmpl + CMPL_SLON,
 			9.80665 * (
-			+ dsp_getlpf(Lpf + LPF_FA) * sinf(heading)
-			+ dsp_getlpf(Lpf + LPF_SA) * cosf(heading))
-			* dt, Gnss.speed / 3.6 * sinf(heading));
+			+ dsp_getlpf(Lpf + LPF_FA) * sinf(yaw)
+			+ dsp_getlpf(Lpf + LPF_SA) * cosf(yaw))
+			* dt, Gnss.speed / 3.6 * sinf(Gnss.course));
 
 		// calculate latitude from speed and GNSS
 		// latitude using complimentary filter
@@ -547,55 +534,38 @@ int stabilize(int ms)
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)
 			&& Gnssmode == GNSSMODE_POS) {
+/*
+		float loncor, latcor;
+
+		// calculate lonogitude and latitude correction
+		loncor = dsp_pidbl(Pid + PID_LON, Rolltarget,
+			dsp_getcompl(Cmpl + CMPL_LON));
+		latcor = dsp_pidbl(Pid + PID_LAT, Pitchtarget,
+			dsp_getcompl(Cmpl + CMPL_LAT));
+	
+		// calculate lonogitude and latitude correction
+		loncor = dsp_pidbl(Pid + PID_SLON, loncor,
+			dsp_getcompl(Cmpl + CMPL_SLON));
+		latcor = dsp_pidbl(Pid + PID_SLAT, latcor,
+			dsp_getcompl(Cmpl + CMPL_SLAT));
+
+		// get pitch and roll correction values
+		// using covertion to local frame, inverting pitch
+		pitchcor = -cosf(yaw) * latcor - sinf(yaw) * loncor;
+		rollcor =  -sinf(yaw) * latcor + cosf(yaw) * loncor;
+*/
+
+///////////////////////////////////////////////////////////////////////
 		rollcor = dsp_pidbl(Pid + PID_LON, Rolltarget,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 		pitchcor = dsp_pidbl(Pid + PID_LAT, Pitchtarget,
 			dsp_getcompl(Cmpl + CMPL_LAT));
 
-/*
-		float loncor, latcor;
-		float heading, hc;
-
-		float rt, pt;
-
-
-		rt = Rolltarget * cosf(heading)
-			- Pitchtarget * sinf(heading);
-			
-		pt = Rolltarget * sinf(heading)
-			+ Pitchtarget * cosf(heading);
-
-		// calculate weighted heading, giving more
-		// weight to magnetometer+gyroscope calculated
-		// weight when speed is small
-		hc = Gnss.speed * St.adj.yawmix;
-
-		hc = hc > 1.0 ? 1.0 : 0.0;
-
-		heading = (1.0 - hc) * yaw + hc * Gnss.course;
-
-
-		loncor = dsp_pidbl(Pid + PID_SLON, rt,
+		rollcor = dsp_pidbl(Pid + PID_SLON, rollcor,
 			dsp_getcompl(Cmpl + CMPL_SLON));
-		latcor = dsp_pidbl(Pid + PID_SLAT, pt,
+		pitchcor = -dsp_pidbl(Pid + PID_SLAT, pitchcor,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
-
-		rollcor = cosf(heading) * loncor - sinf(heading) * latcor;
-		pitchcor = -cosf(heading) * latcor - sinf(heading) * loncor;
-
-		rollcor = trimf(rollcor,
-			-M_PI * St.ctrl.rollmax * 0.25,
-			M_PI * St.ctrl.rollmax * 0.25);
-
-		pitchcor = trimf(pitchcor,
-			-M_PI * St.ctrl.pitchmax * 0.25,
-			M_PI * St.ctrl.pitchmax * 0.25);
-*/
-
-		rollcor = -dsp_pidbl(Pid + PID_SLON, Rolltarget,
-			dsp_getcompl(Cmpl + CMPL_SLON));
-		pitchcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
-			dsp_getcompl(Cmpl + CMPL_SLAT));
+///////////////////////////////////////////////////////////////////////
 
 		rollcor = trimf(rollcor,
 			-M_PI * St.ctrl.rollmax * 0.25,
@@ -616,31 +586,25 @@ int stabilize(int ms)
 			&& Gnssmode == GNSSMODE_SPEED) {
 /*
 		float loncor, latcor;
-		float heading, hc;
-		float rt, pt;
+		float lontarget, pitchtarget;
 
-		rt = -Rolltarget * cosf(heading)
-			- Pitchtarget * sinf(heading);
-			
-		pt = Rolltarget * sinf(heading)
-			- Pitchtarget * cosf(heading);
+		// convert target from local frame to global frame	
+		lontarget = Pitchtarget * sinf(yaw)
+			+ Rolltarget * cosf(yaw);
 
-		// calculate weighted heading, giving more
-		// weight to magnetometer+gyroscope calculated
-		// weight when speed is small
-		hc = Gnss.speed * St.adj.yawmix;
-
-		hc = hc > 1.0 ? 1.0 : 0.0;
-
-		heading = (1.0 - hc) * yaw + hc * Gnss.course;
-
-		loncor = dsp_pidbl(Pid + PID_SLON, rt,
+		lattarget = Pitchtarget * cosf(yaw)
+			- Rolltarget * sinf(yaw);
+		
+		// calculate longitude and latitude correction
+		loncor = dsp_pidbl(Pid + PID_SLON, lontarget,
 			dsp_getcompl(Cmpl + CMPL_SLON));
-		latcor = dsp_pidbl(Pid + PID_SLAT, pt,
+		latcor = dsp_pidbl(Pid + PID_SLAT, lattarget,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
-		rollcor = cosf(heading) * loncor - sinf(heading) * latcor;
-		pitchcor = -cosf(heading) * latcor - sinf(heading) * loncor;
+		// get pitch and roll correction values
+		// using covertion to local frame, inverting pitch
+		pitchcor = -cosf(yaw) * latcor - sinf(yaw) * loncor;
+		rollcor =  -sinf(yaw) * latcor + cosf(yaw) * loncor;
 
 		rollcor = trimf(rollcor,
 			-M_PI * St.ctrl.rollmax * 0.25,
@@ -651,10 +615,12 @@ int stabilize(int ms)
 			M_PI * St.ctrl.pitchmax * 0.25);
 */
 
-		rollcor = -dsp_pidbl(Pid + PID_SLON, Rolltarget,
+///////////////////////////////////////////////////////////////////////
+		rollcor = dsp_pidbl(Pid + PID_SLON, Rolltarget,
 			dsp_getcompl(Cmpl + CMPL_SLON));
-		pitchcor = dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
+		pitchcor = -dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
+///////////////////////////////////////////////////////////////////////
 
 		rollcor = trimf(rollcor,
 			-M_PI * St.ctrl.rollmax * 0.25,
@@ -1443,7 +1409,7 @@ int m10msg(struct m10_data *nd)
 		? MAGVARDIR_E : MAGVARDIR_W;
 
 	Gnss.speed = nd->rmc.speed;
-	Gnss.course = nd->rmc.course;
+	Gnss.course = circf(deg2rad(nd->rmc.course));
 
 	// write RMC values into log
 	writelog(LOG_GNSS_LAT, Gnss.declat);
@@ -1459,7 +1425,7 @@ int m10msg(struct m10_data *nd)
 
 	writelog(LOG_CUSTOM0, dsp_getlpf(Lpf + LPF_LATM));
 	writelog(LOG_CUSTOM1, dsp_getlpf(Lpf + LPF_LONM));
-	writelog(LOG_CUSTOM2, deg2rad(Gnss.course) - M_PI);
+	writelog(LOG_CUSTOM2, deg2rad(Gnss.course));
 
 	return 0;
 }
