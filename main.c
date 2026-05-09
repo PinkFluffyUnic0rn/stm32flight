@@ -246,8 +246,8 @@ float esccurrent()
 float qmc_heading(float r, float p, float x, float y, float z)
 {
 	x = x * cosf(p) + y * sinf(r) * sinf(p)
-		- z * cosf(r) * sinf(p);
-	y = y * cosf(r) + z * sinf(r);
+		+ z * cosf(r) * sinf(p);
+	y = y * cosf(r) - z * sinf(r);
 
 	return circf(atan2f(y, x) + St.adj.magdecl);
 }
@@ -257,6 +257,40 @@ int imuupdate(int ms)
 	// get accelerometer and gyroscope readings
 	Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &Imudata,
 		sizeof(struct icm_data));
+
+	// apply accelerometer offsets
+	Imudata.afx += (Imudata.ft - 25.0) * St.adj.acctsc.x;
+	Imudata.afy += (Imudata.ft - 25.0) * St.adj.acctsc.y;
+	Imudata.afz += (Imudata.ft - 25.0) * St.adj.acctsc.z;
+	Imudata.afx -= St.adj.acc0.x;
+	Imudata.afy -= St.adj.acc0.y;
+	Imudata.afz -= St.adj.acc0.z;
+
+	// apply gyroscope offsets
+	Imudata.gfx -= St.adj.gyro0.x;
+	Imudata.gfy -= St.adj.gyro0.y;
+	Imudata.gfz -= St.adj.gyro0.z;
+
+	// write accelerometer and gyroscope values into log
+	writelog(LOG_ACC_X, Imudata.afx);
+	writelog(LOG_ACC_Y, Imudata.afy);
+	writelog(LOG_ACC_Z, Imudata.afz);
+	writelog(LOG_GYRO_X, Imudata.gfx);
+	writelog(LOG_GYRO_Y, Imudata.gfy);
+	writelog(LOG_GYRO_Z, Imudata.gfz);
+
+	// apply accelerometer offsets
+	dsp_updatelpf(Lpf + LPF_ACCX, Imudata.afx);
+	dsp_updatelpf(Lpf + LPF_ACCY, Imudata.afy);
+	dsp_updatelpf(Lpf + LPF_ACCZ, Imudata.afz);
+
+	// convert gyroscope values into radians
+	dsp_updatelpf(Lpf + LPF_GYROX, Imudata.gfx);
+	dsp_updatelpf(Lpf + LPF_GYROY, Imudata.gfy);
+	dsp_updatelpf(Lpf + LPF_GYROZ, Imudata.gfz);
+
+	// update accelerometer temperature
+	dsp_updatelpf(Lpf + LPF_IMUTEMP, Imudata.ft);
 
 	return 0;
 }
@@ -307,41 +341,17 @@ int stabilize(int ms)
 		(En > 0.5) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
 	// apply accelerometer offsets
-	Imudata.afx += (Imudata.ft - 25.0) * St.adj.acctsc.x;
-	Imudata.afy += (Imudata.ft - 25.0) * St.adj.acctsc.y;
-	Imudata.afz += (Imudata.ft - 25.0) * St.adj.acctsc.z;
-	Imudata.afx -= St.adj.acc0.x;
-	Imudata.afy -= St.adj.acc0.y;
-	Imudata.afz -= St.adj.acc0.z;
-
-	// apply gyroscope offsets
-	Imudata.gfx -= St.adj.gyro0.x;
-	Imudata.gfy -= St.adj.gyro0.y;
-	Imudata.gfz -= St.adj.gyro0.z;
-
-	// write accelerometer and gyroscope values into log
-	writelog(LOG_ACC_X, Imudata.afx);
-	writelog(LOG_ACC_Y, Imudata.afy);
-	writelog(LOG_ACC_Z, Imudata.afz);
-	writelog(LOG_GYRO_X, Imudata.gfx);
-	writelog(LOG_GYRO_Y, Imudata.gfy);
-	writelog(LOG_GYRO_Z, Imudata.gfz);
-
-	// update accelerometer temperature
-	dsp_updatelpf(Lpf + LPF_IMUTEMP, Imudata.ft);
-
-	// apply accelerometer offsets
-	ax = dsp_updatelpf(Lpf + LPF_ACCX, Imudata.afx);
-	ay = dsp_updatelpf(Lpf + LPF_ACCY, Imudata.afy);
-	az = dsp_updatelpf(Lpf + LPF_ACCZ, Imudata.afz);
+	ax = dsp_getlpf(Lpf + LPF_ACCX);
+	ay = dsp_getlpf(Lpf + LPF_ACCY);
+	az = dsp_getlpf(Lpf + LPF_ACCZ);
 
 	// update vertical acceleration low-pass filter
 	dsp_updatelpf(Lpf + LPF_THR, Imudata.afz);
 
 	// convert gyroscope values into radians
-	gx = deg2rad(dsp_updatelpf(Lpf + LPF_GYROX, Imudata.gfx));
-	gy = deg2rad(dsp_updatelpf(Lpf + LPF_GYROY, Imudata.gfy));
-	gz = deg2rad(dsp_updatelpf(Lpf + LPF_GYROZ, Imudata.gfz));
+	gx = deg2rad(dsp_getlpf(Lpf + LPF_GYROX));
+	gy = deg2rad(dsp_getlpf(Lpf + LPF_GYROY));
+	gz = deg2rad(dsp_getlpf(Lpf + LPF_GYROZ));
 
 	// update complimenraty filter for roll axis and get next roll
 	// value. First signal (value) is signal to be integrated: it's
@@ -435,18 +445,18 @@ int stabilize(int ms)
 		// GNSS speed using complimetary filter
 		dsp_updatecompl(Cmpl + CMPL_SLAT,
 			9.80665 * (
-			- dsp_getlpf(Lpf + LPF_FA) * cosf(heading)
-			+ dsp_getlpf(Lpf + LPF_SA) * sinf(heading))
-			* dt, -Gnss.speed / 3.6 * cosf(heading));
+			+ dsp_getlpf(Lpf + LPF_FA) * cosf(heading)
+			- dsp_getlpf(Lpf + LPF_SA) * sinf(heading))
+			* dt, Gnss.speed / 3.6 * cosf(heading));
 
 		// calculate speed through longitude from
 		// forward and sideward accelerations and
 		// GNSS speed using complimetary filter
 		dsp_updatecompl(Cmpl + CMPL_SLON,
 			9.80665 * (
-			- dsp_getlpf(Lpf + LPF_FA) * sinf(heading)
-			- dsp_getlpf(Lpf + LPF_SA) * cosf(heading))
-			* dt, -Gnss.speed / 3.6 * sinf(heading));
+			+ dsp_getlpf(Lpf + LPF_FA) * sinf(heading)
+			+ dsp_getlpf(Lpf + LPF_SA) * cosf(heading))
+			* dt, Gnss.speed / 3.6 * sinf(heading));
 
 		// calculate latitude from speed and GNSS
 		// latitude using complimentary filter
@@ -549,11 +559,11 @@ int stabilize(int ms)
 		float rt, pt;
 
 
-		rt = -Rolltarget * cosf(heading)
-			+ Pitchtarget * sinf(heading);
+		rt = Rolltarget * cosf(heading)
+			- Pitchtarget * sinf(heading);
 			
-		pt = -Rolltarget * sinf(heading)
-			- Pitchtarget * cosf(heading);
+		pt = Rolltarget * sinf(heading)
+			+ Pitchtarget * cosf(heading);
 
 		// calculate weighted heading, giving more
 		// weight to magnetometer+gyroscope calculated
@@ -570,8 +580,8 @@ int stabilize(int ms)
 		latcor = dsp_pidbl(Pid + PID_SLAT, pt,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
-		rollcor = -cosf(heading) * loncor + sinf(heading) * latcor;
-		pitchcor = cosf(heading) * latcor + sinf(heading) * loncor;
+		rollcor = cosf(heading) * loncor - sinf(heading) * latcor;
+		pitchcor = -cosf(heading) * latcor - sinf(heading) * loncor;
 
 		rollcor = trimf(rollcor,
 			-M_PI * St.ctrl.rollmax * 0.25,
@@ -610,9 +620,9 @@ int stabilize(int ms)
 		float rt, pt;
 
 		rt = -Rolltarget * cosf(heading)
-			+ Pitchtarget * sinf(heading);
+			- Pitchtarget * sinf(heading);
 			
-		pt = -Rolltarget * sinf(heading)
+		pt = Rolltarget * sinf(heading)
 			- Pitchtarget * cosf(heading);
 
 		// calculate weighted heading, giving more
@@ -629,8 +639,8 @@ int stabilize(int ms)
 		latcor = dsp_pidbl(Pid + PID_SLAT, pt,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
-		rollcor = -cosf(heading) * loncor + sinf(heading) * latcor;
-		pitchcor = cosf(heading) * latcor + sinf(heading) * loncor;
+		rollcor = cosf(heading) * loncor - sinf(heading) * latcor;
+		pitchcor = -cosf(heading) * latcor - sinf(heading) * loncor;
 
 		rollcor = trimf(rollcor,
 			-M_PI * St.ctrl.rollmax * 0.25,
@@ -1372,8 +1382,8 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 			&& M10_HASFIX(Gnss.quality)) {
 		Gnssmode = GNSSMODE_SPEED;
 
-		Rolltarget = -cd->chf[ERLS_CH_ROLL] * 4.0;
-		Pitchtarget = -cd->chf[ERLS_CH_PITCH] * 4.0;
+		Rolltarget = cd->chf[ERLS_CH_ROLL] * 4.0;
+		Pitchtarget = cd->chf[ERLS_CH_PITCH] * 4.0;
 	}
 	else {
 		Gnssmode = GNSSMODE_NONE;

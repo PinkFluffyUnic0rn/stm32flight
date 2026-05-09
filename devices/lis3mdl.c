@@ -63,8 +63,8 @@ int lis_getintdata(struct lis_device *dev, struct lis_data *data)
 		t += 10;
 	}
 
-	data->y = buf[0] | buf[1] << 8;
-	data->x = -(buf[2] | buf[3] << 8);
+	data->y = -(buf[0] | buf[1] << 8);
+	data->x = (buf[2] | buf[3] << 8);
 	data->z = buf[4] | buf[5] << 8;
 
 	pconf_i2cmemread(dev->hi2c, LIS_ADDR << 1, LIS_OUT,

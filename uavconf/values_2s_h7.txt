@@ -17,8 +17,8 @@ adj curr scale 412.5
 adj gyro x -0.309
 adj gyro y -0.093
 adj gyro z -0.277
-adj mag x0 0.497254
-adj mag y0 0.683685
+adj mag x0 -0.497254
+adj mag y0 -0.683685
 adj mag z0 0.137193
 adj mag decl 0.3264
 adj mag yawmix 0.9

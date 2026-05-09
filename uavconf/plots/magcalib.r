@@ -3,13 +3,7 @@ library(geigen)
 library(conicfit)
 
 #range = 300;
-#xcenter = -1000;
-#ycenter = 200;
-
-range = 0.2;
-ycenter = 0.7;
-xcenter = 0.5;
-
+range = 0.1;
 
 printf <- function(...) invisible(print(sprintf(...)))
 
@@ -25,9 +19,12 @@ magx = t[start:end, 2];
 magy = t[start:end, 3];
 magz = t[start:end, 4];
 
+ycenter = mean(magy);
+xcenter = mean(magx);
+
 xz = matrix(nrow = 0, ncol=2);
 for (i in 1:nrow(t)) {
-	if (magy[i] + ycenter < -range || magy[i] + ycenter > range)
+	if (magy[i] - ycenter < -range || magy[i] - ycenter > range)
 		next;
 
 	xz = rbind(xz, c(magx[i], magz[i]));
@@ -40,7 +37,7 @@ xzc5<-calculateEllipse(elxz[1], elxz[2], elxz[3], elxz[4], 180 / pi * elxz[5]);
 
 yz = matrix(nrow = 0, ncol=2);
 for (i in 1:nrow(t)) {
-	if (magx[i] + xcenter < -range || magx[i] + xcenter > range)
+	if (magx[i] - xcenter < -range || magx[i] - xcenter > range)
 		next;
 
 	yz = rbind(yz, c(magy[i], magz[i]));
