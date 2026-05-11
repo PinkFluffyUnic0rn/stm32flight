@@ -534,7 +534,7 @@ int stabilize(int ms)
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)
 			&& Gnssmode == GNSSMODE_POS) {
-/*
+
 		float loncor, latcor;
 
 		// calculate lonogitude and latitude correction
@@ -553,9 +553,9 @@ int stabilize(int ms)
 		// using covertion to local frame, inverting pitch
 		pitchcor = -cosf(yaw) * latcor - sinf(yaw) * loncor;
 		rollcor =  -sinf(yaw) * latcor + cosf(yaw) * loncor;
-*/
 
 ///////////////////////////////////////////////////////////////////////
+/*
 		rollcor = dsp_pidbl(Pid + PID_LON, Rolltarget,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 		pitchcor = dsp_pidbl(Pid + PID_LAT, Pitchtarget,
@@ -565,6 +565,7 @@ int stabilize(int ms)
 			dsp_getcompl(Cmpl + CMPL_SLON));
 		pitchcor = -dsp_pidbl(Pid + PID_SLAT, pitchcor,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
+*/
 ///////////////////////////////////////////////////////////////////////
 
 		rollcor = trimf(rollcor,
@@ -584,9 +585,9 @@ int stabilize(int ms)
 	else if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)
 			&& Gnssmode == GNSSMODE_SPEED) {
-/*
+
 		float loncor, latcor;
-		float lontarget, pitchtarget;
+		float lontarget, lattarget;
 
 		// convert target from local frame to global frame	
 		lontarget = Pitchtarget * sinf(yaw)
@@ -613,13 +614,15 @@ int stabilize(int ms)
 		pitchcor = trimf(pitchcor,
 			-M_PI * St.ctrl.pitchmax * 0.25,
 			M_PI * St.ctrl.pitchmax * 0.25);
-*/
+
 
 ///////////////////////////////////////////////////////////////////////
+/*
 		rollcor = dsp_pidbl(Pid + PID_SLON, Rolltarget,
 			dsp_getcompl(Cmpl + CMPL_SLON));
 		pitchcor = -dsp_pidbl(Pid + PID_SLAT, Pitchtarget,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
+*/
 ///////////////////////////////////////////////////////////////////////
 
 		rollcor = trimf(rollcor,
