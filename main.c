@@ -308,6 +308,7 @@ int stabilize(int ms)
 	float roll, pitch, yaw;
 	float rollcor, pitchcor, yawcor, thrustcor;
 	float vx, vy, vz;
+	float gvx, gvy, gvz;
 	float gy, gx, gz;
 	float ay, ax, az;
 	float va;
@@ -385,6 +386,10 @@ int stabilize(int ms)
 	vy = sin(pitch) * cos(roll);
 	vz = cos(pitch) * cos(roll);
 
+	gvx = (1.0 - Goffset) * vx;
+	gvy = (1.0 - Goffset) * vy;
+	gvz = (1.0 - Goffset) * vz;
+
 	// update vertical acceleration using acceleration
 	// vector to gravity vector projection
 	va = (vx * ax + vy * ay + vz * az)
@@ -405,7 +410,8 @@ int stabilize(int ms)
 
 	// update forward acceleration using acceleration
 	// vector to gravity vector projection
-	dsp_updatelpf(Lpf + LPF_FA, (vx * ax + vy * ay + vz * az)
+	dsp_updatelpf(Lpf + LPF_FA,
+		(vx * (ax - gvx) + vy * (ay - gvy) + vz * (az - gvz))
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 
 	// write forward acceleration into log	
@@ -419,7 +425,8 @@ int stabilize(int ms)
 
 	// update sideward acceleration using acceleration
 	// vector to gravity vector projection
-	dsp_updatelpf(Lpf + LPF_SA, (vx * ax + vy * ay + vz * az)
+	dsp_updatelpf(Lpf + LPF_SA,
+		(vx * (ax - gvx) + vy * (ay - gvy) + vz * (az - gvx))
 		/ sqrtf(vx * vx + vy * vy + vz * vz));
 	
 	// write sideward acceleration into log	
