@@ -31,7 +31,7 @@ STM32F405 based board
 =======
  * MCU: STM32F405RGT6
  * Crystall oscillator: 20 Mhz
- * DC-DC converter for control board and camera: TPS5430 (external)
+ * DC-DC converter for control board: TPS5430 (external)
  * Control board voltage regulator: LDL1117S33R-3.3
  * Accelerometer/Gyroscope: ICM-42688-P
  * Magnetometer: QMC5883L
@@ -45,10 +45,11 @@ STM32H723 based board
 
  * MCU: STM32H723VGT6
  * Crystall oscillator: 20 Mhz
- * DC-DC converter for control board and camera: TPS5430
+ * DC-DC converter for control board: TPS5430
  * Control board voltage regulator: LDL1117S33R
  * Accelerometer/Gyroscope: ICM-42688-P
  * Magnetometer: QMC5883L
+ * External magnetometer: LIS3MDL
  * Remote control: ERLS CRSF receiver
  * Telemetry/debug/config: ESP8285
  * Barometer: DPS368
@@ -59,3 +60,5 @@ The quadcopter used for testing
  * Props: 3030
  * Battery: 14.8v (4s), 1300 mAh, 120c
  * Frame: carbon fiber
+ * Canopy, VTX mount: 3d printed PLA
+ * Landing pads: EVA foam
