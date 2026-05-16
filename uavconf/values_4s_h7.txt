@@ -20,8 +20,8 @@ adj gyro z -0.277
 adj mag x0 -0.510318
 adj mag y0 -0.689856
 adj mag z0 0.144442
+adj mag decl 0.0
 adj mag decl 0.322
-adj mag yawmix 0.9
 adj mag xscale 0.969851
 adj mag yscale 0.972858
 adj mag zscale 1
@@ -115,7 +115,7 @@ pid yaw i 0
 pid yaw p 1.5
 pid pos d 0
 pid pos i 0
-pid pos p 0.1
+pid pos p 3
 pid speed d 0
 pid speed i 0
-pid speed p 0.3
+pid speed p 0.9
