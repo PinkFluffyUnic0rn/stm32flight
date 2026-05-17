@@ -19,6 +19,7 @@ Configuration commands and settings are on
 * Yaw stabilization using magnetometer/gyroscope readings.
 * Acceleration stabilization using accelerometer readings.
 * Altitude stabilization using barometer/accelerometer readings.
+* Position stabilization using GNSS/accelerometer/magnetometer readings.
 * Configuration through Wi-Fi.
 * Dshot-300 and Dshot-600 ESC control protocols.
 * IRC Tramp VTX control.
