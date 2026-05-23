@@ -444,7 +444,7 @@ static int msp_drawspeed(struct msp_buffer *sbuf, int x, int y,
 	char buf[16];
 	char *p;
 
-	p = ftos(osd->speed, buf, 15, 0, 2);
+	p = ftos(osd->speed * 3.6, buf, 15, 0, 2);
 	*(p - 1) = MSP_CHAR_KMH;
 	*p = '\0';
 

@@ -8,7 +8,7 @@ adj althold coefa 0
 adj althold coefb 0
 adj althold coefc 0
 adj althold hover 0.64
-adj pitch 0.01
+adj pitch 0.02
 adj roll 0
 adj yaw 0
 adj bat scale 1
@@ -20,7 +20,7 @@ adj gyro z -0.277
 adj mag x0 -0.497254
 adj mag y0 -0.683685
 adj mag z0 0.137193
-adj mag decl 0.3264
+adj mag decl 0.322
 adj mag yawmix 0.9
 adj mag xscale 0.952502
 adj mag yscale 0.962348
@@ -38,7 +38,9 @@ ctrl roll 0.25
 ctrl thrust 0.9
 ctrl climbrate 1.5
 ctrl spitch 1
+ctrl spos 2.0
 ctrl sroll 1
+ctrl sspeed 4.0
 ctrl syaw 1.5
 irc frequency 5733
 irc power 25

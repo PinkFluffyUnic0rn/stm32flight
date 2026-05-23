@@ -1082,8 +1082,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 	
 	tabs["control"]->add_group(new float_settings_group(nullptr,
 		"Control rates", "dsp",
-		{"roll",	"pitch",	"yaw",		"climb"},
-		{"ctrl sroll",	"ctrl spitch",	"ctrl syaw",	"ctrl climbrate"},
+		{"roll",	"pitch",	"yaw",		"climb",		"speed",	"pos"},
+		{"ctrl sroll",	"ctrl spitch",	"ctrl syaw",	"ctrl climbrate",	"ctrl sspeed",	"ctrl spos"},
 		cmdstree, true, this), 3, 3, 2, 1);
 
 	settings_group *flash = new settings_group(nullptr, "Write");

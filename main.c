@@ -471,7 +471,6 @@ int telesend(int ms)
 	Tele.lat = Gnss.declat;
 	Tele.lon = Gnss.declon;
 	Tele.speed = dsp_getlpf(Lpf + LPF_SPEED);
-//	Tele.speed = Gnss.speed;
 	Tele.course = Gnss.course;
 	Tele.alt = Gnss.altitude;
 	Tele.sats = Gnss.satellites;
@@ -857,18 +856,30 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	if (cd->chf[ERLS_CH_GNSSMODE] > 0.25
 			&& Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
+		float yaw;
+
 		Gnssmode = GNSSMODE_POS;
 
-		Rolltarget += dt * cd->chf[ERLS_CH_ROLL];
-		Pitchtarget += dt * cd->chf[ERLS_CH_PITCH];
+		yaw = dsp_getlpf(Lpf + LPF_YAW);
+
+//		Rolltarget += dt * cd->chf[ERLS_CH_ROLL];
+//		Pitchtarget += dt * cd->chf[ERLS_CH_PITCH];
+		Rolltarget += dt * (cd->chf[ERLS_CH_PITCH] * sinf(yaw)
+			+ cd->chf[ERLS_CH_ROLL] * cosf(yaw))
+				* St.ctrl.posrate;
+
+		Pitchtarget += dt * (cd->chf[ERLS_CH_PITCH] * cosf(yaw)
+			- cd->chf[ERLS_CH_ROLL] * sinf(yaw))
+				* St.ctrl.posrate;
 	}
 	else if (cd->chf[ERLS_CH_GNSSMODE] > -0.25
 			&& Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
 		Gnssmode = GNSSMODE_SPEED;
 
-		Rolltarget = cd->chf[ERLS_CH_ROLL] * 4.0;
-		Pitchtarget = cd->chf[ERLS_CH_PITCH] * 4.0;
+		Rolltarget = cd->chf[ERLS_CH_ROLL] * St.ctrl.speedrate;
+		Pitchtarget = cd->chf[ERLS_CH_PITCH]
+			* St.ctrl.speedrate;
 	}
 	else {
 		Gnssmode = GNSSMODE_NONE;

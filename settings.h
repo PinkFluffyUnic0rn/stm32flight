@@ -187,6 +187,8 @@ struct __attribute__((aligned(32))) settings
 		float pitchrate;
 		float yawrate;
 		float climbrate;
+		float speedrate;
+		float posrate;
 	} ctrl;
 
 	struct {

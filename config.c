@@ -607,6 +607,16 @@ static struct settingnode Sttree = {
 					.f = &(St.ctrl.pitchrate)
 				},
 				&(struct settingnode) {
+					.token = "sspeed",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.speedrate)
+				},
+				&(struct settingnode) {
+					.token = "spos",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.ctrl.posrate)
+				},
+				&(struct settingnode) {
 					.token = "syaw",
 					.type = NODETYPE_FLOAT,
 					.f = &(St.ctrl.yawrate)
