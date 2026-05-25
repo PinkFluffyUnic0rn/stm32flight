@@ -14,6 +14,7 @@
 #include "esp8266.h"
 #include "qmc5883l.h"
 #include "lis3mdl.h"
+#include "mmc5983ma.h"
 #include "crsf.h"
 #include "w25.h"
 #include "m10.h"

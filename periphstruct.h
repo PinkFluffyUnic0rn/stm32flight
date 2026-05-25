@@ -227,7 +227,8 @@ struct pconf_mag {
 	enum PCONF_MAGTYPE {
 		PCONF_MAGTYPE_QMC5883L,	/*!< QMC5883L */
 		PCONF_MAGTYPE_HMC5883L,	/*!< HMC5883L */
-		PCONF_MAGTYPE_LIS3MDL	/*!< LIS3MDL */
+		PCONF_MAGTYPE_LIS3MDL,	/*!< LIS3MDL */
+		PCONF_MAGTYPE_MMC5983MA	/*!< MMC5983MA */
 	} type;
 
 	struct pconf_iface iface;	/*!< used interface */

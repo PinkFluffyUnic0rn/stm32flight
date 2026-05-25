@@ -17,7 +17,7 @@ const char *Evnames[TEV_COUNT] = {
 };
 
 //struct qmc_data Qmcdata;
-struct lis_data Qmcdata;
+struct mmc_data Qmcdata;
 struct icm_data Imudata;
 struct dps_data Barodata;
 struct gnss_data Gnss;

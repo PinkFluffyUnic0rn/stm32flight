@@ -38,14 +38,14 @@ ctrl roll 0.25
 ctrl thrust 0.9
 ctrl climbrate 1.5
 ctrl spitch 1
-ctrl spos 2.0
+ctrl spos 2
 ctrl sroll 1
-ctrl sspeed 4.0
+ctrl sspeed 4
 ctrl syaw 1.5
 irc frequency 5733
 irc power 25
 compl altitude 1
-compl attitude 5
+compl attitude 1
 compl climbrate 1
 compl pos 1
 compl speed 1
@@ -117,7 +117,7 @@ pid yaw i 0
 pid yaw p 1.5
 pid pos d 0
 pid pos i 0
-pid pos p 3
+pid pos p 1
 pid speed d 0
 pid speed i 0
 pid speed p 0.9

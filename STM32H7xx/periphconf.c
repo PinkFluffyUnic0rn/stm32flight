@@ -2011,6 +2011,20 @@ static int lis_init()
 	return lis_initdevice(&d, Dev + DEV_MAG);
 }
 
+static int mmc_init()
+{
+	struct mmc_device d;
+
+	if (magconf.iface.type != PCONF_IFACETYPE_I2C)
+		return (-1);
+
+	d.hi2c = pconf_hi2cs + pconf_i2cidx(magconf.iface.hi2c);
+	d.freq = MMC_FREQ_100;
+	d.bw = MMC_BW_200;
+
+	return mmc_initdevice(&d, Dev + DEV_MAG);
+}
+
 static void mag_init()
 {
 	if (magconf.type == PCONF_MAGTYPE_QMC5883L) {
@@ -2019,6 +2033,10 @@ static void mag_init()
 	}
 	else if (magconf.type == PCONF_MAGTYPE_LIS3MDL) {
 		if (lis_init() < 0)
+			goto error;
+	}
+	else if (magconf.type == PCONF_MAGTYPE_MMC5983MA) {
+		if (mmc_init() < 0)
 			goto error;
 	}
 

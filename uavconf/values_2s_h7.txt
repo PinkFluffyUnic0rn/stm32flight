@@ -8,7 +8,7 @@ adj althold coefa 0
 adj althold coefb 0
 adj althold coefc 0
 adj althold hover 0.64
-adj pitch 0.02
+adj pitch 0.016
 adj roll 0
 adj yaw 0
 adj bat scale 1
@@ -17,13 +17,13 @@ adj curr scale 412.5
 adj gyro x -0.309
 adj gyro y -0.093
 adj gyro z -0.277
-adj mag x0 -0.497254
-adj mag y0 -0.683685
-adj mag z0 0.137193
+adj mag x0 0.156491
+adj mag y0 -0.048146
+adj mag z0 -0.011816
 adj mag decl 0.322
 adj mag yawmix 0.9
-adj mag xscale 0.952502
-adj mag yscale 0.962348
+adj mag xscale 0.966648
+adj mag yscale 0.980804
 adj mag zscale 1
 adj mag xthscale 0
 adj mag ythscale 0
@@ -38,9 +38,9 @@ ctrl roll 0.25
 ctrl thrust 0.9
 ctrl climbrate 1.5
 ctrl spitch 1
-ctrl spos 2.0
+ctrl spos 2
 ctrl sroll 1
-ctrl sspeed 4.0
+ctrl sspeed 4
 ctrl syaw 1.5
 irc frequency 5733
 irc power 25
@@ -56,7 +56,7 @@ lpf d 100
 lpf gyro 40
 lpf mag 0.25
 log freq 500
-log recsize 8
+log recsize 4
 log record 0 mag_x
 log record 1 mag_y
 log record 10 none
@@ -105,7 +105,7 @@ pid climbrate p 0.6
 pid feature iscaling 0.51
 pid stilt d 0.00375
 pid stilt i 11.76
-pid stilt p 0.42
+pid stilt p 0.21
 pid throttle d 0
 pid throttle i 5
 pid throttle p 5
