@@ -95,18 +95,12 @@ int mmc_init(struct mmc_device *dev)
 	check = 0;	
 	mmc_read(dev, MMC_ID, &check, 1);
 
-//	uartprintf("id: %hu\r\n", check);
-
 	if (check != 0x30)
 		return (-1);
-/*
-	mmc_write(dev, MMC_CONF,
-		dev->osr << 6 | dev->scale << 4 | dev->rate << 2 | 0x1);
-*/
+
 	mmc_write(dev, MMC_CTRL0, 0x1 << 5);
 	mmc_write(dev, MMC_CTRL1, dev->bw);
-	// mmc_write(dev, MMC_CTRL2, 0x40 | 0x8 | dev->freq);
-	mmc_write(dev, MMC_CTRL2, (0x1 << 7) | (0x1 << 6)
+	mmc_write(dev, MMC_CTRL2, (0x1 << 7) | (0x0 << 6)
 		| (0x1 << 3) | dev->freq);
 
 	return 0;

@@ -43,6 +43,8 @@ args = commandArgs(trailingOnly=TRUE)
 
 t = read.table(args[1], header = FALSE, sep = " ");
 
+t[is.na(t)] <- 0;
+
 freq = 500
 
 start = 0
@@ -52,18 +54,13 @@ samplescount = end - start
 magx = t[start:end, 2];
 magy = t[start:end, 3];
 magz = t[start:end, 4];
-m1 = t[start:end, 6];
-m2 = t[start:end, 7];
-m3 = t[start:end, 8];
-m4 = t[start:end, 9];
+thrust = t[start:end, 6];
 
 magx_p = lpf1t(magx, 0.025)
 magy_p = lpf1t(magy, 0.025)
 magz_p = lpf1t(magz, 0.025)
 
-thrust = 0;
 for (i in 1:samplescount) {
-	thrust[i] = (m1[i] + m2[i] + m3[i] + m4[i]) / 4.0;
 	if (thrust[i] < 0.0) thrust[i] = 0;
 }
 
