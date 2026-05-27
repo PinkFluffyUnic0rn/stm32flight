@@ -17,9 +17,9 @@ const char *Evnames[TEV_COUNT] = {
 };
 
 //struct qmc_data Qmcdata;
-struct mmc_data Qmcdata;
-struct icm_data Imudata;
-struct dps_data Barodata;
+struct mag_data Magdata;
+struct imu_data Imudata;
+struct baro_data Barodata;
 struct gnss_data Gnss;
 struct crsf_tele Tele;
 struct msp_osd Osd;

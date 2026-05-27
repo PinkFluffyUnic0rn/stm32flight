@@ -9,6 +9,7 @@
 #include "mcudef.h"
 
 #include "device.h"
+#include "sensor.h"
 
 /**
 * @brief maximum devices of this type
@@ -64,15 +65,6 @@ enum BMP_MODE {
 	BMP_MODE_SLEEP	= 0x0,		/*!< sleep mode */
 	BMP_MODE_FORCED	= 0x1,		/*!< forced mode */
 	BMP_MODE_NORMAL	= 0x3,		/*!< normal mode */
-};
-
-/**
-* @brief output data
-*/
-struct bmp_data {
-	float temp;		/*!< temperature in celsius */
-	float press;		/*!< pressure in kPa */
-	float alt;		/*!< altitude in meters */
 };
 
 /**

@@ -285,10 +285,9 @@ extern const char *Evnames[TEV_COUNT];
 * @{
 */
 //extern struct qmc_data Qmcdata;		/*!< magnetometer data */
-extern struct mmc_data Qmcdata;		/*!< magnetometer data */
-//extern struct lis_data Qmcdata;		/*!< magnetometer data */
-extern struct icm_data Imudata;		/*!< IMU data */
-extern struct dps_data Barodata;	/*!< Barometer data */
+extern struct mag_data Magdata;		/*!< magnetometer data */
+extern struct imu_data Imudata;		/*!< IMU data */
+extern struct baro_data Barodata;	/*!< Barometer data */
 extern struct gnss_data Gnss;		/*!< GNSS data */
 extern struct crsf_tele Tele;		/*!< telemetry values */
 extern struct msp_osd Osd;		/*!< OSD values */

@@ -74,7 +74,7 @@ int mpu_read(struct mpu_device *dev, uint8_t addr,
 	return 0;
 }
 
-int mpu_getintdata(struct mpu_device *dev, struct mpu_data *data)
+int mpu_getintdata(struct mpu_device *dev, struct imu_data *data)
 {
 	uint8_t buf[14];
 
@@ -94,14 +94,14 @@ int mpu_getintdata(struct mpu_device *dev, struct mpu_data *data)
 int mpu_getdata(void *d, void *dt, size_t sz)
 {
 	struct mpu_device *dev;
-	struct mpu_data *data;
+	struct imu_data *data;
 	static int16_t accamp[] = { 0x4000, 0x2000, 0x1000, 0x800 };
 	static float gyroamp[] = { 131.072, 65.536, 32.768, 16.384 };
 
-	data = (struct mpu_data *) dt;
+	data = (struct imu_data *) dt;
 	dev = (struct mpu_device *) d;
 
-	if (sz < sizeof(struct mpu_data))
+	if (sz < sizeof(struct imu_data))
 		return (-1);
 
 	mpu_getintdata(dev, data);
@@ -159,7 +159,7 @@ int mpu_selftest(struct mpu_device *dev, struct mpu_stdata *stdata)
 		32157,	32479,	32804,	33132
 	};
 
-	struct mpu_data data;
+	struct imu_data data;
 	int32_t ax, ay, az, gx, gy, gz;
 	int32_t stax, stay, staz, stgx, stgy, stgz;
 	int32_t ftgx, ftgy, ftgz, ftax, ftay, ftaz; 

@@ -9,6 +9,7 @@
 #include "mcudef.h"
 
 #include "device.h"
+#include "sensor.h"
 
 /**
 * @brief maximum devices of this type
@@ -54,17 +55,6 @@ enum MPU_DLPF {
 enum MPU_DEVTYPE {
 	MPU_DEV6050 = 0x68,	/*!< MPU-6050 */
 	MPU_DEV6500 = 0x70	/*!< MPU-6500 */
-};
-
-/**
-* @brief output data
-*/
-struct mpu_data {
-	int16_t ax, ay, az;	///< accelerometer x, y and z raw values
-	int16_t gx, gy, gz;	///< gyroscope x, y and z raw values
-
-	float afx, afy, afz;	///< accelerometer x, y and z values in g
-	float gfx, gfy, gfz;	///< gyroscope x, y and z values in degrees/s
 };
 
 /**

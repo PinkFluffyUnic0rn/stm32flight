@@ -44,7 +44,7 @@ int lis_read(struct lis_device *dev, uint8_t addr,
 	return 0;
 }
 
-int lis_getintdata(struct lis_device *dev, struct lis_data *data)
+int lis_getintdata(struct lis_device *dev, struct mag_data *data)
 {
 	static volatile uint8_t buf[6];
 	static int init = 0;
@@ -76,13 +76,13 @@ int lis_getintdata(struct lis_device *dev, struct lis_data *data)
 int lis_getdata(void *d, void *dt, size_t sz)
 {
 	struct lis_device *dev;
-	struct lis_data *data;
+	struct mag_data *data;
 	static int16_t amp[] = { 6842, 3421, 2281, 1711 };
 
-	data = (struct lis_data *) dt;
+	data = (struct mag_data *) dt;
 	dev = (struct lis_device *) d;
 
-	if (sz < sizeof(struct lis_data))
+	if (sz < sizeof(struct mag_data))
 		return (-1);
 
 	lis_getintdata(dev, data);

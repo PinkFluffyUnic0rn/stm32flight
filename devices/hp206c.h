@@ -9,6 +9,7 @@
 #include "mcudef.h"
 
 #include "device.h"
+#include "sensor.h"
 
 /**
 * @brief maximum devices of this type
@@ -25,16 +26,6 @@ enum HP_OSR {
 	HP_OSR_512 = 3,		/*!< 512 samples */
 	HP_OSR_256 = 4,		/*!< 256 samples */
 	HP_OSR_128 = 5		/*!< 128 samples */
-};
-
-/**
-* @brief output data
-*/
-struct hp_data {
-	int32_t alt;		/*!< raw altitude */
-	int32_t temp;		/*!< raw temperature */
-	float altf;		/*!< altitude in meters  */
-	float tempf;		/*!< temperature in celsius */ 
 };
 
 /**

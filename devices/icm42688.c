@@ -80,7 +80,7 @@ int icm_read(struct icm_device *dev, uint8_t addr,
 	return 0;
 }
 
-int icm_getintdata(struct icm_device *dev, struct icm_data *data)
+int icm_getintdata(struct icm_device *dev, struct imu_data *data)
 {
 	uint8_t buf[14];
 
@@ -102,15 +102,15 @@ int icm_getintdata(struct icm_device *dev, struct icm_data *data)
 int icm_getdata(void *d, void *dt, size_t sz)
 {
 	struct icm_device *dev;
-	struct icm_data *data;
+	struct imu_data *data;
 	static int16_t accamp[] = { 0x800, 0x1000, 0x2000, 0x4000 };
 	static float gyroamp[] = { 16.384, 32.768, 65.536, 131.072,
 		262.144, 524.288, 1040.254, 2097.152};
 
-	data = (struct icm_data *) dt;
+	data = (struct imu_data *) dt;
 	dev = (struct icm_device *) d;
 
-	if (sz < sizeof(struct icm_data))
+	if (sz < sizeof(struct imu_data))
 		return (-1);
 
 	icm_getintdata(dev, data);
@@ -130,7 +130,7 @@ int icm_getdata(void *d, void *dt, size_t sz)
 
 int icm_selftest(struct icm_device *dev, struct icm_stdata *stdata)
 {
-	struct icm_data data;
+	struct imu_data data;
 	int32_t ax, ay, az, gx, gy, gz;
 	int32_t stax, stay, staz, stgx, stgy, stgz;
 	uint8_t stbuf[6];

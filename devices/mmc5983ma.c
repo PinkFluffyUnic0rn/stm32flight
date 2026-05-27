@@ -39,7 +39,7 @@ int mmc_read(struct mmc_device *dev, uint8_t addr,
 	return 0;
 }
 
-int mmc_getintdata(struct mmc_device *dev, struct mmc_data *data)
+int mmc_getintdata(struct mmc_device *dev, struct mag_data *data)
 {
 	static volatile uint8_t buf[7];
 	static int init = 0;
@@ -71,12 +71,12 @@ int mmc_getintdata(struct mmc_device *dev, struct mmc_data *data)
 int mmc_getdata(void *d, void *dt, size_t sz)
 {
 	struct mmc_device *dev;
-	struct mmc_data *data;
+	struct mag_data *data;
 
-	data = (struct mmc_data *) dt;
+	data = (struct mag_data *) dt;
 	dev = (struct mmc_device *) d;
 
-	if (sz < sizeof(struct mmc_data))
+	if (sz < sizeof(struct mag_data))
 		return (-1);
 
 	mmc_getintdata(dev, data);

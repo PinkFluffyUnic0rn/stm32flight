@@ -9,6 +9,7 @@
 #include "mcudef.h"
 
 #include "device.h"
+#include "sensor.h"
 
 /**
 * @brief maximum devices of this type
@@ -41,15 +42,6 @@ enum DPS_RATE {
 	DPS_RATE_32 = 5,	/*!< 32 hz */
 	DPS_RATE_64 = 6,	/*!< 64 hz */
 	DPS_RATE_128 = 7,	/*!< 128 hz */
-};
-
-/**
-* @brief output data
-*/
-struct dps_data {
-	float altf;		/*!< altitude in meters */
-	float pressf;		/*!< pressure in kPa */
-	float tempf;		/*!< temperature in celsius */
 };
 
 /**

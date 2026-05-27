@@ -37,7 +37,7 @@ int qmc_read(struct qmc_device *dev, uint8_t addr,
 	return 0;
 }
 
-int qmc_getintdata(struct qmc_device *dev, struct qmc_data *data)
+int qmc_getintdata(struct qmc_device *dev, struct mag_data *data)
 {
 	static volatile uint8_t buf[6];
 	static int init = 0;
@@ -69,12 +69,12 @@ int qmc_getintdata(struct qmc_device *dev, struct qmc_data *data)
 int qmc_getdata(void *d, void *dt, size_t sz)
 {
 	struct qmc_device *dev;
-	struct qmc_data *data;
+	struct mag_data *data;
 
-	data = (struct qmc_data *) dt;
+	data = (struct mag_data *) dt;
 	dev = (struct qmc_device *) d;
 
-	if (sz < sizeof(struct qmc_data))
+	if (sz < sizeof(struct mag_data))
 		return (-1);
 
 	qmc_getintdata(dev, data);

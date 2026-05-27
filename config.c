@@ -889,7 +889,7 @@ int updatevtx()
 * @param hd magnetometer data
 * @return always 0
 */
-static int sprintimu(char *s, struct icm_data *id)
+static int sprintimu(char *s, struct imu_data *id)
 {
 	float ax, ay, az;
 
@@ -970,8 +970,8 @@ static int sprintmag(char *s)
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
 		"mag corrected: ",
-		(double) Qmcdata.fx, (double) Qmcdata.fy,
-		(double) Qmcdata.fz);
+		(double) Magdata.fx, (double) Magdata.fy,
+		(double) Magdata.fz);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"%-7sx = %0.3f; y = %0.3f; z = %0.3f\r\n",
@@ -1403,20 +1403,20 @@ int applycmd(const struct cdevice *dev, const char **toks, char *out)
 int infocmd(const struct cdevice *d, const char **toks, char *out)
 {
 	if (strcmp(toks[1], "imu") == 0) {
-		struct icm_data id;
+		struct imu_data id;
 
 		Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &id,
-			sizeof(struct icm_data));
+			sizeof(struct imu_data));
 
 		sprintimu(out, &id);
 	}
 	else if (strcmp(toks[1], "mag") == 0)
 		sprintmag(out);
 	else if (strcmp(toks[1], "baro") == 0) {
-		struct dps_data dd;
+		struct baro_data dd;
 
 		Dev[DEV_BARO].read(Dev[DEV_BARO].priv, &dd,
-			sizeof(struct dps_data));
+			sizeof(struct baro_data));
 
 		snprintf(out, INFOLEN,
 			"baro temp: %f; baro alt: %f\r\n",

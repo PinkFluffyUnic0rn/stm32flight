@@ -24,14 +24,16 @@ static size_t hp_devcount = 0;
 int hp_getdata(void *d, void *dt, size_t sz)
 {
 	struct hp_device *dev;
-	struct hp_data *data;
+	struct baro_data *data;
+	uint32_t temp;
+	uint32_t alt;
 	uint8_t buf[6];
 	uint8_t c;
 
-	data = (struct hp_data *) dt;
+	data = (struct baro_data *) dt;
 	dev = (struct hp_device *) d;
 
-	if (sz < sizeof(struct hp_data))
+	if (sz < sizeof(struct baro_data))
 		return (-1);
 
 	c = HP_AT;
@@ -39,11 +41,11 @@ int hp_getdata(void *d, void *dt, size_t sz)
 	HAL_I2C_Master_Receive(dev->hi2c, (HP_ADDR << 1) | 0x1, buf, 6,
 		1000);
 
-	data->temp = buf[0] << 16 | buf[1] << 8 | buf[2];
-	data->alt = buf[3] << 16 | buf[4] << 8 | buf[5];
+	temp = buf[0] << 16 | buf[1] << 8 | buf[2];
+	alt = buf[3] << 16 | buf[4] << 8 | buf[5];
 
-	data->tempf = data->temp / 100.0;
-	data->altf = data->alt / 100.0;;
+	data->tempf = temp / 100.0;
+	data->altf = alt / 100.0;;
 
 	c = HP_ADCCVT | dev->osr << 2;
 	HAL_I2C_Master_Transmit(dev->hi2c, HP_ADDR << 1, &c, 1, 1000);
@@ -63,11 +65,11 @@ int hp_init(struct hp_device *dev)
 	HAL_I2C_Master_Transmit(dev->hi2c, HP_ADDR << 1, &c, 1, 1000);
 
 	for (i = 0; i < 10; ++i) {
-		struct hp_data hd;
+		struct baro_data hd;
 
 		mdelay(35);
 
-		hp_getdata(dev, &hd, sizeof(struct hp_data));
+		hp_getdata(dev, &hd, sizeof(struct baro_data));
 	}
 
 	return 0;

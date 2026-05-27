@@ -102,14 +102,14 @@ float bmp_pressf(struct bmp_device *dev, int32_t adc_P)
 int bmp_getdata(void *d, void *dt, size_t sz)
 {
 	struct bmp_device *dev;
-	struct bmp_data *data;
+	struct baro_data *data;
 	uint8_t buf[8];
 	int32_t pres, temp;
 
-	data = (struct bmp_data *) dt;
+	data = (struct baro_data *) dt;
 	dev = (struct bmp_device *) d;
 
-	if (sz < sizeof(struct bmp_data))
+	if (sz < sizeof(struct baro_data))
 		return (-1);
 
 	bmp_read(dev, BMP_PRESS, buf, 8);
@@ -118,8 +118,8 @@ int bmp_getdata(void *d, void *dt, size_t sz)
 	temp = (buf[3] << 12) | (buf[4] << 4) | (buf[5] >> 4);
 
 	// bmp_tempf should be always first, it sets t_fine field
-	data->temp = bmp_tempf(dev, temp);
-	data->press = bmp_pressf(dev, pres);
+	data->tempf = bmp_tempf(dev, temp);
+	data->pressf = bmp_pressf(dev, pres);
 
 	return 0;
 }

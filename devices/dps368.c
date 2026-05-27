@@ -53,7 +53,7 @@ static int32_t twocompl(uint32_t v, uint8_t l)
 int dps_getdata(void *d, void *dt, size_t sz)
 {
 	struct dps_device *dev;
-	struct dps_data *data;
+	struct baro_data *data;
 	float scf[] = { 524288.0, 1572864.0, 3670016.0, 7864320.0,
 		253952.0, 516096.0, 1040384.0, 2088960.0 };
 	static volatile uint8_t buf[16];
@@ -61,7 +61,7 @@ int dps_getdata(void *d, void *dt, size_t sz)
 	float psc, tsc;
 	int t;
 
-	data = (struct dps_data *) dt;
+	data = (struct baro_data *) dt;
 	dev = (struct dps_device *) d;
 
 	if (!init) {
@@ -137,9 +137,9 @@ int dps_init(struct dps_device *dev)
 	dev->c30 = twocompl(data[13] << 8 | data[14], 16);
 
 	for (i = 0; i < 100; ++i) {
-		struct dps_data d;
+		struct baro_data d;
 
-		dps_getdata(dev, &d, sizeof(struct dps_data));
+		dps_getdata(dev, &d, sizeof(struct baro_data));
 
 		HAL_Delay(10);
 	}

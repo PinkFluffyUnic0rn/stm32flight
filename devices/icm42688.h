@@ -9,6 +9,7 @@
 #include "mcudef.h"
 
 #include "device.h"
+#include "sensor.h"
 
 /**
 * @brief maximum devices of this type
@@ -121,19 +122,6 @@ enum ICM_ACCELORDER {
 	ICM_ACCELORDER1	= 0x1,	/*!< 1st order LPF */
 	ICM_ACCELORDER2	= 0x2,	/*!< 2nd order LPF */
 	ICM_ACCELORDER3	= 0x3	/*!< 3rd order LPF */
-};
-
-/**
-* @brief output data
-*/
-struct icm_data {
-	int16_t t;		/*!< temperature raw value */
-	int16_t ax, ay, az;	///< accelerometer x, y and z raw values
-	int16_t gx, gy, gz;	///< gyroscope x, y and z raw values
-
-	float ft;		/*!< temperature in celsius */
-	float afx, afy, afz;	///< accelerometer x, y and z values in g
-	float gfx, gfy, gfz;	///< gyroscope x, y and z values in degrees/s
 };
 
 /**

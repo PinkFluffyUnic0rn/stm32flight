@@ -58,7 +58,6 @@ struct msp_device {
 	UART_HandleTypeDef *huart;	/*!< UART interface */
 };
 
-
 /**
 * @brief MSP osd input data
 */

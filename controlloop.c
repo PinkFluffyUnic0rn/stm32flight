@@ -85,7 +85,7 @@ int updateposition(float dt)
 	yaw = dsp_updatelpf(Lpf + LPF_YAW,
 		circf(dsp_updatecirccompl(Cmpl + CMPL_YAW, -gz * dt,
 		heading(roll, -pitch,
-			Qmcdata.fx, Qmcdata.fy, Qmcdata.fz)) 
+			Magdata.fx, Magdata.fy, Magdata.fz)) 
 			- St.adj.att0.yaw));
 
 	// calculate gravity direction vector in IMU coordination system

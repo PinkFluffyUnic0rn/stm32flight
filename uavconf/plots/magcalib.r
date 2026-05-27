@@ -19,6 +19,10 @@ magx = t[start:end, 2];
 magy = t[start:end, 3];
 magz = t[start:end, 4];
 
+#for (i in 1:nrow(t)) {
+#	magz[i] = magz[i] + (65 - 25) * 0.00058;
+#}
+
 ycenter = mean(magy);
 xcenter = mean(magx);
 

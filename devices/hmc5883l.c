@@ -33,7 +33,7 @@ int hmc_read(struct hmc_device *dev, uint8_t addr,
 	return 0;
 }
 
-int hmc_getintdata(struct hmc_device *dev, struct hmc_data *data)
+int hmc_getintdata(struct hmc_device *dev, struct mag_data *data)
 {
 	uint8_t buf[6];
 
@@ -49,14 +49,14 @@ int hmc_getintdata(struct hmc_device *dev, struct hmc_data *data)
 int hmc_getdata(void *d, void *dt, size_t sz)
 {
 	struct hmc_device *dev;
-	struct hmc_data *data;
+	struct mag_data *data;
 	static float amp[] = { 0.73, 0.92, 1.22, 1.52,
 		2.27, 2.56, 3.03 };
 
-	data = (struct hmc_data *) dt;
+	data = (struct mag_data *) dt;
 	dev = (struct hmc_device *) d;
 
-	if (sz < sizeof(struct hmc_data))
+	if (sz < sizeof(struct mag_data))
 		return (-1);
 
 	hmc_getintdata(dev, data);

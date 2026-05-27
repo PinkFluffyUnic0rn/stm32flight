@@ -9,6 +9,7 @@
 #include "mcudef.h"
 
 #include "device.h"
+#include "sensor.h"
 
 /**
 * @brief maximum devices of this type
@@ -40,14 +41,6 @@ enum HMC_SCALE {
 	HMC_SCALE_4_7	= 5,
 	HMC_SCALE_5_6	= 6,
 	HMC_SCALE_8_1	= 7
-};
-
-/**
-* @brief output data
-*/
-struct hmc_data {
-	int16_t x, y, z;	///< x, y and z raw values
-	float fx, fy, fz;	///< x, y and z values in gauss
 };
 
 /**

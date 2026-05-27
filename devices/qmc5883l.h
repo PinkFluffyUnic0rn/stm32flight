@@ -9,6 +9,7 @@
 #include "mcudef.h"
 
 #include "device.h"
+#include "sensor.h"
 
 /**
 * @brief maximum devices of this type
@@ -41,14 +42,6 @@ enum QMC_OSR {
 	QMC_OSR_256	= 1,		/*!< 256 samples */
 	QMC_OSR_128	= 2,		/*!< 128 samples */
 	QMC_OSR_64	= 3		/*!< 64 samples */
-};
-
-/**
-* @brief output data
-*/
-struct qmc_data {
-	int16_t x, y, z;	///< x, y and z raw values
-	float fx, fy, fz;	///< x, y and z values in gauss
 };
 
 /**

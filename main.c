@@ -238,20 +238,21 @@ int imuupdate(int ms)
 {
 	// get accelerometer and gyroscope readings
 	Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &Imudata,
-		sizeof(struct icm_data));
+		sizeof(struct imu_data));
 
 	// apply accelerometer offsets
 	Imudata.afx += (Imudata.ft - 25.0) * St.adj.acctsc.x;
 	Imudata.afy += (Imudata.ft - 25.0) * St.adj.acctsc.y;
 	Imudata.afz += (Imudata.ft - 25.0) * St.adj.acctsc.z;
-	Imudata.afx -= St.adj.acc0.x;
-	Imudata.afy -= St.adj.acc0.y;
-	Imudata.afz -= St.adj.acc0.z;
+
+	Imudata.afx += St.adj.acc0.x;
+	Imudata.afy += St.adj.acc0.y;
+	Imudata.afz += St.adj.acc0.z;
 
 	// apply gyroscope offsets
-	Imudata.gfx -= St.adj.gyro0.x;
-	Imudata.gfy -= St.adj.gyro0.y;
-	Imudata.gfz -= St.adj.gyro0.z;
+	Imudata.gfx += St.adj.gyro0.x;
+	Imudata.gfy += St.adj.gyro0.y;
+	Imudata.gfz += St.adj.gyro0.z;
 
 	// write accelerometer and gyroscope values into log
 	writelog(LOG_ACC_X, Imudata.afx);
@@ -369,7 +370,7 @@ int baroupdate(int ms)
 
 	// read barometer values
 	Dev[DEV_BARO].read(Dev[DEV_BARO].priv, &Barodata,
-		sizeof(struct dps_data));
+		sizeof(struct baro_data));
 
 	// write barometer temperature and altitude values into log
 	writelog(LOG_BAR_TEMP, Barodata.tempf);
@@ -393,33 +394,29 @@ int magupdate(int ms)
 	// if magnetometer isn't initilized, return
 	if (Dev[DEV_MAG].status != DEVSTATUS_INIT)
 		return 0;
-/*
-	// read magnetometer values
-	Dev[DEV_MAG].read(Dev[DEV_MAG].priv, &Qmcdata,
-		sizeof(struct qmc_data));
-*/
-	Dev[DEV_MAG].read(Dev[DEV_MAG].priv, &Qmcdata,
-		sizeof(struct lis_data));
+
+	Dev[DEV_MAG].read(Dev[DEV_MAG].priv, &Magdata,
+		sizeof(struct mag_data));
 
 	// apply offsets to magnetometer values
-	Qmcdata.fx = St.adj.magsc.x * (Qmcdata.fx + St.adj.mag0.x);
-	Qmcdata.fy = St.adj.magsc.y * (Qmcdata.fy + St.adj.mag0.y);
-	Qmcdata.fz = St.adj.magsc.z * (Qmcdata.fz + St.adj.mag0.z);
+	Magdata.fx = St.adj.magsc.x * (Magdata.fx + St.adj.mag0.x);
+	Magdata.fy = St.adj.magsc.y * (Magdata.fy + St.adj.mag0.y);
+	Magdata.fz = St.adj.magsc.z * (Magdata.fz + St.adj.mag0.z);
 
 	// apply scaling to magnetometer values
-	Qmcdata.fx += St.adj.magthrsc.x * dsp_getlpf(Lpf + LPF_AVGTHR);
-	Qmcdata.fy += St.adj.magthrsc.y * dsp_getlpf(Lpf + LPF_AVGTHR);
-	Qmcdata.fz += St.adj.magthrsc.z * dsp_getlpf(Lpf + LPF_AVGTHR);
+	Magdata.fx += St.adj.magthrsc.x * dsp_getlpf(Lpf + LPF_AVGTHR);
+	Magdata.fy += St.adj.magthrsc.y * dsp_getlpf(Lpf + LPF_AVGTHR);
+	Magdata.fz += St.adj.magthrsc.z * dsp_getlpf(Lpf + LPF_AVGTHR);
 
 	// write magnetometer values into log
-	writelog(LOG_MAG_X, Qmcdata.fx);
-	writelog(LOG_MAG_Y, Qmcdata.fy);
-	writelog(LOG_MAG_Z, Qmcdata.fz);
+	writelog(LOG_MAG_X, Magdata.fx);
+	writelog(LOG_MAG_Y, Magdata.fy);
+	writelog(LOG_MAG_Z, Magdata.fz);
 
 	// update magnetometer values lpf
-	dsp_updatelpf(Lpf + LPF_MAGX, Qmcdata.fx);
-	dsp_updatelpf(Lpf + LPF_MAGY, Qmcdata.fy);
-	dsp_updatelpf(Lpf + LPF_MAGZ, Qmcdata.fz);
+	dsp_updatelpf(Lpf + LPF_MAGX, Magdata.fx);
+	dsp_updatelpf(Lpf + LPF_MAGY, Magdata.fy);
+	dsp_updatelpf(Lpf + LPF_MAGZ, Magdata.fz);
 
 	return 0;
 }
@@ -862,8 +859,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 		yaw = dsp_getlpf(Lpf + LPF_YAW);
 
-//		Rolltarget += dt * cd->chf[ERLS_CH_ROLL];
-//		Pitchtarget += dt * cd->chf[ERLS_CH_PITCH];
 		Rolltarget += dt * (cd->chf[ERLS_CH_PITCH] * sinf(yaw)
 			+ cd->chf[ERLS_CH_ROLL] * cosf(yaw))
 				* St.ctrl.posrate;
