@@ -5,7 +5,7 @@
 * @brief magnetometer output data
 */
 struct mag_data {
-	int16_t x, y, z;	///< x, y and z raw values
+	int32_t x, y, z;	///< x, y and z raw values
 	float fx, fy, fz;	///< x, y and z values in gauss
 };
 

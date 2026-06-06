@@ -289,12 +289,12 @@ int updatecorrection(float dt, struct corvals *cor)
 		cor->roll =  -sinf(yaw) * latcor + cosf(yaw) * loncor;
 
 		cor->roll = trimf(cor->roll,
-			-M_PI * St.ctrl.rollmax * 0.25,
-			M_PI * St.ctrl.rollmax * 0.25);
+			-M_PI * St.ctrl.rollmax * 0.5,
+			M_PI * St.ctrl.rollmax * 0.5);
 
 		cor->pitch = trimf(cor->pitch,
-			-M_PI * St.ctrl.pitchmax * 0.25,
-			M_PI * St.ctrl.pitchmax * 0.25);
+			-M_PI * St.ctrl.pitchmax * 0.5,
+			M_PI * St.ctrl.pitchmax * 0.5);
 
 		cor->roll = dsp_pidbl(Pid + PID_ROLLP, cor->roll, roll);
 		cor->pitch = dsp_pidbl(Pid + PID_PITCHP, cor->pitch, pitch);
@@ -328,20 +328,12 @@ int updatecorrection(float dt, struct corvals *cor)
 		cor->roll =  -sinf(yaw) * latcor + cosf(yaw) * loncor;
 
 		cor->roll = trimf(cor->roll,
-			-M_PI * St.ctrl.rollmax * 0.25,
-			M_PI * St.ctrl.rollmax * 0.25);
+			-M_PI * St.ctrl.rollmax * 0.5,
+			M_PI * St.ctrl.rollmax * 0.5);
 
 		cor->pitch = trimf(cor->pitch,
-			-M_PI * St.ctrl.pitchmax * 0.25,
-			M_PI * St.ctrl.pitchmax * 0.25);
-
-		cor->roll = trimf(cor->roll,
-			-M_PI * St.ctrl.rollmax * 0.25,
-			M_PI * St.ctrl.rollmax * 0.25);
-
-		cor->pitch = trimf(cor->pitch,
-			-M_PI * St.ctrl.pitchmax * 0.25,
-			M_PI * St.ctrl.pitchmax * 0.25);
+			-M_PI * St.ctrl.pitchmax * 0.5,
+			M_PI * St.ctrl.pitchmax * 0.5);
 
 		cor->roll = dsp_pidbl(Pid + PID_ROLLP, cor->roll, roll);
 		cor->pitch = dsp_pidbl(Pid + PID_PITCHP, cor->pitch, pitch);

@@ -57,10 +57,20 @@ int mmc_getintdata(struct mmc_device *dev, struct mag_data *data)
 		udelay(10);
 		t += 10;
 	}
-
+/*
 	data->y = -(buf[0] << 10 | buf[1] << 2 | buf[6] >> 6);
 	data->x = buf[2] << 10 | buf[3] << 2 | buf[6] >> 4;
 	data->z = -(buf[4] << 10 | buf[5] << 2 | buf[6] >> 2);
+*/
+	uint32_t x, y, z;
+
+	y = buf[0] << 10 | buf[1] << 2 | buf[6] >> 6;
+	x = buf[2] << 10 | buf[3] << 2 | buf[6] >> 4;
+	z = buf[4] << 10 | buf[5] << 2 | buf[6] >> 2;
+
+	data->y = -((int32_t) y - 131072);
+	data->x = (int32_t) x - 131072;
+	data->z = -((int32_t) z - 131072);
 
 	pconf_i2cmemread(dev->hi2c, MMC_ADDR << 1, MMC_DATA,
 		(uint8_t *) buf, 6);
