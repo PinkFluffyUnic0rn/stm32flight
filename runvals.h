@@ -284,7 +284,6 @@ extern const char *Evnames[TEV_COUNT];
 	data that aquired in separate events
 * @{
 */
-//extern struct qmc_data Qmcdata;		/*!< magnetometer data */
 extern struct mag_data Magdata;		/*!< magnetometer data */
 extern struct imu_data Imudata;		/*!< IMU data */
 extern struct baro_data Barodata;	/*!< Barometer data */
