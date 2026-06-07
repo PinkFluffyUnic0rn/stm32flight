@@ -45,7 +45,7 @@ ctrl syaw 1.5
 irc frequency 5733
 irc power 25
 compl altitude 1
-compl attitude 1
+compl attitude 5
 compl climbrate 1
 compl pos 1
 compl speed 1
