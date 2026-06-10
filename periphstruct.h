@@ -51,7 +51,10 @@ struct pconf_spi {
 	struct pconf_pin miso;		/*!< MISO pin */
 	struct pconf_pin mosi;		/*!< MOSI pin */
 	struct pconf_pin sck;		/*!< clock pin */
-	DMA_Stream_TypeDef *txdma;	/*!< DMA stream instance used 
+	union {
+		DMA_Stream_TypeDef *txdma;
+		BDMA_Channel_TypeDef *txbdma;
+	};				/*!< DMA stream instance used 
 						to transmiting */
 };
 

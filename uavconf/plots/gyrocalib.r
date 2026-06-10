@@ -20,6 +20,6 @@ gyrox = t[start:end, 2];
 gyroy = t[start:end, 3];
 gyroz = t[start:end, 4];
 
-printf("xoffset: %f", mean(gyrox));
-printf("yoffset: %f", mean(gyroy));
-printf("zoffset: %f", mean(gyroz));
+printf("xoffset: %f", -mean(gyrox));
+printf("yoffset: %f", -mean(gyroy));
+printf("zoffset: %f", -mean(gyroz));

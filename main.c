@@ -80,7 +80,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if (DEVITENABLED(Flashdev.status))
-		Dev[DEV_IMU].interrupt(Flashdev.priv, hspi);
+		Flashdev.interrupt(Flashdev.priv, hspi);
 }
 
 /**

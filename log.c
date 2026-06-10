@@ -26,7 +26,14 @@ static size_t logsize = 0;
 /**
 * @brief Log write buffer
 */
+
+
+#ifdef STM32H7xx
+static float logbuf[LOG_BUFSIZE / sizeof(float)]
+	__attribute__((section(".bdma_buffer")));
+#else
 static float logbuf[LOG_BUFSIZE / sizeof(float)];
+#endif
 
 const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {
 	"acc_x", "acc_y", "acc_z",

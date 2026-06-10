@@ -148,6 +148,8 @@ int w25_read(void *d, size_t addr, void *data, size_t sz)
 
 int w25_write(void *d, size_t addr, const void *data, size_t sz)
 {
+//	static uint8_t bdmabuf[256]
+//		__attribute__((section(".bdma_buffer")));
 	struct w25_device *dev;
 	uint8_t sbuf[4];
 	int t;
@@ -174,6 +176,17 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 	sbuf[2] = (addr >> 8) & 0xff;
 	sbuf[3] = addr & 0xff;
 
+/*
+	uint8_t *buf;
+
+	if (dev->hspi->Instance == SPI6) {
+		memcpy(bdmabuf, data, sz);
+		//memset(bdmabuf, 0, 256);
+		buf = bdmabuf;
+	}
+	else
+		buf = (uint8_t *) data;
+*/
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
 	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 100);
 
@@ -185,8 +198,9 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 		w25_writedisable(dev);
 		w25_blockprotect(dev, 0x0f);
 	}
-	else
-		HAL_SPI_Transmit_DMA(dev->hspi, (uint8_t  *) data, sz);
+	else {
+		HAL_SPI_Transmit_DMA(dev->hspi, (uint8_t *) data, sz);
+	}
 
 	return 0;
 }
@@ -336,6 +350,7 @@ int w25_initdevice(struct w25_device *is, struct bdevice *dev)
 	dev->erasesector = w25_erasesector;
 	dev->eraseblock = w25_eraseblock;
 	dev->writesector = w25_writesector;
+	dev->interrupt = w25_interrupt;
 
 	dev->writesize = W25_PAGESIZE;
 	dev->sectorsize = W25_SECTORSIZE;

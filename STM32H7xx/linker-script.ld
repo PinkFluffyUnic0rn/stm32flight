@@ -111,6 +111,13 @@ SECTIONS
 		. = . + _Min_Stack_Size;
 		. = ALIGN(8);
 	} >RAM_D1
+	
+	.bdma_buffer (NOLOAD) :
+	{
+		. = ALIGN(4);
+		KEEP(*(.bdma_buffer))
+		. = ALIGN(4);
+	} >RAM_D3
 
 	/DISCARD/ : {
 		libc.a ( * )

@@ -5,10 +5,11 @@
 #else
 
 #define PCONF_DMASCOUNT 	16
+#define PCONF_BDMASCOUNT 	8
 #define PCONF_OUTPINSCOUNT	10
 #define PCONF_INPINSCOUNT	1
 #define PCONF_I2CSCOUNT		1
-#define PCONF_SPISCOUNT		2
+#define PCONF_SPISCOUNT		3
 #define PCONF_EXTISCOUNT	1
 #define PCONF_TIMSCOUNT		3
 #define PCONF_ADCSCOUNT		2
@@ -29,6 +30,7 @@
 #define PCONF_DMA2_STREAM4_IRQ
 #define PCONF_DMA2_STREAM5_IRQ
 #define PCONF_DMA2_STREAM6_IRQ
+#define PCONF_BDMA_CHANNEL0_IRQ
 
 #define PCONF_UART2_IDX_IRQ 0
 #define PCONF_UART3_IDX_IRQ 1
@@ -36,6 +38,7 @@
 #define PCONF_UART5_IDX_IRQ 3
 #define PCONF_I2C1_IDX_IRQ 0
 #define PCONF_SPI1_IDX_IRQ 0
+#define PCONF_SPI6_IDX_IRQ 2
 #define PCONF_TIM8_IDX_IRQ 1
 
 #define PCONF_EXTI9_5_PIN_IRQ GPIO_PIN_5
@@ -57,6 +60,17 @@ DMA_Stream_TypeDef *const dmas[] = {
 	DMA2_Stream5,
 	DMA2_Stream6,
 	NULL
+};
+
+BDMA_Channel_TypeDef *const bdmas[] = {
+	BDMA_Channel0,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 };
 
 const struct pconf_pin outpins[] = {
@@ -150,7 +164,7 @@ const struct pconf_spi spis[] = {
 			.inst = GPIOB,
 			.idx = GPIO_PIN_3
 		},
-		.txdma = DMA2_Stream3
+		.txdma = NULL
 	},
 	{
 		.inst = SPI2,
@@ -168,6 +182,23 @@ const struct pconf_spi spis[] = {
 			.idx = GPIO_PIN_3
 		},
 		.txdma = NULL
+	},
+	{
+		.inst = SPI6,
+		.usage = PCONF_SPIUSAGE_DEVS,
+		.miso = {
+			.inst = GPIOA,
+			.idx = GPIO_PIN_6
+		},
+		.mosi = {
+			.inst = GPIOA,
+			.idx = GPIO_PIN_7
+		},
+		.sck = {
+			.inst = GPIOA,
+			.idx = GPIO_PIN_5
+		},
+		.txbdma = BDMA_Channel0
 	},
 };
 
@@ -368,7 +399,7 @@ const struct pconf_flash flashconf = {
 			GPIOC,
 			GPIO_PIN_10
 		},
-		.hspi = SPI1
+		.hspi = SPI6
 	}
 };
 

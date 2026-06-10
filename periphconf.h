@@ -46,8 +46,9 @@ enum DEV_ID {
 */
 extern ADC_HandleTypeDef pconf_hadcs[5];	/*!< adc handles */
 extern DMA_HandleTypeDef pconf_hdmas[16];	/*!< dma handles */
+extern DMA_HandleTypeDef pconf_hbdmas[8];	/*!< dma handles */
 extern I2C_HandleTypeDef pconf_hi2cs[3];	/*!< i2c handles */
-extern SPI_HandleTypeDef pconf_hspis[3];	/*!< spi handles */
+extern SPI_HandleTypeDef pconf_hspis[4];	/*!< spi handles */
 extern TIM_HandleTypeDef pconf_htims[5];	/*!< timer handles */
 extern UART_HandleTypeDef pconf_huarts[5];	/*!< uart handles */
 /**

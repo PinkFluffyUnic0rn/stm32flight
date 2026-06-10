@@ -139,7 +139,7 @@
 #define VA_AVG_TCOEF 2.0	/*!< averaging low-pass filter
 				time coefficient for vectical
 				acceleration */
-#define BAT_SCALE 17.85882	/*!< battery sensor voltage scale */
+#define BAT_SCALE 28.05		/*!< battery sensor voltage scale */
 /**
 * @}
 */

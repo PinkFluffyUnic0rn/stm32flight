@@ -16,8 +16,9 @@ static void (*error_handler)(void);
 
 ADC_HandleTypeDef pconf_hadcs[5];
 DMA_HandleTypeDef pconf_hdmas[16];
+DMA_HandleTypeDef pconf_hbdmas[8];
 I2C_HandleTypeDef pconf_hi2cs[3];
-SPI_HandleTypeDef pconf_hspis[3];
+SPI_HandleTypeDef pconf_hspis[4];
 TIM_HandleTypeDef pconf_htims[5];
 UART_HandleTypeDef pconf_huarts[5];
 
@@ -53,6 +54,20 @@ static int pconf_dma_stream_irqn(const DMA_Stream_TypeDef *dma)
 	else if (dma == DMA2_Stream5)	return DMA2_Stream5_IRQn;
 	else if (dma == DMA2_Stream6)	return DMA2_Stream6_IRQn;
 	else if (dma == DMA2_Stream7)	return DMA2_Stream7_IRQn;
+
+	return (-1);
+}
+
+static int pconf_bdma_channel_irqn(const BDMA_Channel_TypeDef *dma)
+{
+	if (dma == BDMA_Channel0)	return BDMA_Channel0_IRQn;
+	else if (dma == BDMA_Channel1)	return BDMA_Channel1_IRQn;
+	else if (dma == BDMA_Channel2)	return BDMA_Channel2_IRQn;
+	else if (dma == BDMA_Channel3)	return BDMA_Channel3_IRQn;
+	else if (dma == BDMA_Channel4)	return BDMA_Channel4_IRQn;
+	else if (dma == BDMA_Channel5)	return BDMA_Channel5_IRQn;
+	else if (dma == BDMA_Channel6)	return BDMA_Channel6_IRQn;
+	else if (dma == BDMA_Channel7)	return BDMA_Channel7_IRQn;
 
 	return (-1);
 }
@@ -581,6 +596,15 @@ static int pconf_dmastream_spitx_channel(DMA_Stream_TypeDef *inst,
 	else if (spiinst == SPI2)	return DMA_REQUEST_SPI2_TX;
 	else if (spiinst == SPI3)	return DMA_REQUEST_SPI3_TX;
 	else if (spiinst == SPI4)	return DMA_REQUEST_SPI4_TX;
+	else if (spiinst == SPI6)	return BDMA_REQUEST_SPI6_TX;
+
+	return (-1);
+}
+
+static int pconf_bdmachannel_spitx_channel(BDMA_Channel_TypeDef *inst,
+	SPI_TypeDef *spiinst)
+{
+	if (spiinst == SPI6)	return BDMA_REQUEST_SPI6_TX;
 
 	return (-1);
 }
@@ -731,6 +755,21 @@ static int pconf_dmaidx(DMA_Stream_TypeDef *inst)
 
 	for (i = 0; i < PCONF_DMASCOUNT; ++i) {
 		if (dmas[i] == inst)
+			return i;
+	}
+
+	return (-1);
+}
+
+static int pconf_bdmaidx(BDMA_Channel_TypeDef *inst)
+{
+	int i;
+
+	if (inst == NULL)
+		return (-1);
+
+	for (i = 0; i < PCONF_BDMASCOUNT; ++i) {
+		if (bdmas[i] == inst)
 			return i;
 	}
 
@@ -1034,7 +1073,7 @@ void pconf_mspinit_spi(SPI_HandleTypeDef* hspi)
 	const struct pconf_spi *spi;
 	int idx;
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
-
+	
 	if ((idx = pconf_spiidx(hspi->Instance)) < 0)
 		return;
 
@@ -1066,8 +1105,30 @@ void pconf_mspinit_spi(SPI_HandleTypeDef* hspi)
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->sck), spi->inst);
 	HAL_GPIO_Init(spi->sck.inst, &GPIO_InitStruct);
+			
+	if (hspi->Instance == SPI6
+			&& (idx = pconf_bdmaidx(spi->txbdma)) >= 0) {
+		pconf_hbdmas[idx].Instance = bdmas[idx];
+		pconf_hbdmas[idx].Init.Request
+			= pconf_bdmachannel_spitx_channel(
+				spi->txbdma, spi->inst);
+		pconf_hbdmas[idx].Init.Direction = DMA_MEMORY_TO_PERIPH;
+		pconf_hbdmas[idx].Init.PeriphInc = DMA_PINC_DISABLE;
+		pconf_hbdmas[idx].Init.MemInc = DMA_MINC_ENABLE;
+		pconf_hbdmas[idx].Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+		pconf_hbdmas[idx].Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+		pconf_hbdmas[idx].Init.Mode = DMA_NORMAL;
+		pconf_hbdmas[idx].Init.Priority = DMA_PRIORITY_LOW;
+	
+		if (HAL_DMA_Init(pconf_hbdmas + idx) != HAL_OK)
+			error_handler();
 
-	if ((idx = pconf_dmaidx(spi->txdma)) >= 0) {
+		__HAL_LINKDMA(hspi, hdmatx, pconf_hbdmas[idx]);
+	    
+		HAL_NVIC_SetPriority(pconf_spi_irqn(spi->inst), 0, 0);
+		HAL_NVIC_EnableIRQ(pconf_spi_irqn(spi->inst));
+	}
+	else if ((idx = pconf_dmaidx(spi->txdma)) >= 0) {
 		pconf_hdmas[idx].Instance = dmas[idx];
 		pconf_hdmas[idx].Init.Request
 			= pconf_dmastream_spitx_channel(
@@ -1290,18 +1351,19 @@ void pconf_init_clock(void)
 	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
 		error_handler();
 
-	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADC
-		| RCC_PERIPHCLK_CKPER | RCC_PERIPHCLK_SPI1;
-	PeriphClkInitStruct.PLL2.PLL2M = 2;
-	PeriphClkInitStruct.PLL2.PLL2N = 19;
+	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI6
+		| RCC_PERIPHCLK_ADC | RCC_PERIPHCLK_CKPER
+		| RCC_PERIPHCLK_SPI1;
+	PeriphClkInitStruct.PLL2.PLL2M = 20;
+	PeriphClkInitStruct.PLL2.PLL2N = 192;
 	PeriphClkInitStruct.PLL2.PLL2P = 2;
 	PeriphClkInitStruct.PLL2.PLL2Q = 2;
 	PeriphClkInitStruct.PLL2.PLL2R = 2;
 	PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
 	PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
-	PeriphClkInitStruct.PLL2.PLL2FRACN = 1639;
-	PeriphClkInitStruct.PLL3.PLL3M = 25;
-	PeriphClkInitStruct.PLL3.PLL3N = 192;
+	PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
+	PeriphClkInitStruct.PLL3.PLL3M = 20;
+	PeriphClkInitStruct.PLL3.PLL3N = 160;
 	PeriphClkInitStruct.PLL3.PLL3P = 2;
 	PeriphClkInitStruct.PLL3.PLL3Q = 2;
 	PeriphClkInitStruct.PLL3.PLL3R = 2;
@@ -1310,6 +1372,7 @@ void pconf_init_clock(void)
 	PeriphClkInitStruct.PLL3.PLL3FRACN = 0;
 	PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_PLL3;
 	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+	PeriphClkInitStruct.Spi6ClockSelection = RCC_SPI6CLKSOURCE_PLL3;
 	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
 		error_handler();
 
@@ -1398,6 +1461,31 @@ static void pconf_init_gpio(void)
 		HAL_NVIC_EnableIRQ(pconf_exti_irqn(extis[i].pin.idx));
 	}
 
+}
+
+static void pconf_init_bdma(void)
+{
+	int i;
+
+	__HAL_RCC_BDMA_CLK_ENABLE();
+
+	for (i = 0; i < PCONF_BDMASCOUNT; ++i) {
+		int irqn;
+		int prep;
+
+		if (bdmas[i] == NULL)
+			continue;
+
+		irqn = pconf_bdma_channel_irqn(bdmas[i]);
+
+		switch (irqn) {
+		case BDMA_Channel0_IRQn:	prep = 0;	break;
+		default:			prep = 1;
+		}
+
+		HAL_NVIC_SetPriority(irqn, prep, 0);
+		HAL_NVIC_EnableIRQ(pconf_bdma_channel_irqn(bdmas[i]));
+	}
 }
 
 static void pconf_init_dma(void)
@@ -2244,6 +2332,7 @@ void pconf_init(void (*errhandler)(void))
 
 	pconf_init_gpio();
 	pconf_init_dma();
+	pconf_init_bdma();
 	pconf_init_tim();
 	pconf_init_uart();
 	pconf_init_i2c();
@@ -2419,6 +2508,13 @@ void I2C1_ER_IRQHandler(void)
 }
 #endif
 
+#ifdef PCONF_SPI1_IDX_IRQ
+void SPI1_IRQHandler(void)
+{
+	HAL_SPI_IRQHandler(pconf_hspis + PCONF_SPI1_IDX_IRQ);
+}
+#endif
+
 #ifdef PCONF_SPI2_IDX_IRQ
 void SPI2_IRQHandler(void)
 {
@@ -2426,10 +2522,10 @@ void SPI2_IRQHandler(void)
 }
 #endif
 
-#ifdef PCONF_SPI1_IDX_IRQ
-void SPI1_IRQHandler(void)
+#ifdef PCONF_SPI6_IDX_IRQ
+void SPI6_IRQHandler(void)
 {
-	HAL_SPI_IRQHandler(pconf_hspis + PCONF_SPI1_IDX_IRQ);
+	HAL_SPI_IRQHandler(pconf_hspis + PCONF_SPI6_IDX_IRQ);
 }
 #endif
 
@@ -2655,6 +2751,62 @@ void DMA2_Stream6_IRQHandler(void)
 void DMA2_Stream7_IRQHandler(void)
 {
 	HAL_DMA_IRQHandler(pconf_hdmas + 15);
+}
+#endif
+
+#ifdef PCONF_BDMA_CHANNEL0_IRQ
+void BDMA_Channel0_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(pconf_hbdmas + 0);
+}
+#endif
+
+#ifdef PCONF_BDMA_CHANNEL1_IRQ
+void BDMA_Channel0_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(pconf_hdbmas + 1);
+}
+#endif
+
+#ifdef PCONF_BDMA_CHANNEL2_IRQ
+void BDMA_Channel0_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(pconf_hdbmas + 2);
+}
+#endif
+
+#ifdef PCONF_BDMA_CHANNEL3_IRQ
+void BDMA_Channel0_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(pconf_hdbmas + 3);
+}
+#endif
+
+#ifdef PCONF_BDMA_CHANNEL4_IRQ
+void BDMA_Channel0_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(pconf_hdbmas + 4);
+}
+#endif
+
+#ifdef PCONF_BDMA_CHANNEL5_IRQ
+void BDMA_Channel0_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(pconf_hdbmas + 5);
+}
+#endif
+
+#ifdef PCONF_BDMA_CHANNEL6_IRQ
+void BDMA_Channel0_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(pconf_hdbmas + 6);
+}
+#endif
+
+#ifdef PCONF_BDMA_CHANNEL7_IRQ
+void BDMA_Channel0_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(pconf_hdbmas + 7);
 }
 #endif
 

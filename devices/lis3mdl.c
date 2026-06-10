@@ -7,7 +7,7 @@
 #include "lis3mdl.h"
 #include "periphconf.h"
 
-#define LIS_ADDR 0x1e
+#define LIS_ADDR 0x1c
 
 enum LIS_REGISTER {
 	LIS_OFFSETXL	= 0x05,

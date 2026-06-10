@@ -12,11 +12,11 @@ adj pitch 0.01
 adj roll 0
 adj yaw 0
 adj bat scale 1
-adj curr offset -20.4
+adj curr offset 0
 adj curr scale 412.5
-adj gyro x 0.309
-adj gyro y 0.093
-adj gyro z 0.277
+adj gyro x 0.945184
+adj gyro y 0.795486
+adj gyro z 0.414855
 adj mag x0 0.183806
 adj mag y0 -0.056067
 adj mag z0 -0.026843
