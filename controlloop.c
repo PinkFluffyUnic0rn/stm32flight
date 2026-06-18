@@ -37,6 +37,138 @@ static float heading(float r, float p, float x, float y, float z)
 	return circf(atan2f(y, x) + St.adj.magdecl);
 }
 
+int setstabilize(int init)
+{
+	float iscale;
+	
+	// init complementary filters contexts
+	dsp_setcompl(Cmpl + CMPL_PITCH, St.cmpl.att, PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_ROLL, St.cmpl.att, PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_YAW, St.cmpl.yaw, PID_FREQ, init);
+
+	dsp_setcompl(Cmpl + CMPL_CLIMBRATE, St.cmpl.climbrate,
+		PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_ALT, St.cmpl.alt, PID_FREQ, init);
+
+	dsp_setcompl(Cmpl + CMPL_SLAT, St.cmpl.speed, PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_SLON, St.cmpl.speed, PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_LAT, St.cmpl.pos, PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_LON, St.cmpl.pos, PID_FREQ, init);
+
+	// init roll and pitch position PID controller contexts
+	dsp_setpidbl(Pid + PID_PITCHP,
+		St.pid.attpos.p, St.pid.attpos.i, St.pid.attpos.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+	dsp_setpidbl(Pid + PID_ROLLP,
+		St.pid.attpos.p, St.pid.attpos.i, St.pid.attpos.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
+	// init roll, pitch and yaw speed PID controller contexts
+	iscale = Speedpid ? 1.0 : St.pid.feature.iscale;
+	
+	dsp_setpidbl(Pid + PID_PITCHS,
+		St.pid.attrate.p,
+		St.pid.attrate.i * iscale,
+		St.pid.attrate.d,
+		St.pid.feature.attimax, St.lpf.d, 0, PID_FREQ, init);
+	dsp_setpidbl(Pid + PID_ROLLS, 
+		St.pid.attrate.p,
+		St.pid.attrate.i * iscale,
+		St.pid.attrate.d,
+		St.pid.feature.attimax, St.lpf.d, 0, PID_FREQ, init);
+	dsp_setpidbl(Pid + PID_YAWS,
+		St.pid.yawrate.p,
+		St.pid.yawrate.i * iscale,
+		St.pid.yawrate.d,
+		St.pid.feature.attimax, St.lpf.d, 0, PID_FREQ, init);
+
+	// init yaw position PID controller's context
+	dsp_setpidbl(Pid + PID_YAWP,
+		St.pid.yawpos.p, St.pid.yawpos.i, St.pid.yawpos.d,
+		PID_MAX_I, St.lpf.d, 1, PID_FREQ, init);
+
+	// init vertical acceleration PID controller's context
+	dsp_setpidbl(Pid + PID_VA,
+		St.pid.throttle.p, St.pid.throttle.i, St.pid.throttle.d,
+		St.pid.feature.thrimax, St.lpf.d, 0, PID_FREQ, init);
+
+	// init climbrate PID controller's context
+	dsp_setpidbl(Pid + PID_CLIMBRATE,
+		St.pid.climbrate.p, St.pid.climbrate.i,
+		St.pid.climbrate.d, PID_MAX_I, St.lpf.d, 0, PID_FREQ,
+		init);
+
+	// init altitude PID controller's context
+	dsp_setpidbl(Pid + PID_ALT,
+		St.pid.alt.p, St.pid.alt.i, St.pid.alt.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
+	// init speed through latitude and longitude 
+	// PID controllers contexts
+	dsp_setpidbl(Pid + PID_SLAT,
+		St.pid.speed.p, St.pid.speed.i, St.pid.speed.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
+	dsp_setpidbl(Pid + PID_SLON,
+		St.pid.speed.p, St.pid.speed.i, St.pid.speed.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
+	// init latitude and longitude PID controllers contexts
+	dsp_setpidbl(Pid + PID_LAT,
+		St.pid.pos.p, St.pid.pos.i, St.pid.pos.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
+	dsp_setpidbl(Pid + PID_LON,
+		St.pid.pos.p, St.pid.pos.i, St.pid.pos.d,
+		PID_MAX_I, St.lpf.d, 0, PID_FREQ, init);
+
+	// init battery voltage low-pass filter
+	dsp_setlpf1f(Lpf + LPF_BAT, BAT_CUTOFF, POWER_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_CUR, CUR_CUTOFF, POWER_FREQ, init);
+
+	// init average thrust low-pass filter
+	dsp_setunity(Lpf + LPF_AVGTHR, init);
+	dsp_setlpf1t(Lpf + LPF_AVGTHRA, St.lpf.va, PID_FREQ, init);
+
+	// init low-pass fitlers for altitude, accelerations and speed
+	dsp_setunity(Lpf + LPF_BARTEMP, init);
+	dsp_setlpf1t(Lpf + LPF_THR, St.lpf.va, PID_FREQ, init);
+	dsp_setunity(Lpf + LPF_VAU, init);
+	dsp_setlpf1t(Lpf + LPF_VAPT1, St.lpf.va, PID_FREQ, init);
+	dsp_setlpf1t(Lpf + LPF_VAAVG, VA_AVG_TCOEF, PID_FREQ, init);
+	dsp_setunity(Lpf + LPF_FA, init);
+	dsp_setunity(Lpf + LPF_SA, init);
+	dsp_setunity(Lpf + LPF_ALT, init);
+	dsp_setunity(Lpf + LPF_SPEED, init);
+	dsp_setunity(Lpf + LPF_LATM, init);
+	dsp_setunity(Lpf + LPF_LONM, init);
+
+	// init low-pass fitlers for IMU temperature sensor
+	dsp_setlpf1t(Lpf + LPF_IMUTEMP, TEMP_TCOEF, PID_FREQ, init);
+
+	// init low-pass fitlers for accelerometer x, y and z axes
+	dsp_setlpf1f(Lpf + LPF_ACCX, St.lpf.acc, PID_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_ACCY, St.lpf.acc, PID_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_ACCZ, St.lpf.acc, PID_FREQ, init);
+
+	// init low-pass fitlers for gyroscope x, y and z axes
+	dsp_setlpf1f(Lpf + LPF_GYROX, St.lpf.gyro, PID_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_GYROY, St.lpf.gyro, PID_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_GYROZ, St.lpf.gyro, PID_FREQ, init);
+
+	// init low-pass fitlers for magnetometer x, y and z axes
+	dsp_setlpf1t(Lpf + LPF_MAGX, St.lpf.mag, QMC_FREQ, init);
+	dsp_setlpf1t(Lpf + LPF_MAGY, St.lpf.mag, QMC_FREQ, init);
+	dsp_setlpf1t(Lpf + LPF_MAGZ, St.lpf.mag, QMC_FREQ, init);
+
+	// init roll, pitch, yaw unity filters
+	dsp_setunity(Lpf + LPF_ROLL, init);
+	dsp_setunity(Lpf + LPF_PITCH, init);
+	dsp_setunity(Lpf + LPF_YAW, init);
+
+	return 0;
+}
+
 int updateposition(float dt)
 {
 	static float prevalt = 0.0;
@@ -260,7 +392,13 @@ int updatecorrection(float dt, struct corvals *cor)
 	gz = deg2rad(dsp_getlpf(Lpf + LPF_GYROZ));
 
 	// get tilt compensation coefficient
-	tiltcoef = cosf(-pitch) * cosf(-roll);
+	tiltcoef = cosf(pitch) * cosf(roll);
+
+	// divide by zero protection, tilt
+	// compesation for throttle works only
+	// for angles less that 45 degress
+	if (tiltcoef < cosf(St.adj.althold.tiltcoefmax * M_PI))
+		tiltcoef = cosf(St.adj.althold.tiltcoefmax * M_PI);
 
 	// get pitch corrected value of the hover throttle
 	ht = St.adj.althold.hoverthrottle / tiltcoef;

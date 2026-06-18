@@ -130,6 +130,12 @@
 * @{
 */
 #define PID_MAX_I 0.5		/*!< maximum PID I-term value */
+#define PID_MAX_ATTS_I 0.15	/*!< maximum rotation speed PID
+					I-term value */
+#define PID_MAX_THR_I 0.3	/*!< maximum throttle PID I-term
+					value */
+
+#define PID_MAX_I 0.5		/*!< maximum PID I-term value */
 #define BAT_CUTOFF 10.0		/*!< battery voltage sensor
 				filter cut-off frequency */
 #define CUR_CUTOFF 10.0		/*!< battery current sensor
@@ -159,6 +165,7 @@ struct __attribute__((aligned(32))) settings
 
 		struct {
 			float hoverthrottle;
+			float tiltcoefmax;
 			float alttha;
 			float altthb;
 			float altthc;
@@ -172,7 +179,6 @@ struct __attribute__((aligned(32))) settings
 		struct { float x, y, z; } magsc;
 		struct { float x, y, z; } magthrsc;
 		float magdecl;
-		float yawmix;
 	} adj;
 
 	struct {
@@ -218,7 +224,7 @@ struct __attribute__((aligned(32))) settings
 		struct { float p, i, d; } alt;
 		struct { float p, i, d; } speed;
 		struct { float p, i, d; } pos;
-		struct { float iscale; } feature;
+		struct { float iscale, attimax, thrimax; } feature;
 	} pid;
 
 	struct {

@@ -9,13 +9,6 @@
 #include "device.h"
 
 /**
-* @brief Init/set stabilization loop.
-* @param init 1, if called during initilization, 0 otherwise
-* @return always 0
-*/
-int setstabilize(int init);
-
-/**
 * @brief Update VTX settings.
 * @return always 0
 */

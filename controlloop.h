@@ -12,6 +12,13 @@ struct corvals {
 };
 
 /**
+* @brief Init/set stabilization loop.
+* @param init 1, if called during initilization, 0 otherwise
+* @return always 0
+*/
+int setstabilize(int init);
+
+/**
 * @brief Calculate acceleration, speed and position
 * 	estimation for each of 3 axes.
 * @param seconds passed from last position update 

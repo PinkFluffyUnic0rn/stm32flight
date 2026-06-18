@@ -983,8 +983,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"Features", "dsp",
-		{"tilt I-term scale"},
-		{"pid feature iscaling"},
+		{"tilt I-term scale", "attitude maximum I", "throttle maximum I" },
+		{"pid feature iscaling", "pid feature attimax", "pid feature thrimax" },
 		cmdstree, true, this), 2, 0, 1, 2);
 
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
@@ -1035,8 +1035,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 		cmdstree, true, this), 0, 3);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Magnetometer offsets", "dsp",
-		{"X",		"Y",		"Z",		"declination",	"yaw GPS mix"},
-		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl", "adj mag yawmix"},
+		{"X",		"Y",		"Z",		"declination"},
+		{"adj mag x0", 	"adj mag y0",	"adj mag z0", 	"adj mag decl"},
 		cmdstree, true, this), 1, 0);
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Magnetometer scale", "dsp",
@@ -1052,8 +1052,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Altitude hold", "dsp",
-		{"hover throttle", "coefficient a", "coefficient b", "coefficient c"},
-		{"adj althold hover", "adj althold coefa", "adj althold coefb", "adj althold coefc"},
+		{"hover throttle", "tilt coef maximum", "coefficient a", "coefficient b", "coefficient c"},
+		{"adj althold hover", "adj althold tiltcoefmax", "adj althold coefa", "adj althold coefb", "adj althold coefc"},
 		cmdstree, true, this), 2, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,

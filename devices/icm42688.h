@@ -136,7 +136,7 @@ struct icm_stdata {
 * @brief device initialization and private data
 */
 struct icm_device {
-	SPI_HandleTypeDef *hspi;		/*!< SPI interface */
+	SPI_HandleTypeDef *hspi;	/*!< SPI interface */
 
 	GPIO_TypeDef *gpio;		/*!< CS pin GPIO port */
 	uint16_t pin;			/*!< CS pin number */
