@@ -424,12 +424,15 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 		void (*outfunc) (void *, const char *), void *data)
 {
 	char scmd[BUFSZ];
+//	int retries;
 
 	// calculate command's string CRC-16 value and add it as decimal
 	// string to begin of the command.
 	snprintf(scmd, BUFSZ, "%05u %s", crc16((uint8_t *) cmd,
 		strlen(cmd)), cmd);
 	scmd[BUFSZ - 1] = '\0';
+
+//	retries = 0;
 
 	// do while serverfunc doesn't return non-negative value
 	// indication success completion of command. If no serverfunc
@@ -442,12 +445,15 @@ int sendcmd(int lsfd, const struct sockaddr_in *rsi, const char *cmd,
 
 		// if no serverfunc passed, stop loop
 		if (serverfunc == NULL)
+	//	if (serverfunc == NULL || retries > 5)
 			break;
 
 		// call serverfunc to perform server-side part of a
 		// command and check command's sucessful completion.
 		if (serverfunc(lsfd, rsi, scmd, outfunc, data) >= 0)
 			break;
+
+//		++retries;
 	} while (1);
 
 	return 0;
