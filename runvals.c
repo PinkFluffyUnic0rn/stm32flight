@@ -77,10 +77,10 @@ int setthrust(struct cdevice *dev,
 	dsp_updatelpf(Lpf + LPF_AVGTHRA, avgthrust);
 
 	// linearize thrust
-	ltd = pow(ltd, 1.0 / St.adj.mtrsc.thr);
-	rtd = pow(rtd, 1.0 / St.adj.mtrsc.thr);
-	lbd = pow(lbd, 1.0 / St.adj.mtrsc.thr);
-	rbd = pow(rbd, 1.0 / St.adj.mtrsc.thr);
+	ltd = pow(trimuf(ltd), 1.0 / St.adj.mtrsc.thr);
+	rtd = pow(trimuf(rtd), 1.0 / St.adj.mtrsc.thr);
+	lbd = pow(trimuf(lbd), 1.0 / St.adj.mtrsc.thr);
+	rbd = pow(trimuf(rbd), 1.0 / St.adj.mtrsc.thr);
 
 	// set values for thrust channels using
 	// motor to PWM channel mapping values
