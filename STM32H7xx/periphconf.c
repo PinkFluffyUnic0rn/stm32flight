@@ -1085,27 +1085,51 @@ void pconf_mspinit_spi(SPI_HandleTypeDef* hspi)
 	pconf_gpio_enable_clock(spi->mosi.inst);
 	pconf_gpio_enable_clock(spi->sck.inst);
 
-	GPIO_InitStruct.Pin = spi->miso.idx;
-	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->miso), spi->inst);
-	HAL_GPIO_Init(spi->miso.inst, &GPIO_InitStruct);
+	if (spi->usage == PCONF_SPIUSAGE_DEVS) {
+		GPIO_InitStruct.Pin = spi->miso.idx;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+		GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->miso), spi->inst);
+		HAL_GPIO_Init(spi->miso.inst, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin = spi->mosi.idx;
-	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->mosi), spi->inst);
-	HAL_GPIO_Init(spi->mosi.inst, &GPIO_InitStruct);
+		GPIO_InitStruct.Pin = spi->mosi.idx;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+		GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->mosi), spi->inst);
+		HAL_GPIO_Init(spi->mosi.inst, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin = spi->sck.idx;
-	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->sck), spi->inst);
-	HAL_GPIO_Init(spi->sck.inst, &GPIO_InitStruct);
-			
+		GPIO_InitStruct.Pin = spi->sck.idx;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+		GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->sck), spi->inst);
+		HAL_GPIO_Init(spi->sck.inst, &GPIO_InitStruct);
+	}
+	else {
+		GPIO_InitStruct.Pin = spi->miso.idx;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+		GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->miso), spi->inst);
+		HAL_GPIO_Init(spi->miso.inst, &GPIO_InitStruct);
+
+		GPIO_InitStruct.Pin = spi->mosi.idx;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+		GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->mosi), spi->inst);
+		HAL_GPIO_Init(spi->mosi.inst, &GPIO_InitStruct);
+
+		GPIO_InitStruct.Pin = spi->sck.idx;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+		GPIO_InitStruct.Alternate = pconf_spi_pinalternate(&(spi->sck), spi->inst);
+		HAL_GPIO_Init(spi->sck.inst, &GPIO_InitStruct);
+	}
+
 	if (hspi->Instance == SPI6
 			&& (idx = pconf_bdmaidx(spi->txbdma)) >= 0) {
 		pconf_hbdmas[idx].Instance = bdmas[idx];
