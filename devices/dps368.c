@@ -57,6 +57,8 @@ int dps_getdata(void *d, void *dt, size_t sz)
 	float scf[] = { 524288.0, 1572864.0, 3670016.0, 7864320.0,
 		253952.0, 516096.0, 1040384.0, 2088960.0 };
 	static volatile uint8_t buf[16];
+	static volatile uint8_t status;
+	static int checking = 0;
 	static int init = 0;
 	float psc, tsc;
 	int t;
@@ -92,8 +94,19 @@ int dps_getdata(void *d, void *dt, size_t sz)
 	data->altf = (1.0f - powf(data->pressf / 101325.0f, 0.190295f))
 		* 44330.0f;
 
-	pconf_i2cmemread(dev->hi2c, DPS_ADDR << 1, DPS_PRS,
-		(uint8_t *) buf, 6);
+	if (checking) {
+		if (status & 0x30) {
+			pconf_i2cmemread(dev->hi2c, DPS_ADDR << 1,
+				DPS_PRS, (uint8_t *) buf, 6);
+		}
+			
+		checking = 0;
+	}
+	else {
+		checking = 1;
+		pconf_i2cmemread(dev->hi2c, DPS_ADDR << 1,
+			DPS_MEASCFG, (uint8_t *) &status, 1);
+	}
 
 	return 0;
 }

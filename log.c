@@ -27,13 +27,18 @@ static size_t logsize = 0;
 * @brief Log write buffer
 */
 
-
 #ifdef STM32H7xx
-static float logbuf[LOG_BUFSIZE / sizeof(float)]
+static float logbuf0[LOG_BUFSIZE / sizeof(float)]
 	__attribute__((section(".bdma_buffer")));
+static float logbuf1[LOG_BUFSIZE / sizeof(float)]
+	__attribute__((section(".bdma_buffer")));
+
 #else
-static float logbuf[LOG_BUFSIZE / sizeof(float)];
+static float logbuf0[LOG_BUFSIZE / sizeof(float)];
+static float logbuf1[LOG_BUFSIZE / sizeof(float)];
 #endif
+
+static float *logbuf = logbuf0;
 
 const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {
 	"acc_x", "acc_y", "acc_z",
@@ -166,6 +171,8 @@ int printlog(const struct cdevice *d, char *buf,
 
 int updatelog()
 {
+	float *logbufprev;
+
 	if (logflashpos >= logsize)
 		return 0;
 
@@ -180,7 +187,11 @@ int updatelog()
 	Flashdev.write(Flashdev.priv, logflashpos,
 		logbuf, LOG_BUFSIZE);
 
-	memcpy(logbuf, logbuf + (LOG_RECSPERBUF - 1) * St.log.recsize,
+	logbufprev = logbuf;
+	logbuf = (logbuf == logbuf0) ? logbuf1 : logbuf0;
+
+	memcpy(logbuf,
+		logbufprev + (LOG_RECSPERBUF - 1) * St.log.recsize,
 		St.log.recsize * sizeof(float));
 
 	logflashpos += LOG_BUFSIZE;

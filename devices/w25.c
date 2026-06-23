@@ -148,8 +148,6 @@ int w25_read(void *d, size_t addr, void *data, size_t sz)
 
 int w25_write(void *d, size_t addr, const void *data, size_t sz)
 {
-//	static uint8_t bdmabuf[256]
-//		__attribute__((section(".bdma_buffer")));
 	struct w25_device *dev;
 	uint8_t sbuf[4];
 	int t;
@@ -176,17 +174,6 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 	sbuf[2] = (addr >> 8) & 0xff;
 	sbuf[3] = addr & 0xff;
 
-/*
-	uint8_t *buf;
-
-	if (dev->hspi->Instance == SPI6) {
-		memcpy(bdmabuf, data, sz);
-		//memset(bdmabuf, 0, 256);
-		buf = bdmabuf;
-	}
-	else
-		buf = (uint8_t *) data;
-*/
 	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
 	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 100);
 
