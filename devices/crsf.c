@@ -74,17 +74,14 @@ int crsf_interrupt(void *dev, const void *h)
 	b = Rxbuf;
 
 	if (Packstate == 0) {
-		if ((Packw + 1) % RXCIRCSIZE == Packr)
-			return 0;
-
-		if (b == 0xc8) {
-			Packw = (Packw + 1) % RXCIRCSIZE;
+		if (b == 0xc8)
 			Packstate = 1;
-		}
 	}
 	else if (Packstate == 1) {
-		if (b > 62)
+		if (b < 3 || b > 62) {
 			Packstate = 0;
+			return 0;
+		}
 
 		Pack[Packw].len = Packrest = b;
 
@@ -106,6 +103,9 @@ int crsf_interrupt(void *dev, const void *h)
 	}
 	else if (Packstate == 4) {
 		Pack[Packw].crc = b;
+
+		if ((Packw + 1) % RXCIRCSIZE != Packr)
+			Packw = (Packw + 1) % RXCIRCSIZE;
 
 		Packstate = 0;
 	}
