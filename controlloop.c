@@ -415,11 +415,17 @@ int updatecorrection(float dt, struct corvals *cor)
 		latcor = dsp_pidbl(Pid + PID_LAT, Pitchtarget,
 			dsp_getcompl(Cmpl + CMPL_LAT));
 	
+		writelog(LOG_LAT_PID, loncor);
+		writelog(LOG_LON_PID, latcor);
+
 		// calculate lonogitude and latitude correction
 		loncor = dsp_pidbl(Pid + PID_SLON, loncor,
 			dsp_getcompl(Cmpl + CMPL_SLON));
 		latcor = dsp_pidbl(Pid + PID_SLAT, latcor,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
+
+		writelog(LOG_SLAT_PID, loncor);
+		writelog(LOG_SLON_PID, latcor);
 
 		// get pitch and roll correction values
 		// using covertion to local frame, inverting pitch
@@ -437,8 +443,17 @@ int updatecorrection(float dt, struct corvals *cor)
 		cor->roll = dsp_pidbl(Pid + PID_ROLLP, cor->roll, roll);
 		cor->pitch = dsp_pidbl(Pid + PID_PITCHP, cor->pitch, pitch);
 
+		writelog(LOG_ROLL_PID, cor->roll);
+		writelog(LOG_PITCH_PID, cor->pitch);
+
 		cor->roll = dsp_pidbl(Pid + PID_ROLLS, cor->roll, gy);
 		cor->pitch = dsp_pidbl(Pid + PID_PITCHS, cor->pitch, gx);
+
+		writelog(LOG_ROLLS_PID, cor->roll);
+		writelog(LOG_ROLLS_PIDI, Pid[PID_ROLLS].i);
+	
+		writelog(LOG_PITCHS_PID, cor->pitch);
+		writelog(LOG_PITCHS_PIDI, Pid[PID_PITCHS].i);
 	}
 	else if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)
@@ -460,6 +475,9 @@ int updatecorrection(float dt, struct corvals *cor)
 		latcor = dsp_pidbl(Pid + PID_SLAT, lattarget,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
+		writelog(LOG_SLAT_PID, loncor);
+		writelog(LOG_SLON_PID, latcor);
+
 		// get pitch and roll correction values
 		// using covertion to local frame, inverting pitch
 		cor->pitch = -cosf(yaw) * latcor - sinf(yaw) * loncor;
@@ -476,8 +494,17 @@ int updatecorrection(float dt, struct corvals *cor)
 		cor->roll = dsp_pidbl(Pid + PID_ROLLP, cor->roll, roll);
 		cor->pitch = dsp_pidbl(Pid + PID_PITCHP, cor->pitch, pitch);
 
+		writelog(LOG_ROLL_PID, cor->roll);
+		writelog(LOG_PITCH_PID, cor->pitch);
+
 		cor->roll = dsp_pidbl(Pid + PID_ROLLS, cor->roll, gy);
 		cor->pitch = dsp_pidbl(Pid + PID_PITCHS, cor->pitch, gx);
+
+		writelog(LOG_ROLLS_PID, cor->roll);
+		writelog(LOG_ROLLS_PIDI, Pid[PID_ROLLS].i);
+	
+		writelog(LOG_PITCHS_PID, cor->pitch);
+		writelog(LOG_PITCHS_PIDI, Pid[PID_PITCHS].i);
 	}
 	else if (Speedpid) {
 		// if in single PID loop mode for tilt
@@ -486,6 +513,12 @@ int updatecorrection(float dt, struct corvals *cor)
 		// roll and pitch and get next correction values.
 		cor->roll = dsp_pidbl(Pid + PID_ROLLS, Rolltarget, gy);
 		cor->pitch = dsp_pidbl(Pid + PID_PITCHS, Pitchtarget, gx);
+	
+		writelog(LOG_ROLLS_PID, cor->roll);
+		writelog(LOG_ROLLS_PIDI, Pid[PID_ROLLS].i);
+	
+		writelog(LOG_PITCHS_PID, cor->pitch);
+		writelog(LOG_PITCHS_PIDI, Pid[PID_PITCHS].i);
 	}
 	else {
 		// if in double loop mode for tilt (most commonly used
@@ -495,10 +528,19 @@ int updatecorrection(float dt, struct corvals *cor)
 		cor->roll = dsp_pidbl(Pid + PID_ROLLP, Rolltarget, roll);
 		cor->pitch = dsp_pidbl(Pid + PID_PITCHP, Pitchtarget, pitch);
 
+		writelog(LOG_ROLL_PID, cor->roll);
+		writelog(LOG_PITCH_PID, cor->pitch);
+	
 		// then use this values to update roll and pitch speed
 		// PID controllers and get next SPEED correction values.
 		cor->roll = dsp_pidbl(Pid + PID_ROLLS, cor->roll, gy);
 		cor->pitch = dsp_pidbl(Pid + PID_PITCHS, cor->pitch, gx);
+	
+		writelog(LOG_ROLLS_PID, cor->roll);
+		writelog(LOG_ROLLS_PIDI, Pid[PID_ROLLS].i);
+	
+		writelog(LOG_PITCHS_PID, cor->pitch);
+		writelog(LOG_PITCHS_PIDI, Pid[PID_PITCHS].i);
 	}
 			
 	if (Yawspeedpid) {
@@ -506,6 +548,8 @@ int updatecorrection(float dt, struct corvals *cor)
 		// rotation speed values around axis Z to upadte yaw PID
 		// controller and get next yaw correciton value
 		cor->yaw = dsp_pidbl(Pid + PID_YAWS, Yawtarget, -gz);
+		
+		writelog(LOG_YAW_PID, cor->yaw);
 	}
 	else {
 		// if in double loop mode for yaw, first use yaw value
@@ -513,10 +557,14 @@ int updatecorrection(float dt, struct corvals *cor)
 		// ELRS remote to update yaw POSITION PID controller and
 		// get it's next correciton value.
 		cor->yaw = dsp_pidbl(Pid + PID_YAWP, Yawtarget, yaw);
+	
+		writelog(LOG_YAW_PID, cor->yaw);
 
 		// then use this value to update yaw speed PID
 		// controller and get next yaw SPEED correction value
 		cor->yaw = dsp_pidbl(Pid + PID_YAWS, cor->yaw, -gz);
+		
+		writelog(LOG_YAWS_PID, cor->yaw);
 	}
 
 	if (Altmode == ALTMODE_POS) {
@@ -526,6 +574,8 @@ int updatecorrection(float dt, struct corvals *cor)
 		// get it's next correction value
 		cor->thrust = dsp_pidbl(Pid + PID_ALT, Thrust,
 			dsp_getcompl(Cmpl + CMPL_ALT) - Alt0);
+		
+		writelog(LOG_ALT_PID, cor->thrust);
 
 		// then use altitude correction value and climb rate
 		// calculated by complimentary filter (barometer
@@ -535,11 +585,16 @@ int updatecorrection(float dt, struct corvals *cor)
 		cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE, cor->thrust,
 			dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
 		
+		writelog(LOG_CRATE_PID, cor->thrust);
+		
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		cor->thrust = dsp_pidbl(Pid + PID_VA, cor->thrust + 1.0,
 			dsp_getlpf(Lpf + LPF_VAPT1)) / tiltcoef + ht;	
+		
+		writelog(LOG_VA_PID, cor->thrust);
+		writelog(LOG_VA_PIDI, Pid[PID_VA].i);
 	}
 	else if (Altmode == ALTMODE_SPEED) {
 		// if consttant climb rate mode, first use climb rate
@@ -550,12 +605,17 @@ int updatecorrection(float dt, struct corvals *cor)
 		// correction value
 		cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE, Thrust,
 			dsp_getcompl(Cmpl + CMPL_CLIMBRATE));	
+		
+		writelog(LOG_CRATE_PID, cor->thrust);
 
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		cor->thrust = dsp_pidbl(Pid + PID_VA, cor->thrust + 1.0,
 			dsp_getlpf(Lpf + LPF_VAPT1)) / tiltcoef + ht;
+		
+		writelog(LOG_VA_PID, cor->thrust);
+		writelog(LOG_VA_PIDI, Pid[PID_VA].i);
 	}
 	else {
 		if (Hovermode) {
@@ -578,6 +638,9 @@ int updatecorrection(float dt, struct corvals *cor)
 				Thrust + 1.0,
 				dsp_getlpf(Lpf + LPF_THR));
 		}
+
+		writelog(LOG_VA_PID, cor->thrust);
+		writelog(LOG_VA_PIDI, Pid[PID_VA].i);
 	}
 
 	// reset bilinear PID-controllers when disarmed
