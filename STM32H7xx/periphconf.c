@@ -1085,7 +1085,8 @@ void pconf_mspinit_spi(SPI_HandleTypeDef* hspi)
 	pconf_gpio_enable_clock(spi->mosi.inst);
 	pconf_gpio_enable_clock(spi->sck.inst);
 
-	if (spi->usage == PCONF_SPIUSAGE_DEVS) {
+	if (spi->usage == PCONF_SPIUSAGE_DEVS
+			|| spi->usage == PCONF_SPIUSAGE_FLASH) {
 		GPIO_InitStruct.Pin = spi->miso.idx;
 		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 		GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -1742,6 +1743,35 @@ static void pconf_init_spi_dev(int i)
 	pconf_hspis[i].Init.CLKPolarity = SPI_POLARITY_LOW;
 	pconf_hspis[i].Init.CLKPhase = SPI_PHASE_1EDGE;
 	pconf_hspis[i].Init.NSS = SPI_NSS_SOFT;
+	pconf_hspis[i].Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+	pconf_hspis[i].Init.FirstBit = SPI_FIRSTBIT_MSB;
+	pconf_hspis[i].Init.TIMode = SPI_TIMODE_DISABLE;
+	pconf_hspis[i].Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+	pconf_hspis[i].Init.CRCPolynomial = 10;
+	pconf_hspis[i].Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+	pconf_hspis[i].Init.NSSPolarity = SPI_NSS_POLARITY_LOW;
+	pconf_hspis[i].Init.FifoThreshold = SPI_FIFO_THRESHOLD_01DATA;
+	pconf_hspis[i].Init.TxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
+	pconf_hspis[i].Init.RxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
+	pconf_hspis[i].Init.MasterSSIdleness = SPI_MASTER_SS_IDLENESS_00CYCLE;
+	pconf_hspis[i].Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_00CYCLE;
+	pconf_hspis[i].Init.MasterReceiverAutoSusp = SPI_MASTER_RX_AUTOSUSP_DISABLE;
+	pconf_hspis[i].Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_DISABLE;
+	pconf_hspis[i].Init.IOSwap = SPI_IO_SWAP_DISABLE;
+
+	if (HAL_SPI_Init(pconf_hspis + i) != HAL_OK)
+		error_handler();
+}
+
+static void pconf_init_spi_flash(int i)
+{
+	pconf_hspis[i].Instance = spis[i].inst;
+	pconf_hspis[i].Init.Mode = SPI_MODE_MASTER;
+	pconf_hspis[i].Init.Direction = SPI_DIRECTION_2LINES;
+	pconf_hspis[i].Init.DataSize = SPI_DATASIZE_8BIT;
+	pconf_hspis[i].Init.CLKPolarity = SPI_POLARITY_LOW;
+	pconf_hspis[i].Init.CLKPhase = SPI_PHASE_1EDGE;
+	pconf_hspis[i].Init.NSS = SPI_NSS_SOFT;
 	pconf_hspis[i].Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
 	pconf_hspis[i].Init.FirstBit = SPI_FIRSTBIT_MSB;
 	pconf_hspis[i].Init.TIMode = SPI_TIMODE_DISABLE;
@@ -1800,6 +1830,8 @@ static void pconf_init_spi(void)
 			pconf_init_spi_dev(i);
 		else if (spis[i].usage == PCONF_SPIUSAGE_WIFI)
 			pconf_init_spi_wifi(i);
+		else if (spis[i].usage == PCONF_SPIUSAGE_FLASH)
+			pconf_init_spi_flash(i);
 	}
 }
 

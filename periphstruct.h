@@ -45,6 +45,7 @@ struct pconf_spi {
 	*/
 	enum PCONF_SPIUSAGE {
 		PCONF_SPIUSAGE_DEVS,	/*!< used for board devices */
+		PCONF_SPIUSAGE_FLASH,	/*!< used for log flash */
 		PCONF_SPIUSAGE_WIFI	/*!< used for wifi chip */
 	} usage;
 

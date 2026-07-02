@@ -185,7 +185,7 @@ const struct pconf_spi spis[] = {
 	},
 	{
 		.inst = SPI6,
-		.usage = PCONF_SPIUSAGE_DEVS,
+		.usage = PCONF_SPIUSAGE_FLASH,
 		.miso = {
 			.inst = GPIOA,
 			.idx = GPIO_PIN_6
