@@ -54,13 +54,13 @@ int dps_getdata(void *d, void *dt, size_t sz)
 {
 	struct dps_device *dev;
 	struct baro_data *data;
-	float scf[] = { 524288.0, 1572864.0, 3670016.0, 7864320.0,
+	double scf[] = { 524288.0, 1572864.0, 3670016.0, 7864320.0,
 		253952.0, 516096.0, 1040384.0, 2088960.0 };
 	static volatile uint8_t buf[16];
 	static volatile uint8_t status;
 	static int checking = 0;
 	static int init = 0;
-	float psc, tsc;
+	double psc, tsc;
 	int t;
 
 	data = (struct baro_data *) dt;
@@ -91,8 +91,8 @@ int dps_getdata(void *d, void *dt, size_t sz)
 
 	data->tempf = (dev->c0 * 0.5 + dev->c1 * tsc);
 
-	data->altf = (1.0f - powf(data->pressf / 101325.0f, 0.190295f))
-		* 44330.0f;
+	data->altf = (1.0 - pow(data->pressf / 101325.0, 0.190295))
+		* 44330.0;
 
 	if (checking) {
 		if (status & 0x30) {

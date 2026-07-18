@@ -50,7 +50,7 @@ int hmc_getdata(void *d, void *dt, size_t sz)
 {
 	struct hmc_device *dev;
 	struct mag_data *data;
-	static float amp[] = { 0.73, 0.92, 1.22, 1.52,
+	static double amp[] = { 0.73, 0.92, 1.22, 1.52,
 		2.27, 2.56, 3.03 };
 
 	data = (struct mag_data *) dt;

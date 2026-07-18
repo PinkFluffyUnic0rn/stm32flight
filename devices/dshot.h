@@ -66,7 +66,7 @@ struct dshot_device {
 * @brief input data
 */
 struct dshot_data {
-	float thrust[4];	/*!< value of each PWM channel */
+	double thrust[4];	/*!< value of each PWM channel */
 };
 
 /**

@@ -32,10 +32,10 @@ struct timev {
 	int freq;		/*!< event frequency */
 	int (*cb)(int);		/*!< event callback */
 
-	float tc;		/*!< callback duraton
+	double tc;		/*!< callback duraton
 					counter time constant*/
-	float avg;		/*!< average callback duraton */
-	float devi;		/*!< callback duraton deviation */
+	double avg;		/*!< average callback duraton */
+	double devi;		/*!< callback duraton deviation */
 };
 
 /**

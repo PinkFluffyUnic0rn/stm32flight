@@ -24,11 +24,11 @@ struct gnss_data Gnss;
 struct crsf_tele Tele;
 struct msp_osd Osd;
 
-float Thrust = 0.0;
-float Rolltarget = 0.0;
-float Pitchtarget = 0.0;
-float Yawtarget = 0.0;
-float En = 0.0;
+double Thrust = 0.0;
+double Rolltarget = 0.0;
+double Pitchtarget = 0.0;
+double Yawtarget = 0.0;
+double En = 0.0;
 enum ALTMODE Altmode = 0;
 enum GNSSMODE Gnssmode = 0;
 int Speedpid = 0;
@@ -37,15 +37,15 @@ int Hovermode = 0;
 int Elrs = 0;
 int Autopilot = 0;
 
-float Alt0 = 0.0;
-float Lat0 = 0.0;
-float Lon0 = 0.0;
-float Goffset = 0.0;
+double Alt0 = 0.0;
+double Lat0 = 0.0;
+double Lon0 = 0.0;
+double Goffset = 0.0;
 
 struct trackpoint Points[MAX_POINT_COUNT];
 int Pointscount = 0;
 int Curpoint = 0;
-float Autopilottimer = 0.0;
+double Autopilottimer = 0.0;
 
 int Curslot = 0;
 
@@ -58,10 +58,10 @@ int Elrstimeout = ELRS_TIMEOUT;
 int Emergencydisarm = 0;
 
 int setthrust(struct cdevice *dev,
-	float ltd, float rtd, float lbd, float rbd)
+	double ltd, double rtd, double lbd, double rbd)
 {
 	struct dshot_data dd;
-	float avgthrust;
+	double avgthrust;
 	
 	// incorrect thrust value protection and
 	// extra check for disabled ELRS transmitter	

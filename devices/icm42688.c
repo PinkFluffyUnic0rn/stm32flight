@@ -104,7 +104,7 @@ int icm_getdata(void *d, void *dt, size_t sz)
 	struct icm_device *dev;
 	struct imu_data *data;
 	static int16_t accamp[] = { 0x800, 0x1000, 0x2000, 0x4000 };
-	static float gyroamp[] = { 16.384, 32.768, 65.536, 131.072,
+	static double gyroamp[] = { 16.384, 32.768, 65.536, 131.072,
 		262.144, 524.288, 1040.254, 2097.152};
 
 	data = (struct imu_data *) dt;
@@ -117,9 +117,9 @@ int icm_getdata(void *d, void *dt, size_t sz)
 
 	data->ft = (data->t / 132.48) + 25.0;
 
-	data->afx = (data->ax) / (float) accamp[dev->accelscale];
-	data->afy = (data->ay) / (float) accamp[dev->accelscale];
-	data->afz = (data->az) / (float) accamp[dev->accelscale];
+	data->afx = (data->ax) / (double) accamp[dev->accelscale];
+	data->afy = (data->ay) / (double) accamp[dev->accelscale];
+	data->afz = (data->az) / (double) accamp[dev->accelscale];
 
 	data->gfx = data->gx / gyroamp[dev->gyroscale];
 	data->gfy = data->gy / gyroamp[dev->gyroscale];
@@ -184,19 +184,19 @@ int icm_selftest(struct icm_device *dev, struct icm_stdata *stdata)
 	icm_write(dev, 0x76, 2);
 	icm_read(dev, 0x3b, stbuf + 3, 3);
 
-	stdata->ax = fabsf(stax - ax)
-		/ (13.1 * powf(1.01f, stbuf[3] - 1) + 0.5f);
-	stdata->ay = fabsf(stay - ay)
-		/ (13.1 * powf(1.01f, stbuf[4] - 1) + 0.5f);
-	stdata->az = fabsf(staz - az)
-		/ (13.1 * powf(1.01f, stbuf[5] - 1) + 0.5f);
+	stdata->ax = fabs(stax - ax)
+		/ (13.1 * pow(1.01, stbuf[3] - 1) + 0.5);
+	stdata->ay = fabs(stay - ay)
+		/ (13.1 * pow(1.01, stbuf[4] - 1) + 0.5);
+	stdata->az = fabs(staz - az)
+		/ (13.1 * pow(1.01, stbuf[5] - 1) + 0.5);
 
-	stdata->gx = fabsf(stgx - gx)
-		/ (26.2 * powf(1.01f, stbuf[0] - 1) + 0.5f);
-	stdata->gy = fabsf(stgy - gy)
-		/ (26.2 * powf(1.01f, stbuf[1] - 1) + 0.5f);
-	stdata->gz = fabsf(stgz - gz)
-		/ (26.2 * powf(1.01f, stbuf[2] - 1) + 0.5f);
+	stdata->gx = fabs(stgx - gx)
+		/ (26.2 * pow(1.01, stbuf[0] - 1) + 0.5);
+	stdata->gy = fabs(stgy - gy)
+		/ (26.2 * pow(1.01, stbuf[1] - 1) + 0.5);
+	stdata->gz = fabs(stgz - gz)
+		/ (26.2 * pow(1.01, stbuf[2] - 1) + 0.5);
 
 	return 0;
 }

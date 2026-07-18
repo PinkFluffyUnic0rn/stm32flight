@@ -76,8 +76,8 @@ enum DSP_LPFORDER {
 * alpha and accumulated filter data between calls.
 */
 struct dsp_lpf {
-	float s1;			/*!< accumulated value */
-	float alpha;			/*!< filtering coefficient */
+	double s1;			/*!< accumulated value */
+	double alpha;			/*!< filtering coefficient */
 	enum DSP_LPFORDER order;	/*!< filter's order */
 };
 
@@ -86,12 +86,12 @@ struct dsp_lpf {
 * coefficients and accumelated data between calls.
 */
 struct dsp_pidval {
-	float kp,		/*!< P term */
-	      ki,		/*!< I term */
-	      kd;		/*!< D term */
+	double kp,		/*!< P term */
+		ki,		/*!< I term */
+		kd;		/*!< D term */
 	struct dsp_lpf dlpf;	/*!< D term low-pass filter's context */
-	float pe;		/*!< previous error value */
-	float s;		/*!< I-term accumulated value */
+	double pe;		/*!< previous error value */
+	double s;		/*!< I-term accumulated value */
 };
 
 /**
@@ -99,19 +99,19 @@ struct dsp_pidval {
 * coefficients and accumelated data between calls.
 */
 struct dsp_pidblval {
-	float imax;	/*!< I-term maximum value */
+	double imax;	/*!< I-term maximum value */
 	int circular;	/*!< is controlled value circular */
 
-	float a[3];	/*!< 'a' Z-transform derived coefficients
+	double a[3];	/*!< 'a' Z-transform derived coefficients
 			without I-term related terms */
-	float b[3];	/*!< 'b' Z-transform derived coefficients */
-	float ia[3];	/*!< 'a' Z-transform derived coefficients
+	double b[3];	/*!< 'b' Z-transform derived coefficients */
+	double ia[3];	/*!< 'a' Z-transform derived coefficients
 			for I-term related terms */	
-	float e[2];	/*!< previous error values */
-	float v[2];	/*!< previous correction values
+	double e[2];	/*!< previous error values */
+	double v[2];	/*!< previous correction values
 			  without I-term */
-	float iv[2];	/*!< previous I-term correction values */
-	float i;	/*!< last I-term value */
+	double iv[2];	/*!< previous I-term correction values */
+	double i;	/*!< last I-term value */
 
 	int step;	/*!< calculation step, stops at value of 2 */
 	int depth;	/*!< number of 'a' and 'b' Z-transform
@@ -123,8 +123,8 @@ struct dsp_pidblval {
 * constant and accumulated filter data between calls.
 */
 struct dsp_compl {
-	float s;
-	float coef;
+	double s;
+	double coef;
 };
 
 /**
@@ -148,7 +148,7 @@ int dsp_setunity(struct dsp_lpf *ir, int init);
 * @param init 1, if internal values initializaion required, 0 otherwise
 * @return always 0
 */
-int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq, int init);
+int dsp_setlpf1t(struct dsp_lpf *ir, double tcoef, int freq, int init);
 
 /**
 * @brief Set new first order low-pass filter
@@ -162,7 +162,7 @@ int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq, int init);
 * @param init 1, if internal values initializaion required, 0 otherwise
 * @return always 0
 */
-int dsp_setlpf1f(struct dsp_lpf *ir, float cutoff, int freq, int init);
+int dsp_setlpf1f(struct dsp_lpf *ir, double cutoff, int freq, int init);
 
 /**
 * @brief Get last calculated low-pass filtering result (from last
@@ -170,7 +170,7 @@ int dsp_setlpf1f(struct dsp_lpf *ir, float cutoff, int freq, int init);
 * @param ir low-pass filter's context
 * @return last calculated low-pass filtered value
 */
-float dsp_getlpf(struct dsp_lpf *ir);
+double dsp_getlpf(struct dsp_lpf *ir);
 
 /**
 * @brief Calculate next low-pass filter's value and get the result.
@@ -178,7 +178,7 @@ float dsp_getlpf(struct dsp_lpf *ir);
 * @param v new value of a signal being filtered
 * @return low-pass filtered value
 */
-float dsp_updatelpf(struct dsp_lpf *ir, float v);
+double dsp_updatelpf(struct dsp_lpf *ir, double v);
 
 /**
 * @brief Set new P, I and D coefficient for a PID controller.
@@ -190,8 +190,8 @@ float dsp_updatelpf(struct dsp_lpf *ir, float v);
 * @param init 1, if internal values initializaion required, 0 otherwise
 * @return always 0
 */
-int dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
-	float dcutoff, int freq, int init);
+int dsp_setpid(struct dsp_pidval *pv, double kp, double ki, double kd,
+	double dcutoff, int freq, int init);
 
 /**
 * @brief Set new P, I and D coefficient for a bilinear PID controller.
@@ -203,8 +203,8 @@ int dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 * @param init 1, if internal values initializaion required, 0 otherwise
 * @return always 0
 */
-int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
-	float kd, float imax, float dcutoff, int circular,
+int dsp_setpidbl(struct dsp_pidblval *pv, double kp, double ki,
+	double kd, double imax, double dcutoff, int circular,
 	int freq, int init);
 
 /**
@@ -216,7 +216,8 @@ int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
 	value calculation
 * @return correction value
 */
-float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt);
+double dsp_pid(struct dsp_pidval *pv, double target,
+	double val, double dt);
 
 /**
 * @brief Calculate next bilinear PID controller's correction value.
@@ -227,7 +228,7 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt);
 	value calculation
 * @return correction value
 */
-float dsp_pidbl(struct dsp_pidblval *pv, float target, float val);
+double dsp_pidbl(struct dsp_pidblval *pv, double target, double val);
 
 /**
 * @brief Reset bilinear PID controller's I-term
@@ -249,8 +250,8 @@ int dsp_resetpidbls(struct dsp_pidblval *pv);
  	value calculation
 * @return correction value
 */
-float dsp_circpid(struct dsp_pidval *pv, float target,
-	float val, float dt);
+double dsp_circpid(struct dsp_pidval *pv, double target,
+	double val, double dt);
 
 /**
 * @brief Set new complimentary filter using time constant value.
@@ -262,7 +263,7 @@ float dsp_circpid(struct dsp_pidval *pv, float target,
 * @param init 1, if internal values initializaion required, 0 otherwise
 * @return always 0
 */
-int dsp_setcompl(struct dsp_compl *comp, float tc, int freq, int init);
+int dsp_setcompl(struct dsp_compl *comp, double tc, int freq, int init);
 
 /**
 * @brief Get last calculated complimentary filtering result.
@@ -270,7 +271,7 @@ int dsp_setcompl(struct dsp_compl *comp, float tc, int freq, int init);
 * @param comp complimentary filter's context
 * @return last complimentary filtered result
 */
-float dsp_getcompl(struct dsp_compl *comp);
+double dsp_getcompl(struct dsp_compl *comp);
 
 /**
 * @brief Calculate next complimentary filter's value in circular way
@@ -280,7 +281,8 @@ float dsp_getcompl(struct dsp_compl *comp);
 * @param v1 new value of second signal to be filtered and merged
 * @return complimentary filtered result
 */
-float dsp_updatecirccompl(struct dsp_compl *comp, float v0, float v1);
+double dsp_updatecirccompl(struct dsp_compl *comp, double v0,
+	double v1);
 
 /**
 * @brief Calculate next complimentary filter's value and get the result.
@@ -289,6 +291,6 @@ float dsp_updatecirccompl(struct dsp_compl *comp, float v0, float v1);
 * @param v1 new value of second signal to be filtered and merged
 * @return complimentary filtered result
 */
-float dsp_updatecompl(struct dsp_compl *comp, float v0, float v1);
+double dsp_updatecompl(struct dsp_compl *comp, double v0, double v1);
 
 #endif

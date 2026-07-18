@@ -128,8 +128,8 @@ enum ICM_ACCELORDER {
 * @brief self-test output data
 */
 struct icm_stdata {
-	float ax, ay, az;	///< accelerometer x, y and z self-test values
-	float gx, gy, gz;	///< gyroscope x, y and z self-test values
+	double ax, ay, az;	///< accelerometer x, y and z self-test values
+	double gx, gy, gz;	///< gyroscope x, y and z self-test values
 };
 
 /**

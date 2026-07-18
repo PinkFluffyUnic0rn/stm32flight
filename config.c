@@ -49,7 +49,7 @@ struct settingnode
 							in case if this
 							node is
 							non-terminal */
-		float *f;			/*!< setting value
+		double *f;			/*!< setting value
 							storage in case
 							if this node is
 							float setting */
@@ -770,7 +770,7 @@ int updatevtx()
 */
 static int sprintimu(char *s, struct imu_data *id)
 {
-	float ax, ay, az;
+	double ax, ay, az;
 
 	s[0] = '\0';
 
@@ -1233,8 +1233,8 @@ static int sprintfdebug(char *s)
 		snprintf(s + strlen(s), INFOLEN - strlen(s),
 			"event %s: avg time: %0.3f us; variation: %0.3f us\r\n",
 			Evnames[i],
-			(double) (Evs[i].avg / (float) SystemCoreClock * 1.0e6),
-			(double) (sqrtf(Evs[i].devi) /(float)  SystemCoreClock * 1.0e6));
+			(double) (Evs[i].avg / (double) SystemCoreClock * 1.0e6),
+			(double) (sqrt(Evs[i].devi) /(double)  SystemCoreClock * 1.0e6));
 	}
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s), "\r\n");
@@ -1656,7 +1656,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	struct settingnode *node;
 	char *data;
 	enum CONFVALTYPE valtype;
-	float vf;
+	double vf;
 	int vi;
 	const char *vs;
 

@@ -183,7 +183,7 @@ void error_handler(void)
 * @param buf write buffer for DMA
 * @return samlped value
 */
-float adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
+double adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
 {
 	uint32_t v;
 	int t;
@@ -206,7 +206,7 @@ float adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
 * @brief Get battery voltage from ADC.
 * @return battery voltage
 */
-float batteryvoltage()
+double batteryvoltage()
 {
 	ADC_HandleTypeDef *hadc;
 	static volatile uint16_t buf = 0;
@@ -214,14 +214,14 @@ float batteryvoltage()
 	hadc = pconf_batteryhadc;
 
 	return (adcvalue(hadc, &buf)
-		/ (float) 0xfff * BAT_SCALE * St.adj.batsc);
+		/ (double) 0xfff * BAT_SCALE * St.adj.batsc);
 }
 
 /**
 * @brief Get ESC current from ADC.
 * @return battery current in amperes
 */
-float esccurrent()
+double esccurrent()
 {
 	ADC_HandleTypeDef *hadc;
 	static volatile uint16_t buf = 0;
@@ -229,7 +229,7 @@ float esccurrent()
 	hadc = pconf_currenthadc;
 
 	return (adcvalue(hadc, &buf)
-		/ (float) 0xfff * St.adj.current.scale
+		/ (double) 0xfff * St.adj.current.scale
 		+ St.adj.current.offset);
 
 }
@@ -288,7 +288,7 @@ int imuupdate(int ms)
 int stabilize(int ms)
 {
 	struct corvals cor;
-	float dt;
+	double dt;
 	
 	// debug pin switching
 	HAL_GPIO_WritePin(debuggpio, debugpin,
@@ -301,7 +301,7 @@ int stabilize(int ms)
 	}
 
 	// get time passed from last invocation of this calback function
-	dt = ms / (float) TICKSPERSEC;
+	dt = ms / (double) TICKSPERSEC;
 
 	// divide-by-zero protection
 	dt = (dt < 0.000001) ? 0.000001 : dt;
@@ -586,9 +586,9 @@ int autopilotstep()
 int autopilotupdate(int ms)
 {
 	struct trackpoint *nextpoint;
-	float dt;
+	double dt;
 
-	dt = ms / (float) TICKSPERSEC;
+	dt = ms / (double) TICKSPERSEC;
 	
 	// divide-by-zero protection
 	dt = (dt < 0.000001) ? 0.000001 : dt;
@@ -652,8 +652,8 @@ int autopilotupdate(int ms)
 */
 int crsfcmd(const struct crsf_data *cd, int ms)
 {
-	static float slottimeout = ELRS_PUSHTIMEOUT;
-	float dt;
+	static double slottimeout = ELRS_PUSHTIMEOUT;
+	double dt;
 	int slot;
 
 	// write first 8 channels values into log	
@@ -683,7 +683,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	}
 
 	// get time passed from last ERLS packet
-	dt = ms / (float) TICKSPERSEC;
+	dt = ms / (double) TICKSPERSEC;
 
 	// SETSLOT channel is used to select settings slot, it is
 	// a 6 position switch on remote used for testing
@@ -853,18 +853,18 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	if (cd->chf[ERLS_CH_GNSSMODE] > 0.25
 			&& Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
-		float yaw;
+		double yaw;
 
 		Gnssmode = GNSSMODE_POS;
 
 		yaw = dsp_getlpf(Lpf + LPF_YAW);
 
-		Rolltarget += dt * (cd->chf[ERLS_CH_PITCH] * sinf(yaw)
-			+ cd->chf[ERLS_CH_ROLL] * cosf(yaw))
+		Rolltarget += dt * (cd->chf[ERLS_CH_PITCH] * sin(yaw)
+			+ cd->chf[ERLS_CH_ROLL] * cos(yaw))
 				* St.ctrl.posrate;
 
-		Pitchtarget += dt * (cd->chf[ERLS_CH_PITCH] * cosf(yaw)
-			- cd->chf[ERLS_CH_ROLL] * sinf(yaw))
+		Pitchtarget += dt * (cd->chf[ERLS_CH_PITCH] * cos(yaw)
+			- cd->chf[ERLS_CH_ROLL] * sin(yaw))
 				* St.ctrl.posrate;
 	}
 	else if (cd->chf[ERLS_CH_GNSSMODE] > -0.25
@@ -946,7 +946,7 @@ int m10msg(struct m10_data *nd)
 	// through latitude and longitude in meters
 	dsp_updatelpf(Lpf + LPF_LATM, (Gnss.declat - Lat0) * 111320);
 	dsp_updatelpf(Lpf + LPF_LONM,
-		(Gnss.declon - Lon0) * 111320 * cosf(deg2rad(Lat0)));
+		(Gnss.declon - Lon0) * 111320 * cos(deg2rad(Lat0)));
 
 	writelog(LOG_CUSTOM0, dsp_getlpf(Lpf + LPF_LATM));
 	writelog(LOG_CUSTOM1, dsp_getlpf(Lpf + LPF_LONM));

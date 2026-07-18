@@ -5,10 +5,10 @@
 * @brief Correction values needed for each axis and total thrust.
 */
 struct corvals {
-	float roll;	/*!< roll correction value */
-	float pitch;	/*!< pitch correction value */
-	float yaw;	/*!< ywa correction value */
-	float thrust;	/*!< thrust coreection value */
+	double roll;	/*!< roll correction value */
+	double pitch;	/*!< pitch correction value */
+	double yaw;	/*!< ywa correction value */
+	double thrust;	/*!< thrust coreection value */
 };
 
 /**
@@ -24,7 +24,7 @@ int setstabilize(int init);
 * @param seconds passed from last position update 
 * @return always 0
 */
-int updateposition(float dt);
+int updateposition(double dt);
 
 /**
 * @brief Update PID controllers and get needed correction values.
@@ -32,7 +32,7 @@ int updateposition(float dt);
 * @param needed correction values
 * @return always 0
 */
-int updatecorrection(float dt, struct corvals *cor);
+int updatecorrection(double dt, struct corvals *cor);
 
 /**
 * @brief Apply thrust using passed correction values.

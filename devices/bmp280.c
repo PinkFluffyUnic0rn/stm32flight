@@ -58,16 +58,16 @@ int bmp_write(struct bmp_device *dev, uint8_t addr, uint8_t val)
 	return bmp_waitwrite(dev);
 }
 
-float bmp_tempf(struct bmp_device *dev, int32_t adc_T)
+double bmp_tempf(struct bmp_device *dev, int32_t adc_T)
 {
-	float var1, var2, T;
+	double var1, var2, T;
 
-	var1 = (((float) adc_T) / 16384.0
-		- ((float) dev->digt1) / 1024.0) * ((float) dev->digt[2]);
-	var2 = ((((float) adc_T) / 131072.0
-		- ((float) dev->digt1) / 8192.0) *
-		(((float) adc_T) / 131072.0 - ((float) dev->digt1) / 8192.0))
-			* ((float) dev->digt[3]);
+	var1 = (((double) adc_T) / 16384.0
+		- ((double) dev->digt1) / 1024.0) * ((double) dev->digt[2]);
+	var2 = ((((double) adc_T) / 131072.0
+		- ((double) dev->digt1) / 8192.0) *
+		(((double) adc_T) / 131072.0 - ((double) dev->digt1) / 8192.0))
+			* ((double) dev->digt[3]);
 
 	dev->t_fine = (int32_t) (var1 + var2);
 	T = (var1 + var2) / 5120.0;
@@ -75,26 +75,26 @@ float bmp_tempf(struct bmp_device *dev, int32_t adc_T)
 	return T;
 }
 
-float bmp_pressf(struct bmp_device *dev, int32_t adc_P)
+double bmp_pressf(struct bmp_device *dev, int32_t adc_P)
 {
-	float var1, var2, p;
+	double var1, var2, p;
 
-	var1 = ((float) dev->t_fine / 2.0) - 64000.0;
-	var2 = var1 * var1 * ((float) dev->digp[6]) / 32768.0;
-	var2 = var2 + var1 * ((float) dev->digp[5]) * 2.0;
-	var2 = (var2 / 4.0) + (((float) dev->digp[4]) * 65536.0);
-	var1 = (((float) dev->digp[3]) * var1 * var1 / 524288.0
-		+ ((float) dev->digp[2]) * var1) / 524288.0;
-	var1 = (1.0 + var1 / 32768.0) * ((float) dev->digp1);
+	var1 = ((double) dev->t_fine / 2.0) - 64000.0;
+	var2 = var1 * var1 * ((double) dev->digp[6]) / 32768.0;
+	var2 = var2 + var1 * ((double) dev->digp[5]) * 2.0;
+	var2 = (var2 / 4.0) + (((double) dev->digp[4]) * 65536.0);
+	var1 = (((double) dev->digp[3]) * var1 * var1 / 524288.0
+		+ ((double) dev->digp[2]) * var1) / 524288.0;
+	var1 = (1.0 + var1 / 32768.0) * ((double) dev->digp1);
 
 	if (var1 == 0.0)
 		return 0;
 
-	p = 1048576.0 - (float) adc_P;
+	p = 1048576.0 - (double) adc_P;
 	p = (p - (var2 / 4096.0)) * 6250.0 / var1;
-	var1 = ((float) dev->digp[9]) * p * p / 2147483648.0;
-	var2 = p * ((float) dev->digp[8]) / 32768.0;
-	p = p + (var1 + var2 + ((float) dev->digp[7])) / 16.0;
+	var1 = ((double) dev->digp[9]) * p * p / 2147483648.0;
+	var2 = p * ((double) dev->digp[8]) / 32768.0;
+	p = p + (var1 + var2 + ((double) dev->digp[7])) / 16.0;
 
 	return p;
 }

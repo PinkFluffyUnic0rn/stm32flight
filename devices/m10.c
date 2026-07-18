@@ -395,7 +395,7 @@ static int _ubx_valset1(struct m10_device *m10, uint32_t id, uint8_t v,
 	return ubx_send(m10, 0x06, 0x8a, 0x9, buf, noack);
 }
 
-static float m10_time(const char *p)
+static double m10_time(const char *p)
 {
 	char buf[16];
 
@@ -410,12 +410,12 @@ static float m10_time(const char *p)
 
 	strcpy(buf + 6, p + 4);
 
-	return strtof(buf + 0, NULL) * 3600.0
-		+ strtof(buf + 3, NULL) * 60.0
-		+ strtof(buf + 6, NULL);
+	return strtod(buf + 0, NULL) * 3600.0
+		+ strtod(buf + 3, NULL) * 60.0
+		+ strtod(buf + 6, NULL);
 }
 
-static int m10_latitude(const char *p, uint8_t *lat, float *latmin)
+static int m10_latitude(const char *p, uint8_t *lat, double *latmin)
 {
 	char buf[16];
 
@@ -431,12 +431,12 @@ static int m10_latitude(const char *p, uint8_t *lat, float *latmin)
 	strcpy(buf + 3, p + 2);
 
 	*lat = atoi(buf + 0);
-	*latmin = strtof(buf + 3, NULL);
+	*latmin = strtod(buf + 3, NULL);
 
 	return 0;
 }
 
-static int m10_longitude(const char *p, uint8_t *lon, float *lonmin)
+static int m10_longitude(const char *p, uint8_t *lon, double *lonmin)
 {
 	char buf[16];
 
@@ -452,7 +452,7 @@ static int m10_longitude(const char *p, uint8_t *lon, float *lonmin)
 	strcpy(buf + 4, p + 3);
 
 	*lon = atoi(buf + 0);
-	*lonmin = strtof(buf + 4, NULL);
+	*lonmin = strtod(buf + 4, NULL);
 
 	return 0;
 }
@@ -512,7 +512,7 @@ int m10_read(void *dev, void *dt, size_t sz)
 
 		data->gga.quality = atoi(m.msg + m.field[6]);
 		data->gga.sats = atoi(m.msg + m.field[7]);
-		data->gga.alt = strtof(m.msg + m.field[9], NULL);
+		data->gga.alt = strtod(m.msg + m.field[9], NULL);
 
 		return 0;
 	}
@@ -534,13 +534,13 @@ int m10_read(void *dev, void *dt, size_t sz)
 			&(data->rmc.lonmin));
 		data->rmc.londir = (m.msg + m.field[6])[0];
 
-		data->rmc.speed = strtof(m.msg + m.field[7], NULL)
+		data->rmc.speed = strtod(m.msg + m.field[7], NULL)
 			* 1.852;
-		data->rmc.course = strtof(m.msg + m.field[8], NULL);
+		data->rmc.course = strtod(m.msg + m.field[8], NULL);
 
 		m10_date(m.msg + m.field[9], data->rmc.date);
 
-		data->rmc.magvar = strtof(m.msg + m.field[10], NULL);
+		data->rmc.magvar = strtod(m.msg + m.field[10], NULL);
 		data->rmc.magvardir = (m.msg + m.field[11])[0];
 
 		return 0;

@@ -31,7 +31,7 @@ struct crsf_device {
 * @brief output data
 */
 struct crsf_data {
-	float chf[CRSF_CHANNELCOUNT];	/*!< value of each
+	double chf[CRSF_CHANNELCOUNT];	/*!< value of each
 						eLRS channel */
 };
 
@@ -40,20 +40,20 @@ struct crsf_data {
 */
 struct crsf_tele {
 	uint8_t mode[16];	/*!< flight mode */
-	float bat;		/*!< battery voltage */
-	float curr;		/*!< battery current */
-	float batrem;		/*!< remaining battery voltage */
-	float lat;		/*!< latitude */
-	float lon;		/*!< longitude */
-	float speed;		/*!< speed */
-	float course;		/*!< course */
-	float alt;		/*!< altitude */
-	float balt;		/*!< barometric altitude */
-	float vspeed;		/*!< vertical speed */
+	double bat;		/*!< battery voltage */
+	double curr;		/*!< battery current */
+	double batrem;		/*!< remaining battery voltage */
+	double lat;		/*!< latitude */
+	double lon;		/*!< longitude */
+	double speed;		/*!< speed */
+	double course;		/*!< course */
+	double alt;		/*!< altitude */
+	double balt;		/*!< barometric altitude */
+	double vspeed;		/*!< vertical speed */
 	uint8_t sats;		/*!< connected satellites */
-	float pitch;		/*!< pitch */
-	float roll;		/*!< roll */
-	float yaw;		/*!< yaw */
+	double pitch;		/*!< pitch */
+	double roll;		/*!< roll */
+	double yaw;		/*!< yaw */
 };
 
 /**

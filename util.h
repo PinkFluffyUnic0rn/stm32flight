@@ -12,7 +12,7 @@
 * @brief Get systick value as seconds in float value
 * @return systick value
 */
-#define getsysticksf() ((float) HAL_GetTick() / 1000.0)
+#define getsysticksf() ((double) HAL_GetTick() / 1000.0)
 
 /**
 * @brief Check if int value is power of 2
@@ -93,6 +93,6 @@ int isvalinlist(int v, int num, ...);
 * @param order requested digits count after decimal point
 * @return poisition in output buffer right after resulting string
 */
-char *ftos(float f, char *s, size_t sz, int zfill, int order);
+char *ftos(double f, char *s, size_t sz, int zfill, int order);
 
 #endif

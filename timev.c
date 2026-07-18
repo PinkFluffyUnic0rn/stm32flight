@@ -35,7 +35,7 @@ int runtimev(struct timev *ev)
 {
 	volatile uint32_t start, end;
 	uint32_t cnt;
-	float d;
+	double d;
 
 	if (PROFILER_ENABLED)
 		start = DWT->CYCCNT;
@@ -48,7 +48,7 @@ int runtimev(struct timev *ev)
 
 		cnt = end - start;
 
-		ev->avg = ev->tc * (float) cnt
+		ev->avg = ev->tc * (double) cnt
 			+ (1.0 - ev->tc) * ev->avg;
 
 		d = cnt - ev->avg;

@@ -93,11 +93,11 @@ int isvalinlist(int v, int num, ...)
 	return 0;
 }
 
-char *ftos(float f, char *s, size_t sz, int zfill, int order)
+char *ftos(double f, char *s, size_t sz, int zfill, int order)
 {
-	float scale[] = {1, 10.0, 100.0, 1000.0, 10000.0,
+	double scale[] = {1, 10.0, 100.0, 1000.0, 10000.0,
 		100000.0, 1000000.0, 10000000.0, 100000000.0};
-	float max[] = { 2147483647, 214748364, 21474836, 2147483,
+	double max[] = { 2147483647, 214748364, 21474836, 2147483,
 		214748, 21474, 2147, 214, 21};
 
 	char tmp[16];

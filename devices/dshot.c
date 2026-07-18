@@ -203,7 +203,7 @@ static void dshotsetbuf(struct dshot_device *dev, uint16_t *buf,
 * @return always 0
 */
 static inline void dshotsetthrust(struct dshot_device *dev,
-	uint16_t *buf, float v, int col)
+	uint16_t *buf, double v, int col)
 {
 	// convert motor thrust value from [0.0;1.0]
 	// range to int value in [48; 2047] range

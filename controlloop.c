@@ -28,18 +28,18 @@
 * @param z magnetometer's Z axis value
 * @return tilt compensated heading
 */
-static float heading(float r, float p, float x, float y, float z)
+static double heading(double r, double p, double x, double y, double z)
 {
-	x = x * cosf(p) + y * sinf(r) * sinf(p)
-		+ z * cosf(r) * sinf(p);
-	y = y * cosf(r) - z * sinf(r);
+	x = x * cos(p) + y * sin(r) * sin(p)
+		+ z * cos(r) * sin(p);
+	y = y * cos(r) - z * sin(r);
 
-	return circf(atan2f(y, x) + St.adj.magdecl);
+	return circf(atan2(y, x) + St.adj.magdecl);
 }
 
 int setstabilize(int init)
 {
-	float iscale;
+	double iscale;
 	
 	// init complementary filters contexts
 	dsp_setcompl(Cmpl + CMPL_PITCH, St.cmpl.att, PID_FREQ, init);
@@ -169,17 +169,17 @@ int setstabilize(int init)
 	return 0;
 }
 
-int updateposition(float dt)
+int updateposition(double dt)
 {
-	static float prevalt = 0.0;
-	float roll, pitch, yaw;
-	float vx, vy, vz;
-	float gvx, gvy, gvz;
-	float gy, gx, gz;
-	float ay, ax, az;
-	float va;
-	float alt;
-	float altcor;
+	static double prevalt = 0.0;
+	double roll, pitch, yaw;
+	double vx, vy, vz;
+	double gvx, gvy, gvz;
+	double gy, gx, gz;
+	double ay, ax, az;
+	double va;
+	double alt;
+	double altcor;
 
 	// apply accelerometer offsets
 	ax = dsp_getlpf(Lpf + LPF_ACCX);
@@ -202,12 +202,12 @@ int updateposition(float dt)
 	// trigonometry.
 	roll = dsp_updatelpf(Lpf + LPF_ROLL,
 		dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
-			atan2f(-ax, az) - St.adj.att0.roll));
+			atan2(-ax, az) - St.adj.att0.roll));
 
 	// same as for roll but for different axes
 	pitch = dsp_updatelpf(Lpf + LPF_PITCH,
 		dsp_updatecompl(Cmpl + CMPL_PITCH, gx * dt,
-			atan2f(ay, sqrt(ax * ax + az * az))) 
+			atan2(ay, sqrt(ax * ax + az * az))) 
 				- St.adj.att0.pitch);
 
 	// update complimenraty filter for yaw axis and get next yaw
@@ -233,7 +233,7 @@ int updateposition(float dt)
 	// update vertical acceleration using acceleration
 	// vector to gravity vector projection
 	va = (vx * ax + vy * ay + vz * az)
-		/ sqrtf(vx * vx + vy * vy + vz * vz);
+		/ sqrt(vx * vx + vy * vy + vz * vz);
 
 	dsp_updatelpf(Lpf + LPF_VAU, va);
 	dsp_updatelpf(Lpf + LPF_VAPT1, va);
@@ -252,7 +252,7 @@ int updateposition(float dt)
 	// vector to gravity vector projection
 	dsp_updatelpf(Lpf + LPF_FA,
 		(vx * (ax - gvx) + vy * (ay - gvy) + vz * (az - gvz))
-		/ sqrtf(vx * vx + vy * vy + vz * vz));
+		/ sqrt(vx * vx + vy * vy + vz * vz));
 
 	// write forward acceleration into log	
 	writelog(LOG_FACCEL, dsp_getlpf(Lpf + LPF_FA));
@@ -267,7 +267,7 @@ int updateposition(float dt)
 	// vector to gravity vector projection
 	dsp_updatelpf(Lpf + LPF_SA,
 		(vx * (ax - gvx) + vy * (ay - gvy) + vz * (az - gvx))
-		/ sqrtf(vx * vx + vy * vy + vz * vz));
+		/ sqrt(vx * vx + vy * vy + vz * vz));
 	
 	// write sideward acceleration into log	
 	writelog(LOG_SACCEL, dsp_getlpf(Lpf + LPF_SA));
@@ -279,18 +279,18 @@ int updateposition(float dt)
 		// GNSS speed using complimetary filter
 		dsp_updatecompl(Cmpl + CMPL_SLAT,
 			9.80665 * (
-			+ dsp_getlpf(Lpf + LPF_FA) * cosf(yaw)
-			- dsp_getlpf(Lpf + LPF_SA) * sinf(yaw))
-			* dt, Gnss.speed / 3.6 * cosf(Gnss.course));
+			+ dsp_getlpf(Lpf + LPF_FA) * cos(yaw)
+			- dsp_getlpf(Lpf + LPF_SA) * sin(yaw))
+			* dt, Gnss.speed / 3.6 * cos(Gnss.course));
 
 		// calculate speed through longitude from
 		// forward and sideward accelerations and
 		// GNSS speed using complimetary filter
 		dsp_updatecompl(Cmpl + CMPL_SLON,
 			9.80665 * (
-			+ dsp_getlpf(Lpf + LPF_FA) * sinf(yaw)
-			+ dsp_getlpf(Lpf + LPF_SA) * cosf(yaw))
-			* dt, Gnss.speed / 3.6 * sinf(Gnss.course));
+			+ dsp_getlpf(Lpf + LPF_FA) * sin(yaw)
+			+ dsp_getlpf(Lpf + LPF_SA) * cos(yaw))
+			* dt, Gnss.speed / 3.6 * sin(Gnss.course));
 
 		// calculate latitude from speed and GNSS
 		// latitude using complimentary filter
@@ -307,8 +307,8 @@ int updateposition(float dt)
 		// calculate horizontal speed from speed
 		// values through longitude and latitude
 		dsp_updatelpf(Lpf + LPF_SPEED,
-			sqrtf(powf(dsp_getcompl(Cmpl + CMPL_SLAT), 2.0)
-			+ powf(dsp_getcompl(Cmpl + CMPL_SLON), 2.0)));
+			sqrt(pow(dsp_getcompl(Cmpl + CMPL_SLAT), 2.0)
+			+ pow(dsp_getcompl(Cmpl + CMPL_SLON), 2.0)));
 
 		// write speed values through latitude and longitude,
 		// horizontal speed, latitude and longitude into log
@@ -333,7 +333,7 @@ int updateposition(float dt)
 	// if GNSS is locked, use speed to compensate dynamic pressure
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
-		float sp;
+		double sp;
 
 		sp = dsp_getlpf(Lpf + LPF_SPEED);
 
@@ -375,12 +375,12 @@ int updateposition(float dt)
 	return 0;
 }
 
-int updatecorrection(float dt, struct corvals *cor)
+int updatecorrection(double dt, struct corvals *cor)
 {
-	float roll, pitch, yaw;
-	float gy, gx, gz;
-	float ht;
-	float tiltcoef;
+	double roll, pitch, yaw;
+	double gy, gx, gz;
+	double ht;
+	double tiltcoef;
 
 	roll = dsp_getlpf(Lpf + LPF_ROLL);
 	pitch = dsp_getlpf(Lpf + LPF_PITCH);
@@ -392,13 +392,13 @@ int updatecorrection(float dt, struct corvals *cor)
 	gz = deg2rad(dsp_getlpf(Lpf + LPF_GYROZ));
 
 	// get tilt compensation coefficient
-	tiltcoef = cosf(pitch) * cosf(roll);
+	tiltcoef = cos(pitch) * cos(roll);
 
 	// divide by zero protection, tilt
 	// compesation for throttle works only
 	// for angles less that 45 degress
-	if (tiltcoef < cosf(St.adj.althold.tiltcoefmax * M_PI))
-		tiltcoef = cosf(St.adj.althold.tiltcoefmax * M_PI);
+	if (tiltcoef < cos(St.adj.althold.tiltcoefmax * M_PI))
+		tiltcoef = cos(St.adj.althold.tiltcoefmax * M_PI);
 
 	// get pitch corrected value of the hover throttle
 	ht = St.adj.althold.hoverthrottle / tiltcoef;
@@ -407,7 +407,7 @@ int updatecorrection(float dt, struct corvals *cor)
 			&& M10_HASFIX(Gnss.quality)
 			&& Gnssmode == GNSSMODE_POS) {
 
-		float loncor, latcor;
+		double loncor, latcor;
 
 		// calculate lonogitude and latitude correction
 		loncor = dsp_pidbl(Pid + PID_LON, Rolltarget,
@@ -429,8 +429,8 @@ int updatecorrection(float dt, struct corvals *cor)
 
 		// get pitch and roll correction values
 		// using covertion to local frame, inverting pitch
-		cor->pitch = -cosf(yaw) * latcor - sinf(yaw) * loncor;
-		cor->roll =  -sinf(yaw) * latcor + cosf(yaw) * loncor;
+		cor->pitch = -cos(yaw) * latcor - sin(yaw) * loncor;
+		cor->roll =  -sin(yaw) * latcor + cos(yaw) * loncor;
 
 		cor->roll = trimf(cor->roll,
 			-M_PI * St.ctrl.rollmax * 0.5,
@@ -459,15 +459,15 @@ int updatecorrection(float dt, struct corvals *cor)
 			&& M10_HASFIX(Gnss.quality)
 			&& Gnssmode == GNSSMODE_SPEED) {
 
-		float loncor, latcor;
-		float lontarget, lattarget;
+		double loncor, latcor;
+		double lontarget, lattarget;
 
 		// convert target from local frame to global frame	
-		lontarget = Pitchtarget * sinf(yaw)
-			+ Rolltarget * cosf(yaw);
+		lontarget = Pitchtarget * sin(yaw)
+			+ Rolltarget * cos(yaw);
 
-		lattarget = Pitchtarget * cosf(yaw)
-			- Rolltarget * sinf(yaw);
+		lattarget = Pitchtarget * cos(yaw)
+			- Rolltarget * sin(yaw);
 		
 		// calculate longitude and latitude correction
 		loncor = dsp_pidbl(Pid + PID_SLON, lontarget,
@@ -480,8 +480,8 @@ int updatecorrection(float dt, struct corvals *cor)
 
 		// get pitch and roll correction values
 		// using covertion to local frame, inverting pitch
-		cor->pitch = -cosf(yaw) * latcor - sinf(yaw) * loncor;
-		cor->roll =  -sinf(yaw) * latcor + cosf(yaw) * loncor;
+		cor->pitch = -cos(yaw) * latcor - sin(yaw) * loncor;
+		cor->roll =  -sin(yaw) * latcor + cos(yaw) * loncor;
 
 		cor->roll = trimf(cor->roll,
 			-M_PI * St.ctrl.rollmax * 0.5,
@@ -687,8 +687,8 @@ int updatecorrection(float dt, struct corvals *cor)
 
 int applythrust(const struct corvals *cor)
 {
-	float ltm, lbm, rbm, rtm;
-	float tc;
+	double ltm, lbm, rbm, rtm;
+	double tc;
 
 	// calculate weights for motors
 	// thrust calibration values

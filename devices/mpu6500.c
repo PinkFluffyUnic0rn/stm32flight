@@ -96,7 +96,7 @@ int mpu_getdata(void *d, void *dt, size_t sz)
 	struct mpu_device *dev;
 	struct imu_data *data;
 	static int16_t accamp[] = { 0x4000, 0x2000, 0x1000, 0x800 };
-	static float gyroamp[] = { 131.072, 65.536, 32.768, 16.384 };
+	static double gyroamp[] = { 131.072, 65.536, 32.768, 16.384 };
 
 	data = (struct imu_data *) dt;
 	dev = (struct mpu_device *) d;
@@ -106,9 +106,9 @@ int mpu_getdata(void *d, void *dt, size_t sz)
 
 	mpu_getintdata(dev, data);
 
-	data->afx = (data->ax) / (float) accamp[dev->accelscale >> 3];
-	data->afy = (data->ay) / (float) accamp[dev->accelscale >> 3];
-	data->afz = (data->az) / (float) accamp[dev->accelscale >> 3];
+	data->afx = (data->ax) / (double) accamp[dev->accelscale >> 3];
+	data->afy = (data->ay) / (double) accamp[dev->accelscale >> 3];
+	data->afz = (data->az) / (double) accamp[dev->accelscale >> 3];
 
 	data->gfx = data->gx / gyroamp[dev->gyroscale >> 3];
 	data->gfy = data->gy / gyroamp[dev->gyroscale >> 3];
@@ -215,13 +215,13 @@ int mpu_selftest(struct mpu_device *dev, struct mpu_stdata *stdata)
 	ftay = sttb[stbuf[4] - 1];
 	ftaz = sttb[stbuf[5] - 1];
 
-	stdata->ax = 100.0f * ((float) (stax - ax) - ftax) / ftax;
-	stdata->ay = 100.0f * ((float) (stay - ay) - ftay) / ftay;
-	stdata->az = 100.0f * ((float) (staz - az) - ftaz) / ftaz;
+	stdata->ax = 100.0 * ((double) (stax - ax) - ftax) / ftax;
+	stdata->ay = 100.0 * ((double) (stay - ay) - ftay) / ftay;
+	stdata->az = 100.0 * ((double) (staz - az) - ftaz) / ftaz;
 
-	stdata->gx = 100.0f * ((float) (stgx - gx) - ftgx) / ftgx;
-	stdata->gy = 100.0f * ((float) (stgy - gy) - ftgy) / ftgy;
-	stdata->gz = 100.0f * ((float) (stgz - gz) - ftgz) / ftgz;
+	stdata->gx = 100.0 * ((double) (stgx - gx) - ftgx) / ftgx;
+	stdata->gy = 100.0 * ((double) (stgy - gy) - ftgy) / ftgy;
+	stdata->gz = 100.0 * ((double) (stgz - gz) - ftgz) / ftgz;
 
 	return 0;
 }

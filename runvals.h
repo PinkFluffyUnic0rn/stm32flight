@@ -195,35 +195,35 @@ struct gnss_data {
 	enum GNSSSTATUS status;		/*!< GNSS data status 1 if
 						valid, 0 otherwise */
 
-	float time;			/*!< seconds passed from
+	double time;			/*!< seconds passed from
 						00:00 UTC */
 	char date[10];			/*!< date in format dd.mm.yy */
 
 	uint8_t lat;			/*!< latitude */
-	float latmin;			/*!< latitude minutes */
+	double latmin;			/*!< latitude minutes */
 	enum LATDIR latdir;		/*!< latitude direction, 1 if
 						south, 0 if north */
-	float declat;			/*!< latitude in decimal
+	double declat;			/*!< latitude in decimal
 						degress format */
 
 	uint8_t lon;			/*!< longitude */
-	float lonmin;			/*!< longitude minutes */
+	double lonmin;			/*!< longitude minutes */
 	enum LONDIR londir;		/*!< longitude direction, 1 if */
 					/*!< west, 0 if east */
-	float declon;			/*!< longitude in decimal
+	double declon;			/*!< longitude in decimal
 						degress format */
 
 
-	float magvar;			/*!< magnetic declination in
+	double magvar;			/*!< magnetic declination in
 						degrees */
 	enum MAGVARDIR  magvardir;	/*!< magnetic declination
 						direction, 0 if east,
 						1 if west */
 
-	float speed;			/*!< speed in knots */
-	float course;			/*!< course toward north pole
+	double speed;			/*!< speed in knots */
+	double course;			/*!< course toward north pole
 						in degrees */
-	float altitude;			/*!< altitude in meters */
+	double altitude;			/*!< altitude in meters */
 
 	int quality;			/*!< link quality */
 	uint8_t satellites;		/*!< satellites count */
@@ -235,16 +235,16 @@ struct gnss_data {
 struct trackpoint {
 	union {
 		struct {
-			float alt;	/*!< target altitude */
-			float t;	/*!< time to take off */
+			double alt;	/*!< target altitude */
+			double t;	/*!< time to take off */
 		} takeoff;		/*!< take off point description */
 		struct {
-			float x, y;	/*!< coordinates to look at */
-			float alt;	/*!< target altitude */
-			float t;	/*!< hovering time */
+			double x, y;	/*!< coordinates to look at */
+			double alt;	/*!< target altitude */
+			double t;	/*!< hovering time */
 		} hover;		/*!< hover point description */
 		struct {
-			float x, y;	/*!< coordinates to move to */
+			double x, y;	/*!< coordinates to move to */
 		} forward;		/*!< move point description */
 	};
 
@@ -299,11 +299,11 @@ extern struct msp_osd Osd;		/*!< OSD values */
 * @brief Control values
 * @{
 */
-extern float Thrust; /*!< motors basic thrust */
-extern float Rolltarget; /*!< roll PID target */
-extern float Pitchtarget; /*!< pitch PID target */
-extern float Yawtarget; /*!< yaw PID target */
-extern float En; /*!< 1.0 when motors turned on, 0.0 otherwise */
+extern double Thrust; /*!< motors basic thrust */
+extern double Rolltarget; /*!< roll PID target */
+extern double Pitchtarget; /*!< pitch PID target */
+extern double Yawtarget; /*!< yaw PID target */
+extern double En; /*!< 1.0 when motors turned on, 0.0 otherwise */
 extern enum ALTMODE Altmode; /*!< ALTMODE_POS if in altitude hold mode,
 				ALTMODE_SPEED if climbrate control mode,
 				ALTMODE_ACCEL if acceleration control mode */
@@ -325,10 +325,10 @@ extern int Elrs; /*!< 1 when ELRS control is active (ELRS remote's
 * @}
 */
 
-extern float Alt0;	/*!< reference altitude */
-extern float Lat0;	/*!< reference latitude */
-extern float Lon0;	/*!< reference longitude */
-extern float Goffset;	/*!< free fall acceleration (g) value offset */
+extern double Alt0;	/*!< reference altitude */
+extern double Lat0;	/*!< reference latitude */
+extern double Lon0;	/*!< reference longitude */
+extern double Goffset;	/*!< free fall acceleration (g) value offset */
 
 /**
 * @brief Autopilot track points
@@ -336,7 +336,7 @@ extern float Goffset;	/*!< free fall acceleration (g) value offset */
 extern struct trackpoint Points[MAX_POINT_COUNT];
 extern int Pointscount;		/*!< autopilot track points count */
 extern int Curpoint;		/*!< current autopilot track point */
-extern float Autopilottimer;	/*!< autopilot timer */
+extern double Autopilottimer;	/*!< autopilot timer */
 
 extern int Curslot; /*!< current settings slot */
 
@@ -368,6 +368,6 @@ extern int Emergencydisarm;
 * @return always 0
 */
 int setthrust(struct cdevice *dev,
-	float ltd, float rtd, float lbd, float rbd);
+	double ltd, double rtd, double lbd, double rbd);
 
 #endif

@@ -6,7 +6,7 @@
 */
 struct mag_data {
 	int32_t x, y, z;	///< x, y and z raw values
-	float fx, fy, fz;	///< x, y and z values in gauss
+	double fx, fy, fz;	///< x, y and z values in gauss
 };
 
 /**
@@ -17,18 +17,18 @@ struct imu_data {
 	int16_t ax, ay, az;	///< accelerometer x, y and z raw values
 	int16_t gx, gy, gz;	///< gyroscope x, y and z raw values
 
-	float ft;		/*!< temperature in celsius */
-	float afx, afy, afz;	///< accelerometer x, y and z values in g
-	float gfx, gfy, gfz;	///< gyroscope x, y and z values in degrees/s
+	double ft;		/*!< temperature in celsius */
+	double afx, afy, afz;	///< accelerometer x, y and z values in g
+	double gfx, gfy, gfz;	///< gyroscope x, y and z values in degrees/s
 };
 
 /**
 * @brief barometer output data
 */
 struct baro_data {
-	float altf;		/*!< altitude in meters */
-	float pressf;		/*!< pressure in kPa */
-	float tempf;		/*!< temperature in celsius */
+	double altf;		/*!< altitude in meters */
+	double pressf;		/*!< pressure in kPa */
+	double tempf;		/*!< temperature in celsius */
 };
 
 #endif

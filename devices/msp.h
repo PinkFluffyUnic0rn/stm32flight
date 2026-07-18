@@ -67,20 +67,20 @@ struct msp_osd {
 	enum MSP_YAWMODE yawmode;	/*!< yaw mode */
 	enum MSP_ALTMODE altmode;	/*!< altitude mode */
 	enum MSP_GNSSMODE gnssmode;	/*!< GNSS mode */
-	float bat;			/*!< battery voltage */
-	float curr;			/*!< current draw */
-	float batrem;			/*!< remaining battery charge */
-	float lat;			/*!< GNSS latitude */
-	float lon;			/*!< GNSS longitude */
-	float speed;			/*!< GNSS speed */
-	float course;			/*!< GNSS course */
-	float alt;			/*!< altitude */
-	float vspeed;			/*!< climb speed */
-	float temp;			/*!< board temperatude */
+	double bat;			/*!< battery voltage */
+	double curr;			/*!< current draw */
+	double batrem;			/*!< remaining battery charge */
+	double lat;			/*!< GNSS latitude */
+	double lon;			/*!< GNSS longitude */
+	double speed;			/*!< GNSS speed */
+	double course;			/*!< GNSS course */
+	double alt;			/*!< altitude */
+	double vspeed;			/*!< climb speed */
+	double temp;			/*!< board temperatude */
 	uint8_t sats;			/*!< found GNSS satellites */
-	float pitch;			/*!< pitch */
-	float roll;			/*!< roll */
-	float yaw;			/*!< yaw */
+	double pitch;			/*!< pitch */
+	double roll;			/*!< roll */
+	double yaw;			/*!< yaw */
 };
 
 /**

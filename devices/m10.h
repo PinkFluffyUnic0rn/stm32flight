@@ -73,34 +73,34 @@ struct m10_data {
 		* GGA message
 		*/
 		struct {
-			float time;			/*!< current time */
+			double time;			/*!< current time */
 			uint8_t lat;			/*!< latitude degrees */
-			float latmin;			/*!< latitude minutes */
+			double latmin;			/*!< latitude minutes */
 			char latdir;			/*!< latitude hemisphere */
 			uint8_t lon;			/*!< longitude degrees */
 			char londir;			/*!< longitude hemisphere */
-			float lonmin;			/*!< longitude minute */
+			double lonmin;			/*!< longitude minute */
 			enum M10_QUALITY quality;	/*!< connection quality */
 			uint8_t sats;			/*!< connected satellites */
-			float alt;			/*!< altitude */
+			double alt;			/*!< altitude */
 		} gga;
 		
 		/**
 		* RMC message
 		*/
 		struct {
-			float time;		/*!< current time */
+			double time;		/*!< current time */
 			uint8_t fstatus;	/*!< data status */
 			uint8_t lat;		/*!< latitude degrees */
-			float latmin;		/*!< latitude minutes */
+			double latmin;		/*!< latitude minutes */
 			char latdir;		/*!< latitude hemisphere */
 			uint8_t lon;		/*!< longitude degrees */
 			char londir;		/*!< longitude hemispere */
-			float lonmin;		/*!< longitude minutes */
-			float speed;		/*!< speed */
-			float course;		/*!< course */
+			double lonmin;		/*!< longitude minutes */
+			double speed;		/*!< speed */
+			double course;		/*!< course */
 			char date[10];		/*!< date */
-			float magvar;		/*!< magnetic variation */
+			double magvar;		/*!< magnetic variation */
 			uint8_t magvardir;	/*!< magnetic variation
 							direction */
 		} rmc;

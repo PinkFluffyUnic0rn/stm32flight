@@ -156,75 +156,75 @@
 struct __attribute__((aligned(32))) settings
 {
 	struct {
-		struct { float x, y, z; } acc0;
-		struct { float x, y, z; } acctsc;
-		struct { float x, y, z; } gyro0;
+		struct { double x, y, z; } acc0;
+		struct { double x, y, z; } acctsc;
+		struct { double x, y, z; } gyro0;
 
-		struct { float roll, pitch, yaw; } att0;
-		struct { float r, p, thr; } mtrsc;
+		struct { double roll, pitch, yaw; } att0;
+		struct { double r, p, thr; } mtrsc;
 
 		struct {
-			float hoverthrottle;
-			float tiltcoefmax;
-			float alttha;
-			float altthb;
-			float altthc;
+			double hoverthrottle;
+			double tiltcoefmax;
+			double alttha;
+			double altthb;
+			double altthc;
 		} althold;
 
-		struct { float offset; float scale; } current;
+		struct { double offset; double scale; } current;
 
-		float batsc;
+		double batsc;
 
-		struct { float x, y, z; } mag0;
-		struct { float x, y, z; } magsc;
-		struct { float x, y, z; } magthrsc;
-		float magdecl;
+		struct { double x, y, z; } mag0;
+		struct { double x, y, z; } magsc;
+		struct { double x, y, z; } magthrsc;
+		double magdecl;
 	} adj;
 
 	struct {
-		float thrustmax;
-		float rollmax;
-		float pitchmax;
-		float accelmax;
-		float climbratemax;
-		float altmax;
+		double thrustmax;
+		double rollmax;
+		double pitchmax;
+		double accelmax;
+		double climbratemax;
+		double altmax;
 
-		float rollrate;
-		float pitchrate;
-		float yawrate;
-		float climbrate;
-		float speedrate;
-		float posrate;
+		double rollrate;
+		double pitchrate;
+		double yawrate;
+		double climbrate;
+		double speedrate;
+		double posrate;
 	} ctrl;
 
 	struct {
-		float att;
-		float yaw;
-		float climbrate;
-		float alt;
-		float speed;
-		float pos;
+		double att;
+		double yaw;
+		double climbrate;
+		double alt;
+		double speed;
+		double pos;
 	} cmpl;
 
 	struct {
-		float gyro;
-		float acc;
-		float mag;
-		float va;
-		float d;
+		double gyro;
+		double acc;
+		double mag;
+		double va;
+		double d;
 	} lpf;
 
 	struct {
-		struct { float p, i, d; } attpos;
-		struct { float p, i, d; } attrate;
-		struct { float p, i, d; } yawrate;
-		struct { float p, i, d; } yawpos;
-		struct { float p, i, d; } throttle;
-		struct { float p, i, d; } climbrate;
-		struct { float p, i, d; } alt;
-		struct { float p, i, d; } speed;
-		struct { float p, i, d; } pos;
-		struct { float iscale, attimax, thrimax; } feature;
+		struct { double p, i, d; } attpos;
+		struct { double p, i, d; } attrate;
+		struct { double p, i, d; } yawrate;
+		struct { double p, i, d; } yawpos;
+		struct { double p, i, d; } throttle;
+		struct { double p, i, d; } climbrate;
+		struct { double p, i, d; } alt;
+		struct { double p, i, d; } speed;
+		struct { double p, i, d; } pos;
+		struct { double iscale, attimax, thrimax; } feature;
 	} pid;
 
 	struct {

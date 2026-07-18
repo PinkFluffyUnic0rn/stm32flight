@@ -93,9 +93,9 @@ int lis_getdata(void *d, void *dt, size_t sz)
 
 	lis_getintdata(dev, data);
 
-	data->fx = data->x / (float) amp[dev->scale];
-	data->fy = data->y / (float) amp[dev->scale];
-	data->fz = data->z / (float) amp[dev->scale];
+	data->fx = data->x / (double) amp[dev->scale];
+	data->fy = data->y / (double) amp[dev->scale];
+	data->fz = data->z / (double) amp[dev->scale];
 
 	return 0;
 }

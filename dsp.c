@@ -13,46 +13,46 @@ int dsp_setunity(struct dsp_lpf *ir, int init)
 	return 0;
 }
 
-int dsp_setlpf1t(struct dsp_lpf *ir, float tcoef, int freq, int init)
+int dsp_setlpf1t(struct dsp_lpf *ir, double tcoef, int freq, int init)
 {
 	if (init)
 		ir->s1 = 0.0;
 
-	ir->alpha = exp(-1.0 / (float) freq / tcoef);
+	ir->alpha = exp(-1.0 / (double) freq / tcoef);
 	ir->order = DSP_LPFORDER_1;
 
 	return 0;
 }
 
-int dsp_setlpf1f(struct dsp_lpf *ir, float cutoff, int freq, int init)
+int dsp_setlpf1f(struct dsp_lpf *ir, double cutoff, int freq, int init)
 {
-	float v;
+	double v;
 
 	if (init)
 		ir->s1 = 0.0;
 
-	v = 2.0f * M_PI * cutoff / (float) freq;
+	v = 2.0 * M_PI * cutoff / (double) freq;
 
-	ir->alpha = 1.0 - v / (v + 1.0f);
+	ir->alpha = 1.0 - v / (v + 1.0);
 	ir->order = DSP_LPFORDER_1;
 
 	return 0;
 }
 
-float dsp_getlpf(struct dsp_lpf *ir)
+double dsp_getlpf(struct dsp_lpf *ir)
 {
 	return ir->s1;
 }
 
-float dsp_updatelpf(struct dsp_lpf *ir, float v)
+double dsp_updatelpf(struct dsp_lpf *ir, double v)
 {
 	ir->s1 = ir->alpha * ir->s1 + (1 - ir->alpha) * v;
 
 	return ir->s1;
 }
 
-int dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
-	float dcutoff, int freq, int init)
+int dsp_setpid(struct dsp_pidval *pv, double kp, double ki, double kd,
+	double dcutoff, int freq, int init)
 {
 	if (init) {
 		pv->pe = 0.0;
@@ -68,11 +68,11 @@ int dsp_setpid(struct dsp_pidval *pv, float kp, float ki, float kd,
 	return 0;
 }
 
-int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
-	float kd, float imax, float dcutoff, int circ,
+int dsp_setpidbl(struct dsp_pidblval *pv, double kp, double ki,
+	double kd, double imax, double dcutoff, int circ,
 	int freq, int init)
 {
-	float ts, tf, tt, c;
+	double ts, tf, tt, c;
 
 	pv->step = 0;
 	pv->depth = 2;
@@ -80,7 +80,7 @@ int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
 	pv->imax = imax;
 	pv->circular = circ;
 
-	ts = 1.0 / (float) freq;
+	ts = 1.0 / (double) freq;
 	tf = 1.0 / (dcutoff * 2.0 * M_PI);
 	tt = ts * ts;
 
@@ -100,9 +100,10 @@ int dsp_setpidbl(struct dsp_pidblval *pv, float kp, float ki,
 	return 0;
 }
 
-float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt)
+double dsp_pid(struct dsp_pidval *pv, double target,
+	double val, double dt)
 {
-	float e, v;
+	double e, v;
 
 	e = target - val;
 
@@ -116,9 +117,9 @@ float dsp_pid(struct dsp_pidval *pv, float target, float val, float dt)
 	return v;
 }
 
-float dsp_pidbl(struct dsp_pidblval *pv, float target, float val)
+double dsp_pidbl(struct dsp_pidblval *pv, double target, double val)
 {
-	float e, v, vs;
+	double e, v, vs;
 
 	e = target - val;
 
@@ -182,10 +183,10 @@ int dsp_resetpidbls(struct dsp_pidblval *pv)
 	return 0;
 }
 
-float dsp_circpid(struct dsp_pidval *pv, float target,
-	float val, float dt)
+double dsp_circpid(struct dsp_pidval *pv, double target,
+	double val, double dt)
 {
-	float e, v;
+	double e, v;
 
 	e = circf(target - val);
 
@@ -198,35 +199,35 @@ float dsp_circpid(struct dsp_pidval *pv, float target,
 	return v;
 }
 
-int dsp_setcompl(struct dsp_compl *comp, float tc, int freq, int init)
+int dsp_setcompl(struct dsp_compl *comp, double tc, int freq, int init)
 {
 	if (init)
 		comp->s = 0;
 
-	comp->coef = tc / (tc + 1.0 / (float) freq);
+	comp->coef = tc / (tc + 1.0 / (double) freq);
 
 	return 0;
 }
 
-float dsp_getcompl(struct dsp_compl *comp)
+double dsp_getcompl(struct dsp_compl *comp)
 {
 	return comp->s;
 }
 
-float dsp_updatecompl(struct dsp_compl *comp, float v0, float v1)
+double dsp_updatecompl(struct dsp_compl *comp, double v0, double v1)
 {
 	comp->s = comp->coef * (comp->s + v0) + (1.0 - comp->coef) * v1;
 
 	return comp->s;
 }
 
-float dsp_updatecirccompl(struct dsp_compl *comp, float v0, float v1)
+double dsp_updatecirccompl(struct dsp_compl *comp, double v0, double v1)
 {
-	float s;
+	double s;
 
 	s = circf(comp->s + v0);
 
-	if (fabsf(s - v1) > M_PI) {
+	if (fabs(s - v1) > M_PI) {
 		if (s < 0)	s += 2.0 * M_PI;
 		if (v1 < 0)	v1 += 2.0 * M_PI;
 	}
