@@ -237,10 +237,7 @@ double esccurrent()
 int imuupdate(int ms)
 {
 	double gx, gy, gz;
-//	double frqmin, frqmax, vbat, vcoef;
-//	double frq, thr;
 	double vcoef, thr, frq;
-
 
 	// get accelerometer and gyroscope readings
 	Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &Imudata,
@@ -268,14 +265,11 @@ int imuupdate(int ms)
 	writelog(LOG_GYRO_Y, Imudata.gfy);
 	writelog(LOG_GYRO_Z, Imudata.gfz);
 
-	// calculate frequency for gyroscope notch filter
-	thr = dsp_getlpf(Lpf + LPF_AVGTHR);
-	thr = (thr < 0.0) ? 0.0 : thr;
-	
+	// calculate frequency for gyroscope notch filter	
 	vcoef = dsp_getlpf(Lpf + LPF_BAT) / St.notch.gyrovbat;
-	thr *= vcoef * vcoef;
+	thr = dsp_getlpf(Lpf + LPF_AVGTHR) * vcoef * vcoef;
 
-	frq = St.notch.gyrofrmin + pow(thr, 2.0)
+	frq = St.notch.gyrofrmin + thr * thr
 		* (St.notch.gyrofrmax - St.notch.gyrofrmin);
 	
 	// update notch filter's coefficients	
