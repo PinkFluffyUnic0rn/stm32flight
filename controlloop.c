@@ -40,7 +40,9 @@ static double heading(double r, double p, double x, double y, double z)
 int setstabilize(int init)
 {
 	double iscale;
-	
+
+	dsp_setnotch2(&Flt, 600.0, 300.0, PID_FREQ, 1);
+
 	// init complementary filters contexts
 	dsp_setcompl(Cmpl + CMPL_PITCH, St.cmpl.att, PID_FREQ, init);
 	dsp_setcompl(Cmpl + CMPL_ROLL, St.cmpl.att, PID_FREQ, init);

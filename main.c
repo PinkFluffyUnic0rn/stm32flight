@@ -236,6 +236,12 @@ double esccurrent()
 
 int imuupdate(int ms)
 {
+	double gx, gy, gz;
+//	double frqmin, frqmax, vbat, vcoef;
+//	double frq, thr;
+	double vcoef, thr, frq;
+
+
 	// get accelerometer and gyroscope readings
 	Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &Imudata,
 		sizeof(struct imu_data));
@@ -262,15 +268,32 @@ int imuupdate(int ms)
 	writelog(LOG_GYRO_Y, Imudata.gfy);
 	writelog(LOG_GYRO_Z, Imudata.gfz);
 
-	// apply accelerometer offsets
+	// calculate frequency for gyroscope notch filter
+	thr = dsp_getlpf(Lpf + LPF_AVGTHR);
+	thr = (thr < 0.0) ? 0.0 : thr;
+	
+	vcoef = dsp_getlpf(Lpf + LPF_BAT) / St.notch.gyrovbat;
+	thr *= vcoef * vcoef;
+
+	frq = St.notch.gyrofrmin + pow(thr, 2.0)
+		* (St.notch.gyrofrmax - St.notch.gyrofrmin);
+	
+	// update notch filter's coefficients	
+	dsp_setnotch2(&Flt, frq, 300.0, PID_FREQ, 0);
+	
+	// update notch filter
+	dsp_updatefilterv(&Flt, Imudata.gfx, Imudata.gfy, Imudata.gfz,
+		&gx, &gy, &gz);
+
+	// update accelerometer values
 	dsp_updatelpf(Lpf + LPF_ACCX, Imudata.afx);
 	dsp_updatelpf(Lpf + LPF_ACCY, Imudata.afy);
 	dsp_updatelpf(Lpf + LPF_ACCZ, Imudata.afz);
 
-	// convert gyroscope values into radians
-	dsp_updatelpf(Lpf + LPF_GYROX, Imudata.gfx);
-	dsp_updatelpf(Lpf + LPF_GYROY, Imudata.gfy);
-	dsp_updatelpf(Lpf + LPF_GYROZ, Imudata.gfz);
+	// update gyroscope values
+	dsp_updatelpf(Lpf + LPF_GYROX, gx);
+	dsp_updatelpf(Lpf + LPF_GYROY, gy);
+	dsp_updatelpf(Lpf + LPF_GYROZ, gz);
 
 	// update accelerometer temperature
 	dsp_updatelpf(Lpf + LPF_IMUTEMP, Imudata.ft);

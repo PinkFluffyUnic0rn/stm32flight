@@ -1380,7 +1380,7 @@ void pconf_init_clock(void)
 		| RCC_PERIPHCLK_ADC | RCC_PERIPHCLK_CKPER
 		| RCC_PERIPHCLK_SPI1;
 	PeriphClkInitStruct.PLL2.PLL2M = 20;
-	PeriphClkInitStruct.PLL2.PLL2N = 192;
+	PeriphClkInitStruct.PLL2.PLL2N = 128;
 	PeriphClkInitStruct.PLL2.PLL2P = 2;
 	PeriphClkInitStruct.PLL2.PLL2Q = 2;
 	PeriphClkInitStruct.PLL2.PLL2R = 2;
@@ -1396,8 +1396,8 @@ void pconf_init_clock(void)
 	PeriphClkInitStruct.PLL3.PLL3VCOSEL = RCC_PLL3VCOMEDIUM;
 	PeriphClkInitStruct.PLL3.PLL3FRACN = 0;
 	PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_PLL3;
-	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
-	PeriphClkInitStruct.Spi6ClockSelection = RCC_SPI6CLKSOURCE_PLL3;
+	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL3;
+	PeriphClkInitStruct.Spi6ClockSelection = RCC_SPI6CLKSOURCE_PLL2;
 	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
 		error_handler();
 
@@ -1535,7 +1535,7 @@ static void pconf_init_dma(void)
 		case DMA1_Stream2_IRQn:		prep = 1;	break;
 		case DMA1_Stream3_IRQn:		prep = 1;	break;
 		case DMA1_Stream4_IRQn:		prep = 1;	break;
-		case DMA1_Stream5_IRQn:		prep = 1;	break;
+		case DMA1_Stream5_IRQn:		prep = 0;	break;
 		case DMA1_Stream6_IRQn:		prep = 1;	break;
 		case DMA1_Stream7_IRQn:		prep = 1;	break;
 		case DMA2_Stream0_IRQn:		prep = 1;	break;

@@ -213,6 +213,12 @@ struct __attribute__((aligned(32))) settings
 		double va;
 		double d;
 	} lpf;
+	
+	struct {
+		double gyrofrmin;
+		double gyrofrmax;
+		double gyrovbat;
+	} notch;
 
 	struct {
 		struct { double p, i, d; } attpos;

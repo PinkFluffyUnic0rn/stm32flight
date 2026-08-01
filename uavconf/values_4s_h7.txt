@@ -51,10 +51,13 @@ compl pos 1
 compl speed 1
 compl yaw 1
 lpf vaccel 0.25
-lpf accel 40
+lpf accel 100
 lpf d 100
-lpf gyro 40
+lpf gyro 200
 lpf mag 0.25
+notch gyrovbat 7
+notch gyrofrmax 355.73
+notch gyrofrmin 220
 log freq 500
 log recsize 4
 log record 0 mag_x
@@ -82,7 +85,7 @@ log record 21 none
 log record 22 bat
 log record 23 cur
 log record 24 ch0
-log record 25 none
+log record 25 lat
 log record 26 none
 log record 27 ch3
 log record 28 ch4
@@ -105,8 +108,8 @@ pid climbrate p 0.6
 pid feature attimax 0.1
 pid feature thrimax 0.1
 pid feature iscaling 0.51
-pid stilt d 0.001875
-pid stilt i 5.88
+pid stilt d 0.000938
+pid stilt i 7.839999
 pid stilt p 0.21
 pid throttle d 0
 pid throttle i 3

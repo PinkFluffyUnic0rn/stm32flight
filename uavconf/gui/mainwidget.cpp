@@ -1003,12 +1003,18 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 		"Complimentary filters", "dsp",
 		{"attitude",		"yaw",		"climb rate", 		"altitude",		"speed",	"position"},
 		{"compl attitude",	"compl yaw",	"compl climbrate",	"compl altitude",	"compl speed",	"compl pos"},
-		cmdstree, true, this), 3, 0, 2, 1); 
+		cmdstree, true, this), 0, 0, 2, 1); 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Low-pass filters", "dsp",
 		{"gyroscope",	"accelerometer",	"magnetometer",	"d-term",	"acceleration"},
 		{"lpf gyro",	"lpf accel",		"lpf mag",	"lpf d",	"lpf vaccel"},
-		cmdstree, true, this), 3, 1, 2, 1);
+		cmdstree, true, this), 0, 1, 1, 1);
+
+	tabs["filters"]->add_group(new float_settings_group(nullptr,
+		"Notch filter", "dsp",
+		{"min frequency",	"max frequency",	"battery voltage"},
+		{"notch gyrofrmin",	"notch gyrofrmax",		"notch gyrovbat"},
+		cmdstree, true, this), 1, 1, 1, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Accelerometer offset", "dsp",

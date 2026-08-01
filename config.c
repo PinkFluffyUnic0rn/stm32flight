@@ -374,6 +374,28 @@ static struct settingnode Sttree = {
 			}
 		},
 		&(struct settingnode) {
+			.token = "notch",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "gyrofrmin",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.notch.gyrofrmin)
+				},
+				&(struct settingnode) {
+					.token = "gyrofrmax",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.notch.gyrofrmax)
+				},
+				&(struct settingnode) {
+					.token = "gyrovbat",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.notch.gyrovbat)
+				},
+				NULL
+			}
+		},
+		&(struct settingnode) {
 			.token = "adj",
 			.type = NODETYPE_PARENT,
 			.child = (struct settingnode *[]) {

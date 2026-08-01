@@ -13,6 +13,7 @@ size_t devcount = 0;
 #define W25_CETIMEOUT 100000
 #define W25_SETIMEOUT 600000
 #define W25_BETIMEOUT 3000000
+#define W25_READRETRIES 5
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
@@ -127,21 +128,30 @@ int w25_read(void *d, size_t addr, void *data, size_t sz)
 {
 	struct w25_device *dev;
 	uint8_t sbuf[4];
+	int retries;
 
 	dev = (struct w25_device *) d;
 
-	sbuf[0] = 0x03;
-	sbuf[1] = (addr >> 16) & 0xff;
-	sbuf[2] = (addr >> 8) & 0xff;
-	sbuf[3] = addr & 0xff;
+	for (retries = 0; retries < W25_READRETRIES; ++retries) {
+		int r;
 
-	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(dev->hspi, sbuf, 4, 100);
+		sbuf[0] = 0x03;
+		sbuf[1] = (addr >> 16) & 0xff;
+		sbuf[2] = (addr >> 8) & 0xff;
+		sbuf[3] = addr & 0xff;
 
-	if (HAL_SPI_ReceiveOVR(dev->hspi, data, sz, 100) == HAL_ERROR)
-		__HAL_SPI_CLEAR_OVRFLAG(dev->hspi);
+		HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
+		HAL_SPI_Transmit(dev->hspi, sbuf, 4, 100);
+
+		r = HAL_SPI_ReceiveOVR(dev->hspi, data, sz, 100);
+
+		HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
 	
-	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_SET);
+		if (r == HAL_ERROR)
+			__HAL_SPI_CLEAR_OVRFLAG(dev->hspi);
+		else
+			return 0;
+	}
 
 	return 0;
 }

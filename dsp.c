@@ -51,6 +51,116 @@ double dsp_updatelpf(struct dsp_lpf *ir, double v)
 	return ir->s1;
 }
 
+int dsp_setnotch2(struct dsp_filter *flt, double rejfreq, double bw,
+	int freq, int init)
+{
+	double a11, a12a22, a21, a11a21;
+	double b11, b21, b11b21;
+	double w, r;
+
+	if (init)
+		flt->step = 0;
+
+	flt->depth = 4;
+	
+	r = 1.0 - 3.0 * bw / (double) freq;
+	w = 2.0 * M_PI * rejfreq / (double) freq;
+
+	a11 = -2.0 * r * cos(w);
+	a21 = -2.0 * r * cos(w * 2.0);
+	a11a21 = a11 + a21;
+	a12a22 = r * r;
+
+	b11 = -2.0 * cos(w);
+	b21 = -2.0 * cos(w * 2.0);
+	b11b21 = b11 + b21;
+
+	flt->a[0] = 1.0;
+	flt->a[1] = a11a21;
+	flt->a[2] = 2.0 * a12a22 + a11 * a21;
+	flt->a[3] = a12a22 * a11a21;
+	flt->a[4] = a12a22 * a12a22;
+
+	flt->b[0] = 1.0;
+	flt->b[1] = b11b21;
+	flt->b[2] = 2.0 + b11 * b21;
+	flt->b[3] = b11b21;
+	flt->b[4] = 1.0;
+
+	return 0;
+}
+
+int dsp_updatefilterv(struct dsp_filter *flt,
+	double x, double y, double z,
+	double *xo, double *yo, double *zo)
+{
+	double sx, sy, sz;
+
+	sx = flt->b[0] * x;
+	sy = flt->b[0] * y;
+	sz = flt->b[0] * z;
+
+	if (flt->step > 0) {
+		sx += flt->b[1] * flt->vx[0] - flt->a[1] * flt->sx[0];
+		sy += flt->b[1] * flt->vy[0] - flt->a[1] * flt->sy[0];
+		sz += flt->b[1] * flt->vz[0] - flt->a[1] * flt->sz[0];
+	}
+	
+	if (flt->step > 1) {
+		sx += flt->b[2] * flt->vx[1] - flt->a[2] * flt->sx[1];
+		sy += flt->b[2] * flt->vy[1] - flt->a[2] * flt->sy[1];
+		sz += flt->b[2] * flt->vz[1] - flt->a[2] * flt->sz[1];
+	}
+
+	if (flt->step > 2) {
+		sx += flt->b[3] * flt->vx[2] - flt->a[3] * flt->sx[2];
+		sy += flt->b[3] * flt->vy[2] - flt->a[3] * flt->sy[2];
+		sz += flt->b[3] * flt->vz[2] - flt->a[3] * flt->sz[2];
+	}
+
+	if (flt->step > 3) {
+		sx += flt->b[4] * flt->vx[3] - flt->a[4] * flt->sx[3];
+		sy += flt->b[4] * flt->vy[3] - flt->a[4] * flt->sy[3];
+		sz += flt->b[4] * flt->vz[3] - flt->a[4] * flt->sz[3];
+	}
+
+	flt->vx[3] = flt->vx[2];
+	flt->vx[2] = flt->vx[1];
+	flt->vx[1] = flt->vx[0];
+	flt->vx[0] = x;
+	flt->sx[3] = flt->sx[2];
+	flt->sx[2] = flt->sx[1];
+	flt->sx[1] = flt->sx[0];
+	flt->sx[0] = sx;
+
+	flt->vy[3] = flt->vy[2];
+	flt->vy[2] = flt->vy[1];
+	flt->vy[1] = flt->vy[0];
+	flt->vy[0] = y;
+	flt->sy[3] = flt->sy[2];
+	flt->sy[2] = flt->sy[1];
+	flt->sy[1] = flt->sy[0];
+	flt->sy[0] = sy;
+
+	flt->vz[3] = flt->vz[2];
+	flt->vz[2] = flt->vz[1];
+	flt->vz[1] = flt->vz[0];
+	flt->vz[0] = z;
+	flt->sz[3] = flt->sz[2];
+	flt->sz[2] = flt->sz[1];
+	flt->sz[1] = flt->sz[0];
+	flt->sz[0] = sz;
+
+	if (flt->step < flt->depth)
+		++flt->step;
+
+	*xo = sx;
+	*yo = sy;
+	*zo = sz;
+
+	return 0;
+}
+
 int dsp_setpid(struct dsp_pidval *pv, double kp, double ki, double kd,
 	double dcutoff, int freq, int init)
 {

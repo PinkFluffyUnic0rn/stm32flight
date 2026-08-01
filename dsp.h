@@ -82,6 +82,29 @@ struct dsp_lpf {
 };
 
 /**
+* @brief Bilinear PID context it holds PID controller P, I and D
+* coefficients and accumelated data between calls.
+*/
+struct dsp_filter {
+	double a[8];	/*!< 'a' filter coefficients */
+	double b[8];	/*!< 'b' filter coefficients */
+
+	double s[8];	/*!< previous output values */
+	double v[8];	/*!< previous input values */
+
+	double sx[8];	/*!< previous x output values */
+	double vx[8];	/*!< previous x input values */
+	double sy[8];	/*!< previous y output values */
+	double vy[8];	/*!< previous y input values */
+	double sz[8];	/*!< previous z output values */
+	double vz[8];	/*!< previous z input values */
+
+	int step;	/*!< calculation step, stops at value of 2 */
+	int depth;	/*!< number of 'a' and 'b' Z-transform
+			derived coefficient */
+};
+
+/**
 * @brief PID context it holds PID controller P, I and 
 * coefficients and accumelated data between calls.
 */
@@ -179,6 +202,13 @@ double dsp_getlpf(struct dsp_lpf *ir);
 * @return low-pass filtered value
 */
 double dsp_updatelpf(struct dsp_lpf *ir, double v);
+
+int dsp_setnotch2(struct dsp_filter *flt, double rejfreq, double bw,
+	int freq, int init);
+
+int dsp_updatefilterv(struct dsp_filter *flt,
+	double x, double y, double z,
+	double *xo, double *yo, double *zo);
 
 /**
 * @brief Set new P, I and D coefficient for a PID controller.

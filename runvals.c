@@ -7,6 +7,7 @@ int Init = 0;
 
 struct timev Evs[TEV_COUNT];
 struct dsp_lpf Lpf[LPF_COUNT];
+struct dsp_filter Flt;
 struct dsp_compl Cmpl[CMPL_COUNT];
 struct dsp_pidblval Pid[PID_COUNT];
 

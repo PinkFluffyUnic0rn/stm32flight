@@ -264,6 +264,11 @@ extern struct timev Evs[TEV_COUNT];
 extern struct dsp_lpf Lpf[LPF_COUNT];
 
 /**
+* @brief filter
+*/
+extern struct dsp_filter Flt;
+
+/**
 * @brief Complimentary filters
 */
 extern struct dsp_compl Cmpl[CMPL_COUNT];
