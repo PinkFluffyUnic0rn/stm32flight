@@ -69,7 +69,7 @@ enum ICM_GYROLPF {
 	ICM_GYROLPF16	= 0x5,	/*!< max(400 hz, ODR) / 16 */
 	ICM_GYROLPF20	= 0x6,	/*!< max(400 hz, ODR) / 20 */
 	ICM_GYROLPF40	= 0x7,	/*!< max(400 hz, ODR) / 20 */
-	ICM_GYROLPFLL	= 0x15	/*!< low latency */
+	ICM_GYROLPFLL	= 0xf	/*!< low latency */
 };
 
 /**
@@ -112,7 +112,7 @@ enum ICM_ACCELLPF {
 	ICM_ACCELLPF16	= 0x5,	/*!< max(400 hz, ODR) / 16 */
 	ICM_ACCELLPF20	= 0x6,	/*!< max(400 hz, ODR) / 20 */
 	ICM_ACCELLPF40	= 0x7,	/*!< max(400 hz, ODR) / 40 */
-	ICM_ACCELLPFLL	= 0x15	/*!< low latency */
+	ICM_ACCELLPFLL	= 0xf	/*!< low latency */
 };
 
 /**

@@ -108,9 +108,9 @@ pid climbrate p 0.6
 pid feature attimax 0.1
 pid feature thrimax 0.1
 pid feature iscaling 0.51
-pid stilt d 0.002411
-pid stilt i 20.16
-pid stilt p 0.54
+pid stilt d 0.002778
+pid stilt i 32.399997
+pid stilt p 0.6
 pid throttle d 0
 pid throttle i 6.5
 pid throttle p 6.5

@@ -53,7 +53,7 @@ compl yaw 1
 lpf vaccel 0.25
 lpf accel 100
 lpf d 100
-lpf gyro 200
+lpf gyro 1000
 lpf mag 0.25
 notch gyrovbat 7
 notch gyrofrmax 355.73
@@ -108,9 +108,9 @@ pid climbrate p 0.6
 pid feature attimax 0.1
 pid feature thrimax 0.1
 pid feature iscaling 0.51
-pid stilt d 0.000938
-pid stilt i 7.839999
-pid stilt p 0.21
+pid stilt d 0.001389
+pid stilt i 16.2
+pid stilt p 0.3
 pid throttle d 0
 pid throttle i 3
 pid throttle p 3

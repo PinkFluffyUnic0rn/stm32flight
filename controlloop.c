@@ -41,8 +41,6 @@ int setstabilize(int init)
 {
 	double iscale;
 
-	dsp_setnotch2(&Flt, 600.0, 300.0, PID_FREQ, 1);
-
 	// init complementary filters contexts
 	dsp_setcompl(Cmpl + CMPL_PITCH, St.cmpl.att, PID_FREQ, init);
 	dsp_setcompl(Cmpl + CMPL_ROLL, St.cmpl.att, PID_FREQ, init);
@@ -163,6 +161,9 @@ int setstabilize(int init)
 	dsp_setlpf1t(Lpf + LPF_MAGY, St.lpf.mag, QMC_FREQ, init);
 	dsp_setlpf1t(Lpf + LPF_MAGZ, St.lpf.mag, QMC_FREQ, init);
 
+	// init notch filter for gyroscope
+	dsp_setnotch2(&Flt, St.notch.gyrofrmin, 300.0, PID_FREQ, 1);
+
 	// init roll, pitch, yaw unity filters
 	dsp_setunity(Lpf + LPF_ROLL, init);
 	dsp_setunity(Lpf + LPF_PITCH, init);
@@ -204,7 +205,7 @@ int updateposition(double dt)
 	// trigonometry.
 	roll = dsp_updatelpf(Lpf + LPF_ROLL,
 		dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
-			atan2(-ax, az) - St.adj.att0.roll));
+			atan2(-ax, az)) - St.adj.att0.roll);
 
 	// same as for roll but for different axes
 	pitch = dsp_updatelpf(Lpf + LPF_PITCH,
