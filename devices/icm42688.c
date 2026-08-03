@@ -7,9 +7,9 @@
 
 #include "icm42688.h"
 
-#define DELT 21
-#define DELTSQR 440
-#define BITSHIFT 6
+#define DELT 38
+#define DELTSQR 1440
+#define BITSHIFT 4
 
 enum ICM_REGISTER {
 	ICM_WHOAMI		= 117,
@@ -221,6 +221,16 @@ int icm_init(struct icm_device *dev)
 
 	icm_read(dev, 0x4d, &v, 1);
 	icm_write(dev, 0x4d, (v & ~0xc0) | 0x40);
+
+	
+	icm_write(dev, ICM_BANKSELECT, 2);
+
+	icm_write(dev, 0x03, DELT << 1);
+	icm_write(dev, 0x04, DELTSQR & 0xff);
+	icm_write(dev, 0x05, (DELTSQR >> 8) | (BITSHIFT << 4));
+
+	icm_write(dev, ICM_BANKSELECT, 0);
+	
 /*
 	icm_write(dev, ICM_BANKSELECT, 1);
 

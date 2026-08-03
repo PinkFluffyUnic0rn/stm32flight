@@ -8,7 +8,7 @@ adj althold coefa 0
 adj althold coefb 0
 adj althold coefc 0
 adj althold hover 0.64
-adj althold tiltcoefmax 0.0
+adj althold tiltcoefmax 0
 adj pitch 0.01
 adj roll 0
 adj yaw 0
@@ -53,8 +53,11 @@ compl yaw 1
 lpf vaccel 0.25
 lpf accel 40
 lpf d 100
-lpf gyro 40
+lpf gyro 1000
 lpf mag 0.25
+notch gyrovbat 7
+notch gyrofrmax 355.73
+notch gyrofrmin 220
 log freq 500
 log recsize 4
 log record 0 mag_x
@@ -102,18 +105,18 @@ pid tilt p 9
 pid climbrate d 0
 pid climbrate i 0
 pid climbrate p 0.6
-pid feature attimax 0.0
-pid feature thrimax 0.0
+pid feature attimax 0
+pid feature thrimax 0
 pid feature iscaling 0.51
-pid stilt d 0.004875
-pid stilt i 15.288
-pid stilt p 0.546
+pid stilt d 0.002778
+pid stilt i 32.399997
+pid stilt p 0.6
 pid throttle d 0
 pid throttle i 6.5
 pid throttle p 6.5
 pid syaw d 0
 pid syaw i 0
-pid syaw p 3.9
+pid syaw p 3
 pid yaw d 0
 pid yaw i 0
 pid yaw p 1.5
@@ -121,5 +124,5 @@ pid pos d 0
 pid pos i 0
 pid pos p 0.1
 pid speed d 0
-pid speed i 0.0
-pid speed p 0.0
+pid speed i 0
+pid speed p 0
