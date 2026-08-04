@@ -57,6 +57,8 @@ struct pconf_spi {
 		BDMA_Channel_TypeDef *txbdma;
 	};				/*!< DMA stream instance used 
 						to transmiting */
+	DMA_Stream_TypeDef *rxdma;	/*!< DMA stream instance used 
+						for receiving */
 };
 
 /**

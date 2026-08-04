@@ -164,7 +164,8 @@ const struct pconf_spi spis[] = {
 			.inst = GPIOB,
 			.idx = GPIO_PIN_3
 		},
-		.txdma = NULL
+		.txdma = DMA2_Stream3,
+		.rxdma = DMA2_Stream4 
 	},
 	{
 		.inst = SPI2,
@@ -181,7 +182,8 @@ const struct pconf_spi spis[] = {
 			.inst = GPIOD,
 			.idx = GPIO_PIN_3
 		},
-		.txdma = NULL
+		.txdma = NULL,
+		.rxdma = NULL
 	},
 	{
 		.inst = SPI6,
@@ -198,7 +200,8 @@ const struct pconf_spi spis[] = {
 			.inst = GPIOA,
 			.idx = GPIO_PIN_5
 		},
-		.txbdma = BDMA_Channel0
+		.txbdma = BDMA_Channel0,
+		.rxdma = NULL
 	},
 };
 

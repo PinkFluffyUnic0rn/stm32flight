@@ -82,19 +82,42 @@ int icm_read(struct icm_device *dev, uint8_t addr,
 
 int icm_getintdata(struct icm_device *dev, struct imu_data *data)
 {
-	uint8_t buf[14];
+	static uint8_t rbuf[16];
+	static uint8_t tbuf[16] = {
+		0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff 
+	};
+	static int init = 0;
+	int t;
 
-	icm_read(dev, ICM_TEMPMEASURE, buf, 14);
+	if (!init) {
+		icm_read(dev, ICM_TEMPMEASURE, rbuf, 14);
+		init = 1;
+	}
 
-	data->t = buf[0] << 8 | buf[1];
+	t = 0;
+	while (HAL_SPI_GetState(dev->hspi) != HAL_SPI_STATE_READY
+			&& t < 100000) {
+		udelay(100);
+		t += 100;
+	}
 
-	data->ax = buf[2] << 8 | buf[3];
-	data->ay = buf[4] << 8 | buf[5];
-	data->az = buf[6] << 8 | buf[7];
+	tbuf[0] = ICM_TEMPMEASURE | 0x80;
 
-	data->gx = buf[8] << 8 | buf[9];
-	data->gy = buf[10] << 8 | buf[11];
-	data->gz = buf[12] << 8 | buf[13];
+	data->t = rbuf[1] << 8 | rbuf[2];
+
+	data->ax = rbuf[3] << 8 | rbuf[4];
+	data->ay = rbuf[5] << 8 | rbuf[6];
+	data->az = rbuf[7] << 8 | rbuf[8];
+
+	data->gx = rbuf[9] << 8 | rbuf[10];
+	data->gy = rbuf[11] << 8 | rbuf[12];
+	data->gz = rbuf[13] << 8 | rbuf[14];
+	
+	HAL_GPIO_WritePin(dev->gpio, dev->pin, GPIO_PIN_RESET);
+	HAL_SPI_TransmitReceive_DMA(dev->hspi, tbuf, rbuf, 15);
 
 	return 0;
 }

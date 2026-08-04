@@ -601,6 +601,18 @@ static int pconf_dmastream_spitx_channel(DMA_Stream_TypeDef *inst,
 	return (-1);
 }
 
+static int pconf_dmastream_spirx_channel(DMA_Stream_TypeDef *inst,
+	SPI_TypeDef *spiinst)
+{
+	if (spiinst == SPI1)		return DMA_REQUEST_SPI1_RX;
+	else if (spiinst == SPI2)	return DMA_REQUEST_SPI2_RX;
+	else if (spiinst == SPI3)	return DMA_REQUEST_SPI3_RX;
+	else if (spiinst == SPI4)	return DMA_REQUEST_SPI4_RX;
+	else if (spiinst == SPI6)	return BDMA_REQUEST_SPI6_RX;
+
+	return (-1);
+}
+
 static int pconf_bdmachannel_spitx_channel(BDMA_Channel_TypeDef *inst,
 	SPI_TypeDef *spiinst)
 {
@@ -1175,6 +1187,29 @@ void pconf_mspinit_spi(SPI_HandleTypeDef* hspi)
 		HAL_NVIC_SetPriority(pconf_spi_irqn(spi->inst), 0, 0);
 		HAL_NVIC_EnableIRQ(pconf_spi_irqn(spi->inst));
 	}
+
+	if ((idx = pconf_dmaidx(spi->rxdma)) >= 0) {
+		pconf_hdmas[idx].Instance = dmas[idx];
+		pconf_hdmas[idx].Init.Request
+			= pconf_dmastream_spirx_channel(
+				spi->rxdma, spi->inst);
+		pconf_hdmas[idx].Init.Direction = DMA_PERIPH_TO_MEMORY;
+		pconf_hdmas[idx].Init.PeriphInc = DMA_PINC_DISABLE;
+		pconf_hdmas[idx].Init.MemInc = DMA_MINC_ENABLE;
+		pconf_hdmas[idx].Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+		pconf_hdmas[idx].Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+		pconf_hdmas[idx].Init.Mode = DMA_NORMAL;
+		pconf_hdmas[idx].Init.Priority = DMA_PRIORITY_LOW;
+		pconf_hdmas[idx].Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+
+		if (HAL_DMA_Init(pconf_hdmas + idx) != HAL_OK)
+			error_handler();
+
+		__HAL_LINKDMA(hspi, hdmarx, pconf_hdmas[idx]);
+	    
+		HAL_NVIC_SetPriority(pconf_spi_irqn(spi->inst), 0, 0);
+		HAL_NVIC_EnableIRQ(pconf_spi_irqn(spi->inst));
+	}
 }
 
 void pconf_mspdeinit_spi(SPI_HandleTypeDef* hspi)
@@ -1542,7 +1577,7 @@ static void pconf_init_dma(void)
 		case DMA2_Stream1_IRQn:		prep = 0;	break;
 		case DMA2_Stream2_IRQn:		prep = 0;	break;
 		case DMA2_Stream3_IRQn:		prep = 1;	break;
-		case DMA2_Stream4_IRQn:		prep = 0;	break;
+		case DMA2_Stream4_IRQn:		prep = 1;	break;
 		case DMA2_Stream5_IRQn:		prep = 1;	break;
 		case DMA2_Stream6_IRQn:		prep = 0;	break;
 		default:			prep = 1;

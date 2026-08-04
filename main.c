@@ -84,6 +84,18 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 }
 
 /**
+* @brief SPI receive callback. It calls interrupt handlers
+	from drivers for devices working through SPI.
+* @param hspi context for SPI triggered that callback
+* @return none
+*/
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+	if (DEVITENABLED(Dev[DEV_IMU].status))
+		Dev[DEV_IMU].interrupt(Dev[DEV_IMU].priv, hspi);
+}
+
+/**
 * @brief UART error callback. Calls UART error handlers
 	from drivers for devices working through UART.
 * @param huart context for UART triggered that callback.
