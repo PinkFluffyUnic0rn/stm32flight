@@ -45,7 +45,7 @@ int setstabilize(int init)
 	dsp_setcompl(Cmpl + CMPL_PITCH, St.cmpl.att, PID_FREQ, init);
 	dsp_setcompl(Cmpl + CMPL_ROLL, St.cmpl.att, PID_FREQ, init);
 
-	dsp_setcomplv2(&Cmplv, 5.0, PID_FREQ, init);
+	dsp_setcomplv2(&Cmplv, St.cmpl.att, PID_FREQ, init);
 
 	dsp_setcompl(Cmpl + CMPL_YAW, St.cmpl.yaw, PID_FREQ, init);
 
@@ -178,6 +178,7 @@ int setstabilize(int init)
 int updateposition(double dt)
 {
 	static double prevalt = 0.0;
+	double sr, cr, sp, cp;
 	double roll, pitch, yaw;
 	double vx, vy, vz;
 	double gvx, gvy, gvz;
@@ -206,17 +207,6 @@ int updateposition(double dt)
 	// signal to be low-pass filtered: it's the tilt value that is
 	// calculated from acceleromer readings through some
 	// trigonometry.
-/*
-	roll = dsp_updatelpf(Lpf + LPF_ROLL,
-		dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
-			atan2(-ax, az)) - St.adj.att0.roll);
-
-	// same as for roll but for different axes
-	pitch = dsp_updatelpf(Lpf + LPF_PITCH,
-		dsp_updatecompl(Cmpl + CMPL_PITCH, gx * dt,
-			atan2(ay, sqrt(ax * ax + az * az))) 
-				- St.adj.att0.pitch);
-*/
 	dsp_updatecomplv2(&Cmplv, gy * dt, gx * dt,
 		atan2(-ax, az), atan2(ay, sqrt(ax * ax + az * az)),
 		&roll, &pitch);
@@ -236,11 +226,14 @@ int updateposition(double dt)
 			Magdata.fx, Magdata.fy, Magdata.fz)) 
 			- St.adj.att0.yaw));
 
+	sr = sin(roll);		cr = cos(roll);
+	sp = sin(pitch);	cp = cos(pitch);
+
 	// calculate gravity direction vector in IMU coordination system
 	// using pitch and roll values;
-	vx = -sin(roll);
-	vy = sin(pitch) * cos(roll);
-	vz = cos(pitch) * cos(roll);
+	vx = -sr;
+	vy = sp * cr;
+	vz = cp * cr;
 
 	gvx = (1.0 - Goffset) * vx;
 	gvy = (1.0 - Goffset) * vy;
@@ -261,8 +254,8 @@ int updateposition(double dt)
 	// calculate forward direction vector in IMU
 	// coordination system using pitch and roll values;
 	vx = 0;
-	vy = cos(pitch);
-	vz = -sin(pitch);
+	vy = cp;
+	vz = -sp;
 
 	// update forward acceleration using acceleration
 	// vector to gravity vector projection
@@ -275,9 +268,9 @@ int updateposition(double dt)
 
 	// calculate sideward direction vector in IMU
 	// coordination system using pitch and roll values;
-	vx = cos(roll);
-	vy = sin(pitch) * sin(roll);
-	vz = sin(roll) * cos(pitch);
+	vx = cr;
+	vy = sp * sr;
+	vz = sr * cp;
 
 	// update sideward acceleration using acceleration
 	// vector to gravity vector projection
@@ -290,13 +283,18 @@ int updateposition(double dt)
 
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
+		double sy, cy;
+
+		sy = sin(yaw);
+		cy = cos(yaw);
+
 		// calculate speed through latitude from
 		// forward and sideward accelerations and
 		// GNSS speed using complimetary filter
 		dsp_updatecompl(Cmpl + CMPL_SLAT,
 			9.80665 * (
-			+ dsp_getlpf(Lpf + LPF_FA) * cos(yaw)
-			- dsp_getlpf(Lpf + LPF_SA) * sin(yaw))
+			+ dsp_getlpf(Lpf + LPF_FA) * cy 
+			- dsp_getlpf(Lpf + LPF_SA) * sy)
 			* dt, Gnss.speed / 3.6 * cos(Gnss.course));
 
 		// calculate speed through longitude from
@@ -304,8 +302,8 @@ int updateposition(double dt)
 		// GNSS speed using complimetary filter
 		dsp_updatecompl(Cmpl + CMPL_SLON,
 			9.80665 * (
-			+ dsp_getlpf(Lpf + LPF_FA) * sin(yaw)
-			+ dsp_getlpf(Lpf + LPF_SA) * cos(yaw))
+			+ dsp_getlpf(Lpf + LPF_FA) * sy
+			+ dsp_getlpf(Lpf + LPF_SA) * cy)
 			* dt, Gnss.speed / 3.6 * sin(Gnss.course));
 
 		// calculate latitude from speed and GNSS
@@ -422,7 +420,6 @@ int updatecorrection(double dt, struct corvals *cor)
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)
 			&& Gnssmode == GNSSMODE_POS) {
-
 		double loncor, latcor;
 
 		// calculate lonogitude and latitude correction

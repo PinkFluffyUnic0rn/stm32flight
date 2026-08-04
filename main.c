@@ -246,6 +246,11 @@ double esccurrent()
 
 }
 
+/**
+* @brief Get readings from IMU. Callback for TEV_IMU periodic event.
+* @param ms microsecond passed from last callback invocation
+* @return always 0
+*/
 int imuupdate(int ms)
 {
 	double gx, gy, gz;

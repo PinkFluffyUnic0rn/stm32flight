@@ -140,9 +140,9 @@ int icm_getdata(void *d, void *dt, size_t sz)
 
 	data->ft = (data->t / 132.48) + 25.0;
 
-	data->afx = (data->ax) / (double) accamp[dev->accelscale];
-	data->afy = (data->ay) / (double) accamp[dev->accelscale];
-	data->afz = (data->az) / (double) accamp[dev->accelscale];
+	data->afx = data->ax / (double) accamp[dev->accelscale];
+	data->afy = data->ay / (double) accamp[dev->accelscale];
+	data->afz = data->az / (double) accamp[dev->accelscale];
 
 	data->gfx = data->gx / gyroamp[dev->gyroscale];
 	data->gfy = data->gy / gyroamp[dev->gyroscale];

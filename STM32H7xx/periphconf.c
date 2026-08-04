@@ -1879,7 +1879,7 @@ static void pconf_init_adc(void)
 		ADC_MultiModeTypeDef multimode = {0};
 
 		pconf_hadcs[i].Instance = adcs[i].inst;
-		pconf_hadcs[i].Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV8;
+		pconf_hadcs[i].Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV4;
 		pconf_hadcs[i].Init.Resolution = ADC_RESOLUTION_12B;
 		pconf_hadcs[i].Init.ScanConvMode = ADC_SCAN_DISABLE;
 		pconf_hadcs[i].Init.EOCSelection = ADC_EOC_SINGLE_CONV;
