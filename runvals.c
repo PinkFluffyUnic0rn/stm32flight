@@ -9,6 +9,7 @@ struct timev Evs[TEV_COUNT];
 struct dsp_lpf Lpf[LPF_COUNT];
 struct dsp_filter Flt;
 struct dsp_compl Cmpl[CMPL_COUNT];
+struct dsp_complv Cmplv;
 struct dsp_pidblval Pid[PID_COUNT];
 
 const char *Evnames[TEV_COUNT] = {

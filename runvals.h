@@ -274,6 +274,11 @@ extern struct dsp_filter Flt;
 extern struct dsp_compl Cmpl[CMPL_COUNT];
 
 /**
+* @brief Roll and pich Complimentary filter
+*/
+extern struct dsp_complv Cmplv;
+
+/**
 * @brief PID controllers
 */
 extern struct dsp_pidblval Pid[PID_COUNT];

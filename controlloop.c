@@ -44,6 +44,9 @@ int setstabilize(int init)
 	// init complementary filters contexts
 	dsp_setcompl(Cmpl + CMPL_PITCH, St.cmpl.att, PID_FREQ, init);
 	dsp_setcompl(Cmpl + CMPL_ROLL, St.cmpl.att, PID_FREQ, init);
+
+	dsp_setcomplv2(&Cmplv, 5.0, PID_FREQ, init);
+
 	dsp_setcompl(Cmpl + CMPL_YAW, St.cmpl.yaw, PID_FREQ, init);
 
 	dsp_setcompl(Cmpl + CMPL_CLIMBRATE, St.cmpl.climbrate,
@@ -203,6 +206,7 @@ int updateposition(double dt)
 	// signal to be low-pass filtered: it's the tilt value that is
 	// calculated from acceleromer readings through some
 	// trigonometry.
+/*
 	roll = dsp_updatelpf(Lpf + LPF_ROLL,
 		dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
 			atan2(-ax, az)) - St.adj.att0.roll);
@@ -212,6 +216,15 @@ int updateposition(double dt)
 		dsp_updatecompl(Cmpl + CMPL_PITCH, gx * dt,
 			atan2(ay, sqrt(ax * ax + az * az))) 
 				- St.adj.att0.pitch);
+*/
+	dsp_updatecomplv2(&Cmplv, gy * dt, gx * dt,
+		atan2(-ax, az), atan2(ay, sqrt(ax * ax + az * az)),
+		&roll, &pitch);
+
+	roll = dsp_updatelpf(Lpf + LPF_ROLL,
+		roll - St.adj.att0.roll);
+	pitch = dsp_updatelpf(Lpf + LPF_PITCH,
+		pitch - St.adj.att0.pitch);
 
 	// update complimenraty filter for yaw axis and get next yaw
 	// value. First signal is the speed of the rotation around Z

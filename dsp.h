@@ -72,7 +72,7 @@ enum DSP_LPFORDER {
 };
 
 /**
-* @brief Low pass filter context it holds lpf's
+* @brief Low pass filter context. It holds lpf's
 * alpha and accumulated filter data between calls.
 */
 struct dsp_lpf {
@@ -82,8 +82,8 @@ struct dsp_lpf {
 };
 
 /**
-* @brief Bilinear PID context it holds PID controller P, I and D
-* coefficients and accumelated data between calls.
+* @brief 3D vector filter context. It holds filter's coefficients and
+* accumulated data between calls.
 */
 struct dsp_filter {
 	double a[8];	/*!< 'a' filter coefficients */
@@ -105,7 +105,7 @@ struct dsp_filter {
 };
 
 /**
-* @brief PID context it holds PID controller P, I and 
+* @brief PID context. It holds PID controller P, I and 
 * coefficients and accumelated data between calls.
 */
 struct dsp_pidval {
@@ -146,8 +146,18 @@ struct dsp_pidblval {
 * constant and accumulated filter data between calls.
 */
 struct dsp_compl {
-	double s;
-	double coef;
+	double s;	/*!< filter's accumulated data */
+	double coef;	/*!< filter's coefficient */
+};
+
+/**
+* @brief Roll and pitch complimentary filter context. It holds filter's
+* time constant and accumulated filter data between calls.
+*/
+struct dsp_complv {
+	double r;	/*!< filter's roll accumulated data */
+	double p;	/*!< filter's pitch accumulated data */
+	double coef;	/*!< filter's coefficient */
 };
 
 /**
@@ -165,9 +175,7 @@ int dsp_setunity(struct dsp_lpf *ir, int init);
 * @param ir low-pass filter context
 * @param tcoef low-pass filter's time constant used to calculate
 	it's alpha coefficient
-* @param freq discretisation frequency used to calculate alpha. In
-	flight controller application it's the stabilization loop
-	frequency (see main.c)
+* @param freq discretisation frequency used to calculate alpha.
 * @param init 1, if internal values initializaion required, 0 otherwise
 * @return always 0
 */
@@ -179,9 +187,7 @@ int dsp_setlpf1t(struct dsp_lpf *ir, double tcoef, int freq, int init);
 * @param ir low-pass filter context.
 * @param cutoff low-pass filter's cut-off frequency used to calculate
 	it's alpha coefficient
-* @param freq discretisation frequency used to calculate alpha. In
-	flight controller application it's the stabilization loop
-	frequency (see main.c)
+* @param freq discretisation frequency used to calculate alpha.
 * @param init 1, if internal values initializaion required, 0 otherwise
 * @return always 0
 */
@@ -203,9 +209,29 @@ double dsp_getlpf(struct dsp_lpf *ir);
 */
 double dsp_updatelpf(struct dsp_lpf *ir, double v);
 
+/**
+* @brief Set new notch filter using reject frequency and bandwidth.
+* @param flt notch filter context
+* @param rejfreq reject frequency
+* @param rejfreq bandwidth
+* @param freq discretisation frequency used to calculate alpha.
+* @param init 1, if internal values initializaion required, 0 otherwise
+* @return always 0
+*/
 int dsp_setnotch2(struct dsp_filter *flt, double rejfreq, double bw,
 	int freq, int init);
 
+/**
+* @brief Calculate next vector filter's value and get the result.
+* @param flt filter context
+* @param x new vector X value of a signal being filtered
+* @param x new vector Y value of a signal being filtered
+* @param x new vector Z value of a signal being filtered
+* @param x0 filter's X output vector value
+* @param y0 filter's Y output vector value
+* @param z0 filter's Z output vector value
+* @return always 0
+*/
 int dsp_updatefilterv(struct dsp_filter *flt,
 	double x, double y, double z,
 	double *xo, double *yo, double *zo);
@@ -288,8 +314,6 @@ double dsp_circpid(struct dsp_pidval *pv, double target,
 * @param comp complimentary filter's context
 * @param tc complimentary filter's time constant in seconds
 * @param freq discretisation frequency used to calculate filter's
-* @param coefficient. In flight controller application it's the
-	stabilization loop frequency (see main.c)
 * @param init 1, if internal values initializaion required, 0 otherwise
 * @return always 0
 */
@@ -322,5 +346,44 @@ double dsp_updatecirccompl(struct dsp_compl *comp, double v0,
 * @return complimentary filtered result
 */
 double dsp_updatecompl(struct dsp_compl *comp, double v0, double v1);
+
+/**
+* @brief Set new roll and pitch complimentary filter
+	using time constant value.
+* @param comp complimentary filter's context
+* @param tc complimentary filter's time constant in seconds
+* @param freq discretisation frequency used to calculate filter's
+* @param init 1, if internal values initializaion required, 0 otherwise
+* @return always 0
+*/
+int dsp_setcomplv2(struct dsp_complv *comp, double tc,
+	int freq, int init);
+
+/**
+* @brief Get last calculated roll and pitch complimentary
+	filtering result. (from last dsp_updatecomplv2 call).
+* @param comp roll and pitch complimentary filter's context
+* @param r output roll value
+* @param p output pitch value
+* @return always 0
+*/
+int dsp_getcomplv2(struct dsp_complv *comp, double *r, double *p);
+
+/**
+* @brief Calculate next roll and pitch complimentary filter's
+	value and get the result.
+* @param comp complimentary filter's context
+* @param r0 new value of first roll signal to be filtered and merged
+* @param p0 new value of first pitch signal to be filtered and merged
+* @param r1 new value of second roll signal to be filtered and merged
+* @param p1 new value of second pitch signal to be filtered and merged
+* @param ro roll filtered result
+* @param po pitch filtered result
+* @return complimentary filtered result
+*/
+int dsp_updatecomplv2(struct dsp_complv *comp,
+	double r0, double p0,
+	double r1, double p1,
+	double *ro, double *po);
 
 #endif
