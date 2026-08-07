@@ -46,7 +46,10 @@ double dsp_getlpf(struct dsp_lpf *ir)
 
 double dsp_updatelpf(struct dsp_lpf *ir, double v)
 {
-	ir->s1 = ir->alpha * ir->s1 + (1 - ir->alpha) * v;
+	if (ir->order == DSP_LPFORDER_0)
+		ir->s1 = v;
+	else
+		ir->s1 = ir->alpha * ir->s1 + (1 - ir->alpha) * v;
 
 	return ir->s1;
 }

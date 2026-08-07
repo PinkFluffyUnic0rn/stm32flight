@@ -1071,23 +1071,21 @@ int main(void)
 	inittimev(Evs + TEV_IMU, 0, PID_FREQ, imuupdate);
 	inittimev(Evs + TEV_LOG, 0, St.log.freq,  logupdate);
 	inittimev(Evs + TEV_PID, 0, PID_FREQ, stabilize);
-	inittimev(Evs + TEV_CHECK,
-		1 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
-		CHECK_FREQ, checkconnection);
+	inittimev(Evs + TEV_CHECK, 0, CHECK_FREQ, checkconnection);
 	inittimev(Evs + TEV_BARO,
-		2 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
+		0 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		DPS_FREQ, baroupdate);
 	inittimev(Evs + TEV_MAG,
-		3 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
+		1 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		QMC_FREQ, magupdate);
 	inittimev(Evs + TEV_TELE,
-		5 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
+		2 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		TELE_FREQ, telesend);
 	inittimev(Evs + TEV_POWER,
-		6 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
+		3 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		POWER_FREQ, powercheck);
 	inittimev(Evs + TEV_AUTOPILOT,
-		7 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
+		4 * PID_FREQ / TEV_COUNT * (TICKSPERSEC / PID_FREQ),
 		AUTOPILOT_FREQ, autopilotupdate);
 
 	// initilize debug commands
