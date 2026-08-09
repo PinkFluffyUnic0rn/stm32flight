@@ -51,11 +51,11 @@
 #endif
 
 #define CHECK_FREQ 1		/*!< connection check event frequency */
-#define DPS_FREQ 200		/*!< barometer update event frequency */
+#define DPS_FREQ 100		/*!< barometer update event frequency */
 #define QMC_FREQ 100		/*!< magnetometer update event frequency */
 #define TELE_FREQ 100		/*!< telemetry send event frequency */
 #define POWER_FREQ 100		/*!< battery power update event frequency */
-#define AUTOPILOT_FREQ 50	/*!< autopilot update event frequency */
+#define AUTOPILOT_FREQ 100	/*!< autopilot update event frequency */
 /**
 * @}
 */
