@@ -282,19 +282,27 @@ int imuupdate(int ms)
 	writelog(LOG_GYRO_Y, Imudata.gfy);
 	writelog(LOG_GYRO_Z, Imudata.gfz);
 
-	// calculate frequency for gyroscope notch filter	
-	vcoef = dsp_getlpf(Lpf + LPF_BAT) / St.notch.gyrovbat;
-	thr = dsp_getlpf(Lpf + LPF_AVGTHR) * vcoef * vcoef;
+	if (St.feature.notchen != 0) {
+		// calculate frequency for gyroscope notch filter	
+		vcoef = dsp_getlpf(Lpf + LPF_BAT) / St.notch.gyrovbat;
+		thr = dsp_getlpf(Lpf + LPF_AVGTHR) * vcoef * vcoef;
 
-	frq = St.notch.gyrofrmin + thr * thr
-		* (St.notch.gyrofrmax - St.notch.gyrofrmin);
-	
-	// update notch filter's coefficients	
-	dsp_setnotch2(&Flt, frq, 300.0, PID_FREQ, 0);
-	
-	// update notch filter
-	dsp_updatefilterv(&Flt, Imudata.gfx, Imudata.gfy, Imudata.gfz,
-		&gx, &gy, &gz);
+		frq = St.notch.gyrofrmin + thr * thr
+			* (St.notch.gyrofrmax - St.notch.gyrofrmin);
+		
+		// update notch filter's coefficients	
+		dsp_setnotch2(&Flt, frq, 300.0, PID_FREQ, 0);
+		
+		// update notch filter
+		dsp_updatefilterv(&Flt,
+			Imudata.gfx, Imudata.gfy, Imudata.gfz,
+			&gx, &gy, &gz);
+	}
+	else {
+		gx = Imudata.gfx;
+		gy = Imudata.gfy;
+		gz = Imudata.gfz;
+	}
 
 	// update accelerometer values
 	dsp_updatelpf(Lpf + LPF_ACCX, Imudata.afx);

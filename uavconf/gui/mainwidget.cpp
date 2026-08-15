@@ -526,6 +526,24 @@ mode_setting::mode_setting(QWidget *parent, string n, string c,
 	box->setCurrentIndex(def_idx);
 }
 
+mode_setting::mode_setting(QWidget *parent, string n, string c,
+	commands_tree *cmdstree, map<string, string> modes,
+			string init)
+		: setting(parent, n, c, cmdstree)
+{
+	box = new QComboBox();
+
+	valaliases = modes;
+
+	for (auto it = begin(modes); it != end(modes); ++it)
+		box->addItem((it->first).c_str());
+
+	if ((def_idx = box->findText(QString::fromStdString(init))) < 0)
+		def_idx = 0;
+
+	box->setCurrentIndex(def_idx);
+}
+
 mode_setting::~mode_setting()
 {
 	delete box;
@@ -533,14 +551,26 @@ mode_setting::~mode_setting()
 
 string mode_setting::get_value() const
 {
-	return box->currentText().toStdString();
+	if (valaliases.empty())
+		return box->currentText().toStdString();
+
+	return valaliases.at(box->currentText().toStdString());
 }
 
 void mode_setting::set_value(const string &s)
 {
 	int idx;
+	string tofind;
 
-	if ((idx = box->findText(QString::fromStdString(s))) < 0)
+	if (!valaliases.empty()) {
+		for (auto it = begin(valaliases); it != end(valaliases); ++it)
+			if (it->second == s) {
+				tofind = it->first;
+				break;
+			}
+	}
+
+	if ((idx = box->findText(QString::fromStdString(tofind))) < 0)
 		idx = def_idx;
 
 	box->setCurrentIndex(idx);
@@ -1003,7 +1033,22 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 		"Complimentary filters", "dsp",
 		{"attitude",		"yaw",		"climb rate", 		"altitude",		"speed",	"position"},
 		{"compl attitude",	"compl yaw",	"compl climbrate",	"compl altitude",	"compl speed",	"compl pos"},
-		cmdstree, true, this), 0, 0, 2, 1); 
+		cmdstree, true, this), 0, 0, 1, 1); 
+
+	settings_group *filterfeatures = new settings_group(nullptr,
+		"Features", "dsp", true, this);
+	filterfeatures->add_setting(new mode_setting(nullptr,
+		"matrix attitude", "feature matrixatt",
+		cmdstree,
+		std::map<std::string, std::string>{{"enabled", "1"}, {"disabled", "0"}}));
+
+	filterfeatures->add_setting(new mode_setting(nullptr,
+		"notch filter", "feature notchen",
+		cmdstree,
+		std::map<std::string, std::string>{{"enabled", "1"}, {"disabled", "0"}}));
+
+	tabs["filters"]->add_group(filterfeatures, 1, 0, 1, 1);
+
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Low-pass filters", "dsp",
 		{"gyroscope",	"accelerometer",	"magnetometer",	"d-term",	"acceleration"},

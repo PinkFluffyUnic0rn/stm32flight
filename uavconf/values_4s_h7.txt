@@ -45,7 +45,7 @@ ctrl syaw 1.5
 irc frequency 5733
 irc power 25
 compl altitude 1
-compl attitude 5
+compl attitude 1
 compl climbrate 1
 compl pos 1
 compl speed 1
@@ -53,17 +53,17 @@ compl yaw 1
 lpf vaccel 0.25
 lpf accel 100
 lpf d 100
-lpf gyro 1000
+lpf gyro 100
 lpf mag 0.25
 notch gyrovbat 7
-notch gyrofrmax 355.73
+notch gyrofrmax 300
 notch gyrofrmin 220
-log freq 500
+log freq 4000
 log recsize 4
-log record 0 mag_x
-log record 1 mag_y
+log record 0 gyro_x
+log record 1 gyro_y
 log record 10 none
-log record 2 mag_z
+log record 2 gyro_z
 log record 3 ch2
 log record 4 lt
 log record 5 lb
@@ -109,7 +109,7 @@ pid feature attimax 0.1
 pid feature thrimax 0.1
 pid feature iscaling 0.51
 pid stilt d 0.001389
-pid stilt i 16.2
+pid stilt i 7
 pid stilt p 0.3
 pid throttle d 0
 pid throttle i 3

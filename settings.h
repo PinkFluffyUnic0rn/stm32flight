@@ -156,6 +156,11 @@
 struct __attribute__((aligned(32))) settings
 {
 	struct {
+		int matrixatt;
+		int notchen;
+	} feature;
+
+	struct {
 		struct { double x, y, z; } acc0;
 		struct { double x, y, z; } acctsc;
 		struct { double x, y, z; } gyro0;

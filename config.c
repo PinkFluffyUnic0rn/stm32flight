@@ -77,6 +77,23 @@ static struct settingnode Sttree = {
 	.type = NODETYPE_PARENT,
 	.child = (struct settingnode *[]) {
 		&(struct settingnode) {
+			.token = "feature",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "matrixatt",
+					.type = NODETYPE_INT,
+					.i = &(St.feature.matrixatt)
+				},
+				&(struct settingnode) {
+					.token = "notchen",
+					.type = NODETYPE_INT,
+					.i = &(St.feature.notchen)
+				},
+				NULL
+			}
+		},
+		&(struct settingnode) {
 			.token = "pid",
 			.type = NODETYPE_PARENT,
 			.child = (struct settingnode *[]) {

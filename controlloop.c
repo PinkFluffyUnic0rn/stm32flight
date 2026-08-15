@@ -207,10 +207,19 @@ int updateposition(double dt)
 	// signal to be low-pass filtered: it's the tilt value that is
 	// calculated from acceleromer readings through some
 	// trigonometry.
-	dsp_updatecomplv2(&Cmplv, gy * dt, gx * dt,
-		atan2(-ax, az), atan2(ay, sqrt(ax * ax + az * az)),
-		&roll, &pitch);
-
+	if (St.feature.matrixatt != 0) {
+		dsp_updatecomplv2(&Cmplv, gy * dt, gx * dt,
+			atan2(-ax, az),
+			atan2(ay, sqrt(ax * ax + az * az)),
+			&roll, &pitch);
+	}
+	else {
+		roll = dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
+			atan2(-ax, az));
+		pitch = dsp_updatecompl(Cmpl + CMPL_PITCH, gx * dt,
+			atan2(ay, sqrt(ax * ax + az * az)));
+	}
+	
 	roll = dsp_updatelpf(Lpf + LPF_ROLL,
 		roll - St.adj.att0.roll);
 	pitch = dsp_updatelpf(Lpf + LPF_PITCH,

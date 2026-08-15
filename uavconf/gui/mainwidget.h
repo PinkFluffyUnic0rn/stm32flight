@@ -112,6 +112,13 @@ public:
 		commands_tree *cmdstree = nullptr,
 		vector<string> modes = vector<string>(),
 		string init = string());
+
+	mode_setting(QWidget *parent = 0,
+		string n = string(""),
+		string c = string(""),
+		commands_tree *cmdstree = nullptr,
+		map<string, string> modes = map<string, string>(),
+		string init = string());
 	~mode_setting();
 
 	QWidget *get_field() { return box; }
@@ -119,6 +126,7 @@ public:
 	void set_value(const string &s);
 
 private:
+	map<string, string> valaliases;
 	int def_idx;
 	QComboBox *box;	
 };
