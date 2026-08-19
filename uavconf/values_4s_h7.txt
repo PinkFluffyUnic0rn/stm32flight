@@ -18,9 +18,9 @@ adj curr scale 412.5
 adj gyro x 1.445184
 adj gyro y 0.595486
 adj gyro z 0.414855
-adj mag x0 0.077877
-adj mag y0 -0.056067
-adj mag z0 0.047812
+adj mag x0 0.173815
+adj mag y0 -0.076065
+adj mag z0 -0.041577
 adj mag decl 0.322
 adj mag xscale 0.960479
 adj mag yscale 0.957427
@@ -42,56 +42,58 @@ ctrl spos 2
 ctrl sroll 1
 ctrl sspeed 4
 ctrl syaw 1.5
-irc frequency 5733
+irc frequency 5865
 irc power 25
 compl altitude 1
-compl attitude 1
+compl attitude 5
 compl climbrate 1
 compl pos 1
 compl speed 1
 compl yaw 1
+feature matrixatt 1
+feature notchen 1
 lpf vaccel 0.25
 lpf accel 100
 lpf d 100
-lpf gyro 100
-lpf mag 0.25
-notch gyrovbat 7
-notch gyrofrmax 300
+lpf gyro 1000
+lpf mag 0.01
+notch gyrovbat 17
+notch gyrofrmax 2038
 notch gyrofrmin 220
 log freq 4000
-log recsize 4
-log record 0 gyro_x
-log record 1 gyro_y
+log recsize 8
+log record 0 none
+log record 1 none
 log record 10 none
-log record 2 gyro_z
-log record 3 ch2
-log record 4 lt
-log record 5 lb
-log record 6 rb
-log record 7 rt
-log record 8 acc_x
+log record 2 none
+log record 3 none
+log record 4 none
+log record 5 none
+log record 6 none
+log record 7 none
+log record 8 none
 log record 9 none
-log record 11 bar_temp
+log record 11 none
 log record 12 none
 log record 13 none
 log record 14 none
-log record 15 yaw
+log record 15 none
 log record 16 none
 log record 17 none
 log record 18 none
 log record 19 none
 log record 20 none
 log record 21 none
-log record 22 bat
-log record 23 cur
-log record 24 ch0
-log record 25 lat
+log record 22 none
+log record 23 none
+log record 24 none
+log record 25 none
 log record 26 none
-log record 27 ch3
-log record 28 ch4
-log record 29 ch5
-log record 30 ch6
-log record 31 ch7
+log record 27 none
+log record 28 none
+log record 29 none
+log record 30 none
+log record 31 none
 motor lb 1
 motor lt 0
 motor rb 3
@@ -108,9 +110,9 @@ pid climbrate p 0.6
 pid feature attimax 0.1
 pid feature thrimax 0.1
 pid feature iscaling 0.51
-pid stilt d 0.001389
-pid stilt i 7
-pid stilt p 0.3
+pid stilt d 0.001667
+pid stilt i 8.640009
+pid stilt p 0.24
 pid throttle d 0
 pid throttle i 3
 pid throttle p 3

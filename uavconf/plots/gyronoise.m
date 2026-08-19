@@ -21,24 +21,24 @@ endfunction
 
 #data = load("accvals.txt")(:,2);
 #data = load("stm32flight/uavconf/plots/data/gyronoise2.txt")(:,4);
-data = load("~/gyronoise5.txt")(:,4);
+data = load("~/gyronoise10.txt")(:,2);
 
 #throttle = load("stm32flight/uavconf/plots/data/gyronoise2.txt")(:,5);
 
-datae = load("filtertest/123.txt")(:,1);
+datae = load("~/filtertest/123.txt")(:,2);
 
 [b, a] = buildnotch(640, 300);
 
 sf = zeros(max(length(a), length(b)) -1 , 1);
 
-for i = 1 : 80000
+#for i = 1 : 80000
 #  [b, a] = buildnotch(500 + ((throttle(i)) ^ 2) * (640 - 500) * 1.23456, 300);
-  [b, a] = buildnotch(620, 300);
+#  [b, a] = buildnotch(620, 300);
 
-  [dataf(i, :), sf] = filter(b, a, data(i), sf);
-endfor
+#  [dataf(i, :), sf] = filter(b, a, data(i), sf);
+#endfor
 
-freqmap = pararrayfun(32, @(n) furier(dataf, n), 1:76000, "UniformOutput", false);
+freqmap = pararrayfun(32, @(n) furier(datae, n), 1:76000, "UniformOutput", false);
 freqmap = cell2mat(freqmap);
 
 freqmap = imresize(freqmap, [1000 30000]);
