@@ -51,12 +51,12 @@ compl pos 1
 compl speed 1
 compl yaw 1
 feature matrixatt 1
-feature notchen 1
-lpf vaccel 0.636
+feature notchen 0
+lpf vaccel 1
 lpf accel 100
 lpf d 100
-lpf gyro 1000
-lpf mag 15
+lpf gyro 100
+lpf mag 50
 notch gyrovbat 17
 notch gyrofrmax 2038
 notch gyrofrmin 220
