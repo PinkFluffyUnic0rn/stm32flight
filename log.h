@@ -116,7 +116,8 @@ enum LOG_FIELD {
 /**
 * @brief Log records per buffer
 */
-#define LOG_RECSPERBUF (LOG_BUFSIZE / (sizeof(float) * St.log.recsize))
+#define LOG_RECSPERBUF (LOG_BUFSIZE \
+	/ (sizeof(float) * Strun.log.recsize))
 
 /**
 * @brief Log values names

@@ -7,17 +7,18 @@
 
 #include "settings.h"
 
-struct settings St;
+struct persettings St;
+struct runsettings Strun;
 
 int writesettings(int slot)
 {
-	struct settings s[6];
+	struct persettings s[6];
 	uint32_t sz;
 	char *pt;
 	int j;
 
 	// read all settings slots from MCU's flash to temporary storage
-	memcpy(s, (void *) (USER_FLASH), sizeof(struct settings) * 6);
+	memcpy(s, (void *) (USER_FLASH), sizeof(struct persettings) * 6);
 
 	// disable interrupts and unlock MCU's flash
 	__disable_irq();
@@ -31,10 +32,10 @@ int writesettings(int slot)
 #endif
 
 	// copy current running settings to slot in temporary storage
-	memcpy(s + slot, &St, sizeof(struct settings));
+	memcpy(s + slot, &St, sizeof(struct persettings));
 
 	// write temporary storage back to flash
-	sz = sizeof(struct settings) * 6;
+	sz = sizeof(struct persettings) * 6;
 	pt = (char *) s;
 
 #ifdef STM32F4xx
@@ -70,19 +71,19 @@ int validatesettings()
 	if (St.mtr.rb < 0 || St.mtr.rb > 3)	St.mtr.rb = RBDEFNUM;
 	if (St.mtr.rt < 0 || St.mtr.rt > 3)	St.mtr.rt = RTDEFNUM;
 
-	if (St.log.freq <= 0 || St.log.freq > LOG_MAXFREQ)
-		St.log.freq = LOGDEFFREQ;
+	if (Strun.log.freq <= 0 || Strun.log.freq > LOG_MAXFREQ)
+		Strun.log.freq = LOGDEFFREQ;
 
-	if (St.log.recsize < 0
-			|| St.log.recsize > LOG_MAXRECSIZE
-			|| !ispow2(St.log.recsize)) {
-		St.log.recsize = LOGDEFRECSIZE;
+	if (Strun.log.recsize < 0
+			|| Strun.log.recsize > LOG_MAXRECSIZE
+			|| !ispow2(Strun.log.recsize)) {
+		Strun.log.recsize = LOGDEFRECSIZE;
 	}
 
 	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-		if (St.log.fieldid[i] < 0 
-				|| St.log.fieldid[i] >= LOG_MAXRECSIZE) {
-			St.log.fieldid[i] = LOGFIELDDEFPOS;
+		if (Strun.log.fieldid[i] < 0 
+				|| Strun.log.fieldid[i] >= LOG_MAXRECSIZE) {
+			Strun.log.fieldid[i] = LOGFIELDDEFPOS;
 		}
 	}
 
@@ -92,8 +93,8 @@ int validatesettings()
 int readsettings(int slot)
 {
 	memcpy(&St, (void *) (USER_FLASH
-			+ slot * sizeof(struct settings)),
-		sizeof(struct settings));
+			+ slot * sizeof(struct persettings)),
+		sizeof(struct persettings));
 
 	validatesettings();
 

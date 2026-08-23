@@ -151,9 +151,9 @@
 */
 
 /**
-* @brief Settings storage structure
+* @brief Persistent settings structure
 */
-struct __attribute__((aligned(32))) settings
+struct __attribute__((aligned(32))) persettings
 {
 	struct {
 		int matrixatt;
@@ -249,7 +249,13 @@ struct __attribute__((aligned(32))) settings
 		int rb;
 		int rt;
 	} mtr;
+};
 
+/**
+* @brief Running settings structure
+*/
+struct __attribute__((aligned(32))) runsettings
+{
 	struct {
 		int freq;
 		int recsize;
@@ -260,7 +266,8 @@ struct __attribute__((aligned(32))) settings
 /**
 * @brief Settings
 */
-extern struct settings St;
+extern struct persettings St;
+extern struct runsettings Strun;
 
 /**
 * @brief Write quadcopter settings into internal MCU flash.

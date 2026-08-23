@@ -110,12 +110,14 @@ static int eraseflash(const struct cdevice *d, size_t size)
 
 void writelog(int pos, float val)
 {
-	if (St.log.fieldid[pos] < 0
-			|| St.log.fieldid[pos] >= St.log.recsize) {
+	if (Strun.log.fieldid[pos] < 0
+			|| Strun.log.fieldid[pos]
+				>= Strun.log.recsize) {
 		return;
 	}
 
-	logbuf[logbufpos * St.log.recsize + St.log.fieldid[pos]] = val;
+	logbuf[logbufpos * Strun.log.recsize
+		+ Strun.log.fieldid[pos]] = val;
 }
 
 int printlog(const struct cdevice *d, char *buf,
@@ -135,7 +137,7 @@ int printlog(const struct cdevice *d, char *buf,
 
 		// read batch of log frames into log buffer
 		Flashdev.read(Flashdev.priv,
-			sizeof(float) * fp * St.log.recsize, logbuf,
+			sizeof(float) * fp * Strun.log.recsize, logbuf,
 			LOG_BUFSIZE);
 
 		// for every read frame
@@ -151,10 +153,10 @@ int printlog(const struct cdevice *d, char *buf,
 			// put all frame's values into a string
 			sprintf(data, "%d ", fp + bp);
 
-			for (i = 0; i < St.log.recsize; ++i) {
+			for (i = 0; i < Strun.log.recsize; ++i) {
 				int rec;
 
-				rec = bp * St.log.recsize;
+				rec = bp * Strun.log.recsize;
 				sprintf(data + strlen(data), "%0.5f ",
 					(double) logbuf[rec + i]);
 			}
@@ -181,9 +183,9 @@ int updatelog()
 		return 0;
 
 	if (++logbufpos < LOG_RECSPERBUF) {
-		memcpy(logbuf + logbufpos * St.log.recsize,
-			logbuf + (logbufpos - 1) * St.log.recsize,
-			St.log.recsize * sizeof(float));
+		memcpy(logbuf + logbufpos * Strun.log.recsize,
+			logbuf + (logbufpos - 1) * Strun.log.recsize,
+			Strun.log.recsize * sizeof(float));
 
 		return 0;
 	}
@@ -195,8 +197,8 @@ int updatelog()
 	logbuf = (logbuf == logbuf0) ? logbuf1 : logbuf0;
 
 	memcpy(logbuf,
-		logbufprev + (LOG_RECSPERBUF - 1) * St.log.recsize,
-		St.log.recsize * sizeof(float));
+		logbufprev + (LOG_RECSPERBUF - 1) * Strun.log.recsize,
+		Strun.log.recsize * sizeof(float));
 
 	logflashpos += LOG_BUFSIZE;
 	logbufpos = 0;
@@ -212,7 +214,7 @@ int setlog(int size, const struct cdevice *d, char *s)
 		d->write(d->priv, s, strlen(s));
 	}
 
-	logsize = size * sizeof(float) * St.log.recsize;
+	logsize = size * sizeof(float) * Strun.log.recsize;
 
 	// set log size (0 is valid and
 	// means to disable logging)

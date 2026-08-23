@@ -370,7 +370,7 @@ int dsp_getcomplv2(struct dsp_complv *comp, double *r, double *p)
 }
 
 int dsp_updatecomplv2(struct dsp_complv *comp,
-	double r0, double p0, double r1, double p1,
+	double r0, double p0, double y0, double r1, double p1,
 	double *ro, double *po)
 {
 	double ra[3][3];

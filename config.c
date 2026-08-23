@@ -740,18 +740,18 @@ static struct settingnode Sttree = {
 				&(struct settingnode) {
 					.token = "freq",
 					.type = NODETYPE_INT,
-					.i = &(St.log.freq)
+					.i = &(Strun.log.freq)
 				},
 				&(struct settingnode) {
 					.token = "recsize",
 					.type = NODETYPE_INT,
-					.i = &(St.log.recsize)
+					.i = &(Strun.log.recsize)
 				},
 				&(struct settingnode) {
 					.token = "record",
 					.type = NODETYPE_MAP,
 					.m = {
-						.m = St.log.fieldid,
+						.m = Strun.log.fieldid,
 						.k = logfieldmap
 					}
 				},
@@ -1311,7 +1311,7 @@ int applycmd(const struct cdevice *dev, const char **toks, char *out)
 		setstabilize(0);
 
 	if (log)
-		modifytimev(Evs + TEV_LOG, St.log.freq);
+		modifytimev(Evs + TEV_LOG, Strun.log.freq);
 
 	validatesettings();
 
@@ -1666,7 +1666,7 @@ int setcmd(const struct cdevice *d, const char **toks, char *out)
 			}
 
 			// set value using key's index
-			St.log.fieldid[strn] = v;
+			Strun.log.fieldid[strn] = v;
 		}
 		else {
 			struct settingnode **chd;
@@ -1749,7 +1749,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 
 		// search map for a specific value 
 		for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-			if (St.log.fieldid[i] == recn)
+			if (Strun.log.fieldid[i] == recn)
 				break;
 		}
 

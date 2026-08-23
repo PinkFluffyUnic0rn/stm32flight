@@ -1077,7 +1077,7 @@ int main(void)
 
 	// initilize periodic events
 	inittimev(Evs + TEV_IMU, 0, PID_FREQ, imuupdate);
-	inittimev(Evs + TEV_LOG, 0, St.log.freq,  logupdate);
+	inittimev(Evs + TEV_LOG, 0, Strun.log.freq,  logupdate);
 	inittimev(Evs + TEV_PID, 0, PID_FREQ, stabilize);
 	inittimev(Evs + TEV_CHECK, 0, CHECK_FREQ, checkconnection);
 	inittimev(Evs + TEV_BARO,

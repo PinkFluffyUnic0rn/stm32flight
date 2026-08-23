@@ -157,6 +157,7 @@ struct dsp_compl {
 struct dsp_complv {
 	double r;	/*!< filter's roll accumulated data */
 	double p;	/*!< filter's pitch accumulated data */
+	double y;	/*!< filter's yaw accumulated data */
 	double coef;	/*!< filter's coefficient */
 };
 
@@ -382,7 +383,7 @@ int dsp_getcomplv2(struct dsp_complv *comp, double *r, double *p);
 * @return complimentary filtered result
 */
 int dsp_updatecomplv2(struct dsp_complv *comp,
-	double r0, double p0,
+	double r0, double p0, double y0,
 	double r1, double p1,
 	double *ro, double *po);
 
