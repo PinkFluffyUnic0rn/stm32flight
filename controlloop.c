@@ -131,14 +131,14 @@ int setstabilize(int init)
 
 	// init average thrust low-pass filter
 	dsp_setunity(Lpf + LPF_AVGTHR, init);
-	dsp_setlpf1t(Lpf + LPF_AVGTHRA, St.lpf.va, PID_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_AVGTHRA, St.lpf.va, PID_FREQ, init);
 
 	// init low-pass fitlers for altitude, accelerations and speed
 	dsp_setunity(Lpf + LPF_BARTEMP, init);
-	dsp_setlpf1t(Lpf + LPF_THR, St.lpf.va, PID_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_THR, St.lpf.va, PID_FREQ, init);
 	dsp_setunity(Lpf + LPF_VAU, init);
-	dsp_setlpf1t(Lpf + LPF_VAPT1, St.lpf.va, PID_FREQ, init);
-	dsp_setlpf1t(Lpf + LPF_VAAVG, VA_AVG_TCOEF, PID_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_VAPT1, St.lpf.va, PID_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_VAAVG, VA_AVG_TCOEF, PID_FREQ, init);
 	dsp_setunity(Lpf + LPF_FA, init);
 	dsp_setunity(Lpf + LPF_SA, init);
 	dsp_setunity(Lpf + LPF_ALT, init);
@@ -147,7 +147,7 @@ int setstabilize(int init)
 	dsp_setunity(Lpf + LPF_LONM, init);
 
 	// init low-pass fitlers for IMU temperature sensor
-	dsp_setlpf1t(Lpf + LPF_IMUTEMP, TEMP_TCOEF, PID_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_IMUTEMP, TEMP_TCOEF, PID_FREQ, init);
 
 	// init low-pass fitlers for accelerometer x, y and z axes
 	dsp_setlpf1f(Lpf + LPF_ACCX, St.lpf.acc, PID_FREQ, init);
@@ -160,9 +160,9 @@ int setstabilize(int init)
 	dsp_setlpf1f(Lpf + LPF_GYROZ, St.lpf.gyro, PID_FREQ, init);
 
 	// init low-pass fitlers for magnetometer x, y and z axes
-	dsp_setlpf1t(Lpf + LPF_MAGX, St.lpf.mag, QMC_FREQ, init);
-	dsp_setlpf1t(Lpf + LPF_MAGY, St.lpf.mag, QMC_FREQ, init);
-	dsp_setlpf1t(Lpf + LPF_MAGZ, St.lpf.mag, QMC_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_MAGX, St.lpf.mag, QMC_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_MAGY, St.lpf.mag, QMC_FREQ, init);
+	dsp_setlpf1f(Lpf + LPF_MAGZ, St.lpf.mag, QMC_FREQ, init);
 
 	// init notch filter for gyroscope
 	dsp_setnotch2(&Flt, St.notch.gyrofrmin, 300.0, PID_FREQ, 1);

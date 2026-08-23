@@ -140,9 +140,9 @@
 				filter cut-off frequency */
 #define CUR_CUTOFF 10.0		/*!< battery current sensor
 				filter cut-off frequency */
-#define TEMP_TCOEF 0.5		/*!< PCB temperature filter
+#define TEMP_TCOEF 0.318	/*!< PCB temperature filter
 				time coefficient */
-#define VA_AVG_TCOEF 2.0	/*!< averaging low-pass filter
+#define VA_AVG_TCOEF 0.08	/*!< averaging low-pass filter
 				time coefficient for vectical
 				acceleration */
 #define BAT_SCALE 28.05		/*!< battery sensor voltage scale */
