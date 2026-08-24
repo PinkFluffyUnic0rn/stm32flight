@@ -376,7 +376,7 @@ int dsp_updatecomplv2(struct dsp_complv *comp,
 	double ra[3][3];
 	double rg[3][3];
 	double r[3][3];
-	double cr, sr, cp, sp;
+	double cr, sr, cp, sp, cy, sy;
 	double rollg, pitchg;
 
 	cr = cos(comp->r);	sr = sin(comp->r);
@@ -385,7 +385,7 @@ int dsp_updatecomplv2(struct dsp_complv *comp,
 	ra[0][0] = cp;	ra[0][1] = sp * sr;	ra[0][2] = sp * cr;
 	ra[1][0] = 0;	ra[1][1] = cr;		ra[1][2] = -sr;
 	ra[2][0] = -sp;	ra[2][1] = cp * sr;	ra[2][2] = cp * cr;
-
+/*
 	sr = sin(r0);	cr = cos(r0);
 	sp = sin(p0);	cp = cos(p0);
 
@@ -408,6 +408,35 @@ int dsp_updatecomplv2(struct dsp_complv *comp,
 		+ ra[2][1] * rg[1][1] + ra[2][2] * rg[2][1];
 	r[2][2] = ra[2][0] * rg[0][2]
 		+ ra[2][1] * rg[1][2] + ra[2][2] * rg[2][2];
+*/
+
+	sr = sin(r0);	cr = cos(r0);
+	sp = sin(p0);	cp = cos(p0);
+	sy = sin(y0);	cy = cos(y0);
+
+	rg[0][0] = cp * cy + sp * sr * sy;
+	rg[0][1] = -cp * sy + sp * sr * cy;
+	rg[0][2] = sp * cr;
+
+	rg[1][0] = cr * sy;
+	rg[1][1] = cr * cy;
+	rg[1][2] = -sr;
+
+	rg[2][0] = -sp * cy + cp * sr * sy;
+	rg[2][1] = sp * sy + cp * sr * cy;
+	rg[2][2] = cp * cr;
+
+	r[0][0] = ra[0][0] * rg[0][0] + ra[0][1] * rg[1][0] + ra[0][2] * rg[2][0];
+	r[0][1] = ra[0][0] * rg[0][1] + ra[0][1] * rg[1][1] + ra[0][2] * rg[2][1];
+	r[0][2] = ra[0][0] * rg[0][2] + ra[0][1] * rg[1][2] + ra[0][2] * rg[2][2];
+
+	r[1][0] = ra[1][1] * rg[1][0] + ra[1][2] * rg[2][0];
+	r[1][1] = ra[1][1] * rg[1][1] + ra[1][2] * rg[2][1];
+	r[1][2] = ra[1][1] * rg[1][2] + ra[1][2] * rg[2][2];
+
+	r[2][0] = ra[2][0] * rg[0][0] + ra[2][1] * rg[1][0] + ra[2][2] * rg[2][0];
+	r[2][1] = ra[2][0] * rg[0][1] + ra[2][1] * rg[1][1] + ra[2][2] * rg[2][1];
+	r[2][2] = ra[2][0] * rg[0][2] + ra[2][1] * rg[1][2] + ra[2][2] * rg[2][2];
 
 	pitchg = atan2(-r[2][0],
 		sqrt(r[2][1] * r[2][1] + r[2][2] * r[2][2]));

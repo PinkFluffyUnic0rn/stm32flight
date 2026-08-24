@@ -208,7 +208,7 @@ int updateposition(double dt)
 	// calculated from acceleromer readings through some
 	// trigonometry.
 	if (St.feature.matrixatt != 0) {
-		dsp_updatecomplv2(&Cmplv, gy * dt, gx * dt, gy * dt,
+		dsp_updatecomplv2(&Cmplv, gy * dt, gx * dt, -gz * dt,
 			atan2(-ax, az),
 			atan2(ay, sqrt(ax * ax + az * az)),
 			&roll, &pitch);
