@@ -4,10 +4,10 @@ adj acc z 0
 adj acc xtscale 0
 adj acc ytscale 0
 adj acc ztscale 0.00058
-adj althold coefa 0
+adj althold coefa 3.484
 adj althold coefb 0
-adj althold coefc 0
-adj althold hover 0.64
+adj althold coefc 0.15
+adj althold hover 0.287
 adj althold tiltcoefmax 0.25
 adj pitch 0.01
 adj roll 0
@@ -15,15 +15,15 @@ adj yaw 0
 adj bat scale 1
 adj curr offset -17
 adj curr scale 412.5
-adj gyro x 0.945184
-adj gyro y 0.795486
+adj gyro x 1.445184
+adj gyro y 0.595486
 adj gyro z 0.414855
-adj mag x0 0.077877
-adj mag y0 -0.055068
-adj mag z0 0.047812
+adj mag x0 0.173815
+adj mag y0 -0.076065
+adj mag z0 -0.041577
 adj mag decl 0.322
-adj mag xscale 0.965043
-adj mag yscale 0.975738
+adj mag xscale 0.960479
+adj mag yscale 0.957427
 adj mag zscale 1
 adj mag xthscale 0
 adj mag ythscale 0
@@ -57,10 +57,10 @@ lpf accel 100
 lpf d 100
 lpf gyro 100
 lpf mag 50
-notch gyrovbat 7.2
-notch gyrofrmax 358
-notch gyrofrmin 170
-log freq 4000
+notch gyrovbat 17
+notch gyrofrmax 2038
+notch gyrofrmin 220
+log freq 128
 log recsize 8
 log record 0 none
 log record 1 none
@@ -110,21 +110,21 @@ pid climbrate p 0.6
 pid feature attimax 0.1
 pid feature thrimax 0.1
 pid feature iscaling 0.51
-pid stilt d 0.003333
-pid stilt i 17.280017
-pid stilt p 0.48
+pid stilt d 0.001667
+pid stilt i 8.640009
+pid stilt p 0.24
 pid throttle d 0
-pid throttle i 6.5
-pid throttle p 6.5
+pid throttle i 3
+pid throttle p 3
 pid syaw d 0
 pid syaw i 0
-pid syaw p 3
+pid syaw p 1.5
 pid yaw d 0
 pid yaw i 0
 pid yaw p 1.5
 pid pos d 0
 pid pos i 0
-pid pos p 0.1
+pid pos p 1
 pid speed d 0
 pid speed i 0
-pid speed p 0.1
+pid speed p 5

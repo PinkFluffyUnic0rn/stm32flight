@@ -60,7 +60,7 @@ lpf mag 50
 notch gyrovbat 7.2
 notch gyrofrmax 358
 notch gyrofrmin 170
-log freq 4000
+log freq 128
 log recsize 8
 log record 0 none
 log record 1 none

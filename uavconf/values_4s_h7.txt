@@ -60,7 +60,7 @@ lpf mag 50
 notch gyrovbat 17
 notch gyrofrmax 2038
 notch gyrofrmin 220
-log freq 4000
+log freq 128
 log recsize 8
 log record 0 none
 log record 1 none
@@ -127,4 +127,4 @@ pid pos i 0
 pid pos p 1
 pid speed d 0
 pid speed i 0
-pid speed p 0.9
+pid speed p 5
