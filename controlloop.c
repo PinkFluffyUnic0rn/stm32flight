@@ -564,8 +564,35 @@ int updatecorrection(double dt, struct corvals *cor)
 		writelog(LOG_PITCHS_PID, cor->pitch);
 		writelog(LOG_PITCHS_PIDI, Pid[PID_PITCHS].i);
 	}
-			
-	if (Yawspeedpid) {
+	
+	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
+			&& M10_HASFIX(Gnss.quality)
+			&& Gnssmode == GNSSMODE_POS) {
+		double dlat, dlon, dir;
+
+		dlat = Pitchtarget - dsp_getcompl(Cmpl + CMPL_LAT);
+		dlon = Rolltarget - dsp_getcompl(Cmpl + CMPL_LON);
+
+		if (dlat * dlat + dlon * dlon > 1.0)
+			dir = atan2(dlon, dlat);
+		else
+			dir = 0.0;
+
+		// if in double loop mode for yaw, first use yaw value
+		// calcualted using magnetometer and yaw target got from
+		// ELRS remote to update yaw POSITION PID controller and
+		// get it's next correciton value.
+		cor->yaw = dsp_pidbl(Pid + PID_YAWP, dir, yaw);
+
+		writelog(LOG_YAW_PID, cor->yaw);
+
+		// then use this value to update yaw speed PID
+		// controller and get next yaw SPEED correction value
+		cor->yaw = dsp_pidbl(Pid + PID_YAWS, cor->yaw, -gz);
+
+		writelog(LOG_YAWS_PID, cor->yaw);
+	}
+	else if (Yawspeedpid) {
 		// if single PID loop mode for yaw is used just use
 		// rotation speed values around axis Z to upadte yaw PID
 		// controller and get next yaw correciton value
