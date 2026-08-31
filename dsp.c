@@ -369,6 +369,7 @@ int dsp_getcomplv2(struct dsp_complv *comp, double *r, double *p)
 	return 0;
 }
 
+/*
 int dsp_updatecomplv2(struct dsp_complv *comp,
 	double r0, double p0, double y0, double r1, double p1,
 	double *ro, double *po)
@@ -385,30 +386,6 @@ int dsp_updatecomplv2(struct dsp_complv *comp,
 	ra[0][0] = cp;	ra[0][1] = sp * sr;	ra[0][2] = sp * cr;
 	ra[1][0] = 0;	ra[1][1] = cr;		ra[1][2] = -sr;
 	ra[2][0] = -sp;	ra[2][1] = cp * sr;	ra[2][2] = cp * cr;
-/*
-	sr = sin(r0);	cr = cos(r0);
-	sp = sin(p0);	cp = cos(p0);
-
-	rg[0][0] = cp;	rg[0][1] = sp * sr;	rg[0][2] = sp * cr;
-	rg[1][0] = 0;	rg[1][1] = cr;		rg[1][2] = -sr;
-	rg[2][0] = -sp;	rg[2][1] = cp * sr;	rg[2][2] = cp * cr;
-
-	r[0][0] = ra[0][0] * rg[0][0] + ra[0][2] * rg[2][0];
-	r[0][1] = ra[0][0] * rg[0][1]
-		+ ra[0][1] * rg[1][1] + ra[0][2] * rg[2][1];
-	r[0][2] = ra[0][0] * rg[0][2]
-		+ ra[0][1] * rg[1][2] + ra[0][2] * rg[2][2];
-
-	r[1][0] = ra[1][2] * rg[2][0];
-	r[1][1] = ra[1][1] * rg[1][1] + ra[1][2] * rg[2][1];
-	r[1][2] = ra[1][1] * rg[1][2] + ra[1][2] * rg[2][2];
-
-	r[2][0] = ra[2][0] * rg[0][0] + ra[2][2] * rg[2][0];
-	r[2][1] = ra[2][0] * rg[0][1]
-		+ ra[2][1] * rg[1][1] + ra[2][2] * rg[2][1];
-	r[2][2] = ra[2][0] * rg[0][2]
-		+ ra[2][1] * rg[1][2] + ra[2][2] * rg[2][2];
-*/
 
 	sr = sin(r0);	cr = cos(r0);
 	sp = sin(p0);	cp = cos(p0);
@@ -447,6 +424,83 @@ int dsp_updatecomplv2(struct dsp_complv *comp,
 
 	*ro = comp->r;
 	*po = comp->p;
+
+	return 0;
+}
+*/
+
+int dsp_updatecomplv2(struct dsp_complv *comp,
+	double r0, double p0, double y0,
+	double r1, double p1, double y1,
+	double *ro, double *po, double *yo)
+{
+	double ra[3][3];
+	double rg[3][3];
+	double r[3][3];
+	double cr, sr, cp, sp, cy, sy;
+	double rollg, pitchg, yawg;
+
+	cr = cos(comp->r);	sr = sin(comp->r);
+	cp = cos(comp->p);	sp = sin(comp->p);
+	cy = cos(comp->y);	sy = sin(comp->y);
+
+	ra[0][0] = cp * cy;
+	ra[0][1] = sp * sr * sy - sy * cr;
+	ra[0][2] = sp * cr * cy + sr * sy;
+
+	ra[1][0] = sy * cp;
+	ra[1][1] = sp * sr * sy + cr * cy;
+	ra[1][2] = sp * sy * cr - sr * cy;
+
+	ra[2][0] = -sp;
+	ra[2][1] = sr * cp;
+	ra[2][2] = cp * cr;
+
+	sr = sin(r0);	cr = cos(r0);
+	sp = sin(p0);	cp = cos(p0);
+	sy = sin(y0);	cy = cos(y0);
+
+	rg[0][0] = cp * cy;
+	rg[0][1] = sp * sr * sy - sy * cr;
+	rg[0][2] = sp * cr * cy + sr * sy;
+
+	rg[1][0] = sy * cp;
+	rg[1][1] = sp * sr * sy + cr * cy;
+	rg[1][2] = sp * sy * cr - sr * cy;
+
+	rg[2][0] = -sp;
+	rg[2][1] = sr * cp;
+	rg[2][2] = cp * cr;
+
+	r[0][0] = ra[0][0] * rg[0][0] + ra[0][1] * rg[1][0] + ra[0][2] * rg[2][0];
+	r[0][1] = ra[0][0] * rg[0][1] + ra[0][1] * rg[1][1] + ra[0][2] * rg[2][1];
+	r[0][2] = ra[0][0] * rg[0][2] + ra[0][1] * rg[1][2] + ra[0][2] * rg[2][2];
+
+	r[1][0] = ra[1][0] * rg[0][0] + ra[1][1] * rg[1][0] + ra[1][2] * rg[2][0];
+	r[1][1] = ra[1][0] * rg[0][1] + ra[1][1] * rg[1][1] + ra[1][2] * rg[2][1];
+	r[1][2] = ra[1][0] * rg[0][2] + ra[1][1] * rg[1][2] + ra[1][2] * rg[2][2];
+
+	r[2][0] = ra[2][0] * rg[0][0] + ra[2][1] * rg[1][0] + ra[2][2] * rg[2][0];
+	r[2][1] = ra[2][0] * rg[0][1] + ra[2][1] * rg[1][1] + ra[2][2] * rg[2][1];
+	r[2][2] = ra[2][0] * rg[0][2] + ra[2][1] * rg[1][2] + ra[2][2] * rg[2][2];
+
+	pitchg = atan2(-r[2][0],
+		sqrt(r[2][1] * r[2][1] + r[2][2] * r[2][2]));
+	rollg = atan2(r[2][1], r[2][2]);
+	yawg = circf(atan2(r[1][0], r[0][0]));
+
+	if (fabs(yawg - y1) > M_PI) {
+		if (yawg < 0)	yawg += 2.0 * M_PI;
+		if (y1 < 0)	y1 += 2.0 * M_PI;
+	}
+
+	comp->r = comp->coef * rollg + (1.0 - comp->coef) * r1;
+	comp->p = comp->coef * pitchg + (1.0 - comp->coef) * p1;
+	comp->y = circf(comp->coef * yawg + (1.0 - comp->coef) * y1);
+
+	*ro = comp->r;
+	*po = comp->p;
+	*yo = comp->y;
 
 	return 0;
 }

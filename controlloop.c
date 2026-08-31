@@ -211,29 +211,35 @@ int updateposition(double dt)
 		dsp_updatecomplv2(&Cmplv, gy * dt, gx * dt, -gz * dt,
 			atan2(-ax, az),
 			atan2(ay, sqrt(ax * ax + az * az)),
-			&roll, &pitch);
+			heading(
+				dsp_getlpf(Lpf + LPF_ROLL),
+				-dsp_getlpf(Lpf + LPF_PITCH),
+				Magdata.fx, Magdata.fy, Magdata.fz),
+			&roll, &pitch, &yaw);
 	}
 	else {
 		roll = dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
 			atan2(-ax, az));
 		pitch = dsp_updatecompl(Cmpl + CMPL_PITCH, gx * dt,
 			atan2(ay, sqrt(ax * ax + az * az)));
+		yaw = dsp_updatecirccompl(Cmpl + CMPL_YAW, -gz * dt,
+			heading(roll, -pitch,
+				Magdata.fx, Magdata.fy, Magdata.fz));
 	}
 	
 	roll = dsp_updatelpf(Lpf + LPF_ROLL,
 		roll - St.adj.att0.roll);
+
 	pitch = dsp_updatelpf(Lpf + LPF_PITCH,
 		pitch - St.adj.att0.pitch);
+
+	yaw = circf(dsp_updatelpf(Lpf + LPF_YAW,
+		yaw - St.adj.att0.yaw));
 
 	// update complimenraty filter for yaw axis and get next yaw
 	// value. First signal is the speed of the rotation around Z
 	// axis. Second signal is the heading value that is
 	// calculated from magnetometer readings.
-	yaw = dsp_updatelpf(Lpf + LPF_YAW,
-		circf(dsp_updatecirccompl(Cmpl + CMPL_YAW, -gz * dt,
-		heading(roll, -pitch,
-			Magdata.fx, Magdata.fy, Magdata.fz)) 
-			- St.adj.att0.yaw));
 
 	sr = sin(roll);		cr = cos(roll);
 	sp = sin(pitch);	cp = cos(pitch);
