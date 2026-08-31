@@ -2198,7 +2198,7 @@ static int mmc_init()
 		return (-1);
 
 	d.hi2c = pconf_hi2cs + pconf_i2cidx(magconf.iface.hi2c);
-	d.freq = MMC_FREQ_100;
+	d.freq = MMC_FREQ_200;
 	d.bw = MMC_BW_200;
 
 	return mmc_initdevice(&d, Dev + DEV_MAG);

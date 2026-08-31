@@ -121,7 +121,7 @@ pid syaw i 0
 pid syaw p 3
 pid yaw d 0
 pid yaw i 0
-pid yaw p 1.5
+pid yaw p 25
 pid pos d 0
 pid pos i 0
 pid pos p 0.1
