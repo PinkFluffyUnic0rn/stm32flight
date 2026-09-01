@@ -630,6 +630,8 @@ int autopilotupdate(int ms)
 	struct trackpoint *nextpoint;
 	double dt;
 
+	return 0;
+
 	dt = ms / (double) TICKSPERSEC;
 	
 	// divide-by-zero protection
@@ -751,37 +753,23 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	} else
 		slottimeout = ELRS_PUSHTIMEOUT;
 
-	// AUTOPILOT channel is used to turn on/off autopilot
-	// if it is greater than 0, autopilot is on, otherwise
-	// it is turned off
-	Autopilot = 0;
-/*
-	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.0) {
-		if (Autopilot == 0)
-			Curpoint = 0;
-
-		Autopilot = 1;
-	}
-	else
-		Autopilot = 0;
-*/		
-
 	// set magnetometer stabilization mode, if YAWMODE channel has
 	// value more than 0, set gyroscope only stabilization mode 
 	// otherwise
-	if (Autopilot) {
-	//	Yawtarget = 0.0;
-		Yawspeedpid = 0;
-	}
-	else if (cd->chf[ERLS_CH_YAWMODE] > 0.0
+	if (cd->chf[ERLS_CH_YAWMODE] > 0.0
 			&& Dev[DEV_MAG].status == DEVSTATUS_INIT) {
-		Yawspeedpid = 0;
 
 		// in magnetometer stabilization mode absolute yaw
 		// value is stabilized, so target should be integrated
-		Yawtarget = circf(Yawtarget
-			+ cd->chf[ERLS_CH_YAW] * dt * M_PI
-				* St.ctrl.yawrate);
+		if (Yawspeedpid)
+			Yawtarget = dsp_getlpf(Lpf + LPF_YAW);
+		else {
+			Yawtarget = circf(Yawtarget
+				+ cd->chf[ERLS_CH_YAW] * dt * M_PI
+					* St.ctrl.yawrate);
+		}
+
+		Yawspeedpid = 0;
 	}
 	else {
 		Yawspeedpid = 1;
@@ -793,10 +781,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// than 25, set climbrate stabilization mode if THRMODE channel
 	// has value between -25 and 25, set vertical acceleration mode
 	// if THRMODE channel value is less than -25
-	if (Autopilot) {
-		Altmode = ALTMODE_POS;
-	}
-	else if (cd->chf[ERLS_CH_THRMODE] > 0.25
+	if (cd->chf[ERLS_CH_THRMODE] > 0.25
 			&& Dev[DEV_BARO].status == DEVSTATUS_INIT) {
 		Altmode = ALTMODE_POS;
 		Thrust = (cd->chf[ERLS_CH_THRUST] + 1.0)
@@ -841,16 +826,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	// value more than 25, set gyroscope only stabilization mode, if
 	// ATTMODE channel has value between -25 and 25, disarm if
 	// channel ATTMODE value is less than -25
-/*
-	if (autopilot) {
-		en = 1;
-		speedpid = 0;
-
-		Rolltarget = cd->chf[ERLS_CH_ROLL]
-			* (M_PI * St.rollmax);
-	}
-	else 
-	*/	
 	if (cd->chf[ERLS_CH_ATTMODE] > 0.25) {
 		int changed;
 
@@ -858,9 +833,13 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 		En = 1;
 		Speedpid = 0;
-		
-		if (changed)	
+	
+		if (changed) {
+			if (Yawspeedpid == 0)
+				Yawtarget = dsp_getlpf(Lpf + LPF_YAW);
+
 			setstabilize(0);
+		}
 
 		// set pitch/roll targets based on
 		// channels 1-2 values (it's a joystick on most remotes)
@@ -881,8 +860,12 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		En = 1;
 		Speedpid = 1;
 		
-		if (changed)	
+		if (changed) {
+			if (Yawspeedpid == 0)
+				Yawtarget = dsp_getlpf(Lpf + LPF_YAW);
+
 			setstabilize(0);
+		}
 
 		// set pitch/roll targets based on
 		// channels 1-2 values (it's a joystick on most remotes)
