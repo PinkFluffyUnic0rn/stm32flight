@@ -590,6 +590,11 @@ int updatecorrection(double dt, struct corvals *cor)
 		// get it's next correciton value.
 		cor->yaw = dsp_pidbl(Pid + PID_YAWP, dir, yaw);
 
+		if (circf(dir - yaw) > M_PI)
+			cor->yaw *= 0.25;
+		else if (circf(dir - yaw) > M_PI * 0.5)
+			cor->yaw *= 0.5;
+		
 		writelog(LOG_YAW_PID, cor->yaw);
 
 		// then use this value to update yaw speed PID
