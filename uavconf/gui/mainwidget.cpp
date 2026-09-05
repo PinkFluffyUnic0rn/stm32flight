@@ -1013,8 +1013,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"Features", "dsp",
-		{"tilt I-term scale", "attitude maximum I", "throttle maximum I" },
-		{"pid feature iscaling", "pid feature attimax", "pid feature thrimax" },
+		{"tilt I-term scale", "attitude maximum I", "throttle maximum I", "altitude target clamp", "yaw target clamp" },
+		{"pid feature iscaling", "pid feature attimax", "pid feature thrimax", "pid feature altclamp", "pid feature yawclamp" },
 		cmdstree, true, this), 2, 0, 1, 2);
 
 	tabs["pid"]->add_group(new float_settings_group(nullptr,

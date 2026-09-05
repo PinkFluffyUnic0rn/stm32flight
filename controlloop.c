@@ -575,6 +575,7 @@ int updatecorrection(double dt, struct corvals *cor)
 			&& M10_HASFIX(Gnss.quality)
 			&& Gnssmode == GNSSMODE_POS) {
 		double dlat, dlon, dir;
+		double tdist, yawclamp;;
 
 		dlat = Pitchtarget - dsp_getcompl(Cmpl + CMPL_LAT);
 		dlon = Rolltarget - dsp_getcompl(Cmpl + CMPL_LON);
@@ -584,16 +585,20 @@ int updatecorrection(double dt, struct corvals *cor)
 		else
 			dir = 0.0;
 
+		tdist = circf(dir - yaw);
+		yawclamp = M_PI * St.pid.feature.yawclamp;
+
+		if (fabs(tdist) > yawclamp) {
+			dir = (tdist < 0.0)
+				? circf(yaw - yawclamp)
+				: circf(yaw + yawclamp);
+		}
+
 		// if in double loop mode for yaw, first use yaw value
 		// calcualted using magnetometer and yaw target got from
 		// ELRS remote to update yaw POSITION PID controller and
 		// get it's next correciton value.
 		cor->yaw = dsp_pidbl(Pid + PID_YAWP, dir, yaw);
-
-		if (circf(dir - yaw) > M_PI)
-			cor->yaw *= 0.25;
-		else if (circf(dir - yaw) > M_PI * 0.5)
-			cor->yaw *= 0.5;
 		
 		writelog(LOG_YAW_PID, cor->yaw);
 

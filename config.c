@@ -315,6 +315,16 @@ static struct settingnode Sttree = {
 							.type = NODETYPE_FLOAT,
 							.f = &(St.pid.feature.thrimax)
 						},
+						&(struct settingnode) {
+							.token = "altclamp",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.feature.altclamp)
+						},
+						&(struct settingnode) {
+							.token = "yawclamp",
+							.type = NODETYPE_FLOAT,
+							.f = &(St.pid.feature.yawclamp)
+						},
 						NULL
 					}
 				},

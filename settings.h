@@ -235,7 +235,13 @@ struct __attribute__((aligned(32))) persettings
 		struct { double p, i, d; } alt;
 		struct { double p, i, d; } speed;
 		struct { double p, i, d; } pos;
-		struct { double iscale, attimax, thrimax; } feature;
+		struct { 
+			double iscale;
+			double attimax;
+			double thrimax;
+			double altclamp;
+			double yawclamp;
+		} feature;
 	} pid;
 
 	struct {
