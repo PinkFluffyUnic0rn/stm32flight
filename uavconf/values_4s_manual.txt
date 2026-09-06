@@ -107,9 +107,11 @@ pid tilt p 9
 pid climbrate d 0
 pid climbrate i 0
 pid climbrate p 0.6
+pid feature altclamp 1.5
 pid feature attimax 0.1
 pid feature thrimax 0.1
 pid feature iscaling 0.51
+pid feature yawclamp 0.125
 pid stilt d 0.001667
 pid stilt i 8.640009
 pid stilt p 0.24

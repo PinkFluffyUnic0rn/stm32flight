@@ -617,11 +617,24 @@ int updatecorrection(double dt, struct corvals *cor)
 		writelog(LOG_YAW_PID, cor->yaw);
 	}
 	else {
+		double tdist, yawclamp, yt;
+
+		tdist = circf(Yawtarget - yaw);
+		yawclamp = M_PI * St.pid.feature.yawclamp;
+			
+		yt = Yawtarget;
+
+		if (fabs(tdist) > yawclamp) {
+			yt = (tdist < 0.0)
+				? circf(yaw - yawclamp)
+				: circf(yaw + yawclamp);
+		}
+
 		// if in double loop mode for yaw, first use yaw value
 		// calcualted using magnetometer and yaw target got from
 		// ELRS remote to update yaw POSITION PID controller and
 		// get it's next correciton value.
-		cor->yaw = dsp_pidbl(Pid + PID_YAWP, Yawtarget, yaw);
+		cor->yaw = dsp_pidbl(Pid + PID_YAWP, yt, yaw);
 	
 		writelog(LOG_YAW_PID, cor->yaw);
 
