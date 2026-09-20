@@ -28,18 +28,6 @@ Configuration commands and settings are on
 * Terminal configuration tool.
 * Qt5 based GUI configuration tool for desktop and android.
 
-STM32F405 based board
-=======
- * MCU: STM32F405RGT6
- * Crystall oscillator: 20 Mhz
- * DC-DC converter for control board: TPS5430 (external)
- * Control board voltage regulator: LDL1117S33R-3.3
- * Accelerometer/Gyroscope: ICM-42688-P
- * Magnetometer: QMC5883L
- * Remote control: ERLS CRSF receiver
- * Telemetry/debug/config: ESP8285
- * Barometer: DPS368
-
 STM32H723 based board
 =======
 [Schematic](https://github.com/PinkFluffyUnic0rn/stm32flight/blob/main/pcb/H7/schematic.pdf)
@@ -49,11 +37,26 @@ STM32H723 based board
  * DC-DC converter for control board: TPS5430
  * Control board voltage regulator: LDL1117S33R
  * Accelerometer/Gyroscope: ICM-42688-P
- * Magnetometer: QMC5883L
- * External magnetometer: LIS3MDL
+ * Barometer: DPS368
+ * Magnetometer: LIS3MDL
+ * External magnetometer: MMC5983MA
+ * Flight log storage: W25Q
+ * GNSS module: M10
  * Remote control: ERLS CRSF receiver
  * Telemetry/debug/config: ESP8285
+
+STM32F405 based board
+=======
+ * MCU: STM32F405RGT6
+ * Crystall oscillator: 20 Mhz
+ * DC-DC converter for control board: TPS5430 (external)
+ * Control board voltage regulator: LDL1117S33R-3.3
+ * Accelerometer/Gyroscope: ICM-42688-P
  * Barometer: DPS368
+ * Magnetometer: QMC5883L
+ * Flight log storage: W25Q
+ * Remote control: ERLS CRSF receiver
+ * Telemetry/debug/config: ESP8285
 
 The quadcopter used for testing
 ==========
