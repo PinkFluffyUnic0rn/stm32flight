@@ -55,6 +55,7 @@ STM32F405 based board
  * Barometer: DPS368
  * Magnetometer: QMC5883L
  * Flight log storage: W25Q
+ * GNSS module: M10
  * Remote control: ERLS CRSF receiver
  * Telemetry/debug/config: ESP8285
 
