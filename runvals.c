@@ -18,10 +18,10 @@ const char *Evnames[TEV_COUNT] = {
 	"autopilot"
 };
 
-//struct qmc_data Qmcdata;
 struct mag_data Magdata;
 struct imu_data Imudata;
 struct baro_data Barodata;
+struct lidar_data Lidardata;
 struct gnss_data Gnss;
 struct crsf_tele Tele;
 struct msp_osd Osd;
@@ -37,6 +37,7 @@ int Speedpid = 0;
 int Yawspeedpid = 0;
 int Hovermode = 0;
 int Elrs = 0;
+int Altref = 0;
 int Autopilot = 0;
 
 double Alt0 = 0.0;

@@ -144,7 +144,8 @@ struct pconf_uart {
 		PCONF_UARTUSAGE_GNSS,	/*!< used for GNSS device */
 		PCONF_UARTUSAGE_DEBUG,	/*!< used as debug channel */
 		PCONF_UARTUSAGE_IRC,	/*!< used for IRC VTX device */
-		PCONF_UARTUSAGE_MSP	/*!< used for MSP VTX device */
+		PCONF_UARTUSAGE_MSP,	/*!< used for MSP VTX device */
+		PCONF_UARTUSAGE_LIDAR	/*!< used for lidar device */
 	} usage;
 
 	struct pconf_pin rx;		/*!< RX pin */
@@ -294,6 +295,17 @@ struct pconf_vtx {
 						tramp protocol */
 		PCONF_VTXTYPE_MSP	/*!< VTX that uses MSP
 						protocol */
+	} type;
+
+	struct pconf_iface iface;	/*!< used interface */
+};
+
+/**
+* @brief Lidar device
+*/
+struct pconf_lidar {
+	enum PCONF_LIDARTYPE {
+		PCONF_LIDARTYPE_TFLUNA
 	} type;
 
 	struct pconf_iface iface;	/*!< used interface */

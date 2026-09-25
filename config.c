@@ -1360,6 +1360,15 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 			(double) dsp_getcompl(Cmpl + CMPL_CLIMBRATE),
 			(double) dsp_getcompl(Cmpl + CMPL_ALT),
 			(double) Alt0);
+
+		snprintf(out + strlen(out), INFOLEN - strlen(out),
+			"lidar value: %f; lidar value is %s\r\n",
+			(double) Lidardata.alt,
+			Lidardata.isvalid ? "valid" : "not valid");
+
+		snprintf(out + strlen(out), INFOLEN - strlen(out),
+			"altitude over ground: %f\r\n",
+			(double) dsp_getlpf(Lpf + LPF_GNDALT));
 	}
 	else if (strcmp(toks[1], "dev") == 0)
 		sprintdevs(out);

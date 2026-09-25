@@ -142,6 +142,7 @@ int setstabilize(int init)
 	dsp_setunity(Lpf + LPF_FA, init);
 	dsp_setunity(Lpf + LPF_SA, init);
 	dsp_setunity(Lpf + LPF_ALT, init);
+	dsp_setunity(Lpf + LPF_GNDALT, init);
 	dsp_setunity(Lpf + LPF_SPEED, init);
 	dsp_setunity(Lpf + LPF_LATM, init);
 	dsp_setunity(Lpf + LPF_LONM, init);
@@ -358,6 +359,14 @@ int updateposition(double dt)
 
 	// compensate thrust for altitude
 	alt -= altcor;	
+
+	// get altitude over ground using lidar
+	// readings compensated by tilt angle
+	dsp_updatelpf(Lpf + LPF_GNDALT,
+		Lidardata.alt * cos(pitch) * cos(roll));
+
+	// write altitude over ground into log
+	writelog(LOG_GNDALT, dsp_getlpf(Lpf + LPF_GNDALT));
 
 	// if GNSS is locked, use speed to compensate dynamic pressure
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
@@ -650,8 +659,14 @@ int updatecorrection(double dt, struct corvals *cor)
 		// got from barometer readings and target altitude from
 		// ELRS remote to update altitude PID controller and
 		// get it's next correction value
-		cor->thrust = dsp_pidbl(Pid + PID_ALT, Thrust,
-			dsp_getcompl(Cmpl + CMPL_ALT) - Alt0);
+		if (Altref && Dev[DEV_LIDAR].status == DEVSTATUS_INIT) {
+			cor->thrust = dsp_pidbl(Pid + PID_ALT, Thrust,
+				dsp_getlpf(Lpf + LPF_GNDALT));
+		}
+		else {
+			cor->thrust = dsp_pidbl(Pid + PID_ALT, Thrust,
+				dsp_getcompl(Cmpl + CMPL_ALT) - Alt0);
+		}
 		
 		writelog(LOG_ALT_PID, cor->thrust);
 

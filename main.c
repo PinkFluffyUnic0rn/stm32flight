@@ -35,6 +35,7 @@
 #include "uartconf.h"
 #include "irc.h"
 #include "msp.h"
+#include "tfluna.h"
 #include "dshot.h"
 
 /**
@@ -69,6 +70,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 	if (DEVITENABLED(Dev[DEV_UART].status))
 		Dev[DEV_UART].interrupt(Dev[DEV_UART].priv, huart);
+
+	if (DEVITENABLED(Dev[DEV_LIDAR].status))
+		Dev[DEV_LIDAR].interrupt(Dev[DEV_LIDAR].priv, huart);
 }
 
 /**
@@ -905,6 +909,11 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		Gnssmode = GNSSMODE_NONE;
 	}
 
+	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.0)
+		Altref = 1;
+	else
+		Altref = 0;
+
 	// disable thrust when motors should be
 	// disabled, for additional safety
 	if (En < 0.5)
@@ -980,6 +989,22 @@ int m10msg(struct m10_data *nd)
 	return 0;
 }
 
+int lidarmsg(struct tf_data *td)
+{	
+	if (td->amp < 100 || td->amp == 65535)
+		Lidardata.isvalid = 0;
+	else
+		Lidardata.isvalid = 1;
+
+	Lidardata.alt = td->dist;
+	Lidardata.temp = td->temp;
+	
+	writelog(LOG_LIDAR_ALT, Lidardata.alt);
+	writelog(LOG_LIDAR_VALID, (double) Lidardata.isvalid);
+
+	return 0;
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
 	static int elrsus = 0;
@@ -987,6 +1012,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 	char cmd[CMDSIZE];
 	struct crsf_data cd;
 	struct m10_data nd;
+	struct tf_data td;
 	int c, i;
 
 	if (htim->Instance != pconf_schedhtim->Instance)
@@ -1017,14 +1043,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 			CMDSIZE) >= 0) {
 		runcommand(Dev + DEV_RF, cmd);
 	}
-
+/*
 	// poll for configuration and telemtry commands
 	// from debug uart connection
 	if (Dev[DEV_UART].read(Dev[DEV_UART].priv, &cmd,
 			UART_CMDSIZE) >= 0) {
 		runcommand(Dev + DEV_UART, cmd);
 	}
-
+*/
 	// read the ELRS remote's packet
 	if (Dev[DEV_CRSF].read(Dev[DEV_CRSF].priv, &cd,
 			sizeof(struct crsf_data)) >= 0) {
@@ -1036,6 +1062,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 	if (Dev[DEV_GNSS].read(Dev[DEV_GNSS].priv, &nd,
 			sizeof(struct m10_data)) >= 0) {
 		m10msg(&nd);
+	}
+
+	// check the M10 messages
+	if (Dev[DEV_LIDAR].read(Dev[DEV_LIDAR].priv, &td,
+			sizeof(struct tf_data)) >= 0) {
+		lidarmsg(&td);
 	}
 }
 

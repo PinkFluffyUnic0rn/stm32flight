@@ -311,7 +311,7 @@ const struct pconf_uart uarts[] = {
 	},
 	{
 		.inst = UART4,
-		.usage = PCONF_UARTUSAGE_DEBUG,
+		.usage = PCONF_UARTUSAGE_LIDAR,
 		.rx = {
 			.inst = GPIOD,
 			.idx = GPIO_PIN_0
@@ -385,8 +385,6 @@ const struct pconf_bar barconf = {
 };
 
 const struct pconf_mag magconf = {
-//	.type = PCONF_MAGTYPE_QMC5883L,
-//	.type = PCONF_MAGTYPE_LIS3MDL,
 	.type = PCONF_MAGTYPE_MMC5983MA,
 	.iface = {
 		.type = PCONF_IFACETYPE_I2C,
@@ -452,6 +450,14 @@ const struct pconf_vtx vtxconf = {
 	.iface = {
 		.type = PCONF_IFACETYPE_UART,
 		.huart = UART5
+	}
+};
+
+const struct pconf_lidar lidarconf = {
+	.type = PCONF_LIDARTYPE_TFLUNA,
+	.iface = {
+		.type = PCONF_IFACETYPE_UART,
+		.huart = UART4
 	}
 };
 

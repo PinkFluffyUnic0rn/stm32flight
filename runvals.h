@@ -57,24 +57,25 @@ enum LPF_ID {
 	LPF_FA		= 8,	/*!< forward acceleration low-pass filter */
 	LPF_SA		= 9,	/*!< sideward acceleration low-pass filter */
 	LPF_ALT		= 10,	/*!< altitude low-pass filter */
-	LPF_BARTEMP	= 11,	/*!< temperature low-pass filter */
-	LPF_IMUTEMP	= 12,	/*!< IMU temperature unity filter */
-	LPF_ACCX	= 13,	/*!< accelerometer x low-pass filter */
-	LPF_ACCY	= 14,	/*!< accelerometer y low-pass filter */
-	LPF_ACCZ	= 15,	/*!< accelerometer z low-pass filter */
-	LPF_GYROX	= 16,	/*!< gyroscope x low-pass filter */
-	LPF_GYROY	= 17,	/*!< gyroscope y low-pass filter */
-	LPF_GYROZ	= 18,	/*!< gyroscope z low-pass filter */
-	LPF_MAGX	= 19,	/*!< gyroscope x low-pass filter */
-	LPF_MAGY	= 20,	/*!< gyroscope y low-pass filter */
-	LPF_MAGZ	= 21,	/*!< gyroscope z low-pass filter */
-	LPF_ROLL	= 22,	/*!< roll unity filter */
-	LPF_PITCH	= 23,	/*!< pitch unity filter */
-	LPF_YAW		= 24,	/*!< yaw unity filter */
-	LPF_SPEED	= 25,	/*!< speed unity filter */
-	LPF_LATM	= 26,	/*!< latitude in meters unity filter */
-	LPF_LONM	= 27,	/*!< longitude in meters unity filter */
-	LPF_COUNT	= 28	/*!< low-pass filters count */
+	LPF_GNDALT	= 11,	/*!< altitude over ground low-pass filter */
+	LPF_BARTEMP	= 12,	/*!< temperature low-pass filter */
+	LPF_IMUTEMP	= 13,	/*!< IMU temperature unity filter */
+	LPF_ACCX	= 14,	/*!< accelerometer x low-pass filter */
+	LPF_ACCY	= 15,	/*!< accelerometer y low-pass filter */
+	LPF_ACCZ	= 16,	/*!< accelerometer z low-pass filter */
+	LPF_GYROX	= 17,	/*!< gyroscope x low-pass filter */
+	LPF_GYROY	= 18,	/*!< gyroscope y low-pass filter */
+	LPF_GYROZ	= 19,	/*!< gyroscope z low-pass filter */
+	LPF_MAGX	= 20,	/*!< gyroscope x low-pass filter */
+	LPF_MAGY	= 21,	/*!< gyroscope y low-pass filter */
+	LPF_MAGZ	= 22,	/*!< gyroscope z low-pass filter */
+	LPF_ROLL	= 23,	/*!< roll unity filter */
+	LPF_PITCH	= 24,	/*!< pitch unity filter */
+	LPF_YAW		= 25,	/*!< yaw unity filter */
+	LPF_SPEED	= 26,	/*!< speed unity filter */
+	LPF_LATM	= 27,	/*!< latitude in meters unity filter */
+	LPF_LONM	= 28,	/*!< longitude in meters unity filter */
+	LPF_COUNT	= 29	/*!< low-pass filters count */
 };
 
 /**
@@ -229,6 +230,12 @@ struct gnss_data {
 	uint8_t satellites;		/*!< satellites count */
 };
 
+struct lidar_data {
+	double alt;
+	double temp;
+	int isvalid;
+};
+
 /**
 * @brief Autopilot track point
 */
@@ -297,6 +304,7 @@ extern const char *Evnames[TEV_COUNT];
 extern struct mag_data Magdata;		/*!< magnetometer data */
 extern struct imu_data Imudata;		/*!< IMU data */
 extern struct baro_data Barodata;	/*!< Barometer data */
+extern struct lidar_data Lidardata;	/*!< lidar data */
 extern struct gnss_data Gnss;		/*!< GNSS data */
 extern struct crsf_tele Tele;		/*!< telemetry values */
 extern struct msp_osd Osd;		/*!< OSD values */
@@ -327,6 +335,8 @@ extern int Yawspeedpid;	/*!< 1 if only gyroscope if used for yaw
 			stabilization, 0 if magnetometer is used */
 extern int Hovermode; 	/*!< hover mode, when throttle is
 			controlled relative to hover throttle */
+extern int Altref;	/*!< 1 if altitude referenced from ground,
+			0 if altitude is barometric */
 extern int Autopilot;	/*!< autopilot mode, 1 when autopilot
 			is enabled, 0 otherwise */
 extern int Elrs; /*!< 1 when ELRS control is active (ELRS remote's

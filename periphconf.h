@@ -21,6 +21,7 @@
 #include "uartconf.h"
 #include "irc.h"
 #include "msp.h"
+#include "tfluna.h"
 #include "dshot.h"
 
 /**
@@ -36,7 +37,8 @@ enum DEV_ID {
 	DEV_UART	= 6,	/*!< UART debug device number */
 	DEV_VTX		= 7,	/*!< video TX device number */
 	DEV_DSHOT	= 8,	/*!< DShot-300 device number */
-	DEV_COUNT	= 9	/*!< character devices count */
+	DEV_LIDAR	= 9,	/*!< lidar device number */
+	DEV_COUNT	= 10	/*!< character devices count */
 };
 
 /**

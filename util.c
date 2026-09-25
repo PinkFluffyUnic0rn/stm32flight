@@ -31,7 +31,10 @@ int uartprintf(const char *format, ...)
 {
 	char buf[1024];
 	va_list args;
-	
+
+	if (Dev[DEV_UART].status != DEVSTATUS_INIT)
+		return 0;
+
 	va_start(args, format);
 
 	vsprintf(buf, format, args);

@@ -2055,6 +2055,35 @@ static void pconf_init_uart_irc(int i)
 		error_handler();
 }
 
+static void pconf_init_uart_lidar(int i)
+{
+	pconf_huarts[i].Instance = uarts[i].inst;
+	pconf_huarts[i].Init.BaudRate = 115200;
+	pconf_huarts[i].Init.WordLength = UART_WORDLENGTH_8B;
+	pconf_huarts[i].Init.StopBits = UART_STOPBITS_1;
+	pconf_huarts[i].Init.Parity = UART_PARITY_NONE;
+	pconf_huarts[i].Init.Mode = UART_MODE_TX_RX;
+	pconf_huarts[i].Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	pconf_huarts[i].Init.OverSampling = UART_OVERSAMPLING_16;
+	pconf_huarts[i].Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+	pconf_huarts[i].Init.ClockPrescaler = UART_PRESCALER_DIV1;
+//	pconf_huarts[i].AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+	pconf_huarts[i].AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
+	pconf_huarts[i].AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
+
+	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_SetTxFifoThreshold(pconf_huarts + i, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_SetRxFifoThreshold(pconf_huarts + i, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+		error_handler();
+
+	if (HAL_UARTEx_DisableFifoMode(pconf_huarts + i) != HAL_OK)
+		error_handler();
+}
+
 static void pconf_init_uart()
 {
 	int i;
@@ -2070,6 +2099,8 @@ static void pconf_init_uart()
 			pconf_init_uart_irc(i);
 		else if (uarts[i].usage == PCONF_UARTUSAGE_MSP)
 			pconf_init_uart_msp(i);
+		else if (uarts[i].usage == PCONF_UARTUSAGE_LIDAR)
+			pconf_init_uart_lidar(i);
 	}
 }
 
@@ -2368,6 +2399,33 @@ error:
 	uartprintf("failed to initialize VTX device\r\n");
 }
 
+static int tf_init()
+{
+	struct tf_device d;
+
+	if (lidarconf.iface.type != PCONF_IFACETYPE_UART)
+		return (-1);
+
+	d.huart = pconf_huarts + pconf_uartidx(lidarconf.iface.huart);
+
+	return tf_initdevice(&d, Dev + DEV_LIDAR);
+}
+
+static void lidar_init()
+{
+	if (lidarconf.type == PCONF_LIDARTYPE_TFLUNA) {
+		if (tf_init() < 0)
+			goto error;
+	}
+
+	uartprintf("%s initialized\r\n", Dev[DEV_LIDAR].name);
+
+	return;
+
+error:
+	uartprintf("failed to initialize lidar\r\n");
+}
+
 static void dshot_init()
 {
 	struct dshot_device d;
@@ -2445,7 +2503,7 @@ void pconf_init(void (*errhandler)(void))
 	pconf_batteryhadc = pconf_hadcs + pconf_adcidx(batconf.adc);
 	pconf_currenthadc = pconf_hadcs + pconf_adcidx(curconf.adc);
 
-	uartdev_init();
+//	uartdev_init();
 	imu_init();
 	baro_init();
 	mag_init();
@@ -2454,6 +2512,7 @@ void pconf_init(void (*errhandler)(void))
 	m10dev_init();
 	espdev_init();
 	vtx_init();
+	lidar_init();
 		
 	dshot_init();
 }
