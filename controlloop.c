@@ -142,6 +142,7 @@ int setstabilize(int init)
 	dsp_setunity(Lpf + LPF_FA, init);
 	dsp_setunity(Lpf + LPF_SA, init);
 	dsp_setunity(Lpf + LPF_ALT, init);
+	dsp_setunity(Lpf + LPF_LCLIMBRATE, init);
 	dsp_setunity(Lpf + LPF_GNDALT, init);
 	dsp_setunity(Lpf + LPF_SPEED, init);
 	dsp_setunity(Lpf + LPF_LATM, init);
@@ -179,6 +180,7 @@ int setstabilize(int init)
 int updateposition(double dt)
 {
 	static double prevalt = 0.0;
+	static double prevlalt = 0.0;
 	double sr, cr, sp, cp;
 	double roll, pitch, yaw;
 	double vx, vy, vz;
@@ -188,6 +190,7 @@ int updateposition(double dt)
 	double va;
 	double alt;
 	double altcor;
+	double vaccel;
 
 	// apply accelerometer offsets
 	ax = dsp_getlpf(Lpf + LPF_ACCX);
@@ -360,14 +363,6 @@ int updateposition(double dt)
 	// compensate thrust for altitude
 	alt -= altcor;	
 
-	// get altitude over ground using lidar
-	// readings compensated by tilt angle
-	dsp_updatelpf(Lpf + LPF_GNDALT,
-		Lidardata.alt * cos(pitch) * cos(roll));
-
-	// write altitude over ground into log
-	writelog(LOG_GNDALT, dsp_getlpf(Lpf + LPF_GNDALT));
-
 	// if GNSS is locked, use speed to compensate dynamic pressure
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
@@ -378,24 +373,42 @@ int updateposition(double dt)
 		altcor = St.adj.althold.altthc * sp * sp;
 		alt -= altcor;
 	}
-
-	// calculate climb rate from vertical acceleration and
-	// barometric altitude defference using complimentary filter
-	dsp_updatecompl(Cmpl + CMPL_CLIMBRATE,
-		9.80665 * (dsp_getlpf(Lpf + LPF_VAU) + Goffset - 1.0) * dt,
-			(dsp_getcompl(Cmpl + CMPL_ALT) - prevalt) / dt);
 	
 	// calculate presice altitiude from climb rate and
 	// barometric altitude using complimentary filter
 	dsp_updatecompl(Cmpl + CMPL_ALT,
 		dsp_getcompl(Cmpl + CMPL_CLIMBRATE) * dt, alt);
 
-	// store calculated alt for next calculation
+	// calculate climb rate from vertical acceleration and
+	// barometric altitude defference using complimentary filter
+	vaccel = 9.80665 * (dsp_getlpf(Lpf + LPF_VAU) + Goffset - 1.0) * dt;
+
+	dsp_updatecompl(Cmpl + CMPL_CLIMBRATE,
+		vaccel, (dsp_getcompl(Cmpl + CMPL_ALT) - prevalt) / dt);
+
+	// store calculated altitude for next calculation
 	prevalt = dsp_getcompl(Cmpl + CMPL_ALT);
 
 	// write climbrate and altitude values into log
 	writelog(LOG_CLIMBRATE, dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
 	writelog(LOG_ALT, dsp_getcompl(Cmpl + CMPL_ALT));
+	
+	// calculate presice altitiude from climb rate and
+	// lidar based altitude using complimentary filter
+	dsp_updatecompl(Cmpl + CMPL_GNDALT,
+		dsp_getcompl(Cmpl + CMPL_LCLIMBRATE) * dt,
+		Lidardata.alt * cos(pitch) * cos(roll));
+
+	// calculate climb rate from vertical acceleration and
+	// lidar based altitude difference using complimentary filter
+	dsp_updatecompl(Cmpl + CMPL_LCLIMBRATE,
+		vaccel, (dsp_getcompl(Cmpl + CMPL_GNDALT) - prevlalt) / dt);
+
+	// store calculated altitude for next calculation
+	prevlalt = dsp_getcompl(Cmpl + CMPL_GNDALT);
+
+	writelog(LOG_LCLIMBRATE, dsp_getcompl(Cmpl + CMPL_LCLIMBRATE));
+	writelog(LOG_GNDALT, dsp_getcompl(Cmpl + CMPL_GNDALT));
 
 	// if vertical acceleration is negative, most likely
 	// quadcopter is upside down, perform emergency disarm
@@ -655,31 +668,40 @@ int updatecorrection(double dt, struct corvals *cor)
 	}
 
 	if (Altmode == ALTMODE_POS) {
-		// if altitude hold mode enabled, first use altitude
-		// got from barometer readings and target altitude from
-		// ELRS remote to update altitude PID controller and
-		// get it's next correction value
 		if (Altref && Dev[DEV_LIDAR].status == DEVSTATUS_INIT) {
+			// if altitude hold mode enabled, first use
+			// altitude got from lidar readings and
+			// target altitude from ELRS remote to update
+			// altitude PID controller and get it's next
+			// correction value
 			cor->thrust = dsp_pidbl(Pid + PID_ALT, Thrust,
-				dsp_getlpf(Lpf + LPF_GNDALT));
+				dsp_getcompl(Cmpl + CMPL_GNDALT));
+			
+			writelog(LOG_ALT_PID, cor->thrust);
 		}
 		else {
+			// if altitude hold mode enabled, first use
+			// altitude got from barometer readings and
+			// target altitude from ELRS remote to update
+			// altitude PID controller and get it's next
+			// correction value
 			cor->thrust = dsp_pidbl(Pid + PID_ALT, Thrust,
 				dsp_getcompl(Cmpl + CMPL_ALT) - Alt0);
+		
+			writelog(LOG_ALT_PID, cor->thrust);
 		}
-		
-		writelog(LOG_ALT_PID, cor->thrust);
-
-		// then use altitude correction value and climb rate
-		// calculated by complimentary filter (barometer
-		// differentiating and accelerometer Z-axis integration)
-		// to update climb rate PID controller and get it's next
-		// correction value
-		cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE, cor->thrust,
+	
+		// then use altitude correction value and climb
+		// rate calculated by complimentary filter
+		// (barometer differentiating and accelerometer
+		// Z-axis integration) to update climb rate PID
+		// controller and get it's next correction value
+		cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
+			cor->thrust,
 			dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
-		
+
 		writelog(LOG_CRATE_PID, cor->thrust);
-		
+
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value

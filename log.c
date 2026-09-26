@@ -48,7 +48,7 @@ const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {
 	"lidar_alt", "lidar_valid",
 	"roll", "pitch", "yaw",
 	"faccel", "saccel",
-	"vaccel", "climbrate", "alt", "gnd_alt",
+	"vaccel", "climbrate", "alt", "lclimbrate", "gnd_alt",
 	"lt", "lb", "rb", "rt", "avgthr",
 	"bat", "cur",
 	"pitchpid", "rollpid", "yawpid",

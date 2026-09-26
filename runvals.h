@@ -57,25 +57,26 @@ enum LPF_ID {
 	LPF_FA		= 8,	/*!< forward acceleration low-pass filter */
 	LPF_SA		= 9,	/*!< sideward acceleration low-pass filter */
 	LPF_ALT		= 10,	/*!< altitude low-pass filter */
-	LPF_GNDALT	= 11,	/*!< altitude over ground low-pass filter */
-	LPF_BARTEMP	= 12,	/*!< temperature low-pass filter */
-	LPF_IMUTEMP	= 13,	/*!< IMU temperature unity filter */
-	LPF_ACCX	= 14,	/*!< accelerometer x low-pass filter */
-	LPF_ACCY	= 15,	/*!< accelerometer y low-pass filter */
-	LPF_ACCZ	= 16,	/*!< accelerometer z low-pass filter */
-	LPF_GYROX	= 17,	/*!< gyroscope x low-pass filter */
-	LPF_GYROY	= 18,	/*!< gyroscope y low-pass filter */
-	LPF_GYROZ	= 19,	/*!< gyroscope z low-pass filter */
-	LPF_MAGX	= 20,	/*!< gyroscope x low-pass filter */
-	LPF_MAGY	= 21,	/*!< gyroscope y low-pass filter */
-	LPF_MAGZ	= 22,	/*!< gyroscope z low-pass filter */
-	LPF_ROLL	= 23,	/*!< roll unity filter */
-	LPF_PITCH	= 24,	/*!< pitch unity filter */
-	LPF_YAW		= 25,	/*!< yaw unity filter */
-	LPF_SPEED	= 26,	/*!< speed unity filter */
-	LPF_LATM	= 27,	/*!< latitude in meters unity filter */
-	LPF_LONM	= 28,	/*!< longitude in meters unity filter */
-	LPF_COUNT	= 29	/*!< low-pass filters count */
+	LPF_LCLIMBRATE	= 11,	/*!< lidar based climbrate low-pass filter */
+	LPF_GNDALT	= 12,	/*!< altitude over ground low-pass filter */
+	LPF_BARTEMP	= 13,	/*!< temperature low-pass filter */
+	LPF_IMUTEMP	= 14,	/*!< IMU temperature unity filter */
+	LPF_ACCX	= 15,	/*!< accelerometer x low-pass filter */
+	LPF_ACCY	= 16,	/*!< accelerometer y low-pass filter */
+	LPF_ACCZ	= 17,	/*!< accelerometer z low-pass filter */
+	LPF_GYROX	= 18,	/*!< gyroscope x low-pass filter */
+	LPF_GYROY	= 19,	/*!< gyroscope y low-pass filter */
+	LPF_GYROZ	= 20,	/*!< gyroscope z low-pass filter */
+	LPF_MAGX	= 21,	/*!< gyroscope x low-pass filter */
+	LPF_MAGY	= 22,	/*!< gyroscope y low-pass filter */
+	LPF_MAGZ	= 23,	/*!< gyroscope z low-pass filter */
+	LPF_ROLL	= 24,	/*!< roll unity filter */
+	LPF_PITCH	= 25,	/*!< pitch unity filter */
+	LPF_YAW		= 26,	/*!< yaw unity filter */
+	LPF_SPEED	= 27,	/*!< speed unity filter */
+	LPF_LATM	= 28,	/*!< latitude in meters unity filter */
+	LPF_LONM	= 29,	/*!< longitude in meters unity filter */
+	LPF_COUNT	= 30	/*!< low-pass filters count */
 };
 
 /**
@@ -88,13 +89,17 @@ enum CMPL_ID {
 	CMPL_YAW	= 2,	/*!< yaw compimentary filter */
 	CMPL_CLIMBRATE	= 3,	/*!< climb rate complimentary filter */
 	CMPL_ALT 	= 4,	/*!< altitude complimentary filter */
-	CMPL_SLAT	= 5,	/*!< moving through latitiude speed
+	CMPL_LCLIMBRATE	= 5,	/*!< lidar based climb rate
 					complimentary filter */
-	CMPL_SLON	= 6,	/*!< moving through longitude speed
+	CMPL_GNDALT 	= 6,	/*!< altitude over ground
 					complimentary filter */
-	CMPL_LAT	= 7,	/*!< latitude complimentary filter */
-	CMPL_LON	= 8,	/*!< longitude complimentary filter */
-	CMPL_COUNT 	= 9	/*!< complimentary filters count */
+	CMPL_SLAT	= 7,	/*!< moving through latitiude speed
+					complimentary filter */
+	CMPL_SLON	= 8,	/*!< moving through longitude speed
+					complimentary filter */
+	CMPL_LAT	= 9,	/*!< latitude complimentary filter */
+	CMPL_LON	= 10,	/*!< longitude complimentary filter */
+	CMPL_COUNT 	= 11	/*!< complimentary filters count */
 };
 
 /**

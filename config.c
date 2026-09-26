@@ -1367,8 +1367,12 @@ int infocmd(const struct cdevice *d, const char **toks, char *out)
 			Lidardata.isvalid ? "valid" : "not valid");
 
 		snprintf(out + strlen(out), INFOLEN - strlen(out),
+			"lidar based climbrate: %f\r\n",
+			(double) dsp_getcompl(Cmpl + CMPL_LCLIMBRATE));
+
+		snprintf(out + strlen(out), INFOLEN - strlen(out),
 			"altitude over ground: %f\r\n",
-			(double) dsp_getlpf(Lpf + LPF_GNDALT));
+			(double) dsp_getcompl(Cmpl + CMPL_GNDALT));
 	}
 	else if (strcmp(toks[1], "dev") == 0)
 		sprintdevs(out);
