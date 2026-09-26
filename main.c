@@ -823,7 +823,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		Alt0 = dsp_getcompl(Cmpl + CMPL_ALT);
 		Lat0 = Gnss.declat;
 		Lon0 = Gnss.declon;
-		Goffset = 1.0 - dsp_getlpf(Lpf + LPF_VAAVG);
+		Goffset = dsp_getlpf(Lpf + LPF_VAAVG);
 	}
 
 	// set acceleromter stabilization mode, if ATTMODE channel has

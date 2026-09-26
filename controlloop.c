@@ -147,8 +147,6 @@ int setstabilize(int init)
 	dsp_setunity(Lpf + LPF_FA, init);
 	dsp_setunity(Lpf + LPF_SA, init);
 	dsp_setunity(Lpf + LPF_ALT, init);
-	dsp_setunity(Lpf + LPF_LCLIMBRATE, init);
-	dsp_setunity(Lpf + LPF_GNDALT, init);
 	dsp_setunity(Lpf + LPF_SPEED, init);
 	dsp_setunity(Lpf + LPF_LATM, init);
 	dsp_setunity(Lpf + LPF_LONM, init);
@@ -259,9 +257,9 @@ int updateposition(double dt)
 	vy = sp * cr;
 	vz = cp * cr;
 
-	gvx = (1.0 - Goffset) * vx;
-	gvy = (1.0 - Goffset) * vy;
-	gvz = (1.0 - Goffset) * vz;
+	gvx = Goffset * vx;
+	gvy = Goffset * vy;
+	gvz = Goffset * vz;
 
 	// update vertical acceleration using acceleration
 	// vector to gravity vector projection
@@ -386,7 +384,7 @@ int updateposition(double dt)
 
 	// calculate climb rate from vertical acceleration and
 	// barometric altitude defference using complimentary filter
-	vaccel = 9.80665 * (dsp_getlpf(Lpf + LPF_VAU) + Goffset - 1.0) * dt;
+	vaccel = 9.80665 * (dsp_getlpf(Lpf + LPF_VAU) - Goffset) * dt;
 
 	dsp_updatecompl(Cmpl + CMPL_CLIMBRATE,
 		vaccel, (dsp_getcompl(Cmpl + CMPL_ALT) - prevalt) / dt);
@@ -402,7 +400,7 @@ int updateposition(double dt)
 	// lidar based altitude using complimentary filter
 	dsp_updatecompl(Cmpl + CMPL_GNDALT,
 		dsp_getcompl(Cmpl + CMPL_LCLIMBRATE) * dt,
-		Lidardata.alt * cos(pitch) * cos(roll));
+		Lidardata.alt * cp * cr);
 
 	// calculate climb rate from vertical acceleration and
 	// lidar based altitude difference using complimentary filter
@@ -761,7 +759,7 @@ int updatecorrection(double dt, struct corvals *cor)
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
-		cor->thrust = dsp_pidbl(Pid + PID_VA, cor->thrust + 1.0,
+		cor->thrust = dsp_pidbl(Pid + PID_VA, cor->thrust + Goffset,
 			dsp_getlpf(Lpf + LPF_VAPT1)) / tiltcoef + ht;
 		
 		writelog(LOG_VA_PID, cor->thrust);

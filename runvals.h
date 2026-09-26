@@ -57,26 +57,24 @@ enum LPF_ID {
 	LPF_FA		= 8,	/*!< forward acceleration low-pass filter */
 	LPF_SA		= 9,	/*!< sideward acceleration low-pass filter */
 	LPF_ALT		= 10,	/*!< altitude low-pass filter */
-	LPF_LCLIMBRATE	= 11,	/*!< lidar based climbrate low-pass filter */
-	LPF_GNDALT	= 12,	/*!< altitude over ground low-pass filter */
-	LPF_BARTEMP	= 13,	/*!< temperature low-pass filter */
-	LPF_IMUTEMP	= 14,	/*!< IMU temperature unity filter */
-	LPF_ACCX	= 15,	/*!< accelerometer x low-pass filter */
-	LPF_ACCY	= 16,	/*!< accelerometer y low-pass filter */
-	LPF_ACCZ	= 17,	/*!< accelerometer z low-pass filter */
-	LPF_GYROX	= 18,	/*!< gyroscope x low-pass filter */
-	LPF_GYROY	= 19,	/*!< gyroscope y low-pass filter */
-	LPF_GYROZ	= 20,	/*!< gyroscope z low-pass filter */
-	LPF_MAGX	= 21,	/*!< gyroscope x low-pass filter */
-	LPF_MAGY	= 22,	/*!< gyroscope y low-pass filter */
-	LPF_MAGZ	= 23,	/*!< gyroscope z low-pass filter */
-	LPF_ROLL	= 24,	/*!< roll unity filter */
-	LPF_PITCH	= 25,	/*!< pitch unity filter */
-	LPF_YAW		= 26,	/*!< yaw unity filter */
-	LPF_SPEED	= 27,	/*!< speed unity filter */
-	LPF_LATM	= 28,	/*!< latitude in meters unity filter */
-	LPF_LONM	= 29,	/*!< longitude in meters unity filter */
-	LPF_COUNT	= 30	/*!< low-pass filters count */
+	LPF_BARTEMP	= 11,	/*!< temperature low-pass filter */
+	LPF_IMUTEMP	= 12,	/*!< IMU temperature unity filter */
+	LPF_ACCX	= 13,	/*!< accelerometer x low-pass filter */
+	LPF_ACCY	= 14,	/*!< accelerometer y low-pass filter */
+	LPF_ACCZ	= 15,	/*!< accelerometer z low-pass filter */
+	LPF_GYROX	= 16,	/*!< gyroscope x low-pass filter */
+	LPF_GYROY	= 17,	/*!< gyroscope y low-pass filter */
+	LPF_GYROZ	= 18,	/*!< gyroscope z low-pass filter */
+	LPF_MAGX	= 19,	/*!< gyroscope x low-pass filter */
+	LPF_MAGY	= 20,	/*!< gyroscope y low-pass filter */
+	LPF_MAGZ	= 21,	/*!< gyroscope z low-pass filter */
+	LPF_ROLL	= 22,	/*!< roll unity filter */
+	LPF_PITCH	= 23,	/*!< pitch unity filter */
+	LPF_YAW		= 24,	/*!< yaw unity filter */
+	LPF_SPEED	= 25,	/*!< speed unity filter */
+	LPF_LATM	= 26,	/*!< latitude in meters unity filter */
+	LPF_LONM	= 27,	/*!< longitude in meters unity filter */
+	LPF_COUNT	= 28	/*!< low-pass filters count */
 };
 
 /**
