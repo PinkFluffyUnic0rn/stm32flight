@@ -53,6 +53,11 @@ int setstabilize(int init)
 		PID_FREQ, init);
 	dsp_setcompl(Cmpl + CMPL_ALT, St.cmpl.alt, PID_FREQ, init);
 
+	dsp_setcompl(Cmpl + CMPL_LCLIMBRATE, St.cmpl.lclimbrate,
+		PID_FREQ, init);
+	dsp_setcompl(Cmpl + CMPL_GNDALT, St.cmpl.gndalt,
+		PID_FREQ, init);
+
 	dsp_setcompl(Cmpl + CMPL_SLAT, St.cmpl.speed, PID_FREQ, init);
 	dsp_setcompl(Cmpl + CMPL_SLON, St.cmpl.speed, PID_FREQ, init);
 	dsp_setcompl(Cmpl + CMPL_LAT, St.cmpl.pos, PID_FREQ, init);
@@ -402,11 +407,14 @@ int updateposition(double dt)
 	// calculate climb rate from vertical acceleration and
 	// lidar based altitude difference using complimentary filter
 	dsp_updatecompl(Cmpl + CMPL_LCLIMBRATE,
-		vaccel, (dsp_getcompl(Cmpl + CMPL_GNDALT) - prevlalt) / dt);
+		vaccel,
+		(dsp_getcompl(Cmpl + CMPL_GNDALT) - prevlalt) / dt);
 
 	// store calculated altitude for next calculation
 	prevlalt = dsp_getcompl(Cmpl + CMPL_GNDALT);
 
+	// write lidar based climbrate and
+	// altitude over ground values into log
 	writelog(LOG_LCLIMBRATE, dsp_getcompl(Cmpl + CMPL_LCLIMBRATE));
 	writelog(LOG_GNDALT, dsp_getcompl(Cmpl + CMPL_GNDALT));
 
@@ -678,6 +686,17 @@ int updatecorrection(double dt, struct corvals *cor)
 				dsp_getcompl(Cmpl + CMPL_GNDALT));
 			
 			writelog(LOG_ALT_PID, cor->thrust);
+
+			// then use altitude correction value and climb
+			// rate calculated by complimentary filter
+			// (barometer differentiating and accelerometer
+			// Z-axis integration) to update climb rate PID
+			// controller and get it's next correction value
+			cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
+				cor->thrust,
+				dsp_getcompl(Cmpl + CMPL_LCLIMBRATE));
+
+			writelog(LOG_CRATE_PID, cor->thrust);
 		}
 		else {
 			// if altitude hold mode enabled, first use
@@ -689,19 +708,19 @@ int updatecorrection(double dt, struct corvals *cor)
 				dsp_getcompl(Cmpl + CMPL_ALT) - Alt0);
 		
 			writelog(LOG_ALT_PID, cor->thrust);
+
+			// then use altitude correction value and climb
+			// rate calculated by complimentary filter
+			// (barometer differentiating and accelerometer
+			// Z-axis integration) to update climb rate PID
+			// controller and get it's next correction value
+			cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
+				cor->thrust,
+				dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
+
+			writelog(LOG_CRATE_PID, cor->thrust);
 		}
 	
-		// then use altitude correction value and climb
-		// rate calculated by complimentary filter
-		// (barometer differentiating and accelerometer
-		// Z-axis integration) to update climb rate PID
-		// controller and get it's next correction value
-		cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
-			cor->thrust,
-			dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
-
-		writelog(LOG_CRATE_PID, cor->thrust);
-
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
@@ -712,16 +731,32 @@ int updatecorrection(double dt, struct corvals *cor)
 		writelog(LOG_VA_PIDI, Pid[PID_VA].i);
 	}
 	else if (Altmode == ALTMODE_SPEED) {
-		// if consttant climb rate mode, first use climb rate
-		// calculated by complimentary filter (barometer
-		// differentiating and accelerometer Z-axis integration)
-		// and target climb rate from ELRS remote to update
-		// climb rate PID controller and get it's next
-		// correction value
-		cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE, Thrust,
-			dsp_getcompl(Cmpl + CMPL_CLIMBRATE));	
-		
-		writelog(LOG_CRATE_PID, cor->thrust);
+		if (Altref && Dev[DEV_LIDAR].status == DEVSTATUS_INIT) {
+			// if consttant climb rate mode, first use climb
+			// rate calculated by complimentary filter
+			// (barometer differentiating and accelerometer
+			// Z-axis integration) and target climb rate
+			// from ELRS remote to update climb rate PID
+			// controller and get it's next correction value
+			cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
+				Thrust,
+				dsp_getcompl(Cmpl + CMPL_LCLIMBRATE));	
+			
+			writelog(LOG_CRATE_PID, cor->thrust);
+		}
+		else {
+			// if consttant climb rate mode, first use climb
+			// rate calculated by complimentary filter
+			// (barometer differentiating and accelerometer
+			// Z-axis integration) and target climb rate
+			// from ELRS remote to update climb rate PID
+			// controller and get it's next correction value
+			cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
+				Thrust,
+				dsp_getcompl(Cmpl + CMPL_CLIMBRATE));	
+			
+			writelog(LOG_CRATE_PID, cor->thrust);
+		}
 
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next

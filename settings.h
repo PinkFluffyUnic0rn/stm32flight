@@ -207,6 +207,8 @@ struct __attribute__((aligned(32))) persettings
 		double yaw;
 		double climbrate;
 		double alt;
+		double lclimbrate;
+		double gndalt;
 		double speed;
 		double pos;
 	} cmpl;

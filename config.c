@@ -356,6 +356,16 @@ static struct settingnode Sttree = {
 					.f = &(St.cmpl.alt)
 				},
 				&(struct settingnode) {
+					.token = "lclimbrate",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.cmpl.lclimbrate)
+				},
+				&(struct settingnode) {
+					.token = "gndaltitude",
+					.type = NODETYPE_FLOAT,
+					.f = &(St.cmpl.gndalt)
+				},
+				&(struct settingnode) {
 					.token = "speed",
 					.type = NODETYPE_FLOAT,
 					.f = &(St.cmpl.speed)

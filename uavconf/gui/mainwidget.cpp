@@ -1031,8 +1031,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Complimentary filters", "dsp",
-		{"attitude",		"yaw",		"climb rate", 		"altitude",		"speed",	"position"},
-		{"compl attitude",	"compl yaw",	"compl climbrate",	"compl altitude",	"compl speed",	"compl pos"},
+		{"attitude",		"yaw",		"climb rate", 		"altitude",		"lidar climb rate",	"altitude over ground",	"speed",	"position"},
+		{"compl attitude",	"compl yaw",	"compl climbrate",	"compl altitude",	"compl lclimbrate",	"compl gndaltitude",	"compl speed",	"compl pos"},
 		cmdstree, true, this), 0, 0, 1, 1); 
 
 	settings_group *filterfeatures = new settings_group(nullptr,
