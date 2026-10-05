@@ -260,6 +260,10 @@ int imuupdate(int ms)
 	double gx, gy, gz;
 	double vcoef, thr, frq;
 
+	// if IMU isn't initilized, return
+	if (Dev[DEV_IMU].status != DEVSTATUS_INIT)
+		return 0;
+
 	// get accelerometer and gyroscope readings
 	Dev[DEV_IMU].read(Dev[DEV_IMU].priv, &Imudata,
 		sizeof(struct imu_data));
@@ -1043,14 +1047,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 			CMDSIZE) >= 0) {
 		runcommand(Dev + DEV_RF, cmd);
 	}
-/*
+
 	// poll for configuration and telemtry commands
 	// from debug uart connection
 	if (Dev[DEV_UART].read(Dev[DEV_UART].priv, &cmd,
 			UART_CMDSIZE) >= 0) {
 		runcommand(Dev + DEV_UART, cmd);
 	}
-*/
+
 	// read the ELRS remote's packet
 	if (Dev[DEV_CRSF].read(Dev[DEV_CRSF].priv, &cd,
 			sizeof(struct crsf_data)) >= 0) {

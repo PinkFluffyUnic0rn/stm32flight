@@ -6,14 +6,14 @@
 
 #define PCONF_DMASCOUNT 	16
 #define PCONF_BDMASCOUNT 	8
-#define PCONF_OUTPINSCOUNT	10
+#define PCONF_OUTPINSCOUNT	9
 #define PCONF_INPINSCOUNT	1
 #define PCONF_I2CSCOUNT		1
 #define PCONF_SPISCOUNT		3
 #define PCONF_EXTISCOUNT	1
 #define PCONF_TIMSCOUNT		3
 #define PCONF_ADCSCOUNT		2
-#define PCONF_UARTSCOUNT	4
+#define PCONF_UARTSCOUNT	5
 
 #define PCONF_DMA1_STREAM0_IRQ
 #define PCONF_DMA1_STREAM1_IRQ
@@ -32,16 +32,17 @@
 #define PCONF_DMA2_STREAM6_IRQ
 #define PCONF_BDMA_CHANNEL0_IRQ
 
-#define PCONF_UART2_IDX_IRQ 0
-#define PCONF_UART3_IDX_IRQ 1
-#define PCONF_UART4_IDX_IRQ 2
-#define PCONF_UART5_IDX_IRQ 3
+#define PCONF_UART1_IDX_IRQ 0
+#define PCONF_UART2_IDX_IRQ 1
+#define PCONF_UART3_IDX_IRQ 2
+#define PCONF_UART4_IDX_IRQ 3
+#define PCONF_UART5_IDX_IRQ 4
 #define PCONF_I2C1_IDX_IRQ 0
 #define PCONF_SPI1_IDX_IRQ 0
 #define PCONF_SPI6_IDX_IRQ 2
 #define PCONF_TIM8_IDX_IRQ 1
 
-#define PCONF_EXTI9_5_PIN_IRQ GPIO_PIN_5
+#define PCONF_EXTI9_5_PIN_IRQ GPIO_PIN_7
 
 DMA_Stream_TypeDef *const dmas[] = {
 	DMA1_Stream0,
@@ -75,28 +76,24 @@ BDMA_Channel_TypeDef *const bdmas[] = {
 
 const struct pconf_pin outpins[] = {
 	{
-		.inst = GPIOE,
-		.idx = GPIO_PIN_1
-	},
-	{
-		.inst = GPIOE,
-		.idx = GPIO_PIN_0
+		.inst = GPIOA,
+		.idx = GPIO_PIN_15
 	},
 	{
 		.inst = GPIOB,
-		.idx = GPIO_PIN_6
-	},
-	{
-		.inst = GPIOC,
-		.idx = GPIO_PIN_11
-	},
-	{
-		.inst = GPIOC,
-		.idx = GPIO_PIN_10
+		.idx = GPIO_PIN_9
 	},
 	{
 		.inst = GPIOA,
+		.idx = GPIO_PIN_4
+	},
+	{
+		.inst = GPIOB,
 		.idx = GPIO_PIN_12
+	},
+	{
+		.inst = GPIOE,
+		.idx = GPIO_PIN_4
 	},
 	{
 		.inst = GPIOB,
@@ -104,30 +101,30 @@ const struct pconf_pin outpins[] = {
 	},
 	{
 		.inst = GPIOB,
-		.idx = GPIO_PIN_12
+		.idx = GPIO_PIN_6
 	},
 	{
 		.inst = GPIOE,
-		.idx = GPIO_PIN_3
+		.idx = GPIO_PIN_1
 	},
 	{
-		.inst = GPIOE,
-		.idx = GPIO_PIN_4
+		.inst = GPIOB,
+		.idx = GPIO_PIN_8
 	}
 };
 
 const struct pconf_pin inpins[] = {
 	{
-		.inst = GPIOB,
-		.idx = GPIO_PIN_7
+		.inst = GPIOE,
+		.idx = GPIO_PIN_0
 	}
 };
 
 const struct pconf_exti extis[] = {
 	{
 		.pin = {
-			.inst = GPIOB,
-			.idx = GPIO_PIN_5
+			.inst = GPIOD,
+			.idx = GPIO_PIN_7
 		}
 	}
 };
@@ -137,11 +134,11 @@ const struct pconf_i2c i2cs[] = {
 		.inst = I2C1,
 		.sda = {
 			.inst = GPIOB,
-			.idx = GPIO_PIN_9
+			.idx = GPIO_PIN_7
 		},
 		.scl = {
 			.inst = GPIOB,
-			.idx = GPIO_PIN_8
+			.idx = GPIO_PIN_6
 		},
 		.rxdma = DMA1_Stream0,
 		.txdma = DMA1_Stream7
@@ -157,8 +154,8 @@ const struct pconf_spi spis[] = {
 			.idx = GPIO_PIN_4
 		},
 		.mosi = {
-			.inst = GPIOD,
-			.idx = GPIO_PIN_7
+			.inst = GPIOB,
+			.idx = GPIO_PIN_5
 		},
 		.sck = {
 			.inst = GPIOB,
@@ -281,6 +278,20 @@ const struct pconf_adc adcs[] = {
 
 const struct pconf_uart uarts[] = {
 	{
+		.inst = USART1,
+		.usage = PCONF_UARTUSAGE_LIDAR,
+		.rx = {
+			.inst = GPIOB,
+			.idx = GPIO_PIN_15
+		},
+		.tx = {
+			.inst = GPIOB,
+			.idx = GPIO_PIN_14
+		},
+		.rxdma = DMA2_Stream5,
+		.txdma = NULL
+	},
+	{
 		.inst = USART2,
 		.usage = PCONF_UARTUSAGE_CRSF,
 		.rx = {
@@ -311,7 +322,7 @@ const struct pconf_uart uarts[] = {
 	},
 	{
 		.inst = UART4,
-		.usage = PCONF_UARTUSAGE_LIDAR,
+		.usage = PCONF_UARTUSAGE_DEBUG,
 		.rx = {
 			.inst = GPIOD,
 			.idx = GPIO_PIN_0
@@ -369,8 +380,8 @@ const struct pconf_imu imuconf = {
 	.iface = {
 		.type = PCONF_IFACETYPE_SPI,
 		.cs = {
-			GPIOC,
-			GPIO_PIN_11
+			GPIOA,
+			GPIO_PIN_15
 		},
 		.hspi = SPI1
 	}
@@ -385,6 +396,7 @@ const struct pconf_bar barconf = {
 };
 
 const struct pconf_mag magconf = {
+//	.type = PCONF_MAGTYPE_LIS3MDL,
 	.type = PCONF_MAGTYPE_MMC5983MA,
 	.iface = {
 		.type = PCONF_IFACETYPE_I2C,
@@ -397,8 +409,8 @@ const struct pconf_flash flashconf = {
 	.iface = {
 		.type = PCONF_IFACETYPE_SPI,
 		.cs = {
-			GPIOC,
-			GPIO_PIN_10
+			GPIOA,
+			GPIO_PIN_4
 		},
 		.hspi = SPI6
 	}
@@ -422,22 +434,22 @@ const struct pconf_wireless rfconf = {
 	.iface = {
 		.type = PCONF_IFACETYPE_SPI,
 		.cs = {
-			GPIOE,
-			GPIO_PIN_0
+			GPIOB,
+			GPIO_PIN_9
 		},
 		.hspi = SPI2
 	},
 	.interrupt = {
-		.inst = GPIOB,
-		.idx = GPIO_PIN_5
+		.inst = GPIOD,
+		.idx = GPIO_PIN_7
 	},
 	.busy = {
-		.inst = GPIOB,
-		.idx = GPIO_PIN_7
+		.inst = GPIOE,
+		.idx = GPIO_PIN_0
 	},
 	.boot = {
 		.inst = GPIOB,
-		.idx = GPIO_PIN_6
+		.idx = GPIO_PIN_8
 	},
 	.reset = {
 		.inst = GPIOE,
@@ -457,7 +469,7 @@ const struct pconf_lidar lidarconf = {
 	.type = PCONF_LIDARTYPE_TFLUNA,
 	.iface = {
 		.type = PCONF_IFACETYPE_UART,
-		.huart = UART4
+		.huart = USART1
 	}
 };
 

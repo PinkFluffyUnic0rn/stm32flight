@@ -227,7 +227,6 @@ static int pconf_uart_enable_clock(USART_TypeDef *inst)
 	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
 		error_handler();
 
-
 	if (inst == USART1)		__HAL_RCC_USART1_CLK_ENABLE();
 	else if (inst == USART2)	__HAL_RCC_USART2_CLK_ENABLE();
 	else if (inst == USART3)	__HAL_RCC_USART3_CLK_ENABLE();
@@ -389,8 +388,10 @@ static int pconf_uart_pinalternate(const struct pconf_pin *pin,
 {
 	if (inst == USART1) {
 		if (pin->inst == GPIOB) {
-			if (pin->idx == 14 || pin->idx == 15)
+			if (pin->idx == GPIO_PIN_14
+					|| pin->idx == GPIO_PIN_15) {
 				return GPIO_AF4_USART1;
+			}
 			else
 				return GPIO_AF7_USART1;
 		}
@@ -2067,9 +2068,7 @@ static void pconf_init_uart_lidar(int i)
 	pconf_huarts[i].Init.OverSampling = UART_OVERSAMPLING_16;
 	pconf_huarts[i].Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
 	pconf_huarts[i].Init.ClockPrescaler = UART_PRESCALER_DIV1;
-//	pconf_huarts[i].AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-	pconf_huarts[i].AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
-	pconf_huarts[i].AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
+	pconf_huarts[i].AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
 	if (HAL_UART_Init(pconf_huarts + i) != HAL_OK)
 		error_handler();
@@ -2503,7 +2502,7 @@ void pconf_init(void (*errhandler)(void))
 	pconf_batteryhadc = pconf_hadcs + pconf_adcidx(batconf.adc);
 	pconf_currenthadc = pconf_hadcs + pconf_adcidx(curconf.adc);
 
-//	uartdev_init();
+	uartdev_init();
 	imu_init();
 	baro_init();
 	mag_init();
@@ -2515,6 +2514,14 @@ void pconf_init(void (*errhandler)(void))
 	lidar_init();
 		
 	dshot_init();
+/*
+	char buf[256];
+
+	sprintf(buf, "%s\r\n", "test");
+
+	HAL_UART_Transmit(pconf_huarts + pconf_uartidx(lidarconf.iface.huart),
+		(uint8_t *) buf, strlen(buf), 1000);
+*/
 }
 
 int pconf_i2cmemread(I2C_HandleTypeDef *hi2c,
@@ -2618,6 +2625,13 @@ void SysTick_Handler(void)
 	HAL_IncTick();
 }
 
+#ifdef PCONF_UART1_IDX_IRQ
+void USART1_IRQHandler(void)
+{
+	HAL_UART_IRQHandler(pconf_huarts + PCONF_UART1_IDX_IRQ);
+}
+#endif
+
 #ifdef PCONF_UART2_IDX_IRQ
 void USART2_IRQHandler(void)
 {
@@ -2669,6 +2683,13 @@ void SPI1_IRQHandler(void)
 void SPI2_IRQHandler(void)
 {
 	HAL_SPI_IRQHandler(pconf_hspis + PCONF_SPI2_IDX_IRQ);
+}
+#endif
+
+#ifdef PCONF_SPI3_IDX_IRQ
+void SPI3_IRQHandler(void)
+{
+	HAL_SPI_IRQHandler(pconf_hspis + PCONF_SPI3_IDX_IRQ);
 }
 #endif
 
