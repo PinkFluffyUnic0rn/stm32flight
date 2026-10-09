@@ -1235,18 +1235,14 @@ static int sprintfautopilot(char *s)
 		}
 		else if (Points[i].type == AUTOPILOT_TAKEOFF) {
 			snprintf(s + strlen(s), INFOLEN - strlen(s),
-				"%d %s alt: %f; t: %f;\r\n",
+				"%d %s alt: %f;\r\n",
 				i, "takeoff",
-				(double) Points[i].takeoff.alt,
-				(double) Points[i].takeoff.t);
+				(double) Points[i].takeoff.alt);
 		}
 		else if (Points[i].type == AUTOPILOT_HOVER) {
 			snprintf(s + strlen(s), INFOLEN - strlen(s),
-				"%d %s x: %f; y: %f; alt: %f; t: %f;\r\n",
+				"%d %s t: %f;\r\n",
 				i, "takeoff",
-				(double) Points[i].hover.x,
-				(double) Points[i].hover.y,
-				(double) Points[i].hover.alt,
 				(double) Points[i].hover.t);
 		}
 		else if (Points[i].type == AUTOPILOT_FORWARD) {
@@ -1615,31 +1611,23 @@ int autopilotcmd(const struct cdevice *d, const char **toks, char *out)
 		else if (strcmp(toks[2], "alt") == 0) {
 			if (Points[idx].type == AUTOPILOT_TAKEOFF)
 				Points[idx].takeoff.alt = atof(toks[3]);
-			else if (Points[idx].type == AUTOPILOT_HOVER)
-				Points[idx].hover.alt = atof(toks[3]);
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "t") == 0) {
-			if (Points[idx].type == AUTOPILOT_TAKEOFF)
-				Points[idx].takeoff.t = atof(toks[3]);
-			else if (Points[idx].type == AUTOPILOT_HOVER)
+			if (Points[idx].type == AUTOPILOT_HOVER)
 				Points[idx].hover.t = atof(toks[3]);
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "x") == 0) {
-			if (Points[idx].type == AUTOPILOT_HOVER)
-				Points[idx].hover.x = atof(toks[3]);
-			else if (Points[idx].type == AUTOPILOT_FORWARD)
+			if (Points[idx].type == AUTOPILOT_FORWARD)
 				Points[idx].forward.x = atof(toks[3]);
 			else
 				return (-1);
 		}
 		else if (strcmp(toks[2], "y") == 0) {
-			if (Points[idx].type == AUTOPILOT_HOVER)
-				Points[idx].hover.y = atof(toks[3]);
-			else if (Points[idx].type == AUTOPILOT_FORWARD)
+			if (Points[idx].type == AUTOPILOT_FORWARD)
 				Points[idx].forward.y = atof(toks[3]);
 			else
 				return (-1);

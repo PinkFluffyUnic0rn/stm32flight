@@ -246,11 +246,8 @@ struct trackpoint {
 	union {
 		struct {
 			double alt;	/*!< target altitude */
-			double t;	/*!< time to take off */
 		} takeoff;		/*!< take off point description */
 		struct {
-			double x, y;	/*!< coordinates to look at */
-			double alt;	/*!< target altitude */
 			double t;	/*!< hovering time */
 		} hover;		/*!< hover point description */
 		struct {

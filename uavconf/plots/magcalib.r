@@ -3,7 +3,7 @@ library(geigen)
 library(conicfit)
 
 #range = 300;
-range = 0.15;
+range = 0.1;
 
 printf <- function(...) invisible(print(sprintf(...)))
 

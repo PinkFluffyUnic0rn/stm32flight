@@ -9,21 +9,21 @@ adj althold coefb 0
 adj althold coefc 0.15
 adj althold hover 0.287
 adj althold tiltcoefmax 0.25
-adj pitch 0.01
+adj pitch 0
 adj roll 0
 adj yaw 0
 adj bat scale 1
 adj curr offset -17
 adj curr scale 412.5
-adj gyro x 1.445184
-adj gyro y 0.595486
-adj gyro z 0.414855
-adj mag x0 0.173815
-adj mag y0 -0.076065
-adj mag z0 -0.041577
-adj mag decl 0.322
-adj mag xscale 0.960479
-adj mag yscale 0.957427
+adj gyro x -0.110582
+adj gyro y -0.015645
+adj gyro z 0.116279
+adj mag x0 0.471046
+adj mag y0 0.012802
+adj mag z0 0.075315
+adj mag decl 0.375944
+adj mag xscale 0.992884
+adj mag yscale 0.992538
 adj mag zscale 1
 adj mag xthscale 0
 adj mag ythscale 0
@@ -45,8 +45,10 @@ ctrl syaw 1.5
 irc frequency 5865
 irc power 25
 compl altitude 1
-compl attitude 1
+compl gndaltitude 0.25
+compl attitude 5
 compl climbrate 1
+compl lclimbrate 0.25
 compl pos 1
 compl speed 1
 compl yaw 1
@@ -123,7 +125,7 @@ pid syaw i 0
 pid syaw p 1.5
 pid yaw d 0
 pid yaw i 0
-pid yaw p 1.5
+pid yaw p 12
 pid pos d 0
 pid pos i 0
 pid pos p 1

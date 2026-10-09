@@ -616,6 +616,25 @@ int powercheck(int ms)
 	return 0;
 }
 
+int initautopilot()
+{
+	Points[0].type = AUTOPILOT_START;
+
+	Points[1].takeoff.alt = 1.5;
+	Points[1].type = AUTOPILOT_TAKEOFF;
+
+	Points[2].hover.t = 5.0;
+	Points[2].type = AUTOPILOT_HOVER;
+
+	Points[3].type = AUTOPILOT_LANDING;
+
+	Points[4].type = AUTOPILOT_STOP;
+
+	Pointscount = 5;
+
+	return 0;
+}
+
 /**
 * @brief Move to next point in autopilot track.
 * @return always 0
@@ -635,10 +654,8 @@ int autopilotstep()
 */
 int autopilotupdate(int ms)
 {
-	struct trackpoint *nextpoint;
+	struct trackpoint *point;
 	double dt;
-
-	return 0;
 
 	dt = ms / (double) TICKSPERSEC;
 	
@@ -650,47 +667,73 @@ int autopilotupdate(int ms)
 		return 0;
 	}
 
-	nextpoint = Points + Curpoint + 1;
-	if (nextpoint->type == AUTOPILOT_START)
-		Autopilottimer = 0.0;
-	else if (nextpoint->type == AUTOPILOT_TAKEOFF) {
-		Thrust = Autopilottimer * nextpoint->takeoff.alt
-			/ nextpoint->takeoff.t;
-		
-		Autopilottimer += dt;
-
-		if (Autopilottimer > nextpoint->takeoff.t)
-			autopilotstep();
-	}
-	else if (nextpoint->type == AUTOPILOT_HOVER) {
-		Thrust = nextpoint->hover.alt;
-		
-		Yawtarget = atan2f(nextpoint->hover.x,
-			nextpoint->hover.y);
-		
-		Autopilottimer += dt;
-
-		if (Autopilottimer > nextpoint->hover.t)
-			autopilotstep();
-	}
-	else if (nextpoint->type == AUTOPILOT_LANDING) {
-		if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 > 5.0)
-			Thrust -= dt;
-		else if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 > 5.0)
-			Thrust -= dt * 0.5;
-		else if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 > 2.0)
-			Thrust -= dt * 0.25;
-		else
-			Thrust -= dt * 0.125;
-		
-		if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 <= 0.1)
-			autopilotstep();
-	}
-	else if (nextpoint->type == AUTOPILOT_STOP) {
-		Thrust = -1.0;
-	}
-	else if (nextpoint->type == AUTOPILOT_FORWARD) {
+	point = Points + Curpoint;
+	if (point->type == AUTOPILOT_START)
 		autopilotstep();
+	else if (point->type == AUTOPILOT_TAKEOFF) {
+		Altref = 0;
+
+		if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 > 5.0)
+			Thrust = point->takeoff.alt;
+		else if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 > 1.0)
+			Thrust += dt;
+		else if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 > 0.5)
+			Thrust += dt * 0.5;
+		else
+			Thrust += dt * 0.25;
+		
+		if (fabs(dsp_getcompl(Cmpl + CMPL_ALT) - Alt0
+				- point->takeoff.alt) <= 0.1) {
+			Thrust = point->takeoff.alt;
+			autopilotstep();
+		}
+	}
+	else if (point->type == AUTOPILOT_HOVER) {
+		Autopilottimer += dt;
+
+		if (Autopilottimer > point->hover.t)
+			autopilotstep();
+	}
+	else if (point->type == AUTOPILOT_FORWARD) {
+		Gnssmode = GNSSMODE_POS;
+
+		Rolltarget = point->forward.x;
+		Pitchtarget = point->forward.y;
+
+		autopilotstep();
+	}
+	else if (point->type == AUTOPILOT_LANDING) {
+		static int lidarfixed = 0;
+		double curalt;
+
+		if (Lidardata.isvalid && lidarfixed == 0) {
+			Thrust = dsp_getcompl(Cmpl + CMPL_GNDALT);
+			lidarfixed = 1;
+		}
+		else if (Lidardata.isvalid == 0 && lidarfixed) {
+			Thrust = dsp_getcompl(Cmpl + CMPL_ALT) - Alt0;
+			lidarfixed = 0;
+		}
+
+		if (lidarfixed) {
+			curalt = dsp_getcompl(Cmpl + CMPL_GNDALT);
+			Altref = 1;
+		}
+		else {
+			curalt = dsp_getcompl(Cmpl + CMPL_ALT) - Alt0;
+			Altref = 0;
+		}
+
+		if (curalt > 5.0)		Thrust -= dt;
+		else if (curalt > 2.0)		Thrust -= dt * 0.5;
+		else if (curalt > 1.0)		Thrust -= dt * 0.25;
+		else				Thrust -= dt * 0.125;
+		
+		if (curalt <= 0.01 || Thrust < -0.5)
+			autopilotstep();
+	}
+	else if (point->type == AUTOPILOT_STOP) {
+		Thrust = -1.0;
 	}
 
 	return 0;
@@ -760,6 +803,42 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		}
 	} else
 		slottimeout = ELRS_PUSHTIMEOUT;
+
+
+	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.25) {
+		int changed;
+		
+		changed = (Autopilot == 0);
+	
+		En = 1;
+		Yawspeedpid = 0;
+		Altmode = ALTMODE_POS;
+		Speedpid = 0;
+
+		if (changed) {
+			Curpoint = 0;
+			Yawtarget = dsp_getlpf(Lpf + LPF_YAW);
+			setstabilize(0);	
+		
+		//	Rolltarget = 0;
+		//	Pitchtarget = 0;
+		}
+
+		Rolltarget = cd->chf[ERLS_CH_ROLL]
+			* (M_PI * St.ctrl.rollmax);
+		Pitchtarget = -cd->chf[ERLS_CH_PITCH]
+			* (M_PI * St.ctrl.pitchmax);
+	
+		Autopilot = 1;
+		
+		return 0;
+	}
+	else if (cd->chf[ERLS_CH_AUTOPILOT] > -0.25)
+		Altref = 1;
+	else
+		Altref = 0;
+		
+	Autopilot = 0;
 
 	// set magnetometer stabilization mode, if YAWMODE channel has
 	// value more than 0, set gyroscope only stabilization mode 
@@ -912,11 +991,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 	else {
 		Gnssmode = GNSSMODE_NONE;
 	}
-
-	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.0)
-		Altref = 1;
-	else
-		Altref = 0;
 
 	// disable thrust when motors should be
 	// disabled, for additional safety
@@ -1090,6 +1164,8 @@ int main(void)
 
 	// set IRC VTX power and frequency using values from settings
 	updatevtx();
+
+	initautopilot();
 
 	// initialize stabilization routine
 	setstabilize(1);

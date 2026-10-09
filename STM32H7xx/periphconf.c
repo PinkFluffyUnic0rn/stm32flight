@@ -402,7 +402,8 @@ static int pconf_uart_pinalternate(const struct pconf_pin *pin,
 	else if (inst == USART3)	return GPIO_AF7_USART3;
 	else if (inst == UART4) {
 		if (pin->inst == GPIOA) {
-			if (pin->idx == 11 || pin->idx == 12)
+			if (pin->idx == GPIO_PIN_11
+					|| pin->idx == GPIO_PIN_12)
 				return GPIO_AF6_UART4;
 			else
 				return GPIO_AF8_UART4;
@@ -412,9 +413,10 @@ static int pconf_uart_pinalternate(const struct pconf_pin *pin,
 	}
 	else if (inst == UART5) {
 		if (pin->inst == GPIOB) {
-			if (pin->idx == 5 || pin->idx == 6
-					|| pin->idx == 12
-					|| pin->idx == 13) {
+			if (pin->idx == GPIO_PIN_5
+					|| pin->idx == GPIO_PIN_6
+					|| pin->idx == GPIO_PIN_12
+					|| pin->idx == GPIO_PIN_13) {
 				return GPIO_AF14_UART5;
 			}
 			else
@@ -456,8 +458,10 @@ static int pconf_i2c_pinalternate(const struct pconf_pin *pin,
 		else if (pin->inst == GPIOC)
 			return GPIO_AF4_I2C5;
 		else if (pin->inst == GPIOC) {
-			if (pin->idx == 9)	return GPIO_AF6_I2C5;
-			else			return GPIO_AF6_I2C5;
+			if (pin->idx == GPIO_PIN_9)
+				return GPIO_AF6_I2C5;
+			else
+				return GPIO_AF6_I2C5;
 		}
 		else if (pin->inst == GPIOF)
 			return GPIO_AF6_I2C5;
@@ -471,7 +475,7 @@ static int pconf_spi_pinalternate(const struct pconf_pin *pin,
 {
 	if (inst == SPI1)		return GPIO_AF5_SPI1;
 	else if (inst == SPI2) {
-		if (pin->inst == GPIOB && pin->idx == 4)
+		if (pin->inst == GPIOB && pin->idx == GPIO_PIN_4)
 			return GPIO_AF7_SPI2;
 		else
 			return GPIO_AF5_SPI2;
@@ -480,8 +484,10 @@ static int pconf_spi_pinalternate(const struct pconf_pin *pin,
 		if (pin->inst == GPIOC || pin->inst == GPIOA)
 			return GPIO_AF6_SPI3;
 		else if (pin->inst == GPIOB) {
-			if (pin->idx == 2 || pin->idx == 5)
+			if (pin->idx == GPIO_PIN_2
+					|| pin->idx == GPIO_PIN_5) {
 				return GPIO_AF7_SPI3;
+			}
 			else
 				return GPIO_AF6_SPI3;
 		}
@@ -494,9 +500,9 @@ static int pconf_spi_pinalternate(const struct pconf_pin *pin,
 		return GPIO_AF5_SPI5;
 	else if (inst == SPI6) {
 		if (pin->inst == GPIOA) {
-			if (pin->idx == 0)
+			if (pin->idx == GPIO_PIN_0)
 				return GPIO_AF5_SPI6;
-			if (pin->idx == 15)
+			if (pin->idx == GPIO_PIN_15)
 				return GPIO_AF7_SPI6;
 			else
 				return GPIO_AF8_SPI6;
