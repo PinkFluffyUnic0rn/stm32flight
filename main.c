@@ -639,9 +639,10 @@ int initautopilot()
 * @brief Move to next point in autopilot track.
 * @return always 0
 */
-int autopilotstep()
+int autopilotstep(int *lidarfixed)
 {
 	Autopilottimer = 0;
+	lidarfixed = 0;
 	++Curpoint;
 
 	return 0;
@@ -654,6 +655,7 @@ int autopilotstep()
 */
 int autopilotupdate(int ms)
 {
+	static int lidarfixed = 0;
 	struct trackpoint *point;
 	double dt;
 
@@ -669,7 +671,7 @@ int autopilotupdate(int ms)
 
 	point = Points + Curpoint;
 	if (point->type == AUTOPILOT_START)
-		autopilotstep();
+		autopilotstep(&lidarfixed);
 	else if (point->type == AUTOPILOT_TAKEOFF) {
 		Altref = 0;
 
@@ -685,14 +687,14 @@ int autopilotupdate(int ms)
 		if (fabs(dsp_getcompl(Cmpl + CMPL_ALT) - Alt0
 				- point->takeoff.alt) <= 0.1) {
 			Thrust = point->takeoff.alt;
-			autopilotstep();
+			autopilotstep(&lidarfixed);
 		}
 	}
 	else if (point->type == AUTOPILOT_HOVER) {
 		Autopilottimer += dt;
 
 		if (Autopilottimer > point->hover.t)
-			autopilotstep();
+			autopilotstep(&lidarfixed);
 	}
 	else if (point->type == AUTOPILOT_FORWARD) {
 		Gnssmode = GNSSMODE_POS;
@@ -700,10 +702,9 @@ int autopilotupdate(int ms)
 		Rolltarget = point->forward.x;
 		Pitchtarget = point->forward.y;
 
-		autopilotstep();
+		autopilotstep(&lidarfixed);
 	}
 	else if (point->type == AUTOPILOT_LANDING) {
-		static int lidarfixed = 0;
 		double curalt;
 
 		if (Lidardata.isvalid && lidarfixed == 0) {
@@ -730,7 +731,7 @@ int autopilotupdate(int ms)
 		else				Thrust -= dt * 0.125;
 		
 		if (curalt <= 0.01 || Thrust < -0.5)
-			autopilotstep();
+			autopilotstep(&lidarfixed);
 	}
 	else if (point->type == AUTOPILOT_STOP) {
 		Thrust = -1.0;
