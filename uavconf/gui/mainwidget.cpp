@@ -925,6 +925,60 @@ void main_widget::points_count_item_changed(int idx)
 			->get_setting("y" + std::to_string(i))
 			->get_field()->setEnabled((i < count));
 	}
+
+	for (i = 0; i < 16; ++i) {
+		int idx;
+
+		idx = qobject_cast<QComboBox*>(tabs["autopilot"]
+			->get_group("Points")
+			->get_setting("type" + std::to_string(i))
+			->get_field())->currentIndex();
+
+		qobject_cast<QComboBox*>(tabs["autopilot"]
+			->get_group("Points")
+			->get_setting("type" + std::to_string(i))
+			->get_field())->currentIndexChanged(idx);
+	}
+}
+
+void main_widget::point_type_item_changed(int idx)
+{
+	QWidget *w;
+	QGridLayout *g;
+        int r, c, rs, cs, i, type;
+	
+	(void) idx;
+	
+	w = qobject_cast<QWidget*>(sender());
+	g = qobject_cast<QGridLayout*>(w->parentWidget()->layout());
+
+	type = 0;
+	for (i = 0; i < 16; ++i) {
+		setting *s;
+	
+		s = tabs["autopilot"]->get_group("Points")
+			->get_setting("type" + std::to_string(i));
+
+		if (s->get_field() == sender()) {
+			type = atoi(s->get_value().c_str());
+			break;
+		}
+
+	}
+
+	g->getItemPosition(g->indexOf(w), &r, &c, &rs, &cs);
+
+	for (i = 1; i <= 4; ++i)
+		g->itemAtPosition(r, i)->widget()->setEnabled(0);
+
+	if (type == 1)
+		g->itemAtPosition(r, 1)->widget()->setEnabled(1);
+	else if (type == 2)
+		g->itemAtPosition(r, 2)->widget()->setEnabled(1);
+	else if (type == 3) {
+		g->itemAtPosition(r, 3)->widget()->setEnabled(1);
+		g->itemAtPosition(r, 4)->widget()->setEnabled(1);
+	}
 }
 
 void main_widget::record_size_item_changed(int idx)
@@ -1522,15 +1576,11 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 		}, "1"
 	));
 
-	connect(ap->get_setting("Count")->get_field(),
-		SIGNAL(currentIndexChanged(int)), this,
-		SLOT(points_count_item_changed(int)));
-
 	settings_group *points = new settings_group(nullptr, "Points", "autopilot", true, this);
 		
 	points->add_label_line({"Type", "Altitude", "Duration", "x", "y"});
 
-	for (i = 0; i < 16; ++i) {	
+	for (i = 0; i < 16; ++i) {
 		points->add_setting_line(
 			{
 				new mode_setting(nullptr,
@@ -1544,7 +1594,7 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 						{"forward", "3"},
 						{"landing", "4"},
 						{"stop", "5"},
-					}
+					}, "start"
 				),
 				new float_setting(nullptr,
 					"alt" + std::to_string(i),
@@ -1560,10 +1610,23 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 					"autopilot y " + std::to_string(i), cmdstree)
 			}
 		);
+
 	}
 
 	tabs["autopilot"]->add_group(ap, 0, 0, 1, 1);
 	tabs["autopilot"]->add_group(points, 1, 0, 1, 1);
+	
+	for (i = 0; i < 16; ++i) {
+		connect(points->get_setting("type" + std::to_string(i))
+				->get_field(),
+			SIGNAL(currentIndexChanged(int)), this,
+			SLOT(point_type_item_changed(int)));
+	}
+
+	connect(ap->get_setting("Count")->get_field(),
+		SIGNAL(currentIndexChanged(int)), this,
+		SLOT(points_count_item_changed(int)));
+
 
 	connect(lt->get_setting("output")->get_field(),
 		SIGNAL(currentIndexChanged(int)), this,

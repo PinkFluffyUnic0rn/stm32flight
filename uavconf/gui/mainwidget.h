@@ -302,6 +302,7 @@ public slots:
 	void points_count_item_changed(int idx);
 	void record_field_item_changed(int idx);
 	void motor_mapping_item_changed(int idx);
+	void point_type_item_changed(int idx);
 
 protected:
 	void keyPressEvent(QKeyEvent *event) override;
