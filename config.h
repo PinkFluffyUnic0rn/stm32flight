@@ -14,6 +14,8 @@
 */
 int updatevtx();
 
+int updateautopilot();
+
 /**
 * @brief Disarm command handler.
 * @param toks list of parsed command tokens

@@ -269,6 +269,15 @@ struct __attribute__((aligned(32))) runsettings
 		int recsize;
 		int fieldid[LOG_FIELDSTRSIZE];
 	} log;
+
+	struct {
+		int type[MAX_POINT_COUNT];
+		double alt[MAX_POINT_COUNT];
+		double t[MAX_POINT_COUNT];
+		double x[MAX_POINT_COUNT];
+		double y[MAX_POINT_COUNT];
+		int count;
+	} autopilot;
 };
 
 /**

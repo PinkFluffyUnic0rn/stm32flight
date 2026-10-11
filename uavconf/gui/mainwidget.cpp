@@ -562,6 +562,8 @@ void mode_setting::set_value(const string &s)
 	int idx;
 	string tofind;
 
+	tofind = s;
+
 	if (!valaliases.empty()) {
 		for (auto it = begin(valaliases); it != end(valaliases); ++it)
 			if (it->second == s) {
@@ -569,7 +571,7 @@ void mode_setting::set_value(const string &s)
 				break;
 			}
 	}
-
+	
 	if ((idx = box->findText(QString::fromStdString(tofind))) < 0)
 		idx = def_idx;
 
@@ -637,10 +639,53 @@ settings_group::settings_group(QWidget *parent, string n, string s,
 
 settings_group::~settings_group()
 {
+	for (auto it = begin(labels); it != end(labels); ++it)
+		delete it->second;
+
 	for (auto it = begin(settings); it != end(settings); ++it)
 		delete it->second;
 
 	delete layout;
+}
+
+void settings_group::add_label_line(vector<string> s)
+{
+	QWidget *w;
+	size_t i;
+	
+	w = nullptr;
+	if (has_send_button) {
+		--layout_last;
+		w = layout->itemAtPosition(layout_last, 0)->widget();
+		layout->takeAt(layout->indexOf(w));
+	}
+
+	for (i = 0; i < s.size(); ++i) {
+		labels[i] = new QLabel();
+
+		labels[i]->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+		labels[i]->setText(s[i].c_str());
+
+		layout->addWidget(labels[i], layout_last, i);
+	}
+	
+	++layout_last;
+	
+	if (w != nullptr) {
+		layout->addWidget(w, layout_last, 0, 1, 2);
+		++layout_last;
+	}
+
+	this->adjustSize();
+}
+
+void settings_group::add_send_button()
+{
+	settings["send"] = new button_setting(nullptr, "send",
+		partial_send_click_handler, this);
+
+	layout->addWidget(settings["send"]->get_field(),
+		layout_last++, 0, 1, 2);
 }
 
 void settings_group::add_setting(setting *s, bool addlabel)
@@ -682,6 +727,33 @@ void settings_group::add_setting_pair(setting *s1, setting *s2)
 	layout->addWidget(s2->get_field(), layout_last, 1);
 
 	++layout_last;
+	
+	this->adjustSize();
+}
+
+void settings_group::add_setting_line(vector<setting *> s)
+{
+	size_t i;
+	QWidget *w;
+
+	w = nullptr;
+	if (has_send_button) {
+		--layout_last;
+		w = layout->itemAtPosition(layout_last, 0)->widget();
+		layout->takeAt(layout->indexOf(w));
+	}
+	
+	for (i = 0; i < s.size(); ++i) {
+		settings[s[i]->get_name()] = s[i];
+		layout->addWidget(s[i]->get_field(), layout_last, i);
+	}
+
+	++layout_last;
+	
+	if (w != nullptr) {
+		layout->addWidget(w, layout_last, 0, 1, 2);
+		++layout_last;
+	}
 	
 	this->adjustSize();
 }
@@ -824,6 +896,35 @@ commands_tree *commands_tree::get_child(const string &s)
 void commands_tree::set_setting(setting *s)
 {
 	cmdsetting = s;
+}
+
+void main_widget::points_count_item_changed(int idx)
+{
+	int count;
+	int i;
+
+	(void) idx;
+
+	count = stoi(tabs["autopilot"]->get_group("Autopilot")
+		->get_setting("Count")->get_value());
+
+	for (i = 0; i < 16; ++i) {
+		tabs["autopilot"]->get_group("Points")
+			->get_setting("type" + std::to_string(i))
+			->get_field()->setEnabled((i < count));
+		tabs["autopilot"]->get_group("Points")
+			->get_setting("alt" + std::to_string(i))
+			->get_field()->setEnabled((i < count));
+		tabs["autopilot"]->get_group("Points")
+			->get_setting("t" + std::to_string(i))
+			->get_field()->setEnabled((i < count));
+		tabs["autopilot"]->get_group("Points")
+			->get_setting("x" + std::to_string(i))
+			->get_field()->setEnabled((i < count));
+		tabs["autopilot"]->get_group("Points")
+			->get_setting("y" + std::to_string(i))
+			->get_field()->setEnabled((i < count));
+	}
 }
 
 void main_widget::record_size_item_changed(int idx)
@@ -974,6 +1075,7 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 	tabs["info"] = new settings_tab;
 	tabs["devices"] = new settings_tab;
 	tabs["motors"] = new settings_tab;
+	tabs["autopilot"] = new settings_tab;
 	
 	tabs["pid"]->add_group(new float_settings_group(nullptr,
 		"Rate PID", "dsp",
@@ -1409,6 +1511,60 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 	
 	tabs["motors"]->add_group(rb, 1, 1, 1, 1);
 
+	settings_group *ap = new settings_group(nullptr, "Autopilot", "autopilot", true, this);
+
+	ap->add_setting(new mode_setting(nullptr, "Count",
+		"autopilot count",
+		cmdstree,
+		{
+			"1", "2", "3", "4", "5", "6", "7", "8",
+			"9", "10", "11", "12", "13", "14", "15", "16"
+		}, "1"
+	));
+
+	connect(ap->get_setting("Count")->get_field(),
+		SIGNAL(currentIndexChanged(int)), this,
+		SLOT(points_count_item_changed(int)));
+
+	settings_group *points = new settings_group(nullptr, "Points", "autopilot", true, this);
+		
+	points->add_label_line({"Type", "Altitude", "Duration", "x", "y"});
+
+	for (i = 0; i < 16; ++i) {	
+		points->add_setting_line(
+			{
+				new mode_setting(nullptr,
+					"type" + std::to_string(i),
+					"autopilot type " + std::to_string(i),
+					cmdstree,
+					std::map<std::string, std::string>{
+						{"start", "0"},
+						{"takeoff", "1"},
+						{"hover", "2"},
+						{"forward", "3"},
+						{"landing", "4"},
+						{"stop", "5"},
+					}
+				),
+				new float_setting(nullptr,
+					"alt" + std::to_string(i),
+					"autopilot alt " + std::to_string(i), cmdstree),
+				new float_setting(nullptr,
+					"t" + std::to_string(i),
+					"autopilot t " + std::to_string(i), cmdstree),
+				new float_setting(nullptr,
+					"x" + std::to_string(i),
+					"autopilot x " + std::to_string(i), cmdstree),
+				new float_setting(nullptr,
+					"y" + std::to_string(i),
+					"autopilot y " + std::to_string(i), cmdstree)
+			}
+		);
+	}
+
+	tabs["autopilot"]->add_group(ap, 0, 0, 1, 1);
+	tabs["autopilot"]->add_group(points, 1, 0, 1, 1);
+
 	connect(lt->get_setting("output")->get_field(),
 		SIGNAL(currentIndexChanged(int)), this,
 		SLOT(motor_mapping_item_changed(int)));
@@ -1431,6 +1587,7 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 	tab->addTab(tabs["info"], "Info");
 	tab->addTab(tabs["devices"], "Devices");
 	tab->addTab(tabs["motors"], "Motors");
+	tab->addTab(tabs["autopilot"], "Autopilot");
 
 	settings["open"] = new button_setting(nullptr, "open config", open_click_handler, this);
 	settings["save"] = new button_setting(nullptr, "save config", save_click_handler, this);
@@ -1464,6 +1621,7 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 	#endif
 
 	record_size_item_changed(0);
+	points_count_item_changed(0);
 
 	setWindowTitle(tr("Settings"));
 }

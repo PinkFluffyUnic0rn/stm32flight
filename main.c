@@ -618,19 +618,21 @@ int powercheck(int ms)
 
 int initautopilot()
 {
-	Points[0].type = AUTOPILOT_START;
+	Strun.autopilot.type[0] = AUTOPILOT_START;
 
-	Points[1].takeoff.alt = 1.5;
-	Points[1].type = AUTOPILOT_TAKEOFF;
+	Strun.autopilot.type[1] = AUTOPILOT_TAKEOFF;
+	Strun.autopilot.alt[1] = 1.5;
 
-	Points[2].hover.t = 5.0;
-	Points[2].type = AUTOPILOT_HOVER;
+	Strun.autopilot.type[2] = AUTOPILOT_HOVER;
+	Strun.autopilot.t[2] = 5.0;
 
-	Points[3].type = AUTOPILOT_LANDING;
+	Strun.autopilot.type[3] = AUTOPILOT_LANDING;
 
-	Points[4].type = AUTOPILOT_STOP;
+	Strun.autopilot.type[4] = AUTOPILOT_STOP;
 
-	Pointscount = 5;
+	Strun.autopilot.count = 5;
+
+	updateautopilot();
 
 	return 0;
 }

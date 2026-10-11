@@ -34,7 +34,9 @@ enum NODETYPE {
 	NODETYPE_PARENT = 0,	/*!< non-terminal node */
 	NODETYPE_FLOAT = 1,	/*!< terminal node with float value */
 	NODETYPE_INT = 2,	/*!< terminal node with int value */
-	NODETYPE_MAP = 3	/*!< terminal node with map value */
+	NODETYPE_MAP = 3,	/*!< terminal node with map value */
+	NODETYPE_INTARRAY = 4,	/*!< terminal node with int array value */
+	NODETYPE_FLOATARRAY = 5	/*!< terminal node with float array value */
 };
 
 /**
@@ -778,6 +780,43 @@ static struct settingnode Sttree = {
 				NULL
 			}
 		},
+		&(struct settingnode) {
+			.token = "autopilot",
+			.type = NODETYPE_PARENT,
+			.child = (struct settingnode *[]) {
+				&(struct settingnode) {
+					.token = "count",
+					.type = NODETYPE_INT,
+					.i = &(Strun.autopilot.count)
+				},
+				&(struct settingnode) {
+					.token = "type",
+					.type = NODETYPE_INTARRAY,
+					.i = Strun.autopilot.type
+				},
+				&(struct settingnode) {
+					.token = "alt",
+					.type = NODETYPE_FLOATARRAY,
+					.f = Strun.autopilot.alt
+				},
+				&(struct settingnode) {
+					.token = "t",
+					.type = NODETYPE_FLOATARRAY,
+					.f = Strun.autopilot.t
+				},
+				&(struct settingnode) {
+					.token = "x",
+					.type = NODETYPE_FLOATARRAY,
+					.f = Strun.autopilot.x
+				},
+				&(struct settingnode) {
+					.token = "y",
+					.type = NODETYPE_FLOATARRAY,
+					.f = Strun.autopilot.y
+				},
+				NULL
+			}
+		},
 		NULL
 	}
 };
@@ -816,6 +855,28 @@ int updatevtx()
 
 	Dev[DEV_VTX].configure(Dev[DEV_VTX].priv,
 		"power", St.irc.power);
+
+	return 0;
+}
+
+int updateautopilot()
+{
+	int i;
+
+	Pointscount = Strun.autopilot.count;
+
+	for (i = 0; i < Strun.autopilot.count; ++i) {
+		Points[i].type = Strun.autopilot.type[i];
+
+		if (Points[i].type == AUTOPILOT_TAKEOFF)
+			Points[i].takeoff.alt = Strun.autopilot.alt[i];
+		else if (Points[i].type == AUTOPILOT_HOVER)
+			Points[i].hover.t = Strun.autopilot.t[i];
+		else if (Points[i].type == AUTOPILOT_FORWARD) {
+			Points[i].forward.x = Strun.autopilot.x[i];
+			Points[i].forward.y = Strun.autopilot.y[i];
+		}
+	}
 
 	return 0;
 }
@@ -1242,7 +1303,7 @@ static int sprintfautopilot(char *s)
 		else if (Points[i].type == AUTOPILOT_HOVER) {
 			snprintf(s + strlen(s), INFOLEN - strlen(s),
 				"%d %s t: %f;\r\n",
-				i, "takeoff",
+				i, "hover",
 				(double) Points[i].hover.t);
 		}
 		else if (Points[i].type == AUTOPILOT_FORWARD) {
@@ -1306,9 +1367,9 @@ int rcmd(const struct cdevice *dev, const char **toks, char *out)
 
 int applycmd(const struct cdevice *dev, const char **toks, char *out)
 {
-	int irc, dsp, log;
+	int irc, dsp, log, ap;
 
-	irc = dsp = log = 0;
+	irc = dsp = log = ap = 0;
 	
 	if (strcmp(toks[1], "irc") == 0)
 		irc = 1;
@@ -1316,8 +1377,10 @@ int applycmd(const struct cdevice *dev, const char **toks, char *out)
 		dsp = 1;
 	else if (strcmp(toks[1], "log") == 0)
 		log = 1;
+	else if (strcmp(toks[1], "autopilot") == 0)
+		ap = 1;
 	else {
-		irc = dsp = log = 1;
+		irc = dsp = log = ap = 1;
 	}
 
 	if (irc)
@@ -1328,6 +1391,9 @@ int applycmd(const struct cdevice *dev, const char **toks, char *out)
 
 	if (log)
 		modifytimev(Evs + TEV_LOG, Strun.log.freq);
+
+	if (ap)
+		updateautopilot();
 
 	validatesettings();
 
@@ -1655,6 +1721,26 @@ int setcmd(const struct cdevice *d, const char **toks, char *out)
 			*(node->f) = atof(*(p));
 		else if (node->type == NODETYPE_INT)
 			*(node->i) = atoi(*(p));
+		else if (node->type == NODETYPE_INTARRAY) {
+			int n;
+			int v;
+
+			n = atoi(*p);
+			v = atoi(*(p + 1));
+			++p;
+
+			(node->i)[n] = v;
+		}
+		else if (node->type == NODETYPE_FLOATARRAY) {
+			int n;
+			double v;
+
+			n = atoi(*p);
+			v = atof(*(p + 1));
+			++p;
+
+			(node->f)[n] = v;
+		}
 		else if (node->type == NODETYPE_MAP) {
 			int strn;
 			const char *key;
@@ -1747,7 +1833,7 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 			}
 		}
 
-		// if no correspondint child node
+		// if no corresponding child node
 		// found, it is a parsing error
 		if (*chd == NULL)
 			return (-1);
@@ -1761,6 +1847,16 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 	else if (node->type == NODETYPE_INT) {
 		vi = *(node->i);
 		valtype = CONFVALTYPE_INT;
+	}
+	else if (node->type == NODETYPE_INTARRAY) {
+		vi = node->i[atoi(*p)];
+
+		valtype = CONFVALTYPE_INT;
+	}
+	else if (node->type == NODETYPE_FLOATARRAY) {
+		vf = node->f[atoi(*p)];
+
+		valtype = CONFVALTYPE_FLOAT;
 	}
 	else if (node->type == NODETYPE_MAP) {
 		int recn;

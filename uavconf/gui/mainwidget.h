@@ -142,9 +142,14 @@ public:
 	~settings_group();
 
 	main_widget *get_main_widget() { return _main_widget; }
+	
+	void add_label_line(vector<string> s);
+	void add_send_button();
 
 	void add_setting(setting *s, bool addlabel = true);
 	void add_setting_pair(setting *s1, setting *s2);
+	void add_setting_line(vector<setting *> s);
+
 
 	string get_name() { return name; }
 	
@@ -163,6 +168,7 @@ private:
 	
 	int layout_last;
 	
+	map<int, QLabel *> labels;
 	map<string, setting *> settings;
 };
 
@@ -293,6 +299,7 @@ public:
 	
 public slots:
 	void record_size_item_changed(int idx);
+	void points_count_item_changed(int idx);
 	void record_field_item_changed(int idx);
 	void motor_mapping_item_changed(int idx);
 
