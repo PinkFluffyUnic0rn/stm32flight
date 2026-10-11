@@ -1053,7 +1053,7 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 	term = new terminal();
 
 	tab->tabBar()->setElideMode(Qt::ElideRight);
-	tab->tabBar()->setUsesScrollButtons(false);
+	tab->tabBar()->setUsesScrollButtons(true);
 
 	cmdstree = new commands_tree;
 
