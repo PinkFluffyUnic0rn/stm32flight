@@ -685,6 +685,10 @@ int autopilotupdate(int ms)
 	else if (point->type == AUTOPILOT_TAKEOFF) {
 		Altref = 0;
 
+		Speedpid = 0;
+		Yawspeedpid = 0;
+		Gnssmode = GNSSMODE_NONE;
+
 		if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 > 5.0)
 			Thrust = point->takeoff.alt;
 		else if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 > 1.0)
@@ -703,6 +707,10 @@ int autopilotupdate(int ms)
 	else if (point->type == AUTOPILOT_HOVER) {
 		Autopilottimer += dt;
 
+		Speedpid = 0;
+		Yawspeedpid = 0;
+		Gnssmode = GNSSMODE_NONE;
+
 		if (Autopilottimer > point->hover.t)
 			autopilotstep(&stepped);
 	}
@@ -710,6 +718,7 @@ int autopilotupdate(int ms)
 		double dlat, dlon;
 
 		Gnssmode = GNSSMODE_POS;
+		Yawspeedpid = 0;
 
 		Rolltarget = point->forward.x;
 		Pitchtarget = point->forward.y;
@@ -717,11 +726,15 @@ int autopilotupdate(int ms)
 		dlat = Pitchtarget - dsp_getcompl(Cmpl + CMPL_LAT);
 		dlon = Rolltarget - dsp_getcompl(Cmpl + CMPL_LON);
 
-		if (dlat * dlat + dlon * dlon < 0.25)
+		if (dlat * dlat + dlon * dlon < 1.0)
 			autopilotstep(&stepped);
 	}
 	else if (point->type == AUTOPILOT_LANDING) {
 		double curalt;
+
+		Speedpid = 0;
+		Yawspeedpid = 0;
+		Gnssmode = GNSSMODE_NONE;
 
 		if (s)
 			lidarfixed = 0;
@@ -753,6 +766,10 @@ int autopilotupdate(int ms)
 			autopilotstep(&stepped);
 	}
 	else if (point->type == AUTOPILOT_STOP) {
+
+		Speedpid = 0;
+		Yawspeedpid = 0;
+		Gnssmode = GNSSMODE_NONE;
 		Thrust = -1.0;
 	}
 
@@ -826,6 +843,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 
 	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.25) {
+		struct trackpoint *point;
 		int changed;
 		
 		changed = (Autopilot == 0);
@@ -840,15 +858,19 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 			Yawtarget = dsp_getlpf(Lpf + LPF_YAW);
 			setstabilize(0);	
 		
-		//	Rolltarget = 0;
-		//	Pitchtarget = 0;
+			Rolltarget = 0;
+			Pitchtarget = 0;
+		}
+	
+		point = Points + Curpoint;
+	
+		if (point->type != AUTOPILOT_FORWARD) {
+			Rolltarget = cd->chf[ERLS_CH_ROLL]
+				* (M_PI * St.ctrl.rollmax);
+			Pitchtarget = -cd->chf[ERLS_CH_PITCH]
+				* (M_PI * St.ctrl.pitchmax);
 		}
 
-		Rolltarget = cd->chf[ERLS_CH_ROLL]
-			* (M_PI * St.ctrl.rollmax);
-		Pitchtarget = -cd->chf[ERLS_CH_PITCH]
-			* (M_PI * St.ctrl.pitchmax);
-	
 		Autopilot = 1;
 		
 		return 0;
