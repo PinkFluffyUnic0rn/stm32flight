@@ -659,6 +659,7 @@ int autopilotupdate(int ms)
 {
 	static int lidarfixed = 0;
 	static int stepped = 0;
+	static double rtarget = 0.0, ptarget = 0.0;
 	int s;
 	struct trackpoint *point;
 	double dt;
@@ -680,14 +681,30 @@ int autopilotupdate(int ms)
 	}
 
 	point = Points + Curpoint;
-	if (point->type == AUTOPILOT_START)
+	if (point->type == AUTOPILOT_START) {
+		rtarget = 0.0;
+		ptarget = 0.0;
 		autopilotstep(&stepped);
+	}
 	else if (point->type == AUTOPILOT_TAKEOFF) {
 		Altref = 0;
 
-		Speedpid = 0;
-		Yawspeedpid = 0;
-		Gnssmode = GNSSMODE_NONE;
+		if (s) {
+			Speedpid = 0;
+			Yawspeedpid = 0;
+		}
+
+		if ((dsp_getcompl(Cmpl + CMPL_ALT) - Alt0) > 0.5
+				&& Dev[DEV_GNSS].status == DEVSTATUS_INIT
+				&& M10_HASFIX(Gnss.quality)) {
+			Gnssmode = GNSSMODE_POS;
+			Rolltarget = rtarget;
+			Pitchtarget = ptarget;
+		}
+		else {
+			Gnssmode = GNSSMODE_NONE;
+			Rolltarget = Pitchtarget = 0.0;
+		}
 
 		if (dsp_getcompl(Cmpl + CMPL_ALT) - Alt0 > 5.0)
 			Thrust = point->takeoff.alt;
@@ -707,9 +724,21 @@ int autopilotupdate(int ms)
 	else if (point->type == AUTOPILOT_HOVER) {
 		Autopilottimer += dt;
 
-		Speedpid = 0;
-		Yawspeedpid = 0;
-		Gnssmode = GNSSMODE_NONE;
+		if (s) {
+			Speedpid = 0;
+			Yawspeedpid = 0;
+		}
+
+		if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
+				&& M10_HASFIX(Gnss.quality)) {
+			Gnssmode = GNSSMODE_POS;
+			Rolltarget = rtarget;
+			Pitchtarget = ptarget;
+		}
+		else {
+			Gnssmode = GNSSMODE_NONE;
+			Rolltarget = Pitchtarget = 0.0;
+		}
 
 		if (Autopilottimer > point->hover.t)
 			autopilotstep(&stepped);
@@ -717,11 +746,16 @@ int autopilotupdate(int ms)
 	else if (point->type == AUTOPILOT_FORWARD) {
 		double dlat, dlon;
 
-		Gnssmode = GNSSMODE_POS;
-		Yawspeedpid = 0;
+		if (s) {
+			Speedpid = 0;
+			Yawspeedpid = 0;
+			Gnssmode = GNSSMODE_POS;
+			rtarget = point->forward.x;
+			ptarget = point->forward.y;
+		}
 
-		Rolltarget = point->forward.x;
-		Pitchtarget = point->forward.y;
+		Rolltarget = rtarget;
+		Pitchtarget = ptarget;
 
 		dlat = Pitchtarget - dsp_getcompl(Cmpl + CMPL_LAT);
 		dlon = Rolltarget - dsp_getcompl(Cmpl + CMPL_LON);
@@ -732,12 +766,11 @@ int autopilotupdate(int ms)
 	else if (point->type == AUTOPILOT_LANDING) {
 		double curalt;
 
-		Speedpid = 0;
-		Yawspeedpid = 0;
-		Gnssmode = GNSSMODE_NONE;
-
-		if (s)
+		if (s) {
 			lidarfixed = 0;
+			Speedpid = 0;
+			Yawspeedpid = 0;
+		}
 
 		if (Lidardata.isvalid && lidarfixed == 0) {
 			Thrust = dsp_getcompl(Cmpl + CMPL_GNDALT);
@@ -757,19 +790,33 @@ int autopilotupdate(int ms)
 			Altref = 0;
 		}
 
-		if (curalt > 5.0)		Thrust -= dt;
-		else if (curalt > 2.0)		Thrust -= dt * 0.5;
-		else if (curalt > 1.0)		Thrust -= dt * 0.25;
+		if (curalt > 0.5
+				&& Dev[DEV_GNSS].status == DEVSTATUS_INIT
+				&& M10_HASFIX(Gnss.quality)) {
+			Gnssmode = GNSSMODE_POS;
+			Rolltarget = rtarget;
+			Pitchtarget = ptarget;
+		}
+		else {
+			Gnssmode = GNSSMODE_NONE;
+			Rolltarget = Pitchtarget = 0.0;
+		}
+
+		if (curalt > 1.0)		Thrust -= dt;
+		else if (curalt > 0.5)		Thrust -= dt * 0.5;
+		else if (curalt > 0.25)		Thrust -= dt * 0.25;
 		else				Thrust -= dt * 0.125;
 		
 		if (curalt <= 0.01 || Thrust < -0.5)
 			autopilotstep(&stepped);
 	}
 	else if (point->type == AUTOPILOT_STOP) {
+		if (s) {
+			Speedpid = 0;
+			Yawspeedpid = 0;
+			Gnssmode = GNSSMODE_NONE;
+		}
 
-		Speedpid = 0;
-		Yawspeedpid = 0;
-		Gnssmode = GNSSMODE_NONE;
 		Thrust = -1.0;
 	}
 
@@ -843,7 +890,6 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 
 
 	if (cd->chf[ERLS_CH_AUTOPILOT] > 0.25) {
-		struct trackpoint *point;
 		int changed;
 		
 		changed = (Autopilot == 0);
@@ -856,15 +902,18 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 		if (changed) {
 			Curpoint = 0;
 			Yawtarget = dsp_getlpf(Lpf + LPF_YAW);
-			setstabilize(0);	
+			setstabilize(0);
+
+			Alt0 = dsp_getcompl(Cmpl + CMPL_ALT);
+			Lat0 = Gnss.declat;
+			Lon0 = Gnss.declon;
+			Goffset = dsp_getlpf(Lpf + LPF_VAAVG);
 		
 			Rolltarget = 0;
 			Pitchtarget = 0;
 		}
 	
-		point = Points + Curpoint;
-	
-		if (point->type != AUTOPILOT_FORWARD) {
+		if (Gnssmode != GNSSMODE_POS) {
 			Rolltarget = cd->chf[ERLS_CH_ROLL]
 				* (M_PI * St.ctrl.rollmax);
 			Pitchtarget = -cd->chf[ERLS_CH_PITCH]
