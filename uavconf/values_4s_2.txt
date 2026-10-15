@@ -18,12 +18,12 @@ adj curr scale 412.5
 adj gyro x -0.110582
 adj gyro y -0.015645
 adj gyro z 0.116279
-adj mag x0 0.471046
-adj mag y0 0.012802
-adj mag z0 0.075315
+adj mag x0 0.537405
+adj mag y0 0.005388
+adj mag z0 -0.002341
 adj mag decl 0.375944
-adj mag xscale 0.992884
-adj mag yscale 0.992538
+adj mag xscale 0.984562
+adj mag yscale 0.996269
 adj mag zscale 1
 adj mag xthscale 0
 adj mag ythscale 0
@@ -31,6 +31,87 @@ adj mag zthscale 0
 adj pitchthrust 0
 adj rollthrust 0
 adj thrust 1.6
+autopilot count 5
+autopilot alt 0 0
+autopilot alt 1 1.5
+autopilot alt 10 0
+autopilot alt 11 0
+autopilot alt 12 0
+autopilot alt 13 0
+autopilot alt 14 0
+autopilot alt 15 0
+autopilot alt 2 0
+autopilot alt 3 0
+autopilot alt 4 0
+autopilot alt 5 0
+autopilot alt 6 0
+autopilot alt 7 0
+autopilot alt 8 0
+autopilot alt 9 0
+autopilot t 0 0
+autopilot t 1 0
+autopilot t 10 0
+autopilot t 11 0
+autopilot t 12 0
+autopilot t 13 0
+autopilot t 14 0
+autopilot t 15 0
+autopilot t 2 5
+autopilot t 3 0
+autopilot t 4 0
+autopilot t 5 0
+autopilot t 6 0
+autopilot t 7 0
+autopilot t 8 0
+autopilot t 9 0
+autopilot type 0 0
+autopilot type 1 1
+autopilot type 10 0
+autopilot type 11 0
+autopilot type 12 0
+autopilot type 13 0
+autopilot type 14 0
+autopilot type 15 0
+autopilot type 2 2
+autopilot type 3 4
+autopilot type 4 5
+autopilot type 5 0
+autopilot type 6 0
+autopilot type 7 0
+autopilot type 8 0
+autopilot type 9 0
+autopilot x 0 0
+autopilot x 1 0
+autopilot x 10 0
+autopilot x 11 0
+autopilot x 12 0
+autopilot x 13 0
+autopilot x 14 0
+autopilot x 15 0
+autopilot x 2 0
+autopilot x 3 0
+autopilot x 4 0
+autopilot x 5 0
+autopilot x 6 0
+autopilot x 7 0
+autopilot x 8 0
+autopilot x 9 0
+autopilot y 0 0
+autopilot y 1 0
+autopilot y 10 0
+autopilot y 11 0
+autopilot y 12 0
+autopilot y 13 0
+autopilot y 14 0
+autopilot y 15 0
+autopilot y 2 0
+autopilot y 3 0
+autopilot y 4 0
+autopilot y 5 0
+autopilot y 6 0
+autopilot y 7 0
+autopilot y 8 0
+autopilot y 9 0
 ctrl accel 0.5
 ctrl altmax 4
 ctrl pitch 0.25
@@ -63,8 +144,8 @@ notch gyrovbat 17
 notch gyrofrmax 2038
 notch gyrofrmin 220
 log freq 128
-log recsize 8
-log record 0 none
+log recsize 4
+log record 0 acc_x
 log record 1 none
 log record 10 none
 log record 2 none
