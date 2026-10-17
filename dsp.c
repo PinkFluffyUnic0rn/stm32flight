@@ -391,7 +391,7 @@ int dsp_setcomplv2(struct dsp_complv *comp, double tc,
 	int freq, int init)
 {
 	if (init)
-		comp->r = comp->p = 0;
+		comp->r = comp->p = comp->y = 0;
 
 	comp->coef = tc / (tc + 1.0 / (double) freq);
 

@@ -50,6 +50,12 @@ int Pointscount = 0;
 int Curpoint = 0;
 double Autopilottimer = 0.0;
 
+double Tiltcoeflimit = 1.414214;
+double Mtrscaleinv = 1.0;
+double Sr = 0.0, Cr = 0.0;
+double Sp = 0.0, Cp = 0.0;
+double Sy = 0.0, Cy = 0.0;
+
 int Curslot = 0;
 
 int Loops = 0;
@@ -65,7 +71,7 @@ int setthrust(struct cdevice *dev,
 {
 	struct dshot_data dd;
 	double avgthrust;
-	
+
 	// incorrect thrust value protection and
 	// extra check for disabled ELRS transmitter	
 	if (isnan(ltd) || isnan(rtd) || isnan(rbd)
@@ -73,17 +79,17 @@ int setthrust(struct cdevice *dev,
 		ltd = rtd = rbd = lbd = 0.0;
 
 	// update average thrust LPF
-	avgthrust = (ltd + rtd + rbd + lbd) / 4.0;
+	avgthrust = (ltd + rtd + rbd + lbd) * 0.25;
 	avgthrust = avgthrust < 0.0 ? 0.0 : avgthrust;
 
 	dsp_updatelpf(Lpf + LPF_AVGTHR, avgthrust);
 	dsp_updatelpf(Lpf + LPF_AVGTHRA, avgthrust);
 
 	// linearize thrust
-	ltd = pow(trimuf(ltd), 1.0 / St.adj.mtrsc.thr);
-	rtd = pow(trimuf(rtd), 1.0 / St.adj.mtrsc.thr);
-	lbd = pow(trimuf(lbd), 1.0 / St.adj.mtrsc.thr);
-	rbd = pow(trimuf(rbd), 1.0 / St.adj.mtrsc.thr);
+	ltd = pow(trimuf(ltd), Mtrscaleinv);
+	rtd = pow(trimuf(rtd), Mtrscaleinv);
+	lbd = pow(trimuf(lbd), Mtrscaleinv);
+	rbd = pow(trimuf(rbd), Mtrscaleinv);
 
 	// set values for thrust channels using
 	// motor to PWM channel mapping values

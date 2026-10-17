@@ -358,6 +358,15 @@ extern int Pointscount;		/*!< autopilot track points count */
 extern int Curpoint;		/*!< current autopilot track point */
 extern double Autopilottimer;	/*!< autopilot timer */
 
+extern double Tiltcoeflimit;	/*!< tilt compensation 
+				coefficient limit for throttle */
+extern double Mtrscaleinv;	/*!< motor thrust linearization
+				value inverse for fater
+				computation */
+extern double Sr, Cr;		/*!< roll sin and cos values */
+extern double Sp, Cp;		/*!< pitch sin and cos values */
+extern double Sy, Cy;		/*!< yaw sin and cos values */
+
 extern int Curslot; /*!< current settings slot */
 
 extern int Loops; /*!< stabilization loops counter */

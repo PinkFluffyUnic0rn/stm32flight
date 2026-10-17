@@ -1136,7 +1136,7 @@ int m10msg(struct m10_data *nd)
 	Gnss.magvardir = (tolower(nd->rmc.magvardir) == 'e')
 		? MAGVARDIR_E : MAGVARDIR_W;
 
-	Gnss.speed = nd->rmc.speed;
+	Gnss.speed = nd->rmc.speed * 0.27777777778;
 	Gnss.course = circf(deg2rad(nd->rmc.course));
 
 	// write RMC values into log

@@ -28,11 +28,10 @@
 * @param z magnetometer's Z axis value
 * @return tilt compensated heading
 */
-static double heading(double r, double p, double x, double y, double z)
+static double heading(double x, double y, double z)
 {
-	x = x * cos(p) + y * sin(r) * sin(p)
-		+ z * cos(r) * sin(p);
-	y = y * cos(r) - z * sin(r);
+	x = x * Cp - y * Sr * Sp - z * Cr * Sp;
+	y = y * Cr - z * Sr;
 
 	return circf(atan2(y, x) + St.adj.magdecl);
 }
@@ -177,6 +176,14 @@ int setstabilize(int init)
 	dsp_setunity(Lpf + LPF_PITCH, init);
 	dsp_setunity(Lpf + LPF_YAW, init);
 
+	// tilt compensation coefficient limit for throttle,
+	// converted to form for fast computation
+	Tiltcoeflimit = 1.0 / cos(St.adj.althold.tiltcoefmax * M_PI);
+
+	// calculate inverse value of motor thrust
+	// linearization value for faster computation
+	Mtrscaleinv = 1.0 / St.adj.mtrsc.thr;
+
 	return 0;
 }
 
@@ -184,7 +191,6 @@ int updateposition(double dt)
 {
 	static double prevalt = 0.0;
 	static double prevlalt = 0.0;
-	double sr, cr, sp, cp;
 	double roll, pitch, yaw;
 	double vx, vy, vz;
 	double gvx, gvy, gvz;
@@ -194,6 +200,9 @@ int updateposition(double dt)
 	double alt;
 	double altcor;
 	double vaccel;
+	double dtinv;
+
+	dtinv = 1.0 / dt;
 
 	// apply accelerometer offsets
 	ax = dsp_getlpf(Lpf + LPF_ACCX);
@@ -214,25 +223,10 @@ int updateposition(double dt)
 	// signal to be low-pass filtered: it's the tilt value that is
 	// calculated from acceleromer readings through some
 	// trigonometry.
-	if (St.feature.matrixatt != 0) {
-		dsp_updatecomplv2(&Cmplv, gy * dt, gx * dt, -gz * dt,
-			atan2(-ax, az),
-			atan2(ay, sqrt(ax * ax + az * az)),
-			heading(
-				dsp_getlpf(Lpf + LPF_ROLL),
-				-dsp_getlpf(Lpf + LPF_PITCH),
-				Magdata.fx, Magdata.fy, Magdata.fz),
-			&roll, &pitch, &yaw);
-	}
-	else {
-		roll = dsp_updatecompl(Cmpl + CMPL_ROLL, gy * dt,
-			atan2(-ax, az));
-		pitch = dsp_updatecompl(Cmpl + CMPL_PITCH, gx * dt,
-			atan2(ay, sqrt(ax * ax + az * az)));
-		yaw = dsp_updatecirccompl(Cmpl + CMPL_YAW, -gz * dt,
-			heading(roll, -pitch,
-				Magdata.fx, Magdata.fy, Magdata.fz));
-	}
+	dsp_updatecomplv2(&Cmplv, gy * dt, gx * dt, -gz * dt,
+		atan2(-ax, az), atan2(ay, sqrt(ax * ax + az * az)),
+		heading(Magdata.fx, Magdata.fy, Magdata.fz),
+		&roll, &pitch, &yaw);
 	
 	roll = dsp_updatelpf(Lpf + LPF_ROLL,
 		roll - St.adj.att0.roll);
@@ -247,15 +241,15 @@ int updateposition(double dt)
 	// value. First signal is the speed of the rotation around Z
 	// axis. Second signal is the heading value that is
 	// calculated from magnetometer readings.
-
-	sr = sin(roll);		cr = cos(roll);
-	sp = sin(pitch);	cp = cos(pitch);
+	Sr = sin(roll);		Cr = cos(roll);
+	Sp = sin(pitch);	Cp = cos(pitch);
+	Sy = sin(yaw);		Cy = cos(yaw);
 
 	// calculate gravity direction vector in IMU coordination system
 	// using pitch and roll values;
-	vx = -sr;
-	vy = sp * cr;
-	vz = cp * cr;
+	vx = -Sr;
+	vy = Sp * Cr;
+	vz = Cp * Cr;
 
 	gvx = Goffset * vx;
 	gvy = Goffset * vy;
@@ -276,8 +270,8 @@ int updateposition(double dt)
 	// calculate forward direction vector in IMU
 	// coordination system using pitch and roll values;
 	vx = 0;
-	vy = cp;
-	vz = -sp;
+	vy = Cp;
+	vz = -Sp;
 
 	// update forward acceleration using acceleration
 	// vector to gravity vector projection
@@ -290,9 +284,9 @@ int updateposition(double dt)
 
 	// calculate sideward direction vector in IMU
 	// coordination system using pitch and roll values;
-	vx = cr;
-	vy = sp * sr;
-	vz = sr * cp;
+	vx = Cr;
+	vy = Sp * Sr;
+	vz = Sr * Cp;
 
 	// update sideward acceleration using acceleration
 	// vector to gravity vector projection
@@ -305,46 +299,40 @@ int updateposition(double dt)
 
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
-		double sy, cy;
-
-		sy = sin(yaw);
-		cy = cos(yaw);
+		double slat, slon;
 
 		// calculate speed through latitude from
 		// forward and sideward accelerations and
 		// GNSS speed using complimetary filter
-		dsp_updatecompl(Cmpl + CMPL_SLAT,
+		slat = dsp_updatecompl(Cmpl + CMPL_SLAT,
 			9.80665 * (
-			+ dsp_getlpf(Lpf + LPF_FA) * cy 
-			- dsp_getlpf(Lpf + LPF_SA) * sy)
-			* dt, Gnss.speed / 3.6 * cos(Gnss.course));
+			+ dsp_getlpf(Lpf + LPF_FA) * Cy 
+			- dsp_getlpf(Lpf + LPF_SA) * Sy)
+			* dt, Gnss.speed * cos(Gnss.course));
 
 		// calculate speed through longitude from
 		// forward and sideward accelerations and
 		// GNSS speed using complimetary filter
-		dsp_updatecompl(Cmpl + CMPL_SLON,
+		slon = dsp_updatecompl(Cmpl + CMPL_SLON,
 			9.80665 * (
-			+ dsp_getlpf(Lpf + LPF_FA) * sy
-			+ dsp_getlpf(Lpf + LPF_SA) * cy)
-			* dt, Gnss.speed / 3.6 * sin(Gnss.course));
+			+ dsp_getlpf(Lpf + LPF_FA) * Sy
+			+ dsp_getlpf(Lpf + LPF_SA) * Cy)
+			* dt, Gnss.speed * sin(Gnss.course));
 
 		// calculate latitude from speed and GNSS
 		// latitude using complimentary filter
-		dsp_updatecompl(Cmpl + CMPL_LAT,
-			dsp_getcompl(Cmpl + CMPL_SLAT) * dt,
+		dsp_updatecompl(Cmpl + CMPL_LAT, slat * dt,
 			dsp_getlpf(Lpf + LPF_LATM));
 
 		// calculate longitude from speed and GNSS
 		// latitude using complimentary filter
-		dsp_updatecompl(Cmpl + CMPL_LON,
-			dsp_getcompl(Cmpl + CMPL_SLON) * dt,
+		dsp_updatecompl(Cmpl + CMPL_LON, slon * dt,
 			dsp_getlpf(Lpf + LPF_LONM));
 
 		// calculate horizontal speed from speed
 		// values through longitude and latitude
 		dsp_updatelpf(Lpf + LPF_SPEED,
-			sqrt(pow(dsp_getcompl(Cmpl + CMPL_SLAT), 2.0)
-			+ pow(dsp_getcompl(Cmpl + CMPL_SLON), 2.0)));
+			sqrt(slat * slat + slon * slon));
 
 		// write speed values through latitude and longitude,
 		// horizontal speed, latitude and longitude into log
@@ -369,11 +357,11 @@ int updateposition(double dt)
 	// if GNSS is locked, use speed to compensate dynamic pressure
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)) {
-		double sp;
+		double spd;
 
-		sp = dsp_getlpf(Lpf + LPF_SPEED);
+		spd = dsp_getlpf(Lpf + LPF_SPEED);
 
-		altcor = St.adj.althold.altthc * sp * sp;
+		altcor = St.adj.althold.altthc * spd * spd;
 		alt -= altcor;
 	}
 	
@@ -387,7 +375,8 @@ int updateposition(double dt)
 	vaccel = 9.80665 * (dsp_getlpf(Lpf + LPF_VAU) - Goffset) * dt;
 
 	dsp_updatecompl(Cmpl + CMPL_CLIMBRATE,
-		vaccel, (dsp_getcompl(Cmpl + CMPL_ALT) - prevalt) / dt);
+		vaccel,
+		(dsp_getcompl(Cmpl + CMPL_ALT) - prevalt) * dtinv);
 
 	// store calculated altitude for next calculation
 	prevalt = dsp_getcompl(Cmpl + CMPL_ALT);
@@ -400,13 +389,13 @@ int updateposition(double dt)
 	// lidar based altitude using complimentary filter
 	dsp_updatecompl(Cmpl + CMPL_GNDALT,
 		dsp_getcompl(Cmpl + CMPL_LCLIMBRATE) * dt,
-		Lidardata.alt * cp * cr);
+		Lidardata.alt * Cp * Cr);
 
 	// calculate climb rate from vertical acceleration and
 	// lidar based altitude difference using complimentary filter
 	dsp_updatecompl(Cmpl + CMPL_LCLIMBRATE,
 		vaccel,
-		(dsp_getcompl(Cmpl + CMPL_GNDALT) - prevlalt) / dt);
+		(dsp_getcompl(Cmpl + CMPL_GNDALT) - prevlalt) * dtinv);
 
 	// store calculated altitude for next calculation
 	prevlalt = dsp_getcompl(Cmpl + CMPL_GNDALT);
@@ -449,16 +438,16 @@ int updatecorrection(double dt, struct corvals *cor)
 	gz = deg2rad(dsp_getlpf(Lpf + LPF_GYROZ));
 
 	// get tilt compensation coefficient
-	tiltcoef = cos(pitch) * cos(roll);
+	tiltcoef = fabs(1.0 / (Cp * Cr));
 
 	// divide by zero protection, tilt
 	// compesation for throttle works only
 	// for angles less that 45 degress
-	if (tiltcoef < cos(St.adj.althold.tiltcoefmax * M_PI))
-		tiltcoef = cos(St.adj.althold.tiltcoefmax * M_PI);
+	if (tiltcoef > Tiltcoeflimit)
+		tiltcoef = Tiltcoeflimit;
 
 	// get pitch corrected value of the hover throttle
-	ht = St.adj.althold.hoverthrottle / tiltcoef;
+	ht = St.adj.althold.hoverthrottle * tiltcoef;
 
 	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
 			&& M10_HASFIX(Gnss.quality)
@@ -485,8 +474,8 @@ int updatecorrection(double dt, struct corvals *cor)
 
 		// get pitch and roll correction values
 		// using covertion to local frame, inverting pitch
-		cor->pitch = -cos(yaw) * latcor - sin(yaw) * loncor;
-		cor->roll =  -sin(yaw) * latcor + cos(yaw) * loncor;
+		cor->pitch = -Cy * latcor - Sy * loncor;
+		cor->roll =  -Sy * latcor + Cy * loncor;
 
 		cor->roll = trimf(cor->roll,
 			-M_PI * St.ctrl.rollmax * 0.5,
@@ -723,7 +712,7 @@ int updatecorrection(double dt, struct corvals *cor)
 		// vertial acceleration PID controller and get next
 		// thrust correction value
 		cor->thrust = dsp_pidbl(Pid + PID_VA, cor->thrust + 1.0,
-			dsp_getlpf(Lpf + LPF_VAPT1)) / tiltcoef + ht;	
+			dsp_getlpf(Lpf + LPF_VAPT1)) * tiltcoef + ht;	
 		
 		writelog(LOG_VA_PID, cor->thrust);
 		writelog(LOG_VA_PIDI, Pid[PID_VA].i);
@@ -759,8 +748,9 @@ int updatecorrection(double dt, struct corvals *cor)
 		// and next use climb rate correction value to update
 		// vertial acceleration PID controller and get next
 		// thrust correction value
-		cor->thrust = dsp_pidbl(Pid + PID_VA, cor->thrust + Goffset,
-			dsp_getlpf(Lpf + LPF_VAPT1)) / tiltcoef + ht;
+		cor->thrust = dsp_pidbl(Pid + PID_VA,
+			cor->thrust + Goffset,
+			dsp_getlpf(Lpf + LPF_VAPT1)) * tiltcoef + ht;
 		
 		writelog(LOG_VA_PID, cor->thrust);
 		writelog(LOG_VA_PIDI, Pid[PID_VA].i);
@@ -775,7 +765,7 @@ int updatecorrection(double dt, struct corvals *cor)
 			cor->thrust = dsp_pidbl(Pid + PID_VA,
 				Thrust + 1.0,
 				dsp_getlpf(Lpf + LPF_VAPT1))
-					/ tiltcoef + ht;
+					* tiltcoef + ht;
 		}
 		else {
 			// if no altitude hold and hover throttle mode
@@ -825,15 +815,7 @@ int updatecorrection(double dt, struct corvals *cor)
 
 int applythrust(const struct corvals *cor)
 {
-	double ltm, lbm, rbm, rtm;
 	double tc;
-
-	// calculate weights for motors
-	// thrust calibration values
-	ltm = (1.0 + St.adj.mtrsc.r / 2) * (1.0 + St.adj.mtrsc.p / 2);
-	rtm = (1.0 - St.adj.mtrsc.r / 2) * (1.0 + St.adj.mtrsc.p / 2);
-	lbm = (1.0 + St.adj.mtrsc.r / 2) * (1.0 - St.adj.mtrsc.p / 2);
-	rbm = (1.0 - St.adj.mtrsc.r / 2) * (1.0 - St.adj.mtrsc.p / 2);
 
 	// if final thrust is greater than
 	// limit set it to the limit
@@ -846,13 +828,13 @@ int applythrust(const struct corvals *cor)
 	// for pitch and two diagonals (spinning in oposite directions)
 	// for yaw.
 	setthrust(Dev + DEV_DSHOT,
-		En * ltm * (tc + 0.5 * cor->roll
+		En * (tc + 0.5 * cor->roll
 			+ 0.5 * cor->pitch + 0.5 * cor->yaw),
-		En * rtm * (tc - 0.5 * cor->roll
+		En * (tc - 0.5 * cor->roll
 			+ 0.5 * cor->pitch - 0.5 * cor->yaw),
-		En * lbm * (tc + 0.5 * cor->roll
+		En * (tc + 0.5 * cor->roll
 			- 0.5 * cor->pitch - 0.5 * cor->yaw),
-		En * rbm * (tc - 0.5 * cor->roll
+		En * (tc - 0.5 * cor->roll
 			- 0.5 * cor->pitch + 0.5 * cor->yaw));
 
 	return 0;
