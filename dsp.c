@@ -230,6 +230,43 @@ double dsp_pid(struct dsp_pidval *pv, double target,
 	return v;
 }
 
+double dsp_pdbl(struct dsp_pidblval *pv, double target, double val)
+{
+	double e, v;
+
+	e = target - val;
+
+	if (pv->circular)
+		e = circf(e);
+
+	switch (pv->step) {
+	case 0:
+		v = pv->a[0] * e;
+		break;
+
+	case 1:
+		v = pv->a[0] * e
+			+ pv->a[1] * pv->e[0] + pv->b[1] * pv->v[0];
+		break;
+
+	default:
+		v = pv->a[0] * e
+			+ pv->a[1] * pv->e[0] + pv->b[1] * pv->v[0]
+			+ pv->a[2] * pv->e[1] + pv->b[2] * pv->v[1];
+		break;
+	}
+
+	pv->e[1] = pv->e[0];
+	pv->v[1] = pv->v[0];
+	pv->e[0] = e;
+	pv->v[0] = v;
+
+	if (pv->step < pv->depth)
+		++pv->step;
+
+	return v;
+}
+
 double dsp_pidbl(struct dsp_pidblval *pv, double target, double val)
 {
 	double e, v, vs;

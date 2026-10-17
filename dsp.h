@@ -277,6 +277,17 @@ double dsp_pid(struct dsp_pidval *pv, double target,
 	double val, double dt);
 
 /**
+* @brief Calculate next bilinear PD controller's correction value.
+* @param pv bilinear PID controller context
+* @param target desired value (setpoint)
+* @param val current value
+* @param dt time delta, i.e. time passed from previous correction
+	value calculation
+* @return correction value
+*/
+double dsp_pdbl(struct dsp_pidblval *pv, double target, double val);
+
+/**
 * @brief Calculate next bilinear PID controller's correction value.
 * @param pv bilinear PID controller context
 * @param target desired value (setpoint)

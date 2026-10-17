@@ -466,18 +466,18 @@ int updatecorrection(double dt, struct corvals *cor)
 		double loncor, latcor;
 
 		// calculate lonogitude and latitude correction
-		loncor = dsp_pidbl(Pid + PID_LON, Rolltarget,
+		loncor = dsp_pdbl(Pid + PID_LON, Rolltarget,
 			dsp_getcompl(Cmpl + CMPL_LON));
-		latcor = dsp_pidbl(Pid + PID_LAT, Pitchtarget,
+		latcor = dsp_pdbl(Pid + PID_LAT, Pitchtarget,
 			dsp_getcompl(Cmpl + CMPL_LAT));
 	
 		writelog(LOG_LAT_PID, loncor);
 		writelog(LOG_LON_PID, latcor);
 
 		// calculate lonogitude and latitude correction
-		loncor = dsp_pidbl(Pid + PID_SLON, loncor,
+		loncor = dsp_pdbl(Pid + PID_SLON, loncor,
 			dsp_getcompl(Cmpl + CMPL_SLON));
-		latcor = dsp_pidbl(Pid + PID_SLAT, latcor,
+		latcor = dsp_pdbl(Pid + PID_SLAT, latcor,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
 		writelog(LOG_SLAT_PID, loncor);
@@ -496,8 +496,8 @@ int updatecorrection(double dt, struct corvals *cor)
 			-M_PI * St.ctrl.pitchmax * 0.5,
 			M_PI * St.ctrl.pitchmax * 0.5);
 
-		cor->roll = dsp_pidbl(Pid + PID_ROLLP, cor->roll, roll);
-		cor->pitch = dsp_pidbl(Pid + PID_PITCHP, cor->pitch, pitch);
+		cor->roll = dsp_pdbl(Pid + PID_ROLLP, cor->roll, roll);
+		cor->pitch = dsp_pdbl(Pid + PID_PITCHP, cor->pitch, pitch);
 
 		writelog(LOG_ROLL_PID, cor->roll);
 		writelog(LOG_PITCH_PID, cor->pitch);
@@ -526,9 +526,9 @@ int updatecorrection(double dt, struct corvals *cor)
 			- Rolltarget * sin(yaw);
 		
 		// calculate longitude and latitude correction
-		loncor = dsp_pidbl(Pid + PID_SLON, lontarget,
+		loncor = dsp_pdbl(Pid + PID_SLON, lontarget,
 			dsp_getcompl(Cmpl + CMPL_SLON));
-		latcor = dsp_pidbl(Pid + PID_SLAT, lattarget,
+		latcor = dsp_pdbl(Pid + PID_SLAT, lattarget,
 			dsp_getcompl(Cmpl + CMPL_SLAT));
 
 		writelog(LOG_SLAT_PID, loncor);
@@ -547,8 +547,8 @@ int updatecorrection(double dt, struct corvals *cor)
 			-M_PI * St.ctrl.pitchmax * 0.5,
 			M_PI * St.ctrl.pitchmax * 0.5);
 
-		cor->roll = dsp_pidbl(Pid + PID_ROLLP, cor->roll, roll);
-		cor->pitch = dsp_pidbl(Pid + PID_PITCHP, cor->pitch, pitch);
+		cor->roll = dsp_pdbl(Pid + PID_ROLLP, cor->roll, roll);
+		cor->pitch = dsp_pdbl(Pid + PID_PITCHP, cor->pitch, pitch);
 
 		writelog(LOG_ROLL_PID, cor->roll);
 		writelog(LOG_PITCH_PID, cor->pitch);
@@ -581,8 +581,8 @@ int updatecorrection(double dt, struct corvals *cor)
 		// mode), first update roll and pitch POSITION PID
 		// controllers using currect roll and values and targets
 		// got from ERLS and get next correction values.
-		cor->roll = dsp_pidbl(Pid + PID_ROLLP, Rolltarget, roll);
-		cor->pitch = dsp_pidbl(Pid + PID_PITCHP, Pitchtarget, pitch);
+		cor->roll = dsp_pdbl(Pid + PID_ROLLP, Rolltarget, roll);
+		cor->pitch = dsp_pdbl(Pid + PID_PITCHP, Pitchtarget, pitch);
 
 		writelog(LOG_ROLL_PID, cor->roll);
 		writelog(LOG_PITCH_PID, cor->pitch);
@@ -626,13 +626,13 @@ int updatecorrection(double dt, struct corvals *cor)
 		// calcualted using magnetometer and yaw target got from
 		// ELRS remote to update yaw POSITION PID controller and
 		// get it's next correciton value.
-		cor->yaw = dsp_pidbl(Pid + PID_YAWP, dir, yaw);
+		cor->yaw = dsp_pdbl(Pid + PID_YAWP, dir, yaw);
 		
 		writelog(LOG_YAW_PID, cor->yaw);
 
 		// then use this value to update yaw speed PID
 		// controller and get next yaw SPEED correction value
-		cor->yaw = dsp_pidbl(Pid + PID_YAWS, cor->yaw, -gz);
+		cor->yaw = dsp_pdbl(Pid + PID_YAWS, cor->yaw, -gz);
 
 		writelog(LOG_YAWS_PID, cor->yaw);
 	}
@@ -640,7 +640,7 @@ int updatecorrection(double dt, struct corvals *cor)
 		// if single PID loop mode for yaw is used just use
 		// rotation speed values around axis Z to upadte yaw PID
 		// controller and get next yaw correciton value
-		cor->yaw = dsp_pidbl(Pid + PID_YAWS, Yawtarget, -gz);
+		cor->yaw = dsp_pdbl(Pid + PID_YAWS, Yawtarget, -gz);
 		
 		writelog(LOG_YAW_PID, cor->yaw);
 	}
@@ -662,13 +662,13 @@ int updatecorrection(double dt, struct corvals *cor)
 		// calcualted using magnetometer and yaw target got from
 		// ELRS remote to update yaw POSITION PID controller and
 		// get it's next correciton value.
-		cor->yaw = dsp_pidbl(Pid + PID_YAWP, yt, yaw);
+		cor->yaw = dsp_pdbl(Pid + PID_YAWP, yt, yaw);
 	
 		writelog(LOG_YAW_PID, cor->yaw);
 
 		// then use this value to update yaw speed PID
 		// controller and get next yaw SPEED correction value
-		cor->yaw = dsp_pidbl(Pid + PID_YAWS, cor->yaw, -gz);
+		cor->yaw = dsp_pdbl(Pid + PID_YAWS, cor->yaw, -gz);
 		
 		writelog(LOG_YAWS_PID, cor->yaw);
 	}
@@ -680,7 +680,7 @@ int updatecorrection(double dt, struct corvals *cor)
 			// target altitude from ELRS remote to update
 			// altitude PID controller and get it's next
 			// correction value
-			cor->thrust = dsp_pidbl(Pid + PID_ALT, Thrust,
+			cor->thrust = dsp_pdbl(Pid + PID_ALT, Thrust,
 				dsp_getcompl(Cmpl + CMPL_GNDALT));
 			
 			writelog(LOG_ALT_PID, cor->thrust);
@@ -690,7 +690,7 @@ int updatecorrection(double dt, struct corvals *cor)
 			// (barometer differentiating and accelerometer
 			// Z-axis integration) to update climb rate PID
 			// controller and get it's next correction value
-			cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
+			cor->thrust = dsp_pdbl(Pid + PID_CLIMBRATE,
 				cor->thrust,
 				dsp_getcompl(Cmpl + CMPL_LCLIMBRATE));
 
@@ -702,7 +702,7 @@ int updatecorrection(double dt, struct corvals *cor)
 			// target altitude from ELRS remote to update
 			// altitude PID controller and get it's next
 			// correction value
-			cor->thrust = dsp_pidbl(Pid + PID_ALT, Thrust,
+			cor->thrust = dsp_pdbl(Pid + PID_ALT, Thrust,
 				dsp_getcompl(Cmpl + CMPL_ALT) - Alt0);
 		
 			writelog(LOG_ALT_PID, cor->thrust);
@@ -712,7 +712,7 @@ int updatecorrection(double dt, struct corvals *cor)
 			// (barometer differentiating and accelerometer
 			// Z-axis integration) to update climb rate PID
 			// controller and get it's next correction value
-			cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
+			cor->thrust = dsp_pdbl(Pid + PID_CLIMBRATE,
 				cor->thrust,
 				dsp_getcompl(Cmpl + CMPL_CLIMBRATE));
 
@@ -736,7 +736,7 @@ int updatecorrection(double dt, struct corvals *cor)
 			// Z-axis integration) and target climb rate
 			// from ELRS remote to update climb rate PID
 			// controller and get it's next correction value
-			cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
+			cor->thrust = dsp_pdbl(Pid + PID_CLIMBRATE,
 				Thrust,
 				dsp_getcompl(Cmpl + CMPL_LCLIMBRATE));	
 			
@@ -749,7 +749,7 @@ int updatecorrection(double dt, struct corvals *cor)
 			// Z-axis integration) and target climb rate
 			// from ELRS remote to update climb rate PID
 			// controller and get it's next correction value
-			cor->thrust = dsp_pidbl(Pid + PID_CLIMBRATE,
+			cor->thrust = dsp_pdbl(Pid + PID_CLIMBRATE,
 				Thrust,
 				dsp_getcompl(Cmpl + CMPL_CLIMBRATE));	
 			
@@ -815,19 +815,9 @@ int updatecorrection(double dt, struct corvals *cor)
 		|| (Altmode == ALTMODE_SPEED
 			&& Thrust < -0.95 * St.ctrl.climbratemax)
 		|| (Altmode == ALTMODE_POS && Thrust < 0.01)) {
-		dsp_resetpidbls(Pid + PID_PITCHP);
-		dsp_resetpidbls(Pid + PID_ROLLP);
 		dsp_resetpidbls(Pid + PID_PITCHS);
 		dsp_resetpidbls(Pid + PID_ROLLS);
-		dsp_resetpidbls(Pid + PID_YAWP);
-		dsp_resetpidbls(Pid + PID_YAWS);
 		dsp_resetpidbls(Pid + PID_VA);
-		dsp_resetpidbls(Pid + PID_CLIMBRATE);
-		dsp_resetpidbls(Pid + PID_ALT);
-		dsp_resetpidbls(Pid + PID_SLAT);
-		dsp_resetpidbls(Pid + PID_SLON);
-		dsp_resetpidbls(Pid + PID_LAT);
-		dsp_resetpidbls(Pid + PID_LON);
 	}
 
 	return 0;
