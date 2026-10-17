@@ -1621,7 +1621,7 @@
 			)
 		)
 		(property "Value" "tbd"
-			(at 1.301473 5.27861 0)
+			(at 1.301473 5.278609 0)
 			(unlocked yes)
 			(layer "F.SilkS")
 			(hide yes)
@@ -5472,13 +5472,13 @@
 		(layer "F.Cu")
 		(uuid "d9c75d2b-51c5-4ece-8a0f-fc1c44e418e8")
 		(at 156.8159 109.08582)
-		(property "Reference" "UNK"
-			(at 0 0 0)
+		(property "Reference" "r5"
+			(at -0.0298 -2.29222 0)
 			(layer "F.SilkS")
 			(uuid "622eea65-0168-40f1-8c38-49e75bfc951f")
 			(effects
 				(font
-					(size 1.27 1.27)
+					(size 0.6 0.6)
 					(thickness 0.15)
 				)
 			)
@@ -12900,8 +12900,8 @@
 		(embedded_fonts no)
 	)
 	(gr_rect
-		(start 143.8011 95.1536)
-		(end 147.5011 91.4536)
+		(start 143.8011 91.4536)
+		(end 147.5011 95.1536)
 		(stroke
 			(width 0)
 			(type default)

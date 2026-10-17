@@ -931,7 +931,7 @@
 			(pin input line
 				(at -6.35 1.27 0)
 				(length 3.81)
-				(name "PE3"
+				(name "EXTI"
 					(effects
 						(font
 							(size 1.27 1.27)
