@@ -397,6 +397,6 @@ extern int Emergencydisarm;
 * @return always 0
 */
 int setthrust(struct cdevice *dev,
-	double ltd, double rtd, double lbd, double rbd);
+	float ltd, float rtd, float lbd, float rbd);
 
 #endif

@@ -552,6 +552,7 @@ int telesend(int ms)
 	memcpy(Tele.mode + 5, yawmodestr[Yawspeedpid ? 0 : 1], 2);
 	Tele.mode[7] = '|';
 	memcpy(Tele.mode + 8, am, 2);
+	Tele.mode[10] = '\0';
 
 	// in case of emergency disarming
 	// set flight mode to "stopped"
@@ -1249,6 +1250,9 @@ int main(void)
 	// init periphery
 	pconf_init(error_handler);
 	
+	// init running settings
+	initrunsettings();
+
 	// reading settings from memory current
 	// memory slot, which is 0 at start
 	readsettings(Curslot);

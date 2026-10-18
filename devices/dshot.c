@@ -203,13 +203,13 @@ static void dshotsetbuf(struct dshot_device *dev, uint16_t *buf,
 * @return always 0
 */
 static inline void dshotsetthrust(struct dshot_device *dev,
-	uint16_t *buf, double v, int col)
+	uint16_t *buf, float v, int col)
 {
 	// convert motor thrust value from [0.0;1.0]
 	// range to int value in [48; 2047] range
 	// disable telemetry request bit
 	dshotsetbuf(dev, buf,
-		(uint16_t) (trimuf(v) * 1999.0 + 0.5) + 48, 0, col);
+		(uint16_t) (trimuff(v) * 1999.0f + 0.5f) + 48, 0, col);
 }
 
 int dshot_configure(void *d, const char *cmd, ...)

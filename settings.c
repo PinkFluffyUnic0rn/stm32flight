@@ -7,8 +7,8 @@
 
 #include "settings.h"
 
-struct persettings St;
-struct runsettings Strun;
+struct persettings St __attribute__((section(".dtcm_buffer")));
+struct runsettings Strun __attribute__((section(".dtcm_buffer")));
 
 int writesettings(int slot)
 {
@@ -59,8 +59,6 @@ int writesettings(int slot)
 
 int validatesettings()
 {
-	int i;
-
 	if (!irc_ispowervalid(St.irc.power))
 		St.irc.power = IRCDEFPOWER;
 	if (!irc_isfreqvalid(St.irc.freq))
@@ -71,6 +69,15 @@ int validatesettings()
 	if (St.mtr.rb < 0 || St.mtr.rb > 3)	St.mtr.rb = RBDEFNUM;
 	if (St.mtr.rt < 0 || St.mtr.rt > 3)	St.mtr.rt = RTDEFNUM;
 
+	return 0;
+}
+
+int initrunsettings()
+{
+	int i;
+	
+	memset(&Strun, 0, sizeof(struct runsettings));
+
 	if (Strun.log.freq <= 0 || Strun.log.freq > LOG_MAXFREQ)
 		Strun.log.freq = LOGDEFFREQ;
 
@@ -80,12 +87,8 @@ int validatesettings()
 		Strun.log.recsize = LOGDEFRECSIZE;
 	}
 
-	for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
-		if (Strun.log.fieldid[i] < 0 
-				|| Strun.log.fieldid[i] >= LOG_MAXRECSIZE) {
-			Strun.log.fieldid[i] = LOGFIELDDEFPOS;
-		}
-	}
+	for (i = 0; i < LOG_FIELDSTRSIZE; ++i)
+		Strun.log.fieldid[i] = LOGFIELDDEFPOS;
 
 	return 0;
 }

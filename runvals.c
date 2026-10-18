@@ -5,12 +5,18 @@
 
 int Init = 0;
 
-struct timev Evs[TEV_COUNT];
-struct dsp_lpf Lpf[LPF_COUNT];
-struct dsp_filter Flt;
-struct dsp_compl Cmpl[CMPL_COUNT];
-struct dsp_complv Cmplv;
-struct dsp_pidblval Pid[PID_COUNT];
+struct timev Evs[TEV_COUNT]
+	__attribute__((section(".dtcm_buffer")));
+struct dsp_lpf Lpf[LPF_COUNT]
+	__attribute__((section(".dtcm_buffer")));
+struct dsp_filter Flt
+	__attribute__((section(".dtcm_buffer")));
+struct dsp_compl Cmpl[CMPL_COUNT]
+	__attribute__((section(".dtcm_buffer")));
+struct dsp_complv Cmplv
+	__attribute__((section(".dtcm_buffer")));
+struct dsp_pidblval Pid[PID_COUNT]
+	__attribute__((section(".dtcm_buffer")));
 
 const char *Evnames[TEV_COUNT] = {
 	"imu", "log", "pid", "check",
@@ -18,13 +24,13 @@ const char *Evnames[TEV_COUNT] = {
 	"autopilot"
 };
 
-struct mag_data Magdata;
-struct imu_data Imudata;
-struct baro_data Barodata;
-struct lidar_data Lidardata;
-struct gnss_data Gnss;
-struct crsf_tele Tele;
-struct msp_osd Osd;
+struct mag_data Magdata __attribute__((section(".dtcm_buffer")));
+struct imu_data Imudata __attribute__((section(".dtcm_buffer")));
+struct baro_data Barodata __attribute__((section(".dtcm_buffer")));
+struct lidar_data Lidardata __attribute__((section(".dtcm_buffer")));
+struct gnss_data Gnss __attribute__((section(".dtcm_buffer")));
+struct crsf_tele Tele __attribute__((section(".dtcm_buffer")));
+struct msp_osd Osd __attribute__((section(".dtcm_buffer")));
 
 double Thrust = 0.0;
 double Rolltarget = 0.0;
@@ -50,11 +56,14 @@ int Pointscount = 0;
 int Curpoint = 0;
 double Autopilottimer = 0.0;
 
-double Tiltcoeflimit = 1.414214;
-double Mtrscaleinv = 1.0;
-double Sr = 0.0, Cr = 0.0;
-double Sp = 0.0, Cp = 0.0;
-double Sy = 0.0, Cy = 0.0;
+double Tiltcoeflimit __attribute__((section(".dtcm_buffer")));
+double Mtrscaleinv __attribute__((section(".dtcm_buffer")));
+double Sr __attribute__((section(".dtcm_buffer")));
+double Cr __attribute__((section(".dtcm_buffer")));
+double Sp __attribute__((section(".dtcm_buffer")));
+double Cp __attribute__((section(".dtcm_buffer")));
+double Sy __attribute__((section(".dtcm_buffer")));
+double Cy __attribute__((section(".dtcm_buffer")));
 
 int Curslot = 0;
 
@@ -67,7 +76,7 @@ int Elrstimeout = ELRS_TIMEOUT;
 int Emergencydisarm = 0;
 
 int setthrust(struct cdevice *dev,
-	double ltd, double rtd, double lbd, double rbd)
+	float ltd, float rtd, float lbd, float rbd)
 {
 	struct dshot_data dd;
 	double avgthrust;
@@ -79,17 +88,17 @@ int setthrust(struct cdevice *dev,
 		ltd = rtd = rbd = lbd = 0.0;
 
 	// update average thrust LPF
-	avgthrust = (ltd + rtd + rbd + lbd) * 0.25;
+	avgthrust = (ltd + rtd + rbd + lbd) * 0.25f;
 	avgthrust = avgthrust < 0.0 ? 0.0 : avgthrust;
 
 	dsp_updatelpf(Lpf + LPF_AVGTHR, avgthrust);
 	dsp_updatelpf(Lpf + LPF_AVGTHRA, avgthrust);
 
 	// linearize thrust
-	ltd = pow(trimuf(ltd), Mtrscaleinv);
-	rtd = pow(trimuf(rtd), Mtrscaleinv);
-	lbd = pow(trimuf(lbd), Mtrscaleinv);
-	rbd = pow(trimuf(rbd), Mtrscaleinv);
+	ltd = powf(trimuff(ltd), (float) Mtrscaleinv);
+	rtd = powf(trimuff(rtd), (float) Mtrscaleinv);
+	lbd = powf(trimuff(lbd), (float) Mtrscaleinv);
+	rbd = powf(trimuff(rbd), (float) Mtrscaleinv);
 
 	// set values for thrust channels using
 	// motor to PWM channel mapping values

@@ -17,12 +17,20 @@
 #define trimf(v, l, u) (((v) < (l)) ? (l) : (((v) > (u)) ? (u) : (v)))
 
 /**
-* @brief Trim between 0.0 and 1.0. It it falls out of range, it
-	will be set to nearest border value.
+* @brief Trim double between 0.0 and 1.0. It it falls out of
+	range, it will be set to nearest border value.
 * @param v value to trim
 * @return Common trimmed value
 */
 #define trimuf(v) (((v) < 0.0) ? 0.0 : (((v) > 1.0) ? 1.0 : (v)))
+
+/**
+* @brief Trim float between 0.0 and 1.0. It it falls out of
+	range, it will be set to nearest border value.
+* @param v value to trim
+* @return Common trimmed value
+*/
+#define trimuff(v) (((v) < 0.0f) ? 0.0f : (((v) > 1.0f) ? 1.0f : (v)))
 
 /**
 * @brief Check that rotaions value is in [-2Pi;2Pi] range, if it falls

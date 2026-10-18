@@ -11,6 +11,9 @@ int inittimev(struct timev *ev, int phase, int freq, int (*cb)(int))
 	ev->freq = freq;
 	ev->cb = cb;
 
+	ev->avg = 0.0;
+	ev->devi = 0.0;
+
 	ev->tc = (1.0 / (freq * 2.0 * M_PI));
 
 	return 0;

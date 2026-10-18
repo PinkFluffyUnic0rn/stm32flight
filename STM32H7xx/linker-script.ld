@@ -119,6 +119,13 @@ SECTIONS
 		. = ALIGN(4);
 	} >RAM_D3
 
+	.dtcmram (NOLOAD) :
+	{
+		. = ALIGN(8);
+		KEEP(*(.dtcm_buffer))
+		. = ALIGN(8);
+	} >DTCMRAM
+
 	/DISCARD/ : {
 		libc.a ( * )
 		libm.a ( * )

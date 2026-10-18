@@ -184,6 +184,10 @@ int setstabilize(int init)
 	// linearization value for faster computation
 	Mtrscaleinv = 1.0 / St.adj.mtrsc.thr;
 
+	Sr = 0.0; Cr = 0.0;
+	Sp = 0.0; Cp = 0.0;
+	Sy = 0.0; Cy = 0.0;
+
 	return 0;
 }
 
@@ -508,11 +512,9 @@ int updatecorrection(double dt, struct corvals *cor)
 		double lontarget, lattarget;
 
 		// convert target from local frame to global frame	
-		lontarget = Pitchtarget * sin(yaw)
-			+ Rolltarget * cos(yaw);
+		lontarget = Pitchtarget * Sy + Rolltarget * Cy;
 
-		lattarget = Pitchtarget * cos(yaw)
-			- Rolltarget * sin(yaw);
+		lattarget = Pitchtarget * Cy - Rolltarget * Sy;
 		
 		// calculate longitude and latitude correction
 		loncor = dsp_pdbl(Pid + PID_SLON, lontarget,
@@ -525,8 +527,8 @@ int updatecorrection(double dt, struct corvals *cor)
 
 		// get pitch and roll correction values
 		// using covertion to local frame, inverting pitch
-		cor->pitch = -cos(yaw) * latcor - sin(yaw) * loncor;
-		cor->roll =  -sin(yaw) * latcor + cos(yaw) * loncor;
+		cor->pitch = -Cy * latcor - Sy * loncor;
+		cor->roll =  -Sy * latcor + Cy * loncor;
 
 		cor->roll = trimf(cor->roll,
 			-M_PI * St.ctrl.rollmax * 0.5,

@@ -287,6 +287,13 @@ extern struct persettings St;
 extern struct runsettings Strun;
 
 /**
+* @brief Initialize running settings.
+*
+* @return always 0
+*/
+int initrunsettings();
+
+/**
 * @brief Write quadcopter settings into internal MCU flash.
 * @param slot offset in settings array in flash
 * @return always 0
