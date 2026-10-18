@@ -1473,6 +1473,7 @@ static void pconf_init_mpu(void)
 
 	HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 
+	SCB_EnableICache();
 }
 
 static void pconf_init_gpio(void)

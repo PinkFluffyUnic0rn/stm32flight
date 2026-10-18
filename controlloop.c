@@ -475,7 +475,7 @@ int updatecorrection(double dt, struct corvals *cor)
 		// get pitch and roll correction values
 		// using covertion to local frame, inverting pitch
 		cor->pitch = -Cy * latcor - Sy * loncor;
-		cor->roll =  -Sy * latcor + Cy * loncor;
+		cor->roll = -Sy * latcor + Cy * loncor;
 
 		cor->roll = trimf(cor->roll,
 			-M_PI * St.ctrl.rollmax * 0.5,
