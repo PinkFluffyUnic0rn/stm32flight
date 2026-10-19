@@ -44,7 +44,7 @@
 * @param pin number of pin triggered the callback
 * @return none
 */
-void HAL_GPIO_EXTI_Callback(uint16_t pin)
+ITCMRAM void HAL_GPIO_EXTI_Callback(uint16_t pin)
 {
 	if (DEVITENABLED(Dev[DEV_RF].status)) {
 		Dev[DEV_RF].interrupt(Dev[DEV_RF].priv, &pin);
@@ -57,7 +57,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
 * @param huart context for UART triggered that callback
 * @return none
 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+ITCMRAM void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (DEVITENABLED(Dev[DEV_GNSS].status))
 		Dev[DEV_GNSS].interrupt(Dev[DEV_GNSS].priv, huart);
@@ -81,7 +81,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 * @param hspi context for SPI triggered that callback
 * @return none
 */
-void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+ITCMRAM void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if (DEVITENABLED(Flashdev.status))
 		Flashdev.interrupt(Flashdev.priv, hspi);
@@ -93,7 +93,7 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 * @param hspi context for SPI triggered that callback
 * @return none
 */
-void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+ITCMRAM void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if (DEVITENABLED(Dev[DEV_IMU].status))
 		Dev[DEV_IMU].interrupt(Dev[DEV_IMU].priv, hspi);
@@ -105,7 +105,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 * @param huart context for UART triggered that callback.
 * @return none
 */
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+ITCMRAM void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	if (DEVITENABLED(Dev[DEV_CRSF].status))
 		Dev[DEV_CRSF].error(Dev[DEV_CRSF].priv, huart);
@@ -199,7 +199,7 @@ void error_handler(void)
 * @param buf write buffer for DMA
 * @return samlped value
 */
-double adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
+ITCMRAM double adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
 {
 	uint32_t v;
 	int t;
@@ -222,10 +222,10 @@ double adcvalue(ADC_HandleTypeDef *hadc, volatile uint16_t *buf)
 * @brief Get battery voltage from ADC.
 * @return battery voltage
 */
-double batteryvoltage()
+ITCMRAM double batteryvoltage()
 {
 	ADC_HandleTypeDef *hadc;
-	static volatile uint16_t buf = 0;
+	DMABUF static volatile uint16_t buf = 0;
 
 	hadc = pconf_batteryhadc;
 
@@ -237,10 +237,10 @@ double batteryvoltage()
 * @brief Get ESC current from ADC.
 * @return battery current in amperes
 */
-double esccurrent()
+ITCMRAM double esccurrent()
 {
 	ADC_HandleTypeDef *hadc;
-	static volatile uint16_t buf = 0;
+	DMABUF static volatile uint16_t buf = 0;
 	
 	hadc = pconf_currenthadc;
 
@@ -255,7 +255,7 @@ double esccurrent()
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int imuupdate(int ms)
+ITCMRAM int imuupdate(int ms)
 {
 	double gx, gy, gz;
 	double vcoef, thr, frq;
@@ -335,11 +335,11 @@ int imuupdate(int ms)
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int stabilize(int ms)
+ITCMRAM int stabilize(int ms)
 {
 	struct corvals cor;
 	double dt;
-	
+
 	// debug pin switching
 	HAL_GPIO_WritePin(debuggpio, debugpin,
 		!(HAL_GPIO_ReadPin(debuggpio, debugpin)));
@@ -385,7 +385,7 @@ int stabilize(int ms)
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int checkconnection(int ms)
+ITCMRAM int checkconnection(int ms)
 {
 	// decrease ERLS timeout counter
 	if (Elrstimeout != 0)
@@ -412,7 +412,7 @@ int checkconnection(int ms)
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int baroupdate(int ms)
+ITCMRAM int baroupdate(int ms)
 {
 	// if barometer isn't initilized, return
 	if (Dev[DEV_BARO].status != DEVSTATUS_INIT)
@@ -439,7 +439,7 @@ int baroupdate(int ms)
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int magupdate(int ms)
+ITCMRAM int magupdate(int ms)
 {
 	// if magnetometer isn't initilized, return
 	if (Dev[DEV_MAG].status != DEVSTATUS_INIT)
@@ -478,7 +478,7 @@ int magupdate(int ms)
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int logupdate(int ms)
+ITCMRAM int logupdate(int ms)
 {
 	updatelog();
 
@@ -490,7 +490,7 @@ int logupdate(int ms)
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int telesend(int ms)
+ITCMRAM int telesend(int ms)
 {
 	const char *attmodestr[] = {"ac", "st", "sp", "ps"};
 	const char *yawmodestr[] = {"sp", "cs"};
@@ -609,7 +609,7 @@ int telesend(int ms)
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int powercheck(int ms)
+ITCMRAM int powercheck(int ms)
 {
 	dsp_updatelpf(Lpf + LPF_BAT, batteryvoltage());
 	dsp_updatelpf(Lpf + LPF_CUR, esccurrent());
@@ -642,7 +642,7 @@ int initautopilot()
 * @brief Move to next point in autopilot track.
 * @return always 0
 */
-int autopilotstep(int *stepped)
+ITCMRAM int autopilotstep(int *stepped)
 {
 	Autopilottimer = 0;
 	*stepped = 1;
@@ -656,7 +656,7 @@ int autopilotstep(int *stepped)
 * @param ms microsecond passed from last callback invocation
 * @return always 0
 */
-int autopilotupdate(int ms)
+ITCMRAM int autopilotupdate(int ms)
 {
 	static int lidarfixed = 0;
 	static int stepped = 0;
@@ -830,7 +830,7 @@ int autopilotupdate(int ms)
 * @param ms -- microsecond passed from last CRSF packet
 * @return always 0
 */
-int crsfcmd(const struct crsf_data *cd, int ms)
+ITCMRAM int crsfcmd(const struct crsf_data *cd, int ms)
 {
 	static double slottimeout = ELRS_PUSHTIMEOUT;
 	double dt;
@@ -1097,7 +1097,7 @@ int crsfcmd(const struct crsf_data *cd, int ms)
 * @param nd data got from GNSS device through NMEA protocol
 * @return always 0
 */
-int m10msg(struct m10_data *nd)
+ITCMRAM int m10msg(struct m10_data *nd)
 {
 	// got only altitude and signal quality data from GGA messages.
 	if (nd->type == M10_TYPE_GGA) {
@@ -1159,7 +1159,7 @@ int m10msg(struct m10_data *nd)
 	return 0;
 }
 
-int lidarmsg(struct tf_data *td)
+ITCMRAM int lidarmsg(struct tf_data *td)
 {	
 	if (td->amp < 100 || td->amp == 65535)
 		Lidardata.isvalid = 0;
@@ -1175,7 +1175,7 @@ int lidarmsg(struct tf_data *td)
 	return 0;
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+ITCMRAM void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
 	static int elrsus = 0;
 

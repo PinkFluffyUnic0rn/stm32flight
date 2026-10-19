@@ -18,7 +18,7 @@ struct fifo {
 static struct uart_device uart_devs[UART_MAXDEVS];
 static size_t uart_devcount = 0;
 
-static uint8_t Rxbyte;
+DMABUF static uint8_t Rxbyte;
 static volatile struct fifo fifo;
 
 int uart_initfifo(volatile struct fifo *f)

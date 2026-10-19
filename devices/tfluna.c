@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
-
+#include "mcudef.h"
 #include "crc.h"
 #include "util.h"
 
@@ -44,14 +44,14 @@ struct tf_packet {
 static struct tf_device tf_devs[TF_MAXDEVS];
 static size_t tf_devcount = 0;
 
-static uint8_t Rxbuf;
+DMABUF static uint8_t Rxbuf;
 
 volatile static enum TF_ITSTATE Packstate;
 volatile static uint8_t Packw;
 volatile static uint8_t Packr;
 volatile static struct tf_packet Pack[RXCIRCSIZE];
 
-int tf_interrupt(void *dev, const void *h) 
+ITCMRAM int tf_interrupt(void *dev, const void *h)
 {
 	struct tf_device *d;
 	uint8_t b;
@@ -130,7 +130,7 @@ int tf_interrupt(void *dev, const void *h)
 	return 0;
 }
 
-int tf_error(void *dev, const void *h)
+ITCMRAM int tf_error(void *dev, const void *h)
 {
 	struct tf_device *d;
 	const UART_HandleTypeDef *huart;
@@ -157,7 +157,7 @@ int tf_error(void *dev, const void *h)
 	return 0;
 }
 
-int tf_read(void *dev, void *dt, size_t sz)
+ITCMRAM int tf_read(void *dev, void *dt, size_t sz)
 {
 	struct tf_data *data;
 

@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "mcudef.h"
 #include "periphconf.h"
 #include "runvals.h"
 #include "settings.h"
@@ -27,16 +28,8 @@ static size_t logsize = 0;
 * @brief Log write buffer
 */
 
-#ifdef STM32H7xx
-static float logbuf0[LOG_BUFSIZE / sizeof(float)]
-	__attribute__((section(".bdma_buffer")));
-static float logbuf1[LOG_BUFSIZE / sizeof(float)]
-	__attribute__((section(".bdma_buffer")));
-
-#else
-static float logbuf0[LOG_BUFSIZE / sizeof(float)];
-static float logbuf1[LOG_BUFSIZE / sizeof(float)];
-#endif
+BDMABUF static float logbuf0[LOG_BUFSIZE / sizeof(float)];
+BDMABUF static float logbuf1[LOG_BUFSIZE / sizeof(float)];
 
 static float *logbuf = logbuf0;
 
@@ -109,7 +102,7 @@ static int eraseflash(const struct cdevice *d, size_t size)
 	return 0;
 }
 
-void writelog(int pos, float val)
+ITCMRAM void writelog(int pos, float val)
 {
 	if (Strun.log.fieldid[pos] < 0
 			|| Strun.log.fieldid[pos]

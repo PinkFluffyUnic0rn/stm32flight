@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "mcudef.h"
 #include "util.h"
 
 #include "mmc5983ma.h"
@@ -30,7 +31,7 @@ int mmc_write(struct mmc_device *dev, uint8_t addr, uint8_t val)
 	return 0;
 }
 
-int mmc_read(struct mmc_device *dev, uint8_t addr,
+ITCMRAM int mmc_read(struct mmc_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	HAL_I2C_Mem_Read(dev->hi2c, MMC_ADDR << 1, addr,
@@ -39,9 +40,10 @@ int mmc_read(struct mmc_device *dev, uint8_t addr,
 	return 0;
 }
 
-int mmc_getintdata(struct mmc_device *dev, struct mag_data *data)
+ITCMRAM int mmc_getintdata(struct mmc_device *dev,
+	struct mag_data *data)
 {
-	static volatile uint8_t buf[7];
+	DMABUF static volatile uint8_t buf[7];
 	static int init = 0;
 	int t;
 
@@ -78,7 +80,7 @@ int mmc_getintdata(struct mmc_device *dev, struct mag_data *data)
 	return 0;
 }
 
-int mmc_getdata(void *d, void *dt, size_t sz)
+ITCMRAM int mmc_getdata(void *d, void *dt, size_t sz)
 {
 	struct mmc_device *dev;
 	struct mag_data *data;

@@ -24,7 +24,7 @@ int hmc_write(struct hmc_device *dev, uint8_t addr, uint8_t val)
 	return 0;
 }
 
-int hmc_read(struct hmc_device *dev, uint8_t addr,
+ITCMRAM int hmc_read(struct hmc_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	HAL_I2C_Mem_Read(dev->hi2c, HMC_ADDR << 1, addr,
@@ -33,7 +33,8 @@ int hmc_read(struct hmc_device *dev, uint8_t addr,
 	return 0;
 }
 
-int hmc_getintdata(struct hmc_device *dev, struct mag_data *data)
+ITCMRAM int hmc_getintdata(struct hmc_device *dev,
+	struct mag_data *data)
 {
 	uint8_t buf[6];
 
@@ -46,7 +47,7 @@ int hmc_getintdata(struct hmc_device *dev, struct mag_data *data)
 	return 0;
 }
 
-int hmc_getdata(void *d, void *dt, size_t sz)
+ITCMRAM int hmc_getdata(void *d, void *dt, size_t sz)
 {
 	struct hmc_device *dev;
 	struct mag_data *data;

@@ -10,7 +10,8 @@ MEMORY
 	ITCMRAM (xrw)    : ORIGIN = 0x00000000,   LENGTH = 64K
 	DTCMRAM (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
 	FLASH    (rx)    : ORIGIN = 0x08000000,   LENGTH = 1024K
-	RAM_D1  (xrw)    : ORIGIN = 0x24000000,   LENGTH = 320K
+	NOCACHE (xrw)    : ORIGIN = 0x24000000,   LENGTH = 32K
+	RAM_D1  (xrw)    : ORIGIN = 0x24008000,   LENGTH = 288K
 	RAM_D2  (xrw)    : ORIGIN = 0x30000000,   LENGTH = 32K
 	RAM_D3  (xrw)    : ORIGIN = 0x38000000,   LENGTH = 16K
 }
@@ -19,6 +20,7 @@ SECTIONS
 {
 	.isr_vector : {
 		. = ALIGN(4);
+		_g_isr_vector = .;
 		KEEP(*(.isr_vector))
 		. = ALIGN(4);
 	} >FLASH
@@ -89,6 +91,17 @@ SECTIONS
 		_edata = .;   
 	} >RAM_D1 AT> FLASH
 
+	_siitcmram = LOADADDR(.itcmram);
+
+	.itcmram : {
+		. = ALIGN(8);
+		_sitcmram = .;
+		KEEP(*(.itcmram))
+		KEEP(*(.itcmram*))
+		. = ALIGN(8);
+		_eitcmram = .;
+	} >ITCMRAM AT> FLASH
+
 	. = ALIGN(4);
 
 	.bss : {
@@ -121,10 +134,21 @@ SECTIONS
 
 	.dtcmram (NOLOAD) :
 	{
-		. = ALIGN(8);
-		KEEP(*(.dtcm_buffer))
+		. = ALIGN(512);
+		_s_vtor_dtcm = .;
+		. = . + 0x400;
+		_e_vtor_dtcm = .;
+
+		KEEP(*(.dtcmram))
 		. = ALIGN(8);
 	} >DTCMRAM
+
+	.dma_buffer (NOLOAD) :
+	{
+		. = ALIGN(32);
+		KEEP(*(.dma_buffer))
+		. = ALIGN(32);
+	} > NOCACHE
 
 	/DISCARD/ : {
 		libc.a ( * )

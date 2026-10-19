@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "mcudef.h"
 #include "crc.h"
 #include "util.h"
 
@@ -80,7 +81,7 @@ struct msp_uipos {
 static struct msp_device msp_devs[MSP_MAXDEVS];
 static size_t msp_devcount = 0;
 
-static uint8_t Rxbuf;
+DMABUF static uint8_t Rxbuf;
 
 volatile static uint8_t Packstate;
 volatile static uint8_t Packrest;
@@ -88,16 +89,17 @@ volatile static uint8_t Packw;
 volatile static uint8_t Packr;
 volatile static struct packet Pack[MSP_RXCIRCSIZE];
 
-static struct msp_buffer Sendbuffer;
+DMABUF static struct msp_buffer Sendbuffer;
 
-static int msp_initbuffer(struct msp_buffer *buf)
+ITCMRAM static int msp_initbuffer(struct msp_buffer *buf)
 {
 	buf->sz = 0;
 
 	return 0;
 }
 
-static uint8_t *msp_stretchbuffer(struct msp_buffer *buf, size_t sz)
+ITCMRAM static uint8_t *msp_stretchbuffer(struct msp_buffer *buf,
+	size_t sz)
 {
 	size_t nsz;
 	uint8_t *p;
@@ -114,7 +116,7 @@ static uint8_t *msp_stretchbuffer(struct msp_buffer *buf, size_t sz)
 	return p;
 }
 
-int msp_interrupt(void *dev, const void *h) 
+ITCMRAM int msp_interrupt(void *dev, const void *h)
 {
 	struct msp_device *d;
 	uint8_t b;
@@ -179,7 +181,7 @@ drop:
 	return 0;
 }
 
-int msp_error(void *dev, const void *h)
+ITCMRAM int msp_error(void *dev, const void *h)
 {
 	struct msp_device *d;
 	const UART_HandleTypeDef *huart;
@@ -242,7 +244,7 @@ int msp_configure(void *d, const char *cmd, ...)
 	return 0;
 }
 
-static int msp_writepacket(struct msp_buffer *sbuf,
+ITCMRAM static int msp_writepacket(struct msp_buffer *sbuf,
 	uint8_t cmd, uint8_t *pl, size_t len)
 {
 	uint8_t *buf;
@@ -267,7 +269,7 @@ static int msp_writepacket(struct msp_buffer *sbuf,
 	return 0;
 }
 
-static int msp_drawstring(struct msp_buffer *sbuf, int x, int y,
+ITCMRAM static int msp_drawstring(struct msp_buffer *sbuf, int x, int y,
 	int color, const char *str)
 {
 	uint8_t *buf;
@@ -304,7 +306,7 @@ static int msp_drawstring(struct msp_buffer *sbuf, int x, int y,
 
 }
 
-static int msp_drawmode(struct msp_buffer *sbuf, int x, int y,
+ITCMRAM static int msp_drawmode(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd, int step)
 {
 	const char *str;
@@ -362,7 +364,7 @@ static int msp_drawmode(struct msp_buffer *sbuf, int x, int y,
 	return 0;
 }
 
-static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
+ITCMRAM static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd, int step)
 {
 	char buf[16];
@@ -395,7 +397,7 @@ static int msp_drawalt(struct msp_buffer *sbuf, int x, int y,
 	return 0;
 }
 
-static int msp_drawpower(struct msp_buffer *sbuf, int x, int y,
+ITCMRAM static int msp_drawpower(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd, int state)
 {
 	char buf[16];
@@ -438,7 +440,7 @@ static int msp_drawpower(struct msp_buffer *sbuf, int x, int y,
 	return 0;
 }
 
-static int msp_drawspeed(struct msp_buffer *sbuf, int x, int y,
+ITCMRAM static int msp_drawspeed(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd)
 {
 	char buf[16];
@@ -453,7 +455,7 @@ static int msp_drawspeed(struct msp_buffer *sbuf, int x, int y,
 	return 0;
 }
 
-static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
+ITCMRAM static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd, int state)
 {
 	char buf[16];
@@ -486,7 +488,7 @@ static int msp_drawgps(struct msp_buffer *sbuf, int x, int y,
 	return 0;
 }
 
-static int msp_drawtime(struct msp_buffer *sbuf, int x, int y,
+ITCMRAM static int msp_drawtime(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd)
 {
 	char buf[16];
@@ -508,7 +510,7 @@ static int msp_drawtime(struct msp_buffer *sbuf, int x, int y,
 	return 0;
 }
 
-static int msp_drawyaw(struct msp_buffer *sbuf, int x, int y,
+ITCMRAM static int msp_drawyaw(struct msp_buffer *sbuf, int x, int y,
 	struct msp_osd *osd)
 {
 	char buf[16];
@@ -530,7 +532,7 @@ static int msp_drawyaw(struct msp_buffer *sbuf, int x, int y,
 	return 0;
 }
 
-int msp_write(void *dev, void *dt, size_t sz)
+ITCMRAM int msp_write(void *dev, void *dt, size_t sz)
 {
 	struct msp_device *d;
 	uint8_t dpcmd;

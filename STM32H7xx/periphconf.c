@@ -14,6 +14,13 @@ static void (*error_handler)(void);
 
 #include "periphdef.h"
 
+extern uint32_t _s_vtor_dtcm[];
+extern uint32_t _g_isr_vector[];
+
+extern uint32_t _sitcmram;
+extern uint32_t _eitcmram;
+extern uint32_t _siitcmram;
+
 ADC_HandleTypeDef pconf_hadcs[5];
 DMA_HandleTypeDef pconf_hdmas[16];
 DMA_HandleTypeDef pconf_hbdmas[8];
@@ -1376,6 +1383,37 @@ void tim_mspdeinit(TIM_HandleTypeDef *htim)
 		HAL_NVIC_DisableIRQ(pconf_timup_irqn(tim->inst));
 }
  
+void pconf_itcm_vectable()
+{
+	memcpy(_s_vtor_dtcm, _g_isr_vector, 0x400);
+
+	__DSB();
+	__ISB();
+
+	SCB->VTOR = (uint32_t)&_s_vtor_dtcm;
+
+	__ISB();
+}
+
+void pconf_init_itcm()
+{
+	uint32_t *src;
+	uint32_t *dst;
+
+	src = &_siitcmram;
+	dst = &_sitcmram;
+
+	while (dst < &_eitcmram)
+		*dst++ = *src++;
+
+	__DSB();
+	__ISB();
+
+	SCB_InvalidateICache();
+	SCB_EnableICache();
+	SCB_EnableDCache();
+}
+
 void pconf_init_clock(void)
 {
 	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -1471,9 +1509,48 @@ static void pconf_init_mpu(void)
 
 	HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
-	HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+	MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+	MPU_InitStruct.Number = MPU_REGION_NUMBER1;
+	MPU_InitStruct.BaseAddress = 0x00000000;
+	MPU_InitStruct.Size = MPU_REGION_SIZE_64KB;
+	MPU_InitStruct.SubRegionDisable = 0;
+	MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+	MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+	MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
+	MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+	MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
 
-	SCB_EnableICache();
+	HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+	MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+	MPU_InitStruct.Number = MPU_REGION_NUMBER2;
+	MPU_InitStruct.BaseAddress = 0x24000000;
+	MPU_InitStruct.Size = MPU_REGION_SIZE_32KB;
+	MPU_InitStruct.SubRegionDisable = 0;
+	MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
+	MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+	MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+	MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+	MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+	MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+
+	HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+	MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+	MPU_InitStruct.Number = MPU_REGION_NUMBER3;
+	MPU_InitStruct.BaseAddress = 0x38000000;
+	MPU_InitStruct.Size = MPU_REGION_SIZE_16KB;
+	MPU_InitStruct.SubRegionDisable = 0;
+	MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
+	MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+	MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+	MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+	MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+	MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+
+	HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+	HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 }
 
 static void pconf_init_gpio(void)
@@ -2475,9 +2552,12 @@ void pconf_init(void (*errhandler)(void))
 {
 	int i;
 
+	pconf_itcm_vectable();	
+	pconf_init_itcm();
+
 	pconf_init_mpu();
 
-	HAL_Init();
+	HAL_Init();	
 
 	error_handler = errhandler;
 
@@ -2517,18 +2597,9 @@ void pconf_init(void (*errhandler)(void))
  	crsfdev_init();
 	m10dev_init();
 	espdev_init();
-	vtx_init();
-	lidar_init();
-		
-	dshot_init();
-/*
-	char buf[256];
-
-	sprintf(buf, "%s\r\n", "test");
-
-	HAL_UART_Transmit(pconf_huarts + pconf_uartidx(lidarconf.iface.huart),
-		(uint8_t *) buf, strlen(buf), 1000);
-*/
+	vtx_init();	
+	lidar_init();	
+	dshot_init();	
 }
 
 int pconf_i2cmemread(I2C_HandleTypeDef *hi2c,

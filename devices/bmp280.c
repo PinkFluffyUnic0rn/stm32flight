@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "mcudef.h"
 #include "util.h"
 
 #include "bmp280.h"
@@ -21,7 +22,7 @@ enum BMP_REGISTER {
 static struct bmp_device bmp_devs[BMP_MAXDEVS];
 static size_t bmp_devcount = 0;
 
-int bmp_read(struct bmp_device *dev, uint8_t addr,
+ITCMRAM int bmp_read(struct bmp_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	if (HAL_I2C_Mem_Read(dev->hi2c, BMP_ADDR << 1, addr,
@@ -58,7 +59,7 @@ int bmp_write(struct bmp_device *dev, uint8_t addr, uint8_t val)
 	return bmp_waitwrite(dev);
 }
 
-double bmp_tempf(struct bmp_device *dev, int32_t adc_T)
+ITCMRAM double bmp_tempf(struct bmp_device *dev, int32_t adc_T)
 {
 	double var1, var2, T;
 
@@ -75,7 +76,7 @@ double bmp_tempf(struct bmp_device *dev, int32_t adc_T)
 	return T;
 }
 
-double bmp_pressf(struct bmp_device *dev, int32_t adc_P)
+ITCMRAM double bmp_pressf(struct bmp_device *dev, int32_t adc_P)
 {
 	double var1, var2, p;
 
@@ -99,7 +100,7 @@ double bmp_pressf(struct bmp_device *dev, int32_t adc_P)
 	return p;
 }
 
-int bmp_getdata(void *d, void *dt, size_t sz)
+ITCMRAM int bmp_getdata(void *d, void *dt, size_t sz)
 {
 	struct bmp_device *dev;
 	struct baro_data *data;

@@ -1,6 +1,6 @@
 #include "mcudef.h"
+#include "periphconf.h"
 
-#include <periphconf.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -19,7 +19,8 @@ do {					\
 		goto end;		\
 } while (0);
 
-void memcpyv(volatile void *dest, const volatile void *src, size_t n)
+ITCMRAM void memcpyv(volatile void *dest, const volatile void *src,
+	size_t n)
 {
 	int i;
 
@@ -44,7 +45,7 @@ int uartprintf(const char *format, ...)
 	return 0;
 }
 
-int udelay(int us)
+ITCMRAM int udelay(int us)
 {
 	int c;
 
@@ -55,7 +56,7 @@ int udelay(int us)
 	return 0;
 }
 
-int mdelay(int ms)
+ITCMRAM int mdelay(int ms)
 {
 	int i;
 
@@ -65,19 +66,19 @@ int mdelay(int ms)
 	return 0;
 }
 
-int ucounterstart()
+ITCMRAM int ucounterstart()
 {
 	__HAL_TIM_SET_COUNTER(pconf_delayhtim, 0);
 
 	return 0;
 }
 
-int ucounterget()
+ITCMRAM int ucounterget()
 {
 	return __HAL_TIM_GET_COUNTER(pconf_delayhtim);
 }
 
-int isvalinlist(int v, int num, ...)
+ITCMRAM int isvalinlist(int v, int num, ...)
 {
 	va_list args;
 	int i;
@@ -96,7 +97,7 @@ int isvalinlist(int v, int num, ...)
 	return 0;
 }
 
-char *ftos(double f, char *s, size_t sz, int zfill, int order)
+ITCMRAM char *ftos(double f, char *s, size_t sz, int zfill, int order)
 {
 	double scale[] = {1, 10.0, 100.0, 1000.0, 10000.0,
 		100000.0, 1000000.0, 10000000.0, 100000000.0};

@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <math.h>
 
+#include "mcudef.h"
 #include "util.h"
 #include "dsp.h"
 
@@ -85,7 +86,7 @@ static volatile uint32_t *dshot_timccr(TIM_HandleTypeDef *htim,
 * @param hdma DMA device that triggered this callback
 * @return none
 */
-static void dshotdmacbburst(DMA_HandleTypeDef *hdma)
+ITCMRAM static void dshotdmacbburst(DMA_HandleTypeDef *hdma)
 {
 	TIM_HandleTypeDef *htim;;
 
@@ -100,7 +101,7 @@ static void dshotdmacbburst(DMA_HandleTypeDef *hdma)
 * @param hdma DMA device that triggered this callback
 * @return none
 */
-static void dshotdmacb(DMA_HandleTypeDef *hdma)
+ITCMRAM void dshotdmacb(DMA_HandleTypeDef *hdma)
 {
 	TIM_HandleTypeDef *htim;;
 
@@ -122,10 +123,10 @@ static void dshotdmacb(DMA_HandleTypeDef *hdma)
 * @param dev DShot device that use DMA
 * @return -1, if wait time exceeded, 0 otherwise
 */
-static int dshot_updatedmawait(struct dshot_device *dev)
+ITCMRAM static int dshot_updatedmawait(struct dshot_device *dev)
 {
 	int t;
-	
+
 	t = 0;
 	while (HAL_DMA_GetState(
 			dev->htim[0]->hdma[TIM_DMA_ID_UPDATE])
@@ -150,8 +151,8 @@ static int dshot_updatedmawait(struct dshot_device *dev)
 * @param col channel number if tim burst mode is used, -1 otherwise
 * @return none
 */
-static void dshotsetbuf(struct dshot_device *dev, uint16_t *buf,
-	uint16_t val, int tele, int col)
+ITCMRAM static void dshotsetbuf(struct dshot_device *dev,
+	uint16_t *buf, uint16_t val, int tele, int col)
 {
 	uint16_t pack;
 	unsigned int csum;
@@ -202,7 +203,7 @@ static void dshotsetbuf(struct dshot_device *dev, uint16_t *buf,
 * @param col channel number if tim burst mode is used, -1 otherwise
 * @return always 0
 */
-static inline void dshotsetthrust(struct dshot_device *dev,
+ITCMRAM static void dshotsetthrust(struct dshot_device *dev,
 	uint16_t *buf, float v, int col)
 {
 	// convert motor thrust value from [0.0;1.0]
@@ -215,7 +216,7 @@ static inline void dshotsetthrust(struct dshot_device *dev,
 int dshot_configure(void *d, const char *cmd, ...)
 {
 	struct dshot_device *dev;
-	static uint16_t dsbuf[18];
+	DMABUF static uint16_t dsbuf[18];
 	va_list args;
 	uint16_t dcmd;
 	int n;
@@ -247,7 +248,7 @@ int dshot_configure(void *d, const char *cmd, ...)
 		if (dev->mode == DSHOT_TIMBURST) {
 			// wait for previous DMA transfer to complete
 			dshot_updatedmawait(dev);
-			
+
 			// instruct DMA to the common buffers
 			// for all streams corresponding to DSHOT ESCs
 			TIM1->DCR = (0 << 8) | (0x0d + n);
@@ -255,7 +256,7 @@ int dshot_configure(void *d, const char *cmd, ...)
 				dev->htim[0]->hdma[TIM_DMA_ID_UPDATE],
 				(uint32_t) dsbuf,
 				(uint32_t) &TIM1->DMAR, 18);
-		
+
 			// Enable DMA for common stream
 			// corresponding to DSHOT ESCs
 			__HAL_TIM_ENABLE_DMA(dev->htim[0],
@@ -285,7 +286,7 @@ int dshot_configure(void *d, const char *cmd, ...)
 	return 0;
 }
 
-int dshot_setthrust(void *d, void *dt, size_t sz)
+ITCMRAM int dshot_setthrust(void *d, void *dt, size_t sz)
 {
 	struct dshot_device *dev;
 	struct dshot_data *data;
@@ -306,7 +307,7 @@ int dshot_setthrust(void *d, void *dt, size_t sz)
 	*/
 
 	if (dev->mode == DSHOT_TIMBURST) {
-		static uint16_t mwbuf[18 * 4];
+		DMABUF static uint16_t mwbuf[18 * 4];
 
 		// construst a PWM duty cycle
 		// buffers for dshot ESCs
@@ -324,13 +325,13 @@ int dshot_setthrust(void *d, void *dt, size_t sz)
 		HAL_DMA_Start_IT(dev->htim[0]->hdma[TIM_DMA_ID_UPDATE],
 			(uint32_t) mwbuf, (uint32_t) &TIM1->DMAR,
 			18 * 4);
-		
+
 		// Enable DMA for common stream
 		// corresponding to DSHOT ESCs
 		__HAL_TIM_ENABLE_DMA(dev->htim[0], TIM_DMA_UPDATE);
 	}
 	else {
-		static uint16_t dsbuf[4][18];
+		DMABUF static uint16_t dsbuf[4][18];
 
 		// construst a PWM duty cycle
 		// buffers for dshot ESCs	
@@ -385,7 +386,7 @@ int dshot_init(struct dshot_device *dev)
 		dev->onelen = 0.7 * DSHOT1200_BITLEN * dev->timfreq + 0.5;
 		dev->zerolen = 0.35 * DSHOT1200_BITLEN * dev->timfreq + 0.5;
 	}
-	
+
 	// set timer's reload value for each PWM channel
 	__HAL_TIM_SET_AUTORELOAD(dev->htim[0], dev->bitlen - 1);
 	__HAL_TIM_SET_AUTORELOAD(dev->htim[1], dev->bitlen - 1);
@@ -406,20 +407,19 @@ int dshot_init(struct dshot_device *dev)
 	dev->timccr[3] = dshot_timccr(dev->htim[3], dev->timch[3]);
 
 	// get pointers to DMAs corresponding to each PWM channel
-	dev->hdma[0] = dshot_timdma(dev->htim[0], dev->timch[0]);
-	dev->hdma[1] = dshot_timdma(dev->htim[1], dev->timch[1]);
-	dev->hdma[2] = dshot_timdma(dev->htim[2], dev->timch[2]);
-	dev->hdma[3] = dshot_timdma(dev->htim[3], dev->timch[3]);
 
 	// set dshot DMA callback for each channel, that
 	// should stop DMA after packet is sent
 	if (dev->mode == DSHOT_TIMBURST) {
-		dev->hdma[0]->XferCpltCallback = dshotdmacbburst;
-		dev->hdma[1]->XferCpltCallback = dshotdmacbburst;
-		dev->hdma[2]->XferCpltCallback = dshotdmacbburst;
-		dev->hdma[3]->XferCpltCallback = dshotdmacbburst;
+		dev->htim[0]->hdma[TIM_DMA_ID_UPDATE]->XferCpltCallback
+			= dshotdmacbburst;
 	}
 	else {
+		dev->hdma[0] = dshot_timdma(dev->htim[0], dev->timch[0]);
+		dev->hdma[1] = dshot_timdma(dev->htim[1], dev->timch[1]);
+		dev->hdma[2] = dshot_timdma(dev->htim[2], dev->timch[2]);
+		dev->hdma[3] = dshot_timdma(dev->htim[3], dev->timch[3]);
+
 		dev->hdma[0]->XferCpltCallback = dshotdmacb;
 		dev->hdma[1]->XferCpltCallback = dshotdmacb;
 		dev->hdma[2]->XferCpltCallback = dshotdmacb;

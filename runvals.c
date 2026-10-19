@@ -5,18 +5,12 @@
 
 int Init = 0;
 
-struct timev Evs[TEV_COUNT]
-	__attribute__((section(".dtcm_buffer")));
-struct dsp_lpf Lpf[LPF_COUNT]
-	__attribute__((section(".dtcm_buffer")));
-struct dsp_filter Flt
-	__attribute__((section(".dtcm_buffer")));
-struct dsp_compl Cmpl[CMPL_COUNT]
-	__attribute__((section(".dtcm_buffer")));
-struct dsp_complv Cmplv
-	__attribute__((section(".dtcm_buffer")));
-struct dsp_pidblval Pid[PID_COUNT]
-	__attribute__((section(".dtcm_buffer")));
+DTCMRAM struct timev Evs[TEV_COUNT];
+DTCMRAM struct dsp_lpf Lpf[LPF_COUNT];
+DTCMRAM struct dsp_filter Flt;
+DTCMRAM struct dsp_compl Cmpl[CMPL_COUNT];
+DTCMRAM struct dsp_complv Cmplv;
+DTCMRAM struct dsp_pidblval Pid[PID_COUNT];
 
 const char *Evnames[TEV_COUNT] = {
 	"imu", "log", "pid", "check",
@@ -24,13 +18,13 @@ const char *Evnames[TEV_COUNT] = {
 	"autopilot"
 };
 
-struct mag_data Magdata __attribute__((section(".dtcm_buffer")));
-struct imu_data Imudata __attribute__((section(".dtcm_buffer")));
-struct baro_data Barodata __attribute__((section(".dtcm_buffer")));
-struct lidar_data Lidardata __attribute__((section(".dtcm_buffer")));
-struct gnss_data Gnss __attribute__((section(".dtcm_buffer")));
-struct crsf_tele Tele __attribute__((section(".dtcm_buffer")));
-struct msp_osd Osd __attribute__((section(".dtcm_buffer")));
+DTCMRAM struct mag_data Magdata;
+DTCMRAM struct imu_data Imudata;
+DTCMRAM struct baro_data Barodata;
+DTCMRAM struct lidar_data Lidardata;
+DTCMRAM struct gnss_data Gnss;
+DTCMRAM struct crsf_tele Tele;
+DTCMRAM struct msp_osd Osd;
 
 double Thrust = 0.0;
 double Rolltarget = 0.0;
@@ -56,14 +50,14 @@ int Pointscount = 0;
 int Curpoint = 0;
 double Autopilottimer = 0.0;
 
-double Tiltcoeflimit __attribute__((section(".dtcm_buffer")));
-double Mtrscaleinv __attribute__((section(".dtcm_buffer")));
-double Sr __attribute__((section(".dtcm_buffer")));
-double Cr __attribute__((section(".dtcm_buffer")));
-double Sp __attribute__((section(".dtcm_buffer")));
-double Cp __attribute__((section(".dtcm_buffer")));
-double Sy __attribute__((section(".dtcm_buffer")));
-double Cy __attribute__((section(".dtcm_buffer")));
+DTCMRAM double Tiltcoeflimit;
+DTCMRAM double Mtrscaleinv;
+DTCMRAM double Sr;
+DTCMRAM double Cr;
+DTCMRAM double Sp;
+DTCMRAM double Cp;
+DTCMRAM double Sy;
+DTCMRAM double Cy;
 
 int Curslot = 0;
 
@@ -75,7 +69,7 @@ int Elrstimeout = ELRS_TIMEOUT;
 
 int Emergencydisarm = 0;
 
-int setthrust(struct cdevice *dev,
+ITCMRAM int setthrust(struct cdevice *dev,
 	float ltd, float rtd, float lbd, float rbd)
 {
 	struct dshot_data dd;

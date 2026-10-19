@@ -21,7 +21,7 @@ enum HP_COMMAND {
 static struct hp_device hp_devs[HP_MAXDEVS];
 static size_t hp_devcount = 0;
 
-int hp_getdata(void *d, void *dt, size_t sz)
+ITCMRAM int hp_getdata(void *d, void *dt, size_t sz)
 {
 	struct hp_device *dev;
 	struct baro_data *data;

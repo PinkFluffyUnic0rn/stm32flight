@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <ctype.h>
 
+#include "mcudef.h"
 #include "util.h"
 
 #include "m10.h"
@@ -69,13 +70,13 @@ extern struct esp_device espdev;
 static struct m10_device m10_devs[M10_MAXDEVS];
 static size_t m10_devcount = 0;
 
-static uint8_t Rxbuf;
+DMABUF static uint8_t Rxbuf;
 
 volatile static uint8_t Msgw;
 volatile static uint8_t Msgr;
 volatile static struct m10_msg Msg[RXCIRCSIZE];
 
-static uint8_t asciitohex(uint8_t c)
+ITCMRAM static uint8_t asciitohex(uint8_t c)
 {
 	switch(c) {
 	case '0':	return 0x0;
@@ -98,7 +99,7 @@ static uint8_t asciitohex(uint8_t c)
 	}
 }
 
-int m10_interrupt(void *dev, const void *h) 
+ITCMRAM int m10_interrupt(void *dev, const void *h)
 {
 	static uint16_t Ubxlen = 0;
 	static uint8_t Pos = 0;
@@ -279,7 +280,7 @@ drop:
 	return 0;
 }
 
-int m10_error(void *dev, const void *h)
+ITCMRAM int m10_error(void *dev, const void *h)
 {
 	struct m10_device *d;
 
@@ -395,7 +396,7 @@ static int _ubx_valset1(struct m10_device *m10, uint32_t id, uint8_t v,
 	return ubx_send(m10, 0x06, 0x8a, 0x9, buf, noack);
 }
 
-static double m10_time(const char *p)
+ITCMRAM static double m10_time(const char *p)
 {
 	char buf[16];
 
@@ -415,7 +416,8 @@ static double m10_time(const char *p)
 		+ strtod(buf + 6, NULL);
 }
 
-static int m10_latitude(const char *p, uint8_t *lat, double *latmin)
+ITCMRAM static int m10_latitude(const char *p, uint8_t *lat,
+	double *latmin)
 {
 	char buf[16];
 
@@ -436,7 +438,8 @@ static int m10_latitude(const char *p, uint8_t *lat, double *latmin)
 	return 0;
 }
 
-static int m10_longitude(const char *p, uint8_t *lon, double *lonmin)
+ITCMRAM static int m10_longitude(const char *p, uint8_t *lon,
+	double *lonmin)
 {
 	char buf[16];
 
@@ -457,7 +460,7 @@ static int m10_longitude(const char *p, uint8_t *lon, double *lonmin)
 	return 0;
 }
 
-static int m10_date(const char *p, char *date)
+ITCMRAM static int m10_date(const char *p, char *date)
 {
 	if (strlen(p) < 6) {
 		date[0] = '\0';
@@ -474,7 +477,7 @@ static int m10_date(const char *p, char *date)
 	return 0;
 }
 
-int m10_read(void *dev, void *dt, size_t sz)
+ITCMRAM int m10_read(void *dev, void *dt, size_t sz)
 {
 	struct m10_data *data;
 	struct m10_msg m;

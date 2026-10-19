@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "mcudef.h"
 #include "util.h"
 
 #include "mpu6500.h"
@@ -59,7 +60,7 @@ int mpu_write(struct mpu_device *dev, uint8_t addr, uint8_t val)
 	return 0;
 }
 
-int mpu_read(struct mpu_device *dev, uint8_t addr,
+ITCMRAM int mpu_read(struct mpu_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	uint8_t waddr = addr | 0x80;
@@ -74,7 +75,8 @@ int mpu_read(struct mpu_device *dev, uint8_t addr,
 	return 0;
 }
 
-int mpu_getintdata(struct mpu_device *dev, struct imu_data *data)
+ITCMRAM int mpu_getintdata(struct mpu_device *dev,
+	struct imu_data *data)
 {
 	uint8_t buf[14];
 
@@ -91,7 +93,7 @@ int mpu_getintdata(struct mpu_device *dev, struct imu_data *data)
 	return 0;
 }
 
-int mpu_getdata(void *d, void *dt, size_t sz)
+ITCMRAM int mpu_getdata(void *d, void *dt, size_t sz)
 {
 	struct mpu_device *dev;
 	struct imu_data *data;

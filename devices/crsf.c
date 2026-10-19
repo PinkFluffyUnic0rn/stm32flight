@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
-
+#include "mcudef.h"
 #include "crc.h"
 #include "util.h"
 
@@ -53,7 +53,7 @@ struct __attribute__ ((packed)) attitude {
 static struct crsf_device crsf_devs[CRSF_MAXDEVS];
 static size_t crsf_devcount = 0;
 
-static uint8_t Rxbuf;
+DMABUF static uint8_t Rxbuf;
 
 volatile static uint8_t Packstate;
 volatile static uint8_t Packrest;
@@ -61,7 +61,7 @@ volatile static uint8_t Packw;
 volatile static uint8_t Packr;
 volatile static struct packet Pack[RXCIRCSIZE];
 
-int crsf_interrupt(void *dev, const void *h) 
+ITCMRAM int crsf_interrupt(void *dev, const void *h)
 {
 	struct crsf_device *d;
 	uint8_t b;
@@ -113,7 +113,7 @@ int crsf_interrupt(void *dev, const void *h)
 	return 0;
 }
 
-int crsf_error(void *dev, const void *h)
+ITCMRAM int crsf_error(void *dev, const void *h)
 {
 	struct crsf_device *d;
 	const UART_HandleTypeDef *huart;
@@ -141,7 +141,7 @@ int crsf_error(void *dev, const void *h)
 	return 0;
 }
 
-int crsf_read(void *dev, void *dt, size_t sz)
+ITCMRAM int crsf_read(void *dev, void *dt, size_t sz)
 {
 	struct crsf_data *data;
 	uint32_t merged;
@@ -190,7 +190,7 @@ int crsf_read(void *dev, void *dt, size_t sz)
 	return 0;
 }
 
-int crsf_write(void *dev, void *dt, size_t sz)
+ITCMRAM int crsf_write(void *dev, void *dt, size_t sz)
 {
 	struct crsf_device *d;
 	struct crsf_tele *tele;
@@ -198,7 +198,7 @@ int crsf_write(void *dev, void *dt, size_t sz)
 	struct baroaltitude *baltpack;
 	struct attitude *attpack;
 	struct battery *batpack;
-	static uint8_t buf[64];
+	DMABUF static uint8_t buf[64];
 	static int step = 0;
 	int t;
 

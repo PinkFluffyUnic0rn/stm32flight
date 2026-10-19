@@ -2,13 +2,14 @@
 
 #include <string.h>
 
+#include "mcudef.h"
 #include "irc.h"
 #include "util.h"
 
 #include "settings.h"
 
-struct persettings St __attribute__((section(".dtcm_buffer")));
-struct runsettings Strun __attribute__((section(".dtcm_buffer")));
+DTCMRAM struct persettings St;
+DTCMRAM struct runsettings Strun;
 
 int writesettings(int slot)
 {

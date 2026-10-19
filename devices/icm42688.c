@@ -27,7 +27,7 @@ enum ICM_REGISTER {
 static struct icm_device icm_devs[ICM_MAXDEVS];
 static size_t icm_devcount = 0;
 
-int icm_interrupt(void *dev, const void *h)
+ITCMRAM int icm_interrupt(void *dev, const void *h)
 {
 	struct icm_device *d;
 
@@ -57,7 +57,7 @@ int icm_write(struct icm_device *dev, uint8_t addr, uint8_t val)
 	return 0;
 }
 
-int icm_read(struct icm_device *dev, uint8_t addr,
+ITCMRAM int icm_read(struct icm_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	uint8_t waddr = addr | 0x80;
@@ -80,10 +80,11 @@ int icm_read(struct icm_device *dev, uint8_t addr,
 	return 0;
 }
 
-int icm_getintdata(struct icm_device *dev, struct imu_data *data)
+ITCMRAM int icm_getintdata(struct icm_device *dev,
+	struct imu_data *data)
 {
-	static uint8_t rbuf[16];
-	static uint8_t tbuf[16] = {
+	DMABUF static uint8_t rbuf[16];
+	DMABUF static uint8_t tbuf[16] = {
 		0xff, 0xff, 0xff, 0xff,
 		0xff, 0xff, 0xff, 0xff,
 		0xff, 0xff, 0xff, 0xff,
@@ -122,7 +123,7 @@ int icm_getintdata(struct icm_device *dev, struct imu_data *data)
 	return 0;
 }
 
-int icm_getdata(void *d, void *dt, size_t sz)
+ITCMRAM int icm_getdata(void *d, void *dt, size_t sz)
 {
 	struct icm_device *dev;
 	struct imu_data *data;

@@ -1,8 +1,10 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "mcudef.h"
 #include "util.h"
 
+#include "mcudef.h"
 #include "qmc5883l.h"
 #include "periphconf.h"
 
@@ -28,7 +30,7 @@ int qmc_write(struct qmc_device *dev, uint8_t addr, uint8_t val)
 	return 0;
 }
 
-int qmc_read(struct qmc_device *dev, uint8_t addr,
+ITCMRAM int qmc_read(struct qmc_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	HAL_I2C_Mem_Read(dev->hi2c, QMC_ADDR << 1, addr,
@@ -37,9 +39,10 @@ int qmc_read(struct qmc_device *dev, uint8_t addr,
 	return 0;
 }
 
-int qmc_getintdata(struct qmc_device *dev, struct mag_data *data)
+ITCMRAM int qmc_getintdata(struct qmc_device *dev,
+	struct mag_data *data)
 {
-	static volatile uint8_t buf[6];
+	DMABUF static volatile uint8_t buf[6];
 	static int init = 0;
 	int t;
 
@@ -66,7 +69,7 @@ int qmc_getintdata(struct qmc_device *dev, struct mag_data *data)
 	return 0;
 }
 
-int qmc_getdata(void *d, void *dt, size_t sz)
+ITCMRAM int qmc_getdata(void *d, void *dt, size_t sz)
 {
 	struct qmc_device *dev;
 	struct mag_data *data;

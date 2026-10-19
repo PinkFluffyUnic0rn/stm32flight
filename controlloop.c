@@ -1,9 +1,11 @@
 #include <math.h>
 
-#include "controlloop.h"
+#include "mcudef.h"
 #include "runvals.h"
 #include "settings.h"
 #include "periphconf.h"
+
+#include "controlloop.h"
 
 #include "device.h"
 #include "icm42688.h"
@@ -191,7 +193,7 @@ int setstabilize(int init)
 	return 0;
 }
 
-int updateposition(double dt)
+ITCMRAM int updateposition(double dt)
 {
 	static double prevalt = 0.0;
 	static double prevlalt = 0.0;
@@ -425,7 +427,7 @@ int updateposition(double dt)
 	return 0;
 }
 
-int updatecorrection(double dt, struct corvals *cor)
+ITCMRAM int updatecorrection(double dt, struct corvals *cor)
 {
 	double roll, pitch, yaw;
 	double gy, gx, gz;
@@ -815,7 +817,7 @@ int updatecorrection(double dt, struct corvals *cor)
 	return 0;
 }
 
-int applythrust(const struct corvals *cor)
+ITCMRAM int applythrust(const struct corvals *cor)
 {
 	double tc;
 

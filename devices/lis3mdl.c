@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "mcudef.h"
 #include "util.h"
 
 #include "lis3mdl.h"
@@ -35,7 +36,7 @@ int lis_write(struct lis_device *dev, uint8_t addr, uint8_t val)
 	return 0;
 }
 
-int lis_read(struct lis_device *dev, uint8_t addr,
+ITCMRAM int lis_read(struct lis_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	HAL_I2C_Mem_Read(dev->hi2c, LIS_ADDR << 1, addr,
@@ -44,9 +45,10 @@ int lis_read(struct lis_device *dev, uint8_t addr,
 	return 0;
 }
 
-int lis_getintdata(struct lis_device *dev, struct mag_data *data)
+ITCMRAM int lis_getintdata(struct lis_device *dev,
+	struct mag_data *data)
 {
-	static volatile uint8_t buf[6];
+	DMABUF static volatile uint8_t buf[6];
 	static int init = 0;
 	int16_t x, y, z;
 	int t;
@@ -79,7 +81,7 @@ int lis_getintdata(struct lis_device *dev, struct mag_data *data)
 	return 0;
 }
 
-int lis_getdata(void *d, void *dt, size_t sz)
+ITCMRAM int lis_getdata(void *d, void *dt, size_t sz)
 {
 	struct lis_device *dev;
 	struct mag_data *data;

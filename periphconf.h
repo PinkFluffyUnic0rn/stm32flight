@@ -1,6 +1,6 @@
 /**
 * @file periphconf.h
-* @brief STM32 periphery handling functions
+* @brief STM32 peripheral handling functions
 */
 
 #ifndef PERIPHCONF_H

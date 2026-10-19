@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "mcudef.h"
 #include "util.h"
 #include "periphconf.h"
 
@@ -33,7 +34,7 @@ static int dps_write(struct dps_device *dev, uint8_t addr, uint8_t val)
 	return 0;
 }
 
-static int dps_read(struct dps_device *dev, uint8_t addr,
+ITCMRAM static int dps_read(struct dps_device *dev, uint8_t addr,
 	uint8_t *data, uint16_t size)
 {
 	HAL_I2C_Mem_Read(dev->hi2c, DPS_ADDR << 1, addr,
@@ -42,7 +43,7 @@ static int dps_read(struct dps_device *dev, uint8_t addr,
 	return 0;
 }
 
-static int32_t twocompl(uint32_t v, uint8_t l)
+ITCMRAM static int32_t twocompl(uint32_t v, uint8_t l)
 {
 	if (v & (int) 1 << (l - 1))
 		return ((int32_t) v) - ((int32_t) 1 << l);
@@ -50,14 +51,14 @@ static int32_t twocompl(uint32_t v, uint8_t l)
 	return v;
 }
 
-int dps_getdata(void *d, void *dt, size_t sz)
+ITCMRAM int dps_getdata(void *d, void *dt, size_t sz)
 {
 	struct dps_device *dev;
 	struct baro_data *data;
 	double scf[] = { 524288.0, 1572864.0, 3670016.0, 7864320.0,
 		253952.0, 516096.0, 1040384.0, 2088960.0 };
-	static volatile uint8_t buf[16];
-	static volatile uint8_t status;
+	DMABUF static volatile uint8_t buf[16];
+	DMABUF static volatile uint8_t status;
 	static int checking = 0;
 	static int init = 0;
 	double psc, tsc;

@@ -1,8 +1,36 @@
 #include <math.h>
 
+#include "mcudef.h"
+
 #include "dsp.h"
 
-int dsp_setunity(struct dsp_lpf *ir, int init)
+ITCMRAM double trimf(double v, double l, double u)
+{
+	return ((v < l) ? l : ((v > u) ? u : v));
+}
+
+ITCMRAM double trimuf(double v)
+{
+	return ((v < 0.0) ? 0.0 : ((v > 1.0) ? 1.0 : v));
+}
+
+ITCMRAM float trimuff(float v)
+{
+	return ((v < 0.0f) ? 0.0f : ((v > 1.0f) ? 1.0f : v));
+}
+
+ITCMRAM double deg2rad(double v)
+{
+	return (v / 180.0 * M_PI);
+}
+
+ITCMRAM double circf(double v)
+{
+	return ((v < -M_PI) ? (v + 2.0 * M_PI)
+		: ((v > M_PI) ? (v - 2.0 * M_PI) : v));
+}
+
+ITCMRAM int dsp_setunity(struct dsp_lpf *ir, int init)
 {
 	if (init)
 		ir->s1 = 0.0;
@@ -13,7 +41,8 @@ int dsp_setunity(struct dsp_lpf *ir, int init)
 	return 0;
 }
 
-int dsp_setlpf1t(struct dsp_lpf *ir, double tcoef, int freq, int init)
+ITCMRAM int dsp_setlpf1t(struct dsp_lpf *ir, double tcoef,
+	int freq, int init)
 {
 	if (init)
 		ir->s1 = 0.0;
@@ -24,7 +53,8 @@ int dsp_setlpf1t(struct dsp_lpf *ir, double tcoef, int freq, int init)
 	return 0;
 }
 
-int dsp_setlpf1f(struct dsp_lpf *ir, double cutoff, int freq, int init)
+ITCMRAM int dsp_setlpf1f(struct dsp_lpf *ir, double cutoff,
+	int freq, int init)
 {
 	double v;
 
@@ -39,12 +69,12 @@ int dsp_setlpf1f(struct dsp_lpf *ir, double cutoff, int freq, int init)
 	return 0;
 }
 
-double dsp_getlpf(struct dsp_lpf *ir)
+ITCMRAM double dsp_getlpf(struct dsp_lpf *ir)
 {
 	return ir->s1;
 }
 
-double dsp_updatelpf(struct dsp_lpf *ir, double v)
+ITCMRAM double dsp_updatelpf(struct dsp_lpf *ir, double v)
 {
 	if (ir->order == DSP_LPFORDER_0)
 		ir->s1 = v;
@@ -54,8 +84,8 @@ double dsp_updatelpf(struct dsp_lpf *ir, double v)
 	return ir->s1;
 }
 
-int dsp_setnotch2(struct dsp_filter *flt, double rejfreq, double bw,
-	int freq, int init)
+ITCMRAM int dsp_setnotch2(struct dsp_filter *flt, double rejfreq,
+	double bw, int freq, int init)
 {
 	double a11, a12a22, a21, a11a21;
 	double b11, b21, b11b21;
@@ -93,7 +123,7 @@ int dsp_setnotch2(struct dsp_filter *flt, double rejfreq, double bw,
 	return 0;
 }
 
-int dsp_updatefilterv(struct dsp_filter *flt,
+ITCMRAM int dsp_updatefilterv(struct dsp_filter *flt,
 	double x, double y, double z,
 	double *xo, double *yo, double *zo)
 {
@@ -164,8 +194,8 @@ int dsp_updatefilterv(struct dsp_filter *flt,
 	return 0;
 }
 
-int dsp_setpid(struct dsp_pidval *pv, double kp, double ki, double kd,
-	double dcutoff, int freq, int init)
+ITCMRAM int dsp_setpid(struct dsp_pidval *pv, double kp, double ki,
+	double kd, double dcutoff, int freq, int init)
 {
 	if (init) {
 		pv->pe = 0.0;
@@ -181,7 +211,7 @@ int dsp_setpid(struct dsp_pidval *pv, double kp, double ki, double kd,
 	return 0;
 }
 
-int dsp_setpidbl(struct dsp_pidblval *pv, double kp, double ki,
+ITCMRAM int dsp_setpidbl(struct dsp_pidblval *pv, double kp, double ki,
 	double kd, double imax, double dcutoff, int circ,
 	int freq, int init)
 {
@@ -213,7 +243,7 @@ int dsp_setpidbl(struct dsp_pidblval *pv, double kp, double ki,
 	return 0;
 }
 
-double dsp_pid(struct dsp_pidval *pv, double target,
+ITCMRAM double dsp_pid(struct dsp_pidval *pv, double target,
 	double val, double dt)
 {
 	double e, v;
@@ -230,7 +260,8 @@ double dsp_pid(struct dsp_pidval *pv, double target,
 	return v;
 }
 
-double dsp_pdbl(struct dsp_pidblval *pv, double target, double val)
+ITCMRAM double dsp_pdbl(struct dsp_pidblval *pv,
+	double target, double val)
 {
 	double e, v;
 
@@ -267,7 +298,8 @@ double dsp_pdbl(struct dsp_pidblval *pv, double target, double val)
 	return v;
 }
 
-double dsp_pidbl(struct dsp_pidblval *pv, double target, double val)
+ITCMRAM double dsp_pidbl(struct dsp_pidblval *pv,
+	double target, double val)
 {
 	double e, v, vs;
 
@@ -326,14 +358,14 @@ double dsp_pidbl(struct dsp_pidblval *pv, double target, double val)
 	return vs;
 }
 
-int dsp_resetpidbls(struct dsp_pidblval *pv)
+ITCMRAM int dsp_resetpidbls(struct dsp_pidblval *pv)
 {
 	pv->iv[0] = pv->iv[1] = pv->iv[2] = pv->i = 0.0;
 
 	return 0;
 }
 
-double dsp_circpid(struct dsp_pidval *pv, double target,
+ITCMRAM double dsp_circpid(struct dsp_pidval *pv, double target,
 	double val, double dt)
 {
 	double e, v;
@@ -359,19 +391,21 @@ int dsp_setcompl(struct dsp_compl *comp, double tc, int freq, int init)
 	return 0;
 }
 
-double dsp_getcompl(struct dsp_compl *comp)
+ITCMRAM double dsp_getcompl(struct dsp_compl *comp)
 {
 	return comp->s;
 }
 
-double dsp_updatecompl(struct dsp_compl *comp, double v0, double v1)
+ITCMRAM double dsp_updatecompl(struct dsp_compl *comp, double v0,
+	double v1)
 {
 	comp->s = comp->coef * (comp->s + v0) + (1.0 - comp->coef) * v1;
 
 	return comp->s;
 }
 
-double dsp_updatecirccompl(struct dsp_compl *comp, double v0, double v1)
+ITCMRAM double dsp_updatecirccompl(struct dsp_compl *comp, double v0,
+	double v1)
 {
 	double s;
 
@@ -387,7 +421,7 @@ double dsp_updatecirccompl(struct dsp_compl *comp, double v0, double v1)
 	return comp->s;
 }
 
-int dsp_setcomplv2(struct dsp_complv *comp, double tc,
+ITCMRAM int dsp_setcomplv2(struct dsp_complv *comp, double tc,
 	int freq, int init)
 {
 	if (init)
@@ -398,7 +432,8 @@ int dsp_setcomplv2(struct dsp_complv *comp, double tc,
 	return 0;
 }
 
-int dsp_getcomplv2(struct dsp_complv *comp, double *r, double *p)
+ITCMRAM int dsp_getcomplv2(struct dsp_complv *comp, double *r,
+	double *p)
 {
 	*r = comp->r;
 	*p = comp->p;
@@ -406,7 +441,7 @@ int dsp_getcomplv2(struct dsp_complv *comp, double *r, double *p)
 	return 0;
 }
 
-int dsp_updatecomplv2(struct dsp_complv *comp,
+ITCMRAM int dsp_updatecomplv2(struct dsp_complv *comp,
 	double r0, double p0, double y0,
 	double r1, double p1, double y1,
 	double *ro, double *po, double *yo)

@@ -7,49 +7,6 @@
 #define DSP_H
 
 /**
-* @brief Trim value by range, if it falls out of range, it will be
-	set to nearest border value.
-* @param v value to trim
-* @param l low border of range
-* @param u high border of range
-* @return Common trimmed value
-*/
-#define trimf(v, l, u) (((v) < (l)) ? (l) : (((v) > (u)) ? (u) : (v)))
-
-/**
-* @brief Trim double between 0.0 and 1.0. It it falls out of
-	range, it will be set to nearest border value.
-* @param v value to trim
-* @return Common trimmed value
-*/
-#define trimuf(v) (((v) < 0.0) ? 0.0 : (((v) > 1.0) ? 1.0 : (v)))
-
-/**
-* @brief Trim float between 0.0 and 1.0. It it falls out of
-	range, it will be set to nearest border value.
-* @param v value to trim
-* @return Common trimmed value
-*/
-#define trimuff(v) (((v) < 0.0f) ? 0.0f : (((v) > 1.0f) ? 1.0f : (v)))
-
-/**
-* @brief Check that rotaions value is in [-2Pi;2Pi] range, if it falls
-	out of this range, exceess circles
-	(whole 2Pi's) will be removed.
-* @param v value to check and remove circles
-* @return value with removed circles
-*/
-#define circf(v) (((v) < -M_PI) ? ((v) + 2.0 * M_PI)		\
-	: (((v) > M_PI) ? ((v) - 2.0 * M_PI) : (v)))
-
-/**
-* @brief Convert degrees to radians
-* @param value to convert
-* @return converted value
-*/
-#define deg2rad(v) ((v) / 180.0 * M_PI)
-
-/**
 * @brief Reset PID controller's I-term
 * @param pid PID controller's context
 */
@@ -168,6 +125,49 @@ struct dsp_complv {
 	double y;	/*!< filter's yaw accumulated data */
 	double coef;	/*!< filter's coefficient */
 };
+
+
+/**
+* @brief Trim value by range, if it falls out of range, it will be
+	set to nearest border value.
+* @param v value to trim
+* @param l low border of range
+* @param u high border of range
+* @return Common trimmed value
+*/
+double trimf(double v, double l, double u);
+
+/**
+* @brief Trim double between 0.0 and 1.0. It it falls out of
+	range, it will be set to nearest border value.
+* @param v value to trim
+* @return Common trimmed value
+*/
+double trimuf(double v);
+
+/**
+* @brief Trim float between 0.0 and 1.0. It it falls out of
+	range, it will be set to nearest border value.
+* @param v value to trim
+* @return Common trimmed value
+*/
+float trimuff(float v);
+
+/**
+* @brief Convert degrees to radians
+* @param value to convert
+* @return converted value
+*/
+double deg2rad(double v);
+
+/**
+* @brief Check that rotaions value is in [-2Pi;2Pi] range, if it falls
+	out of this range, exceess circles
+	(whole 2Pi's) will be removed.
+* @param v value to check and remove circles
+* @return value with removed circles
+*/
+double circf(double v);
 
 /**
 * @brief Set new unity filter using time constant value. Just

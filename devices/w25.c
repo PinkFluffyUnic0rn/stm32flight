@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "mcudef.h"
 #include "util.h"
 
 #include "w25.h"
@@ -55,7 +56,7 @@ static int w25_init(struct w25_device *dev)
 	return 0;
 }
 
-static int w25_writeenable(struct w25_device *dev)
+ITCMRAM static int w25_writeenable(struct w25_device *dev)
 {
 	uint8_t sbuf[4];
 
@@ -68,7 +69,7 @@ static int w25_writeenable(struct w25_device *dev)
 	return 0;
 }
 
-static int w25_writedisable(struct w25_device *dev)
+ITCMRAM static int w25_writedisable(struct w25_device *dev)
 {
 	uint8_t sbuf[4];
 
@@ -81,7 +82,7 @@ static int w25_writedisable(struct w25_device *dev)
 	return 0;
 }
 
-static int w25_waitwrite(struct w25_device *dev, int timeout)
+ITCMRAM static int w25_waitwrite(struct w25_device *dev, int timeout)
 {
 	uint8_t sbuf[4], rbuf[4];
 	int us;
@@ -104,7 +105,8 @@ static int w25_waitwrite(struct w25_device *dev, int timeout)
 	return 0;
 }
 
-static int w25_blockprotect(struct w25_device *dev, uint8_t flags)
+ITCMRAM static int w25_blockprotect(struct w25_device *dev,
+	uint8_t flags)
 {
 	uint8_t sbuf[4];
 
@@ -124,7 +126,7 @@ static int w25_blockprotect(struct w25_device *dev, uint8_t flags)
 	return 0;
 }
 
-int w25_read(void *d, size_t addr, void *data, size_t sz)
+ITCMRAM int w25_read(void *d, size_t addr, void *data, size_t sz)
 {
 	struct w25_device *dev;
 	uint8_t sbuf[4];
@@ -156,7 +158,7 @@ int w25_read(void *d, size_t addr, void *data, size_t sz)
 	return 0;
 }
 
-int w25_write(void *d, size_t addr, const void *data, size_t sz)
+ITCMRAM int w25_write(void *d, size_t addr, const void *data, size_t sz)
 {
 	struct w25_device *dev;
 	uint8_t sbuf[4];
@@ -202,7 +204,7 @@ int w25_write(void *d, size_t addr, const void *data, size_t sz)
 	return 0;
 }
 
-int w25_interrupt(void *dev, const void *h)
+ITCMRAM int w25_interrupt(void *dev, const void *h)
 {
 	struct w25_device *d;
 
@@ -294,7 +296,7 @@ int w25_eraseblock(void *d, size_t addr)
 	return 0;
 }
 
-int w25_writesector(void *d, size_t addr, const void *data,
+ITCMRAM int w25_writesector(void *d, size_t addr, const void *data,
 	size_t sz)
 {
 	struct w25_device *dev;

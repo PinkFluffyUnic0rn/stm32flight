@@ -1,5 +1,6 @@
 #include <math.h>
 
+#include "mcudef.h"
 #include "settings.h"
 
 #include "timev.h"
@@ -19,14 +20,14 @@ int inittimev(struct timev *ev, int phase, int freq, int (*cb)(int))
 	return 0;
 }
 
-int modifytimev(struct timev *ev, int freq)
+ITCMRAM int modifytimev(struct timev *ev, int freq)
 {
 	inittimev(ev, 0, freq, ev->cb);
 
 	return 0;
 }
 
-int resettimev(struct timev *ev)
+ITCMRAM int resettimev(struct timev *ev)
 {
 	ev->rem += ev->ms - TICKSPERSEC / (ev)->freq;
 	ev->ms = 0;
@@ -34,7 +35,7 @@ int resettimev(struct timev *ev)
 	return 0;
 }
 
-int runtimev(struct timev *ev)
+ITCMRAM int runtimev(struct timev *ev)
 {
 	volatile uint32_t start, end;
 	uint32_t cnt;
