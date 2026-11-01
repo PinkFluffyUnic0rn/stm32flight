@@ -80,6 +80,9 @@ struct pconf_tim {
 	enum PCONF_TIMUSAGE {
 		PCONF_TIMUSAGE_PWM,		/*!< used for PWM
 							generation */
+		PCONF_TIMUSAGE_PWMINV,		/*!< used for inverted
+						  	PWM
+							generation */
 		PCONF_TIMUSAGE_PWMBURST,	/*!< used for PWM
 							generation in
 							tim burst 
@@ -329,7 +332,9 @@ struct pconf_pwm {
 	*/
 	enum PCONF_PROTO {
 		PCONF_PROTO_DSHOT300,	/*!< DShot-300 */
-		PCONF_PROTO_DSHOT600	/*!< DShot-600 */
+		PCONF_PROTO_DSHOT600,	/*!< DShot-600 */
+		PCONF_PROTO_DSHOT300BD,	/*!< bidirectional DShot-300 */
+		PCONF_PROTO_DSHOT600BD	/*!< bidirectional DShot-600 */
 	} proto;
 
 	/**

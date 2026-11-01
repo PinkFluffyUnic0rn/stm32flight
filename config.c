@@ -1081,6 +1081,14 @@ static int sprintvalues(char *s)
 		(double) (dsp_getlpf(Lpf + LPF_CUR)));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
+		"rpm: [%0.3f %0.3f %0.3f %0.3f]\r\n",
+		(double) dsp_getlpf(Lpf + LPF_RPM1),
+		(double) dsp_getlpf(Lpf + LPF_RPM2),
+		(double) dsp_getlpf(Lpf + LPF_RPM3),
+		(double) dsp_getlpf(Lpf + LPF_RPM4));
+
+
+	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"motors state: %.3f\r\n", (double) En);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
@@ -1530,7 +1538,10 @@ int logcmd(const struct cdevice *d, const char **toks, char *out)
 		// flash erasing process takes time and blocks
 		// other actions, so disarm for safety
 		En = 0.0;
+		
+		udelay(100);
 		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
+		udelay(100);
 
 		setlog(atoi(toks[2]), d, s);
 	}

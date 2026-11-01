@@ -348,6 +348,7 @@ ITCMRAM int stabilize(int ms)
 	if (Emergencydisarm) {
 		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 		En = 0.0;
+		return 0;
 	}
 
 	// get time passed from last invocation of this calback function
@@ -395,7 +396,6 @@ ITCMRAM int checkconnection(int ms)
 	// packet came, disarm immediately
 	if (Elrstimeout <= 0) {
 		Emergencydisarm = 1;
-		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 		En = 0.0;
 	}
 
@@ -857,8 +857,6 @@ ITCMRAM int crsfcmd(const struct crsf_data *cd, int ms)
 
 	if (!Elrs) {
 		En = 0.0;
-		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
-
 		return 0;
 	}
 
@@ -1084,11 +1082,6 @@ ITCMRAM int crsfcmd(const struct crsf_data *cd, int ms)
 		Gnssmode = GNSSMODE_NONE;
 	}
 
-	// disable thrust when motors should be
-	// disabled, for additional safety
-	if (En < 0.5)
-		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
-
 	return 0;
 }
 
@@ -1209,14 +1202,16 @@ ITCMRAM void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 
 	// poll for configuration and telemetry commands
 	// from debug wifi connection
-	if (Dev[DEV_RF].read(Dev[DEV_RF].priv, &cmd,
+	if (Dev[DEV_RF].status == DEVSTATUS_INIT
+		&& Dev[DEV_RF].read(Dev[DEV_RF].priv, &cmd,
 			CMDSIZE) >= 0) {
 		runcommand(Dev + DEV_RF, cmd);
 	}
 
 	// poll for configuration and telemtry commands
 	// from debug uart connection
-	if (Dev[DEV_UART].read(Dev[DEV_UART].priv, &cmd,
+	if (Dev[DEV_UART].status == DEVSTATUS_INIT
+		&& Dev[DEV_UART].read(Dev[DEV_UART].priv, &cmd,
 			UART_CMDSIZE) >= 0) {
 		runcommand(Dev + DEV_UART, cmd);
 	}
@@ -1229,16 +1224,19 @@ ITCMRAM void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 	}
 
 	// check the M10 messages
-	if (Dev[DEV_GNSS].read(Dev[DEV_GNSS].priv, &nd,
+	if (Dev[DEV_GNSS].status == DEVSTATUS_INIT
+		&& Dev[DEV_GNSS].read(Dev[DEV_GNSS].priv, &nd,
 			sizeof(struct m10_data)) >= 0) {
 		m10msg(&nd);
 	}
 
 	// check the M10 messages
-	if (Dev[DEV_LIDAR].read(Dev[DEV_LIDAR].priv, &td,
+	if (Dev[DEV_LIDAR].status == DEVSTATUS_INIT
+		&& Dev[DEV_LIDAR].read(Dev[DEV_LIDAR].priv, &td,
 			sizeof(struct tf_data)) >= 0) {
 		lidarmsg(&td);
 	}
+
 }
 
 /**

@@ -178,6 +178,11 @@ int setstabilize(int init)
 	dsp_setunity(Lpf + LPF_PITCH, init);
 	dsp_setunity(Lpf + LPF_YAW, init);
 
+	dsp_setunity(Lpf + LPF_RPM1, init);
+	dsp_setunity(Lpf + LPF_RPM2, init);
+	dsp_setunity(Lpf + LPF_RPM3, init);
+	dsp_setunity(Lpf + LPF_RPM4, init);
+
 	// tilt compensation coefficient limit for throttle,
 	// converted to form for fast computation
 	Tiltcoeflimit = 1.0 / cos(St.adj.althold.tiltcoefmax * M_PI);
@@ -242,7 +247,7 @@ ITCMRAM int updateposition(double dt)
 
 	yaw = circf(dsp_updatelpf(Lpf + LPF_YAW,
 		yaw - St.adj.att0.yaw));
-
+	
 	// update complimenraty filter for yaw axis and get next yaw
 	// value. First signal is the speed of the rotation around Z
 	// axis. Second signal is the heading value that is
@@ -415,7 +420,6 @@ ITCMRAM int updateposition(double dt)
 	// quadcopter is upside down, perform emergency disarm
 	if (dsp_getlpf(Lpf + LPF_THR) < -0.5) {
 		Emergencydisarm = 1;
-		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
 		En = 0.0;
 	}
 
@@ -825,6 +829,11 @@ ITCMRAM int applythrust(const struct corvals *cor)
 	// limit set it to the limit
 	tc = cor->thrust > St.ctrl.thrustmax
 		? St.ctrl.thrustmax : cor->thrust;
+
+	if (Emergencydisarm) {
+		setthrust(Dev + DEV_DSHOT, 0.0, 0.0, 0.0, 0.0);
+		return 0;
+	}
 
 	// update motors thrust based on calculated values. For
 	// quadcopter it's enought to split correction in half for

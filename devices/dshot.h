@@ -23,6 +23,10 @@ enum DSHOT_TYPE {
 	DSHOT_300,	/*!< DShot-300 */
 	DSHOT_600,	/*!< DShot-600 */
 	DSHOT_1200,	/*!< DShot-1200 */
+	DSHOT_150BD,	/*!< bidirectional DShot-150 */
+	DSHOT_300BD,	/*!< bidirectional DShot-300 */
+	DSHOT_600BD,	/*!< bidirectional DShot-600 */
+	DSHOT_1200BD	/*!< bidirectional DShot-1200 */
 };
 
 /**
@@ -54,12 +58,14 @@ struct dshot_device {
 	DMA_HandleTypeDef *hdma[4];	/*!< private: DMA stream
 						corresponding to each
 						PWM channel*/
+	int isrx[4];
 	int bitlen;			/*!< private: length of bit
 					in timer clock cycles */
 	int zerolen;			/*!< private: length of zero
 					in timer clock cycles */;
-	int onelen;;			/*!< private: length of one
+	int onelen;			/*!< private: length of one
 					in timer clock cycles */
+	int tele;
 };
 
 /**
@@ -67,6 +73,15 @@ struct dshot_device {
 */
 struct dshot_data {
 	float thrust[4];	/*!< value of each PWM channel */
+};
+
+/**
+* @brief output data
+*/
+struct dshot_tele {
+	float rpm[4];	/*!< RPM of each motor */
+	int isvalid[4];	/*!< is rpm value valid */
+	uint16_t dsbuf[4][32];
 };
 
 /**

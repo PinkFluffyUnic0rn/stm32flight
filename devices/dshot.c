@@ -17,6 +17,8 @@
 static struct dshot_device dshot_devs[DSHOT_MAXDEVS];
 static size_t dshot_devcount = 0;
 
+DMABUF static uint16_t nrzibuf[4][20];
+
 /**
 * @brief Get DMA used for timer's PWM channel.
 * @param htim timer handler
@@ -60,6 +62,26 @@ static int dshot_timdmacc(int timch)
 }
 
 /**
+* @brief Get timer's PWM channel flag ID.
+* @param timch PWM channel id
+* @return timer's PWM channel flag ID, if
+* 	correct channel ID passed, -1 otherwise
+*/
+static int dshot_timflagcc(int timch)
+{
+	if (timch == TIM_CHANNEL_1)
+		return TIM_FLAG_CC1;
+	else if (timch == TIM_CHANNEL_2)
+		return TIM_FLAG_CC2;
+	else if (timch == TIM_CHANNEL_3)
+		return TIM_FLAG_CC3;
+	else if (timch == TIM_CHANNEL_4)
+		return TIM_FLAG_CC4;
+		
+	return (-1);
+}
+
+/**
 * @brief Get pointer to timer's PWM channel counter register.
 * @param htim timer handler
 * @param PWM channel id
@@ -79,6 +101,42 @@ static volatile uint32_t *dshot_timccr(TIM_HandleTypeDef *htim,
 		return &(htim->Instance->CCR4);
 		
 	return NULL;
+}
+
+ITCMRAM int dshot_inputmode(struct dshot_device *dev, int ch)
+{
+	TIM_IC_InitTypeDef sConfigIC = {0};
+	
+	sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
+	sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+	sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+	sConfigIC.ICFilter = 0;
+
+	HAL_DMA_Abort(dev->hdma[ch]);
+
+	__HAL_TIM_DISABLE_DMA(dev->htim[ch], dev->timcc[ch]);
+
+	HAL_TIM_PWM_Stop(dev->htim[ch], dev->timch[ch]);
+	dev->htim[ch]->Instance->CCER |= (1U << (4U * (dev->timch[ch] >> 2)));
+
+	HAL_TIM_IC_ConfigChannel(dev->htim[ch],
+		&sConfigIC, dev->timch[ch]);
+
+	dev->hdma[ch]->Init.Direction = DMA_PERIPH_TO_MEMORY;
+	dev->hdma[ch]->Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+	
+	HAL_DMA_Init(dev->hdma[ch]);
+
+	HAL_TIM_IC_Start(dev->htim[ch], dev->timch[ch]);
+
+	__HAL_TIM_CLEAR_FLAG(dev->htim[ch],
+		dshot_timflagcc(dev->timch[ch]));
+
+	__HAL_TIM_SET_AUTORELOAD(dev->htim[ch], 0xffff);
+
+	__HAL_TIM_SET_COUNTER(dev->htim[ch], 0);
+
+	return 0;
 }
 
 /**
@@ -103,19 +161,30 @@ ITCMRAM static void dshotdmacbburst(DMA_HandleTypeDef *hdma)
 */
 ITCMRAM void dshotdmacb(DMA_HandleTypeDef *hdma)
 {
-	TIM_HandleTypeDef *htim;;
+	struct dshot_device *dev;
+	int ch;
 
-	htim = (TIM_HandleTypeDef *)((DMA_HandleTypeDef *)hdma)->Parent;
-	
-	// disable DMA after bit was sent
-	if (hdma == htim->hdma[TIM_DMA_ID_CC1])
-		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC1);
-	else if(hdma == htim->hdma[TIM_DMA_ID_CC2])
-		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC2);
-	else if(hdma == htim->hdma[TIM_DMA_ID_CC3])
-		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC3);
-	else if(hdma == htim->hdma[TIM_DMA_ID_CC4])
-		__HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
+	dev = dshot_devs;
+
+	if (hdma == dev->hdma[0])		ch = 0;
+	else if (hdma == dev->hdma[1])		ch = 1;
+	else if (hdma == dev->hdma[2])		ch = 2;
+	else if (hdma == dev->hdma[3])		ch = 3;
+	else					return;
+
+	if (dev->tele == 0) {
+		__HAL_TIM_DISABLE_DMA(dev->htim[ch], (dev->timcc[ch]));
+		return;
+	}
+
+	dshot_inputmode(dev, ch);
+
+	HAL_DMA_Start_IT(dev->hdma[ch], (uint32_t) dev->timccr[ch],
+		(uint32_t) nrzibuf[ch], 20);
+
+	dev->isrx[ch] = 1;
+
+	__HAL_TIM_ENABLE_DMA(dev->htim[ch], dev->timcc[ch]);
 }
 
 /**
@@ -137,6 +206,46 @@ ITCMRAM static int dshot_updatedmawait(struct dshot_device *dev)
 
 	if (t >= 100)
 		return (-1);
+
+	return 0;
+}
+
+ITCMRAM int dshot_outputmode(struct dshot_device *dev)
+{
+	TIM_OC_InitTypeDef sConfigOC = {0};
+	int i;
+
+	sConfigOC.OCMode = TIM_OCMODE_PWM1;
+	sConfigOC.Pulse = 0;
+	sConfigOC.OCPolarity = dev->tele
+		? TIM_OCPOLARITY_LOW : TIM_OCPOLARITY_HIGH;
+	sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+	sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+	sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+		
+	for (i = 0; i < 4; ++i) {
+		HAL_DMA_Abort(dev->hdma[i]);
+
+		__HAL_TIM_DISABLE_DMA(dev->htim[i], dev->timcc[i]);
+
+		HAL_TIM_IC_Stop(dev->htim[i], dev->timch[i]);
+
+		HAL_TIM_PWM_ConfigChannel(dev->htim[i],
+			&sConfigOC, dev->timch[i]);
+
+		dev->hdma[i]->Init.Direction = DMA_MEMORY_TO_PERIPH;
+		dev->hdma[i]->Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+		
+		HAL_DMA_Init(dev->hdma[i]);
+
+		HAL_TIM_PWM_Start(dev->htim[i], dev->timch[i]);
+
+		__HAL_TIM_CLEAR_FLAG(dev->htim[i], dshot_timflagcc(dev->timch[i]));
+
+		__HAL_TIM_SET_AUTORELOAD(dev->htim[i], dev->bitlen - 1);
+		__HAL_TIM_SET_COUNTER(dev->htim[i], 0);
+	}
 
 	return 0;
 }
@@ -163,13 +272,15 @@ ITCMRAM static void dshotsetbuf(struct dshot_device *dev,
 	pack = (val << 1) | tele;
 
 	// calculate dshot checksum
-	csum = (pack ^ (pack >> 4) ^ (pack >> 8) ^ (pack >> 12)) & 0xf;
+	csum = (pack ^ (pack >> 4) ^ (pack >> 8) ^ (pack >> 12));
+	if (dev->tele)
+		csum = ~csum;
+	csum &= 0xf;
 
 	// append checksum to the packet
 	pack = (pack << 4) | csum;
 
 	// construct PWM duty cycle buffer for the packet
-	
 	if (col < 0) {
 		for (i = 0; i < 16; i++) {
 			buf[i] = (pack & 0x8000)
@@ -290,21 +401,12 @@ ITCMRAM int dshot_setthrust(void *d, void *dt, size_t sz)
 {
 	struct dshot_device *dev;
 	struct dshot_data *data;
-
+	
 	dev = d;
 	data = dt;
 
-	/*
-	      ltd    rtd
-		\    /
-	   p     \  /
-	   |
-	   v     /  \
-		/    \
-	      lbd    rbd
-
-		 <- r
-	*/
+	if (dev->tele)
+		dshot_outputmode(dev);
 
 	if (dev->mode == DSHOT_TIMBURST) {
 		DMABUF static uint16_t mwbuf[18 * 4];
@@ -351,6 +453,11 @@ ITCMRAM int dshot_setthrust(void *d, void *dt, size_t sz)
 		HAL_DMA_Start_IT(dev->hdma[3], (uint32_t) dsbuf[3],
 			(uint32_t) dev->timccr[3], 18);
 
+		dev->isrx[0] = 0;
+		dev->isrx[1] = 0;
+		dev->isrx[2] = 0;
+		dev->isrx[3] = 0;
+
 		// Enable DMA for streams corresponding to DSHOT ESCs
 		__HAL_TIM_ENABLE_DMA(dev->htim[0], dev->timcc[0]);
 		__HAL_TIM_ENABLE_DMA(dev->htim[1], dev->timcc[1]);
@@ -361,22 +468,118 @@ ITCMRAM int dshot_setthrust(void *d, void *dt, size_t sz)
 	return 0;
 }
 
+ITCMRAM int dshot_getrpm(void *d, void *dt, size_t sz)
+{
+	static const uint8_t gcr[32] = { 
+	    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+	    0xff,    9,   10,   11, 0xff,   13,   14,   15, 
+	    0xff, 0xff,    2,    3, 0xff,    5,    6,    7, 
+	    0xff,    0,    8,    1, 0xff,    4,    12, 0xff 
+	};
+	struct dshot_device *dev;
+	struct dshot_tele *data;
+	int i, j;
+	int bitlen;
+
+	dev = d;
+	data = dt;
+
+	if (dev->tele == 0)
+		return 0;
+
+	bitlen = dev->bitlen * 4 / 5;
+
+	for (i = 0; i < 4; ++i) {
+		uint16_t t, cs, ccs;
+		uint32_t val;
+		uint32_t n1, n2, n3, n4;
+		uint32_t per;
+		int b;
+
+//		memcpy(data->dsbuf[i], nrzibuf[i], sizeof(uint16_t) * 20);
+
+		data->isvalid[i] = 1;
+
+		b = 0;
+		val = 0;
+		for (j = 1; j < 20 && nrzibuf[i][j] >= nrzibuf[i][j - 1]; ++j) {
+			uint32_t diff;
+			int l;
+
+			diff = nrzibuf[i][j] - nrzibuf[i][j - 1];
+
+			l = (diff + bitlen / 2) / bitlen;
+
+			if (l == 0 || (b + l) > 20)
+				goto reject;
+
+			val <<= l;
+			val |= 1U;
+
+			b += l;
+		}
+
+		val <<= 20 - b;
+
+		if ((n1 = gcr[val & 0x1f]) == 0xff)
+			goto reject;
+
+		if ((n2 = gcr[(val >> 5) & 0x1f]) == 0xff)
+			goto reject;
+
+		if ((n3 = gcr[(val >> 10) & 0x1f]) == 0xff)
+			goto reject;
+
+		if ((n4 = gcr[(val >> 15) & 0x1f]) == 0xff)
+			goto reject;
+
+		val = n1 | (n2 << 4) | (n3 << 8) | (n4 << 12);
+
+		t = (val >> 4) & 0x0fff;
+		cs  = (~val) & 0x000f;
+		ccs = (t ^ (t >> 4) ^ (t >> 8) ^ (t >> 12)) & 0xf;
+
+		if (cs != ccs)
+			goto reject;
+
+		if (t == 0xfff) {
+			data->rpm[i] = 0.0f;
+			continue;
+		}
+
+		per = (t & 0x01ff) << (t >> 9);
+	
+		if (per == 0)
+			goto reject;
+	
+		data->rpm[i] = 1.0e6f / (float) per / 6.0f;
+		
+		continue;
+
+reject:
+		data->rpm[i] = 0.0f;
+		data->isvalid[i] = 0;
+	}
+
+	return 0;
+}
+
 int dshot_init(struct dshot_device *dev)
 {
 	struct dshot_data dd;
 
 	// determite period, 0 and 1 duty cycles in used timer's ticks
-	if (dev->type == DSHOT_150) {
+	if (dev->type == DSHOT_150 || dev->type == DSHOT_150BD) {
 		dev->bitlen = DSHOT150_BITLEN * dev->timfreq + 0.5;
 		dev->onelen = 0.7 * DSHOT150_BITLEN * dev->timfreq + 0.5;
 		dev->zerolen = 0.35 * DSHOT150_BITLEN * dev->timfreq + 0.5;
 	}
-	else if (dev->type == DSHOT_300) {
+	else if (dev->type == DSHOT_300 || dev->type == DSHOT_300BD) {
 		dev->bitlen = DSHOT300_BITLEN * dev->timfreq + 0.5;
 		dev->onelen = 0.7 * DSHOT300_BITLEN * dev->timfreq + 0.5;
 		dev->zerolen = 0.35 * DSHOT300_BITLEN * dev->timfreq + 0.5;
 	}
-	else if (dev->type == DSHOT_600) {
+	else if (dev->type == DSHOT_600 || dev->type == DSHOT_600BD) {
 		dev->bitlen = DSHOT600_BITLEN * dev->timfreq + 0.5;
 		dev->onelen = 0.7 * DSHOT600_BITLEN * dev->timfreq + 0.5;
 		dev->zerolen = 0.35 * DSHOT600_BITLEN * dev->timfreq + 0.5;
@@ -387,11 +590,11 @@ int dshot_init(struct dshot_device *dev)
 		dev->zerolen = 0.35 * DSHOT1200_BITLEN * dev->timfreq + 0.5;
 	}
 
-	// set timer's reload value for each PWM channel
-	__HAL_TIM_SET_AUTORELOAD(dev->htim[0], dev->bitlen - 1);
-	__HAL_TIM_SET_AUTORELOAD(dev->htim[1], dev->bitlen - 1);
-	__HAL_TIM_SET_AUTORELOAD(dev->htim[2], dev->bitlen - 1);
-	__HAL_TIM_SET_AUTORELOAD(dev->htim[3], dev->bitlen - 1);
+	dev->tele = (dev->type == DSHOT_150BD
+		|| dev->type == DSHOT_300BD 
+		|| dev->type == DSHOT_600BD
+		|| dev->type == DSHOT_1200BD)
+			? 1 : 0;
 
 	// get timer's channel IDs of each PWM channel
 	dev->timcc[0] = dshot_timdmacc(dev->timch[0]);
@@ -431,7 +634,15 @@ int dshot_init(struct dshot_device *dev)
   	HAL_TIM_PWM_Start(dev->htim[1], dev->timch[1]);
 	HAL_TIM_PWM_Start(dev->htim[2], dev->timch[2]);
 	HAL_TIM_PWM_Start(dev->htim[3], dev->timch[3]);	
-	
+
+	dev->isrx[0] = 0;
+	dev->isrx[1] = 0;
+	dev->isrx[2] = 0;
+	dev->isrx[3] = 0;
+
+	if (dev->tele == 0)
+		dshot_outputmode(dev);
+
 	// set zero initial thrust for every motor
 	dd.thrust[0] = dd.thrust[1] = dd.thrust[2] = dd.thrust[3] = 0.0;
 	dshot_setthrust(dev, &dd, sizeof(struct dshot_data));
@@ -449,7 +660,7 @@ int dshot_initdevice(struct dshot_device *is, struct cdevice *dev)
 	sprintf(dev->name, "%s_%d", "dshot", dshot_devcount);
 
 	dev->priv = dshot_devs + dshot_devcount;
-	dev->read = NULL;
+	dev->read = dshot_getrpm;
 	dev->configure = dshot_configure;
 	dev->write = dshot_setthrust;
 	dev->interrupt = NULL;

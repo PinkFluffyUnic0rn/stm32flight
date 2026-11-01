@@ -30,6 +30,7 @@
 #define PCONF_DMA2_STREAM4_IRQ
 #define PCONF_DMA2_STREAM5_IRQ
 #define PCONF_DMA2_STREAM6_IRQ
+#define PCONF_DMA2_STREAM7_IRQ
 #define PCONF_BDMA_CHANNEL0_IRQ
 
 #define PCONF_UART1_IDX_IRQ 0
@@ -60,7 +61,7 @@ DMA_Stream_TypeDef *const dmas[] = {
 	DMA2_Stream4,
 	DMA2_Stream5,
 	DMA2_Stream6,
-	NULL
+	DMA2_Stream7	
 };
 
 BDMA_Channel_TypeDef *const bdmas[] = {
@@ -205,7 +206,7 @@ const struct pconf_spi spis[] = {
 const struct pconf_tim tims[] = {
 	{
 		.inst = TIM1,
-		.usage = PCONF_TIMUSAGE_PWMBURST,
+		.usage = PCONF_TIMUSAGE_PWM,
 		.pwm = {
 			{
 				.chan = 1,
@@ -213,7 +214,7 @@ const struct pconf_tim tims[] = {
 					.inst = GPIOA,
 					.idx = GPIO_PIN_8
 				},
-				.dma = NULL
+				.dma = DMA2_Stream1
 			},
 			{
 				.chan = 2,
@@ -221,7 +222,7 @@ const struct pconf_tim tims[] = {
 					.inst = GPIOA,
 					.idx = GPIO_PIN_9
 				},
-				.dma = NULL
+				.dma = DMA1_Stream4
 			},
 			{
 				.chan = 3,
@@ -229,7 +230,7 @@ const struct pconf_tim tims[] = {
 					.inst = GPIOA,
 					.idx = GPIO_PIN_10
 				},
-				.dma = NULL
+				.dma = DMA2_Stream6
 			},
 			{
 				.chan = 4,
@@ -237,10 +238,10 @@ const struct pconf_tim tims[] = {
 					.inst = GPIOA,
 					.idx = GPIO_PIN_11
 				},
-				.dma = NULL
+				.dma = DMA2_Stream7
 			}
 		},
-		.updma = DMA2_Stream1,
+		.updma = NULL,
 		.chcnt = 4
 	},
 	{
@@ -345,7 +346,7 @@ const struct pconf_uart uarts[] = {
 			.inst = GPIOC,
 			.idx = GPIO_PIN_12
 		},
-		.rxdma = DMA1_Stream4,
+		.rxdma = NULL,
 		.txdma = DMA2_Stream2
 	}
 };
@@ -474,7 +475,7 @@ const struct pconf_lidar lidarconf = {
 };
 
 const struct pconf_pwm pwmconf = {
-	.dmatype = PCONF_TIMDMATYPE_BURST,
+	.dmatype = PCONF_TIMDMATYPE_CCR,
 	.proto = PCONF_PROTO_DSHOT600,
 	.pwm = {
 		{

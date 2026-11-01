@@ -674,6 +674,15 @@ static int pconf_dmastream_pwm_channel(DMA_Stream_TypeDef *inst,
 	return (-1);
 }
 
+static int pconf_dmastream_timup_channel(DMA_Stream_TypeDef *inst,
+	TIM_TypeDef *timinst)
+{
+	if (timinst == TIM1)		return DMA_REQUEST_TIM1_UP;
+	else if (timinst == TIM15)	return DMA_REQUEST_TIM15_UP;
+
+	return (-1);
+}
+
 int pconf_timpwm_chan(int ch)
 {
 	switch (ch) {
@@ -1276,7 +1285,8 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 
 	pconf_tim_enable_clock(htim->Instance);
 
-	if (tim->usage == PCONF_TIMUSAGE_PWM) {
+	if (tim->usage == PCONF_TIMUSAGE_PWM
+		|| tim->usage == PCONF_TIMUSAGE_PWMINV) {
 		for (i = 0; i < tim->chcnt; ++i) {
 			const int *dmaidx;
 			int chanidx;
@@ -1317,7 +1327,8 @@ void pconf_mspinit_timpwm(TIM_HandleTypeDef *htim)
 			return;
 
 		pconf_hdmas[idx].Instance = dmas[idx];
-		pconf_hdmas[idx].Init.Request = DMA_REQUEST_TIM1_UP;
+		pconf_hdmas[idx].Init.Request = pconf_dmastream_timup_channel(
+			tim->updma, tim->inst);
 		pconf_hdmas[idx].Init.Direction = DMA_MEMORY_TO_PERIPH;
 		pconf_hdmas[idx].Init.PeriphInc = DMA_PINC_DISABLE;
 		pconf_hdmas[idx].Init.MemInc = DMA_MINC_ENABLE;
@@ -1349,7 +1360,8 @@ void pconf_mspdeinit_timpwm(TIM_HandleTypeDef *htim)
 
 	pconf_tim_disable_clock(htim->Instance);
 
-	if (tim->usage == PCONF_TIMUSAGE_PWM) {
+	if (tim->usage == PCONF_TIMUSAGE_PWM
+			|| tim->usage == PCONF_TIMUSAGE_PWMINV) {
 		for (i = 0; i < tim->chcnt; ++i) {
 			const int *dmaidx;
 			int chanidx;
@@ -1654,7 +1666,7 @@ static void pconf_init_dma(void)
 		case DMA1_Stream1_IRQn:		prep = 1;	break;
 		case DMA1_Stream2_IRQn:		prep = 1;	break;
 		case DMA1_Stream3_IRQn:		prep = 1;	break;
-		case DMA1_Stream4_IRQn:		prep = 1;	break;
+		case DMA1_Stream4_IRQn:		prep = 0;	break;
 		case DMA1_Stream5_IRQn:		prep = 0;	break;
 		case DMA1_Stream6_IRQn:		prep = 1;	break;
 		case DMA1_Stream7_IRQn:		prep = 1;	break;
@@ -1665,6 +1677,7 @@ static void pconf_init_dma(void)
 		case DMA2_Stream4_IRQn:		prep = 1;	break;
 		case DMA2_Stream5_IRQn:		prep = 1;	break;
 		case DMA2_Stream6_IRQn:		prep = 0;	break;
+		case DMA2_Stream7_IRQn:		prep = 0;	break;
 		default:			prep = 1;
 		}
 
@@ -1673,7 +1686,7 @@ static void pconf_init_dma(void)
 	}
 }
 
-static void pconf_init_tim_pwm(int idx)
+static void pconf_init_tim_pwm(int idx, int inv)
 {
 
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -1686,13 +1699,13 @@ static void pconf_init_tim_pwm(int idx)
 	TIM_OC_InitTypeDef sConfigOC = {0};
 	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
-	pconf_htims[idx].Instance = tims->inst;
+	pconf_htims[idx].Instance = tims[idx].inst;
 	pconf_htims[idx].Init.Prescaler = 0;
 	pconf_htims[idx].Init.CounterMode = TIM_COUNTERMODE_UP;
 	pconf_htims[idx].Init.Period = 0xffff;
 	pconf_htims[idx].Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	pconf_htims[idx].Init.RepetitionCounter = 0;
-	pconf_htims[idx].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+	pconf_htims[idx].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 	if (HAL_TIM_PWM_Init(pconf_htims + idx) != HAL_OK)
 		error_handler();
 
@@ -1705,7 +1718,7 @@ static void pconf_init_tim_pwm(int idx)
 
 	sConfigOC.OCMode = TIM_OCMODE_PWM1;
 	sConfigOC.Pulse = 0;
-	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+	sConfigOC.OCPolarity = inv ? TIM_OCPOLARITY_LOW : TIM_OCPOLARITY_HIGH;
 	sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
 	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
 	sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
@@ -1739,7 +1752,7 @@ static void pconf_init_tim_pwm(int idx)
 
 		GPIO_InitStruct.Pin = tim->pwm[i].pin.idx;
 		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Pull = inv ? GPIO_PULLUP : GPIO_NOPULL;
 		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 		GPIO_InitStruct.Alternate = pconf_tim_pinalternate(
 			&(tim->pwm[i].pin), tim->inst);
@@ -1816,9 +1829,11 @@ static void pconf_init_tim()
 
 	for (i = 0; i < PCONF_TIMSCOUNT; ++i) {
 		if (tims[i].usage == PCONF_TIMUSAGE_PWM)
-			pconf_init_tim_pwm(i);
+			pconf_init_tim_pwm(i, 0);
+		else if (tims[i].usage == PCONF_TIMUSAGE_PWMINV)
+			pconf_init_tim_pwm(i, 1);
 		else if (tims[i].usage == PCONF_TIMUSAGE_PWMBURST)
-			pconf_init_tim_pwm(i);
+			pconf_init_tim_pwm(i, 0);
 		else if (tims[i].usage == PCONF_TIMUSAGE_SCHED)
 			pconf_init_tim_sched(i);
 		else if (tims[i].usage == PCONF_TIMUSAGE_DELAY)
@@ -2534,6 +2549,10 @@ static void dshot_init()
 		d.type = DSHOT_300;
 	else if (pwmconf.proto == PCONF_PROTO_DSHOT600)
 		d.type = DSHOT_600;
+	else if (pwmconf.proto == PCONF_PROTO_DSHOT300BD)
+		d.type = DSHOT_300BD;
+	else if (pwmconf.proto == PCONF_PROTO_DSHOT600BD)
+		d.type = DSHOT_600BD;
 	else
 		d.type = DSHOT_300;
 

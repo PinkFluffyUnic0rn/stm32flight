@@ -122,7 +122,7 @@ ITCMRAM int msp_interrupt(void *dev, const void *h)
 	uint8_t b;
 
 	d = dev;
-
+		
 	if (((UART_HandleTypeDef *)h)->Instance != d->huart->Instance)
 		return 0;
 
@@ -603,6 +603,7 @@ ITCMRAM int msp_write(void *dev, void *dt, size_t sz)
 
 int msp_init(struct msp_device *msp)
 {
+/*	
 	struct msp_data md;
 	int t;
 	
@@ -612,11 +613,12 @@ int msp_init(struct msp_device *msp)
 		0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0
 	};
-
+*/
 	Packstate = 0;
 	Packrest = 0;
 	Packw = Packr = 0;
 
+/*
 	HAL_UART_Receive_DMA(msp->huart, &Rxbuf, 1);
 	
 	t = 0;
@@ -630,7 +632,7 @@ int msp_init(struct msp_device *msp)
 	msp_write(msp, mspbuf, 23);
 	
 	HAL_UART_DMAStop(msp->huart);
-
+*/
 	return 0;
 }
 
