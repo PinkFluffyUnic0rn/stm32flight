@@ -206,7 +206,7 @@ const struct pconf_spi spis[] = {
 const struct pconf_tim tims[] = {
 	{
 		.inst = TIM1,
-		.usage = PCONF_TIMUSAGE_PWM,
+		.usage = PCONF_TIMUSAGE_PWMINV,
 		.pwm = {
 			{
 				.chan = 1,
@@ -476,7 +476,7 @@ const struct pconf_lidar lidarconf = {
 
 const struct pconf_pwm pwmconf = {
 	.dmatype = PCONF_TIMDMATYPE_CCR,
-	.proto = PCONF_PROTO_DSHOT600,
+	.proto = PCONF_PROTO_DSHOT600BD,
 	.pwm = {
 		{
 			.inst = TIM1,

@@ -171,7 +171,7 @@ int setstabilize(int init)
 	dsp_setlpf1f(Lpf + LPF_MAGZ, St.lpf.mag, QMC_FREQ, init);
 
 	// init notch filter for gyroscope
-	dsp_setnotch2(&Flt, St.notch.gyrofrmin, 300.0, PID_FREQ, 1);
+	dsp_setnotch2(&Flt, St.notch.frmin, St.notch.bw, PID_FREQ, 1);
 
 	// init roll, pitch, yaw unity filters
 	dsp_setunity(Lpf + LPF_ROLL, init);

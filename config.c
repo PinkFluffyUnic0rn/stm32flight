@@ -419,17 +419,17 @@ static struct settingnode Sttree = {
 				&(struct settingnode) {
 					.token = "gyrofrmin",
 					.type = NODETYPE_FLOAT,
-					.f = &(St.notch.gyrofrmin)
+					.f = &(St.notch.frmin)
 				},
 				&(struct settingnode) {
 					.token = "gyrofrmax",
 					.type = NODETYPE_FLOAT,
-					.f = &(St.notch.gyrofrmax)
+					.f = &(St.notch.frmax)
 				},
 				&(struct settingnode) {
 					.token = "gyrovbat",
 					.type = NODETYPE_FLOAT,
-					.f = &(St.notch.gyrovbat)
+					.f = &(St.notch.bw)
 				},
 				NULL
 			}

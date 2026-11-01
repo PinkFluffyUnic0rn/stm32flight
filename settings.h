@@ -222,9 +222,9 @@ struct __attribute__((aligned(32))) persettings
 	} lpf;
 	
 	struct {
-		double gyrofrmin;
-		double gyrofrmax;
-		double gyrovbat;
+		double frmin;
+		double frmax;
+		double bw;
 	} notch;
 
 	struct {

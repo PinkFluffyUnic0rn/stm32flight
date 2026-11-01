@@ -258,7 +258,7 @@ ITCMRAM double esccurrent()
 ITCMRAM int imuupdate(int ms)
 {
 	double gx, gy, gz;
-	double vcoef, thr, frq;
+	double frq;
 
 	// if IMU isn't initilized, return
 	if (Dev[DEV_IMU].status != DEVSTATUS_INIT)
@@ -289,17 +289,16 @@ ITCMRAM int imuupdate(int ms)
 	writelog(LOG_GYRO_X, Imudata.gfx);
 	writelog(LOG_GYRO_Y, Imudata.gfy);
 	writelog(LOG_GYRO_Z, Imudata.gfz);
+	
+	frq = (dsp_getlpf(Lpf + LPF_RPM1)
+		+ dsp_getlpf(Lpf + LPF_RPM2)
+		+ dsp_getlpf(Lpf + LPF_RPM3)
+		+ dsp_getlpf(Lpf + LPF_RPM4)) * 0.25;
 
-	if (St.feature.notchen != 0) {
-		// calculate frequency for gyroscope notch filter	
-		vcoef = dsp_getlpf(Lpf + LPF_BAT) / St.notch.gyrovbat;
-		thr = dsp_getlpf(Lpf + LPF_AVGTHR) * vcoef * vcoef;
-
-		frq = St.notch.gyrofrmin + thr * thr
-			* (St.notch.gyrofrmax - St.notch.gyrofrmin);
-		
+	if (St.feature.notchen != 0 && frq > St.notch.frmin
+		&& frq < St.notch.frmax) {
 		// update notch filter's coefficients	
-		dsp_setnotch2(&Flt, frq, 300.0, PID_FREQ, 0);
+		dsp_setnotch2(&Flt, frq, St.notch.bw, PID_FREQ, 0);
 		
 		// update notch filter
 		dsp_updatefilterv(&Flt,
