@@ -1213,8 +1213,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 
 	tabs["filters"]->add_group(new float_settings_group(nullptr,
 		"Notch filter", "dsp",
-		{"min frequency",	"max frequency",	"battery voltage"},
-		{"notch gyrofrmin",	"notch gyrofrmax",		"notch gyrovbat"},
+		{"min frequency",	"max frequency",	"bandwidth"},
+		{"notch freqmin",	"notch freqmax",	"notch bandwidth"},
 		cmdstree, true, this), 1, 1, 1, 1);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
@@ -1265,8 +1265,8 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
 		"Motor scale", "dsp",
-		{"roll",		"pitch",		"thrust"},
-		{"adj rollthrust", 	"adj pitchthrust",	"adj thrust"},
+		{"thrust"},
+		{"adj thrust"},
 		cmdstree, true, this), 2, 0);
 
 	tabs["adjustments"]->add_group(new float_settings_group(nullptr,
@@ -1394,6 +1394,7 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 			"gnss_qual", "gnss_lat", "gnss_lon", "gnss_speed",
 			"gnss_course", "gnss_alt", "gnss_sats",
 			"speed", "slat", "slon", "lat", "lon",
+			"rps1", "rps2", "rps3", "rps4", "avgrps",
 			"custom0", "custom1", "custom2", "custom3", "none"
 		}, "none", true, this), 0, 2, 3, 1);
 
@@ -1429,6 +1430,7 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 			"gnss_qual", "gnss_lat", "gnss_lon", "gnss_speed",
 			"gnss_course", "gnss_alt", "gnss_sats",
 			"speed", "slat", "slon", "lat", "lon",
+			"rps1", "rps2", "rps3", "rps4", "avgrps",
 			"custom0", "custom1", "custom2", "custom3", "none"
 		}, "none", true, this), 0, 3, 3, 1);
 
@@ -1464,6 +1466,7 @@ main_widget::main_widget(const char *uartdev, QWidget *parent)
 			"gnss_qual", "gnss_lat", "gnss_lon", "gnss_speed",
 			"gnss_course", "gnss_alt", "gnss_sats",
 			"speed", "slat", "slon", "lat", "lon",
+			"rps1", "rps2", "rps3", "rps4", "avgrps",
 			"custom0", "custom1", "custom2", "custom3", "none"
 		}, "none", true, this), 0, 4, 3, 1);
 

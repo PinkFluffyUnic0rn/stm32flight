@@ -48,6 +48,7 @@ struct dshot_device {
 	int timfreq;			/*!< timer freequency */
 	enum DSHOT_MODE mode;		/*!< DMA mode */
 	enum DSHOT_TYPE type;		/*!< DShot bitrate */
+	int polescount;			/*!< motors poles count */
 
 	int timcc[4];			/*!< private: DMA trigger event
 						correspondign to each
@@ -65,7 +66,8 @@ struct dshot_device {
 					in timer clock cycles */;
 	int onelen;			/*!< private: length of one
 					in timer clock cycles */
-	int tele;
+	int tele;			/*!< private: is telemetry 
+					enabled */
 };
 
 /**
@@ -79,9 +81,8 @@ struct dshot_data {
 * @brief output data
 */
 struct dshot_tele {
-	float rpm[4];	/*!< RPM of each motor */
+	float rps[4];	/*!< RPM of each motor */
 	int isvalid[4];	/*!< is rpm value valid */
-	uint16_t dsbuf[4][32];
 };
 
 /**

@@ -468,7 +468,7 @@ ITCMRAM int dshot_setthrust(void *d, void *dt, size_t sz)
 	return 0;
 }
 
-ITCMRAM int dshot_getrpm(void *d, void *dt, size_t sz)
+ITCMRAM int dshot_getrps(void *d, void *dt, size_t sz)
 {
 	static const uint8_t gcr[32] = { 
 	    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -543,7 +543,7 @@ ITCMRAM int dshot_getrpm(void *d, void *dt, size_t sz)
 			goto reject;
 
 		if (t == 0xfff) {
-			data->rpm[i] = 0.0f;
+			data->rps[i] = 0.0f;
 			continue;
 		}
 
@@ -552,12 +552,12 @@ ITCMRAM int dshot_getrpm(void *d, void *dt, size_t sz)
 		if (per == 0)
 			goto reject;
 	
-		data->rpm[i] = 1.0e6f / (float) per / 6.0f;
+		data->rps[i] = 1.0e6f / (float) (per * dev->polescount);
 		
 		continue;
 
 reject:
-		data->rpm[i] = 0.0f;
+		data->rps[i] = 0.0f;
 		data->isvalid[i] = 0;
 	}
 
@@ -660,7 +660,7 @@ int dshot_initdevice(struct dshot_device *is, struct cdevice *dev)
 	sprintf(dev->name, "%s_%d", "dshot", dshot_devcount);
 
 	dev->priv = dshot_devs + dshot_devcount;
-	dev->read = dshot_getrpm;
+	dev->read = dshot_getrps;
 	dev->configure = dshot_configure;
 	dev->write = dshot_setthrust;
 	dev->interrupt = NULL;

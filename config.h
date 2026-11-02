@@ -14,6 +14,10 @@
 */
 int updatevtx();
 
+/**
+* @brief Update autopilot settings.
+* @return always 0
+*/
 int updateautopilot();
 
 /**

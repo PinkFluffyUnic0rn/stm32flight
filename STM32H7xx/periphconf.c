@@ -2540,6 +2540,8 @@ static void dshot_init()
 
 	d.timfreq = HAL_RCC_GetPCLK2Freq() * 2;
 
+	d.polescount = pwmconf.polescount;
+
 	if (pwmconf.dmatype == PCONF_TIMDMATYPE_BURST)
 		d.mode = DSHOT_TIMBURST;
 	else

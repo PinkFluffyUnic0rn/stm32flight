@@ -290,13 +290,9 @@ ITCMRAM int imuupdate(int ms)
 	writelog(LOG_GYRO_Y, Imudata.gfy);
 	writelog(LOG_GYRO_Z, Imudata.gfz);
 	
-	frq = (dsp_getlpf(Lpf + LPF_RPM1)
-		+ dsp_getlpf(Lpf + LPF_RPM2)
-		+ dsp_getlpf(Lpf + LPF_RPM3)
-		+ dsp_getlpf(Lpf + LPF_RPM4)) * 0.25;
+	frq = dsp_getlpf(Lpf + LPF_AVGRPS);
 
-	if (St.feature.notchen != 0 && frq > St.notch.frmin
-		&& frq < St.notch.frmax) {
+	if (St.feature.notchen != 0) {
 		// update notch filter's coefficients	
 		dsp_setnotch2(&Flt, frq, St.notch.bw, PID_FREQ, 0);
 		
@@ -305,7 +301,9 @@ ITCMRAM int imuupdate(int ms)
 			Imudata.gfx, Imudata.gfy, Imudata.gfz,
 			&gx, &gy, &gz);
 	}
-	else {
+
+	if (St.feature.notchen == 0 || frq < St.notch.frmin
+			|| frq > St.notch.frmax) {
 		gx = Imudata.gfx;
 		gy = Imudata.gfy;
 		gz = Imudata.gfz;

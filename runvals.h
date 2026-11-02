@@ -74,10 +74,11 @@ enum LPF_ID {
 	LPF_SPEED	= 25,	/*!< speed unity filter */
 	LPF_LATM	= 26,	/*!< latitude in meters unity filter */
 	LPF_LONM	= 27,	/*!< longitude in meters unity filter */
-	LPF_RPM1	= 28,
-	LPF_RPM2	= 29,
-	LPF_RPM3	= 30,
-	LPF_RPM4	= 31,
+	LPF_RPS1	= 28,	/*!< motor 1 revolutions per second  */
+	LPF_RPS2	= 29,	/*!< motor 2 revolutions per second  */
+	LPF_RPS3	= 30,	/*!< motor 3 revolutions per second  */
+	LPF_RPS4	= 31,	/*!< motor 4 revolutions per second  */
+	LPF_AVGRPS	= 31,	/*!< average revolutions per second  */
 	LPF_COUNT	= 32	/*!< low-pass filters count */
 };
 
@@ -390,8 +391,6 @@ extern int Elrstimeout;
 	arming is possible only after reboot
 */
 extern int Emergencydisarm;
-
-extern uint16_t Dsbuf[4][32];
 
 /**
 * @brief Set motors thrust. All values should be between 0.0 and 1.0.

@@ -166,7 +166,7 @@ struct __attribute__((aligned(32))) persettings
 		struct { double x, y, z; } gyro0;
 
 		struct { double roll, pitch, yaw; } att0;
-		struct { double r, p, thr; } mtrsc;
+		struct { double r, p, thr; } mtr;
 
 		struct {
 			double hoverthrottle;
@@ -267,7 +267,7 @@ struct __attribute__((aligned(32))) runsettings
 	struct {
 		int freq;
 		int recsize;
-		int fieldid[LOG_FIELDSTRSIZE];
+		int fieldid[LOG_COUNT];
 	} log;
 
 	struct {

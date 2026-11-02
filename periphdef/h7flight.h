@@ -494,7 +494,8 @@ const struct pconf_pwm pwmconf = {
 			.inst = TIM1,
 			.chan = 4
 		}
-	}
+	},
+	.polescount = 6
 };
 
 const struct pconf_battery batconf = {

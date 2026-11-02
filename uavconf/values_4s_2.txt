@@ -28,8 +28,6 @@ adj mag zscale 1
 adj mag xthscale 0
 adj mag ythscale 0
 adj mag zthscale 0
-adj pitchthrust 0
-adj rollthrust 0
 adj thrust 1.6
 autopilot count 5
 autopilot alt 0 0
@@ -140,12 +138,12 @@ lpf accel 100
 lpf d 100
 lpf gyro 100
 lpf mag 50
-notch gyrovbat 17
-notch gyrofrmax 2038
-notch gyrofrmin 220
+notch bandwidth 17
+notch freqmax 2038
+notch freqmin 220
 log freq 128
 log recsize 4
-log record 0 acc_x
+log record 0 none
 log record 1 none
 log record 10 none
 log record 2 none

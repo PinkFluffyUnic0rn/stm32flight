@@ -25,11 +25,6 @@
 #define LOG_MAXRECSIZE	32
 
 /**
-* @brief Log value id's count
-*/
-#define LOG_FIELDSTRSIZE 78
-
-/**
 * @defgroup LOG log values id
 * @{
 */
@@ -108,10 +103,16 @@ enum LOG_FIELD {
 	LOG_SLON	= 71,
 	LOG_LAT		= 72,
 	LOG_LON		= 73,
-	LOG_CUSTOM0	= 74,
-	LOG_CUSTOM1	= 75,
-	LOG_CUSTOM2	= 76,
-	LOG_CUSTOM3	= 77
+	LOG_RPS1	= 74,
+	LOG_RPS2	= 75,
+	LOG_RPS3	= 76,
+	LOG_RPS4	= 77,
+	LOG_AVGRPS	= 78,
+	LOG_CUSTOM0	= 79,
+	LOG_CUSTOM1	= 80,
+	LOG_CUSTOM2	= 81,
+	LOG_CUSTOM3	= 82,
+	LOG_COUNT	= 83
 };
 /**
 * @}
@@ -126,7 +127,7 @@ enum LOG_FIELD {
 /**
 * @brief Log values names
 */
-extern const char *logfieldmap[LOG_FIELDSTRSIZE + 1];
+extern const char *logfieldmap[LOG_COUNT + 1];
 
 /**
 * @brief Set value in current log frame.

@@ -603,36 +603,10 @@ ITCMRAM int msp_write(void *dev, void *dt, size_t sz)
 
 int msp_init(struct msp_device *msp)
 {
-/*	
-	struct msp_data md;
-	int t;
-	
-	uint8_t mspbuf[32] = {
-		MSP_CMD_STATUS,
-		0, 125, 0, 0, 0, 0x7a, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0
-	};
-*/
 	Packstate = 0;
 	Packrest = 0;
 	Packw = Packr = 0;
 
-/*
-	HAL_UART_Receive_DMA(msp->huart, &Rxbuf, 1);
-	
-	t = 0;
-
-	while (msp_read(msp, &md, sizeof(struct msp_data)) <= 0
-			&& md.cmd != MSP_CMD_STATUS && t < 15000) {
-		HAL_Delay(100);
-		t += 100;
-	}
-
-	msp_write(msp, mspbuf, 23);
-	
-	HAL_UART_DMAStop(msp->huart);
-*/
 	return 0;
 }
 

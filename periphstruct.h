@@ -346,6 +346,8 @@ struct pconf_pwm {
 		int chan;		/*!< timer's channel used for
 						this PWM channel */
 	} pwm[4];
+
+	int polescount;			/*!< motors poles count */
 };
 
 /**

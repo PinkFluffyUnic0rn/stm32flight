@@ -417,17 +417,17 @@ static struct settingnode Sttree = {
 			.type = NODETYPE_PARENT,
 			.child = (struct settingnode *[]) {
 				&(struct settingnode) {
-					.token = "gyrofrmin",
+					.token = "freqmin",
 					.type = NODETYPE_FLOAT,
 					.f = &(St.notch.frmin)
 				},
 				&(struct settingnode) {
-					.token = "gyrofrmax",
+					.token = "freqmax",
 					.type = NODETYPE_FLOAT,
 					.f = &(St.notch.frmax)
 				},
 				&(struct settingnode) {
-					.token = "gyrovbat",
+					.token = "bandwidth",
 					.type = NODETYPE_FLOAT,
 					.f = &(St.notch.bw)
 				},
@@ -439,19 +439,9 @@ static struct settingnode Sttree = {
 			.type = NODETYPE_PARENT,
 			.child = (struct settingnode *[]) {
 				&(struct settingnode) {
-					.token = "rollthrust",
-					.type = NODETYPE_FLOAT,
-					.f = &(St.adj.mtrsc.r)
-				},
-				&(struct settingnode) {
-					.token = "pitchthrust",
-					.type = NODETYPE_FLOAT,
-					.f = &(St.adj.mtrsc.p)
-				},
-				&(struct settingnode) {
 					.token = "thrust",
 					.type = NODETYPE_FLOAT,
-					.f = &(St.adj.mtrsc.thr)
+					.f = &(St.adj.mtr.thr)
 				},
 				&(struct settingnode) {
 					.token = "roll",
@@ -1040,10 +1030,6 @@ static int sprintvalues(char *s)
 		(double) Pitchtarget, (double) Yawtarget);
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
-		"roll thrust: %.3f; pitch thrust %.3f\r\n",
-		(double) St.adj.mtrsc.r, (double) St.adj.mtrsc.p);
-
-	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"mag off: %.3f; %.3f; %.3f\r\n",
 		(double) St.adj.mag0.x, (double) St.adj.mag0.y,
 		(double) St.adj.mag0.z);
@@ -1082,11 +1068,10 @@ static int sprintvalues(char *s)
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"rpm: [%0.3f %0.3f %0.3f %0.3f]\r\n",
-		(double) dsp_getlpf(Lpf + LPF_RPM1),
-		(double) dsp_getlpf(Lpf + LPF_RPM2),
-		(double) dsp_getlpf(Lpf + LPF_RPM3),
-		(double) dsp_getlpf(Lpf + LPF_RPM4));
-
+		(double) dsp_getlpf(Lpf + LPF_RPS1),
+		(double) dsp_getlpf(Lpf + LPF_RPS2),
+		(double) dsp_getlpf(Lpf + LPF_RPS3),
+		(double) dsp_getlpf(Lpf + LPF_RPS4));
 
 	snprintf(s + strlen(s), INFOLEN - strlen(s),
 		"motors state: %.3f\r\n", (double) En);
@@ -1778,7 +1763,7 @@ int setcmd(const struct cdevice *d, const char **toks, char *out)
 				return (-1);
 		
 			// unset this value if it was already set	
-			for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
+			for (i = 0; i < LOG_COUNT; ++i) {
 				if (*(node->m.m + i) == v)
 					*(node->m.m + i) = 99;
 			}
@@ -1876,13 +1861,13 @@ int getcmd(const struct cdevice *d, const char **toks, char *out)
 		recn = atoi(*p);
 
 		// search map for a specific value 
-		for (i = 0; i < LOG_FIELDSTRSIZE; ++i) {
+		for (i = 0; i < LOG_COUNT; ++i) {
 			if (Strun.log.fieldid[i] == recn)
 				break;
 		}
 
 		// get key of a found value
-		vs = (i >= LOG_FIELDSTRSIZE) ? "none" : node->m.k[i];
+		vs = (i >= LOG_COUNT) ? "none" : node->m.k[i];
 
 		valtype = CONFVALTYPE_STRING;
 	}

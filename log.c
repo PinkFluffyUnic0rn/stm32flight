@@ -33,7 +33,7 @@ BDMABUF static float logbuf1[LOG_BUFSIZE / sizeof(float)];
 
 static float *logbuf = logbuf0;
 
-const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {
+const char *logfieldmap[LOG_COUNT + 1] = {
 	"acc_x", "acc_y", "acc_z",
 	"gyro_x", "gyro_y", "gyro_z",
 	"mag_x", "mag_y", "mag_z",
@@ -53,6 +53,7 @@ const char *logfieldmap[LOG_FIELDSTRSIZE + 1] = {
 	"gnss_qual", "gnss_lat", "gnss_lon", "gnss_speed",
 	"gnss_course", "gnss_alt", "gnss_sats",
 	"speed", "slat", "slon", "lat", "lon",
+	"rps1", "rps2", "rps3", "rps4", "avgrps",
 	"custom0", "custom1", "custom2", "custom3", NULL
 };
 

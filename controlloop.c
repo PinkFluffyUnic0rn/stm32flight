@@ -178,10 +178,12 @@ int setstabilize(int init)
 	dsp_setunity(Lpf + LPF_PITCH, init);
 	dsp_setunity(Lpf + LPF_YAW, init);
 
-	dsp_setunity(Lpf + LPF_RPM1, init);
-	dsp_setunity(Lpf + LPF_RPM2, init);
-	dsp_setunity(Lpf + LPF_RPM3, init);
-	dsp_setunity(Lpf + LPF_RPM4, init);
+	// init motor RPS filters
+	dsp_setunity(Lpf + LPF_RPS1, init);
+	dsp_setunity(Lpf + LPF_RPS2, init);
+	dsp_setunity(Lpf + LPF_RPS3, init);
+	dsp_setunity(Lpf + LPF_RPS4, init);
+	dsp_setunity(Lpf + LPF_AVGRPS, init);
 
 	// tilt compensation coefficient limit for throttle,
 	// converted to form for fast computation
@@ -189,7 +191,7 @@ int setstabilize(int init)
 
 	// calculate inverse value of motor thrust
 	// linearization value for faster computation
-	Mtrscaleinv = 1.0 / St.adj.mtrsc.thr;
+	Mtrscaleinv = 1.0 / St.adj.mtr.thr;
 
 	Sr = 0.0; Cr = 0.0;
 	Sp = 0.0; Cp = 0.0;

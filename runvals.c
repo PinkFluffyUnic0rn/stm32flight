@@ -71,14 +71,13 @@ int Elrstimeout = ELRS_TIMEOUT;
 
 int Emergencydisarm = 0;
 
-uint16_t Dsbuf[4][32];
-
 ITCMRAM int setthrust(struct cdevice *dev,
 	float ltd, float rtd, float lbd, float rbd)
 {
 	struct dshot_data dd;
 	struct dshot_tele td;
 	double avgthrust;
+	float rps1, rps2, rps3, rps4, avgrps;
 
 	// incorrect thrust value protection and
 	// extra check for disabled ELRS transmitter	
@@ -118,23 +117,36 @@ ITCMRAM int setthrust(struct cdevice *dev,
 	// set thrust values using DShot output device
 	dev->write(dev->priv, &dd, sizeof(struct dshot_data));
 	dev->read(dev->priv, &td, sizeof(struct dshot_tele));
-/*
-	memcpy(Dsbuf[0], td.dsbuf[0], 20 * sizeof(uint16_t));
-	memcpy(Dsbuf[1], td.dsbuf[1], 20 * sizeof(uint16_t));
-	memcpy(Dsbuf[2], td.dsbuf[2], 20 * sizeof(uint16_t));
-	memcpy(Dsbuf[3], td.dsbuf[3], 20 * sizeof(uint16_t));
-*/
+
+	// update each motor RPS for valid RPS telemetry values
 	if (td.isvalid[0])
-		dsp_updatelpf(Lpf + LPF_RPM1, td.rpm[0]);
+		dsp_updatelpf(Lpf + LPF_RPS1, td.rps[0]);
 
 	if (td.isvalid[1])
-		dsp_updatelpf(Lpf + LPF_RPM2, td.rpm[1]);
+		dsp_updatelpf(Lpf + LPF_RPS2, td.rps[1]);
 
 	if (td.isvalid[2])
-		dsp_updatelpf(Lpf + LPF_RPM3, td.rpm[2]);
+		dsp_updatelpf(Lpf + LPF_RPS3, td.rps[2]);
 
 	if (td.isvalid[3])
-		dsp_updatelpf(Lpf + LPF_RPM4, td.rpm[3]);
+		dsp_updatelpf(Lpf + LPF_RPS4, td.rps[3]);
+
+
+	rps1 = dsp_getlpf(Lpf + LPF_RPS1);
+	rps2 = dsp_getlpf(Lpf + LPF_RPS2);
+	rps3 = dsp_getlpf(Lpf + LPF_RPS3);
+	rps4 = dsp_getlpf(Lpf + LPF_RPS4);
+
+	// calculate average RPS value
+	avgrps = (rps1 + rps2 + rps3 + rps4) * 0.25f;
+	dsp_updatelpf(Lpf + LPF_AVGRPS, avgrps);
+
+	// write RPS values for each motor and average RPS value
+	writelog(LOG_RPS1, rps1);
+	writelog(LOG_RPS2, rps2);
+	writelog(LOG_RPS3, rps3);
+	writelog(LOG_RPS4, rps4);
+	writelog(LOG_AVGRPS, avgrps);
 
 	return 0;
 }

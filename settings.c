@@ -88,7 +88,7 @@ int initrunsettings()
 		Strun.log.recsize = LOGDEFRECSIZE;
 	}
 
-	for (i = 0; i < LOG_FIELDSTRSIZE; ++i)
+	for (i = 0; i < LOG_COUNT; ++i)
 		Strun.log.fieldid[i] = LOGFIELDDEFPOS;
 
 	return 0;
