@@ -1936,7 +1936,7 @@ static void pconf_init_spi_wifi(int i)
 	pconf_hspis[i].Init.CLKPolarity = SPI_POLARITY_HIGH;
 	pconf_hspis[i].Init.CLKPhase = SPI_PHASE_2EDGE;
 	pconf_hspis[i].Init.NSS = SPI_NSS_SOFT;
-	pconf_hspis[i].Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+	pconf_hspis[i].Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
 	pconf_hspis[i].Init.FirstBit = SPI_FIRSTBIT_MSB;
 	pconf_hspis[i].Init.TIMode = SPI_TIMODE_DISABLE;
 	pconf_hspis[i].Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;

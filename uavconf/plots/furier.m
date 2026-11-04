@@ -23,18 +23,16 @@
 ## Created: 2026-07-25
 
 function retval = furier (data, p)
-  h = hann(4000);
+  h = hann(8000);
 
   #for i = 16000 : 24000
     s = p;
-    e = p + 3999;
+    e = p + 7999;
 
     xw = data(s:e) .* h;
 
     rv = abs(fft(xw));
 
-    retval = rv(1:1000);
-
-  #  retval(i,:) = rv(1:2000);
+    retval = rv(1:1500);
  # endfor
 endfunction
