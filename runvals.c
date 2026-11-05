@@ -9,7 +9,7 @@ int Init = 0;
 
 DTCMRAM struct timev Evs[TEV_COUNT];
 DTCMRAM struct dsp_lpf Lpf[LPF_COUNT];
-DTCMRAM struct dsp_filter Flt;
+DTCMRAM struct dsp_biquad Bqd[BQD_COUNT];
 DTCMRAM struct dsp_compl Cmpl[CMPL_COUNT];
 DTCMRAM struct dsp_complv Cmplv;
 DTCMRAM struct dsp_pidblval Pid[PID_COUNT];

@@ -170,8 +170,34 @@ int setstabilize(int init)
 	dsp_setlpf1f(Lpf + LPF_MAGY, St.lpf.mag, QMC_FREQ, init);
 	dsp_setlpf1f(Lpf + LPF_MAGZ, St.lpf.mag, QMC_FREQ, init);
 
-	// init notch filter for gyroscope
-	dsp_setnotch2(&Flt, St.notch.frmin, St.notch.bw, PID_FREQ, 1);
+	// init notch filters for gyroscope
+	dsp_setnotch(Bqd + BQD_MTR1HAR1, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+	dsp_setnotch(Bqd + BQD_MTR1HAR2, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+	dsp_setnotch(Bqd + BQD_MTR1HAR3, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+
+	dsp_setnotch(Bqd + BQD_MTR2HAR1, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+	dsp_setnotch(Bqd + BQD_MTR2HAR2, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+	dsp_setnotch(Bqd + BQD_MTR2HAR3, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+
+	dsp_setnotch(Bqd + BQD_MTR3HAR1, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+	dsp_setnotch(Bqd + BQD_MTR3HAR2, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+	dsp_setnotch(Bqd + BQD_MTR3HAR3, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+
+	dsp_setnotch(Bqd + BQD_MTR4HAR1, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+	dsp_setnotch(Bqd + BQD_MTR4HAR2, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
+	dsp_setnotch(Bqd + BQD_MTR4HAR3, St.notch.frmin,
+		St.notch.bw, PID_FREQ, 1);
 
 	// init roll, pitch, yaw unity filters
 	dsp_setunity(Lpf + LPF_ROLL, init);

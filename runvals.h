@@ -83,6 +83,26 @@ enum LPF_ID {
 };
 
 /**
+* @defgroup BQDIDS
+* @brief Biquad filters IDs
+*/
+enum BQD_ID {
+	BQD_MTR1HAR1	= 0,	/*!< motor 1 first harmonic*/
+	BQD_MTR1HAR2	= 1,	/*!< motor 1 second harmonic*/
+	BQD_MTR1HAR3	= 2,	/*!< motor 1 third harmonic*/
+	BQD_MTR2HAR1	= 3,	/*!< motor 2 first harmonic*/
+	BQD_MTR2HAR2	= 4,	/*!< motor 2 second harmonic*/
+	BQD_MTR2HAR3	= 5,	/*!< motor 2 third harmonic*/
+	BQD_MTR3HAR1	= 6,	/*!< motor 3 first harmonic*/
+	BQD_MTR3HAR2	= 7,	/*!< motor 3 second harmonic*/
+	BQD_MTR3HAR3	= 8,	/*!< motor 3 third harmonic*/
+	BQD_MTR4HAR1	= 9,	/*!< motor 4 first harmonic*/
+	BQD_MTR4HAR2	= 10,	/*!< motor 4 second harmonic*/
+	BQD_MTR4HAR3	= 11,	/*!< motor 4 third harmonic*/
+	BQD_COUNT	= 12	/*!< biquad filters count */
+};
+
+/**
 * @defgroup CMPLIDS
 * @brief Complimentary filters IDs
 */
@@ -278,7 +298,7 @@ extern struct dsp_lpf Lpf[LPF_COUNT];
 /**
 * @brief filter
 */
-extern struct dsp_filter Flt;
+extern struct dsp_biquad Bqd[BQD_COUNT];
 
 /**
 * @brief Complimentary filters

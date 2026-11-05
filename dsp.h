@@ -50,19 +50,19 @@ struct dsp_lpf {
 * @brief 3D vector filter context. It holds filter's coefficients and
 * accumulated data between calls.
 */
-struct dsp_filter {
-	double a[8];	/*!< 'a' filter coefficients */
-	double b[8];	/*!< 'b' filter coefficients */
+struct dsp_biquad {
+	double a[3];	/*!< 'a' filter coefficients */
+	double b[3];	/*!< 'b' filter coefficients */
 
-	double s[8];	/*!< previous output values */
-	double v[8];	/*!< previous input values */
+	double s[3];	/*!< previous output values */
+	double v[3];	/*!< previous input values */
 
-	double sx[8];	/*!< previous x output values */
-	double vx[8];	/*!< previous x input values */
-	double sy[8];	/*!< previous y output values */
-	double vy[8];	/*!< previous y input values */
-	double sz[8];	/*!< previous z output values */
-	double vz[8];	/*!< previous z input values */
+	double sx[3];	/*!< previous x output values */
+	double vx[3];	/*!< previous x input values */
+	double sy[3];	/*!< previous y output values */
+	double vy[3];	/*!< previous y input values */
+	double sz[3];	/*!< previous z output values */
+	double vz[3];	/*!< previous z input values */
 
 	int step;	/*!< calculation step, stops at value of 2 */
 	int depth;	/*!< number of 'a' and 'b' Z-transform
@@ -227,7 +227,7 @@ double dsp_updatelpf(struct dsp_lpf *ir, double v);
 * @param init 1, if internal values initializaion required, 0 otherwise
 * @return always 0
 */
-int dsp_setnotch2(struct dsp_filter *flt, double rejfreq, double bw,
+int dsp_setnotch(struct dsp_biquad *bqd, double rejfreq, double bw,
 	int freq, int init);
 
 /**
@@ -241,7 +241,7 @@ int dsp_setnotch2(struct dsp_filter *flt, double rejfreq, double bw,
 * @param z0 filter's Z output vector value
 * @return always 0
 */
-int dsp_updatefilterv(struct dsp_filter *flt,
+int dsp_updatebiquadv(struct dsp_biquad *bqd,
 	double x, double y, double z,
 	double *xo, double *yo, double *zo);
 

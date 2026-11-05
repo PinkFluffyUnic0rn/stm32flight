@@ -84,108 +84,78 @@ ITCMRAM double dsp_updatelpf(struct dsp_lpf *ir, double v)
 	return ir->s1;
 }
 
-ITCMRAM int dsp_setnotch2(struct dsp_filter *flt, double rejfreq,
+ITCMRAM int dsp_setnotch(struct dsp_biquad *bqd, double rejfreq,
 	double bw, int freq, int init)
 {
-	double a11, a12a22, a21, a11a21;
-	double b11, b21, b11b21;
-	double w, r;
+	double w, a, a0inv;
+	double cw;
 
 	if (init)
-		flt->step = 0;
+		bqd->step = 0;
 
-	flt->depth = 4;
-	
-	r = 1.0 - 3.0 * bw / (double) freq;
 	w = 2.0 * M_PI * rejfreq / (double) freq;
+	a = sin(w) / (2.0 * bw);
+	cw = cos(w);
+	a0inv = 1 / (1 + a);
 
-	a11 = -2.0 * r * cos(w);
-	a21 = -2.0 * r * cos(w * 2.0);
-	a11a21 = a11 + a21;
-	a12a22 = r * r;
+	bqd->b[0] = 1.0 * a0inv;
+	bqd->b[1] = -2.0 * cw * a0inv;
+	bqd->b[2] = 1 * a0inv;
 
-	b11 = -2.0 * cos(w);
-	b21 = -2.0 * cos(w * 2.0);
-	b11b21 = b11 + b21;
+	bqd->a[0] = 1.0;
+	bqd->a[1] = bqd->b[1];
+	bqd->a[2] = (1 - a) * a0inv;
 
-	flt->a[0] = 1.0;
-	flt->a[1] = a11a21;
-	flt->a[2] = 2.0 * a12a22 + a11 * a21;
-	flt->a[3] = a12a22 * a11a21;
-	flt->a[4] = a12a22 * a12a22;
-
-	flt->b[0] = 1.0;
-	flt->b[1] = b11b21;
-	flt->b[2] = 2.0 + b11 * b21;
-	flt->b[3] = b11b21;
-	flt->b[4] = 1.0;
+	bqd->depth = 2;
 
 	return 0;
 }
 
-ITCMRAM int dsp_updatefilterv(struct dsp_filter *flt,
+ITCMRAM int dsp_updatebiquadv(struct dsp_biquad *bqd,
 	double x, double y, double z,
 	double *xo, double *yo, double *zo)
 {
 	double sx, sy, sz;
 
-	sx = flt->b[0] * x;
-	sy = flt->b[0] * y;
-	sz = flt->b[0] * z;
+	sx = bqd->b[0] * x;
+	sy = bqd->b[0] * y;
+	sz = bqd->b[0] * z;
 
-	if (flt->step > 0) {
-		sx += flt->b[1] * flt->vx[0] - flt->a[1] * flt->sx[0];
-		sy += flt->b[1] * flt->vy[0] - flt->a[1] * flt->sy[0];
-		sz += flt->b[1] * flt->vz[0] - flt->a[1] * flt->sz[0];
+	if (bqd->step > 0) {
+		sx += bqd->b[1] * bqd->vx[0] - bqd->a[1] * bqd->sx[0];
+		sy += bqd->b[1] * bqd->vy[0] - bqd->a[1] * bqd->sy[0];
+		sz += bqd->b[1] * bqd->vz[0] - bqd->a[1] * bqd->sz[0];
 	}
 	
-	if (flt->step > 1) {
-		sx += flt->b[2] * flt->vx[1] - flt->a[2] * flt->sx[1];
-		sy += flt->b[2] * flt->vy[1] - flt->a[2] * flt->sy[1];
-		sz += flt->b[2] * flt->vz[1] - flt->a[2] * flt->sz[1];
+	if (bqd->step > 1) {
+		sx += bqd->b[2] * bqd->vx[1] - bqd->a[2] * bqd->sx[1];
+		sy += bqd->b[2] * bqd->vy[1] - bqd->a[2] * bqd->sy[1];
+		sz += bqd->b[2] * bqd->vz[1] - bqd->a[2] * bqd->sz[1];
 	}
 
-	if (flt->step > 2) {
-		sx += flt->b[3] * flt->vx[2] - flt->a[3] * flt->sx[2];
-		sy += flt->b[3] * flt->vy[2] - flt->a[3] * flt->sy[2];
-		sz += flt->b[3] * flt->vz[2] - flt->a[3] * flt->sz[2];
-	}
+	bqd->vx[2] = bqd->vx[1];
+	bqd->vx[1] = bqd->vx[0];
+	bqd->vx[0] = x;
+	bqd->sx[2] = bqd->sx[1];
+	bqd->sx[1] = bqd->sx[0];
+	bqd->sx[0] = sx;
 
-	if (flt->step > 3) {
-		sx += flt->b[4] * flt->vx[3] - flt->a[4] * flt->sx[3];
-		sy += flt->b[4] * flt->vy[3] - flt->a[4] * flt->sy[3];
-		sz += flt->b[4] * flt->vz[3] - flt->a[4] * flt->sz[3];
-	}
+	bqd->vy[2] = bqd->vy[1];
+	bqd->vy[1] = bqd->vy[0];
+	bqd->vy[0] = y;
+	bqd->sy[2] = bqd->sy[1];
+	bqd->sy[1] = bqd->sy[0];
+	bqd->sy[0] = sy;
 
-	flt->vx[3] = flt->vx[2];
-	flt->vx[2] = flt->vx[1];
-	flt->vx[1] = flt->vx[0];
-	flt->vx[0] = x;
-	flt->sx[3] = flt->sx[2];
-	flt->sx[2] = flt->sx[1];
-	flt->sx[1] = flt->sx[0];
-	flt->sx[0] = sx;
+	bqd->vz[2] = bqd->vz[1];
+	bqd->vz[1] = bqd->vz[0];
+	bqd->vz[0] = z;
+	bqd->sz[2] = bqd->sz[1];
+	bqd->sz[1] = bqd->sz[0];
+	bqd->sz[0] = sz;
 
-	flt->vy[3] = flt->vy[2];
-	flt->vy[2] = flt->vy[1];
-	flt->vy[1] = flt->vy[0];
-	flt->vy[0] = y;
-	flt->sy[3] = flt->sy[2];
-	flt->sy[2] = flt->sy[1];
-	flt->sy[1] = flt->sy[0];
-	flt->sy[0] = sy;
-
-	flt->vz[3] = flt->vz[2];
-	flt->vz[2] = flt->vz[1];
-	flt->vz[1] = flt->vz[0];
-	flt->vz[0] = z;
-	flt->sz[3] = flt->sz[2];
-	flt->sz[2] = flt->sz[1];
-	flt->sz[1] = flt->sz[0];
-	flt->sz[0] = sz;
-
-	if (flt->step < flt->depth)
-		++flt->step;
+	if (bqd->step < bqd->depth)
+		++bqd->step;
 
 	*xo = sx;
 	*yo = sy;

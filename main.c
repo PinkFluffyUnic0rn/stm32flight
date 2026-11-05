@@ -258,7 +258,8 @@ ITCMRAM double esccurrent()
 ITCMRAM int imuupdate(int ms)
 {
 	double gx, gy, gz;
-	double frq;
+	double frq1;
+//	double frq1, frq2, frq3, frq4;
 
 	// if IMU isn't initilized, return
 	if (Dev[DEV_IMU].status != DEVSTATUS_INIT)
@@ -289,21 +290,116 @@ ITCMRAM int imuupdate(int ms)
 	writelog(LOG_GYRO_X, Imudata.gfx);
 	writelog(LOG_GYRO_Y, Imudata.gfy);
 	writelog(LOG_GYRO_Z, Imudata.gfz);
-	
-	frq = dsp_getlpf(Lpf + LPF_AVGRPS);
+
+/*
+	frq1 = dsp_getlpf(Lpf + LPF_RPS1);
+	frq2 = dsp_getlpf(Lpf + LPF_RPS2);
+	frq3 = dsp_getlpf(Lpf + LPF_RPS3);
+	frq4 = dsp_getlpf(Lpf + LPF_RPS4);
 
 	if (St.feature.notchen != 0) {
-		// update notch filter's coefficients	
-		dsp_setnotch2(&Flt, frq, St.notch.bw, PID_FREQ, 0);
-		
-		// update notch filter
-		dsp_updatefilterv(&Flt,
-			Imudata.gfx, Imudata.gfy, Imudata.gfz,
-			&gx, &gy, &gz);
-	}
+		// update notch filters' coefficients	
+		dsp_setnotch(Bqd + BQD_MTR1HAR1, frq1, 
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR1HAR2, frq1 * 2.0,
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR1HAR3, frq1 * 3.0,
+			St.notch.bw, PID_FREQ, 0);
 
-	if (St.feature.notchen == 0 || frq < St.notch.frmin
-			|| frq > St.notch.frmax) {
+		dsp_setnotch(Bqd + BQD_MTR2HAR1, frq2,
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR2HAR2, frq2 * 2.0,
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR2HAR3, frq2 * 3.0,
+			St.notch.bw, PID_FREQ, 0);
+
+		dsp_setnotch(Bqd + BQD_MTR3HAR1, frq3,
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR3HAR2, frq3 * 2.0,
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR3HAR3, frq3 * 3.0,
+			St.notch.bw, PID_FREQ, 0);
+
+		dsp_setnotch(Bqd + BQD_MTR4HAR1, frq4,
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR4HAR2, frq4 * 2.0,
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR4HAR3, frq4 * 3.0,
+			St.notch.bw, PID_FREQ, 0);
+
+		// update notch filters'
+		gx = Imudata.gfx;
+		gy = Imudata.gfy;
+		gz = Imudata.gfz;
+		
+		dsp_updatebiquadv(Bqd + BQD_MTR1HAR1,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR1HAR2,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR1HAR3,
+			gx, gy, gz, &gx, &gy, &gz);
+	
+		dsp_updatebiquadv(Bqd + BQD_MTR2HAR1,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR2HAR2,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR2HAR3,
+			gx, gy, gz, &gx, &gy, &gz);
+	
+		dsp_updatebiquadv(Bqd + BQD_MTR3HAR1,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR3HAR2,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR3HAR3,
+			gx, gy, gz, &gx, &gy, &gz);
+	
+		dsp_updatebiquadv(Bqd + BQD_MTR4HAR1,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR4HAR2,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR4HAR3,
+			gx, gy, gz, &gx, &gy, &gz);
+	}
+*/
+
+	frq1 = dsp_getlpf(Lpf + LPF_AVGRPS);
+
+	if (St.feature.notchen != 0) {
+		// update notch filters' coefficients	
+		dsp_setnotch(Bqd + BQD_MTR1HAR1, frq1, 
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR1HAR2, frq1 * 2.0,
+			St.notch.bw, PID_FREQ, 0);
+		dsp_setnotch(Bqd + BQD_MTR1HAR3, frq1 * 3.0,
+			St.notch.bw, PID_FREQ, 0);
+
+		// update notch filters'
+		gx = Imudata.gfx;
+		gy = Imudata.gfy;
+		gz = Imudata.gfz;
+		
+		dsp_updatebiquadv(Bqd + BQD_MTR1HAR1,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR1HAR2,
+			gx, gy, gz, &gx, &gy, &gz);
+		dsp_updatebiquadv(Bqd + BQD_MTR1HAR3,
+			gx, gy, gz, &gx, &gy, &gz);
+	
+	}
+/*
+	if (St.feature.notchen == 0
+			|| frq1 < St.notch.frmin
+			|| frq1 > St.notch.frmax
+			|| frq2 < St.notch.frmin
+			|| frq2 > St.notch.frmax
+			|| frq3 < St.notch.frmin
+			|| frq3 > St.notch.frmax
+			|| frq4 < St.notch.frmin
+			|| frq4 > St.notch.frmax) {
+*/
+	if (St.feature.notchen == 0
+			|| frq1 < St.notch.frmin
+			|| frq1 > St.notch.frmax) {
 		gx = Imudata.gfx;
 		gy = Imudata.gfy;
 		gz = Imudata.gfz;
